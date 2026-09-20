@@ -657,7 +657,6 @@
                 bpOut = h + '/' + l;
             }
 
-            /* ★ ここが修正ポイントです！ ショートステイでもメッセージ欄を空っぽにしました。 */
             let finalMessageHtml = "";
             if (commentsHtml) {
                 finalMessageHtml = `<div class="text-box">${commentsHtml}</div>`;
@@ -821,6 +820,7 @@
                 bpStrDay = h + '/' + l;
             }
 
+            /* ★ ここが修正ポイントです！ お客様への御連絡事項の右側に感謝のメッセージを追加しました。 */
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 <div class="print-header">
@@ -861,7 +861,7 @@
                 </div>
                 <div class="section-title">■ 機能訓練・活動の様子</div>
                 <div class="text-box">${trainAct || '特になし'}</div>
-                <div class="section-title">■ お客様への御連絡事項</div>
+                <div class="section-title">■ お客様への御連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
                 <div class="text-box">${data.message || '特になし'}</div>
                 <div class="section-title">■ 本日のご様子 (写真・動画)</div>
                 <div class="media-print-area">${mediaHtml}</div>
