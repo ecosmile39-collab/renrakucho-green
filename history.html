@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>過去データ一覧（グリーンアンドリバーホーム版）</title>
+    
+    <style>
+        body { font-family: sans-serif; background-color: #f0f8ff; padding: 20px; margin: 0; color: #333; }
+        .form-box { background-color: white; padding: 20px; border-radius: 10px; max-width: 800px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { color: #2b8a3e; margin-top: 0; display: flex; align-items: center; gap: 10px; }
+        
+        .nav-links { text-align: center; margin-bottom: 20px; }
+        .nav-links a { color: #2b8a3e; font-weight: bold; text-decoration: none; margin: 0 15px; font-size: 16px; }
+        .nav-links a:hover { text-decoration: underline; }
+
+        .filter-panel { background-color: #ebfbee; padding: 20px; border-radius: 8px; border: 2px solid #40c057; margin-bottom: 20px; text-align: center; }
+        .filter-select { font-size: 16px; padding: 8px 12px; border-radius: 5px; border: 1px solid #40c057; font-weight: bold; margin-right: 15px; }
+        .month-input { font-size: 16px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; margin-right: 15px; }
+        .btn-search { background-color: #3b5bdb; color: white; border: none; padding: 10px 20px; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-search:hover { background-color: #364fc7; }
+
+        .user-select-box { background-color: #fff; padding: 20px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .user-checkbox-wrapper { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; margin-bottom: 20px; }
+        .user-checkbox-label { cursor: pointer; font-size: 16px; padding: 6px 12px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9; display: flex; align-items: center; gap: 6px; }
+        .user-checkbox-label:hover { background-color: #e6f2ff; border-color: #2b8a3e; }
+
+        .btn-show { background-color: #f76707; color: white; font-size: 18px; padding: 12px 24px; width: 100%; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-show:hover { background-color: #e8590c; }
+
+        .result-area { margin-top: 30px; }
+        .user-card { background-color: white; border: 2px solid #2b8a3e; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .user-card h3 { background-color: #e8f5e9; margin: -20px -20px 15px -20px; padding: 15px 20px; border-radius: 6px 6px 0 0; color: #2e7d32; border-bottom: 1px solid #c8e6c9; }
+        
+        table.history-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 15px; }
+        table.history-table th, table.history-table td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        table.history-table th { background-color: #f8f9fa; color: #495057; font-weight: bold; }
+        table.history-table tr:nth-child(even) { background-color: #fdfdfd; }
+        
+        .empty-msg { text-align: center; color: red; font-weight: bold; padding: 20px; }
+        
+        .scroll-btn-group { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
+        .scroll-btn { background-color: #2b8a3e; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="form-box">
+        <div class="nav-links">
+            <a href="index.html">⬅ 入力画面へ戻る</a>
+            <a href="print.html">➡ 印刷画面へ</a>
+        </div>
+        
+        <h2 style="justify-content: center; background-color: #4682b4; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            📊 過去データ一覧（1ヶ月のまとめ）
+        </h2>
+
+        <div class="filter-panel">
+            <select id="selectServiceType" class="filter-select" onchange="clearResults()">
+                <option value="デイサービス">☀️ デイサービス</option>
+                <option value="ショートステイ" selected>🌙 ショートステイ</option>
+            </select>
+            <input type="month" id="targetMonth" class="month-input">
+            <button class="btn-search" onclick="searchData()">この月のデータを探す</button>
+        </div>
+
+        <div class="user-select-box" id="userSelectBox" style="display: none;">
+            <div style="font-weight: bold; color: #1c7ed6; margin-bottom: 10px;">☑ まとめを作成するお客様を選んでください</div>
+            <label style="font-weight: bold; border-bottom: 1px dashed #ccc; padding-bottom: 10px; display: block; cursor: pointer; margin-bottom: 15px;">
+                <input type="checkbox" id="checkAll" checked onchange="toggleAllUsers()"> すべて選択／解除
+            </label>
+            <div class="user-checkbox-wrapper" id="userCheckboxes"></div>
+            <button class="btn-show" onclick="showResults()">📄 選んだ人のまとめを画面に表示する</button>
+        </div>
+
+        <div id="resultArea" class="result-area"></div>
+    </div>
+
+    <div class="scroll-btn-group" id="scrollGroup">
+        <button class="scroll-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">▲</button>
+        <button class="scroll-btn" onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})">▼</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
+            authDomain: "renrakucho-app-6b157.firebaseapp.com",
+            projectId: "renrakucho-app-6b157",
+            storageBucket: "renrakucho-app-6b157.firebasestorage.app",
+            messagingSenderId: "63418706991",
+            appId: "1:63418706991:web:43085ce485d2a3d6302ada"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.matchedRecordsGlobal = [];
+
+        window.onload = function() {
+            let facilityId = localStorage.getItem("currentFacilityId");
+            if (!facilityId) { window.location.replace("login.html"); return; }
+            
+            let today = new Date();
+            let year = today.getFullYear();
+            let month = String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById("targetMonth").value = `${year}-${month}`;
+            
+            let savedServiceType = localStorage.getItem('currentServiceType');
+            if (savedServiceType) {
+                document.getElementById("selectServiceType").value = savedServiceType;
+            }
+        };
+
+        window.clearResults = function() {
+            document.getElementById("userSelectBox").style.display = "none";
+            document.getElementById("resultArea").innerHTML = "";
+            window.matchedRecordsGlobal = [];
+        };
+
+        window.searchData = async function() {
+            let facilityId = localStorage.getItem("currentFacilityId");
+            let targetMonth = document.getElementById("targetMonth").value;
+            let sType = document.getElementById("selectServiceType").value;
+            
+            if (!targetMonth) { alert("月を選択してください。"); return; }
+
+            let startDate = `${targetMonth}-01`;
+            let endDate = `${targetMonth}-31`;
+
+            let checkboxesArea = document.getElementById("userCheckboxes");
+            let selectBox = document.getElementById("userSelectBox");
+            let resultArea = document.getElementById("resultArea");
+            
+            selectBox.style.display = "block";
+            resultArea.innerHTML = "";
+            checkboxesArea.innerHTML = `⏳ 検索中...`;
+
+            try {
+                let recordsRef = collection(db, "facilities", facilityId, "daily_records");
+                let q = query(recordsRef, where("date", ">=", startDate), where("date", "<=", endDate));
+                let snapshot = await getDocs(q);
+
+                window.matchedRecordsGlobal = [];
+                let uniqueUsers = new Set();
+
+                snapshot.forEach(docSnap => {
+                    let data = docSnap.data();
+                    let recordService = data.serviceType || "デイサービス";
+                    if (recordService === sType) {
+                        window.matchedRecordsGlobal.push(data);
+                        uniqueUsers.add(data.userName);
+                    }
+                });
+
+                if (window.matchedRecordsGlobal.length === 0) {
+                    checkboxesArea.innerHTML = `<span class="empty-msg">${targetMonth} の【${sType}】のデータはありません。</span>`;
+                    return;
+                }
+
+                checkboxesArea.innerHTML = "";
+                document.getElementById("checkAll").checked = true;
+                
+                Array.from(uniqueUsers).sort().forEach((userName) => {
+                    let lbl = document.createElement("label");
+                    lbl.className = "user-checkbox-label";
+                    lbl.innerHTML = `<input type="checkbox" class="user-chk" value="${userName}" checked> ${userName} 様`;
+                    checkboxesArea.appendChild(lbl);
+                });
+
+            } catch (error) {
+                checkboxesArea.innerHTML = "検索エラー: " + error.message;
+            }
+        };
+
+        window.toggleAllUsers = function() {
+            let isChecked = document.getElementById("checkAll").checked;
+            document.querySelectorAll(".user-chk").forEach(chk => chk.checked = isChecked);
+        };
+
+        window.showResults = function() {
+            let resultArea = document.getElementById("resultArea");
+            resultArea.innerHTML = "";
+            let sType = document.getElementById("selectServiceType").value;
+
+            let chks = document.querySelectorAll(".user-chk:checked");
+            if (chks.length === 0) {
+                alert("表示するお客様を選んでください。");
+                return;
+            }
+            let selectedUserNames = Array.from(chks).map(chk => chk.value);
+
+            let targetRecords = window.matchedRecordsGlobal.filter(record => selectedUserNames.includes(record.userName));
+            targetRecords.sort((a, b) => a.date.localeCompare(b.date));
+
+            let recordsByUser = {};
+            selectedUserNames.forEach(name => recordsByUser[name] = []);
+            targetRecords.forEach(r => recordsByUser[r.userName].push(r));
+
+            Object.keys(recordsByUser).forEach(userName => {
+                let userRecords = recordsByUser[userName];
+                if (userRecords.length === 0) return;
+
+                let card = document.createElement("div");
+                card.className = "user-card";
+                
+                let html = `<h3>👤 ${userName} 様 （${userRecords.length}日分）</h3>`;
+                
+                if (sType === "デイサービス") {
+                    html += `<table class="history-table">
+                        <tr>
+                            <th width="12%">日付</th><th width="10%">体温</th><th width="10%">脈拍</th>
+                            <th width="13%">血圧</th><th width="15%">食事(主/副)</th><th width="20%">入浴</th><th width="20%">排泄</th>
+                        </tr>`;
+                    
+                    userRecords.forEach(d => {
+                        let t = d.temp1 || '--';
+                        let p = d.pulse || '--';
+                        let bp = (d.bpHigh || '--') + '/' + (d.bpLow || '--');
+                        let meal = (d.mealMain || '--') + '/' + (d.mealSub || '--');
+                        let bath = d.bath || '--';
+                        
+                        let bStr = "--";
+                        if (d.bowel === "なし") bStr = "なし";
+                        else if (d.bowel === "あり") bStr = `あり (${d.bowelCount || ""}/${d.bowelCondition || ""})`;
+                        
+                        html += `<tr>
+                            <td>${d.date.substring(5).replace('-','/')}</td>
+                            <td>${t}℃</td><td>${p}</td><td>${bp}</td><td>${meal}</td><td>${bath}</td><td>${bStr}</td>
+                        </tr>`;
+                    });
+                    html += `</table>`;
+                } else {
+                    html += `<table class="history-table">
+                        <tr>
+                            <th width="12%">日付</th><th width="10%">体温</th><th width="10%">脈拍</th>
+                            <th width="13%">血圧</th><th width="25%">食事(朝/昼/夕)</th><th width="15%">入浴</th><th width="15%">排泄</th>
+                        </tr>`;
+                    
+                    userRecords.forEach(d => {
+                        let t = d.stTempIn || d.stTemp1 || d.temp1 || '--';
+                        let p = d.stPulseIn || d.stPulse || d.pulse || '--';
+                        let bp = (d.stBpHighIn || d.stBpHigh || d.bpHigh || '--') + '/' + (d.stBpLowIn || d.stBpLow || d.bpLow || '--');
+                        let meal = (d.stMealBreakfast || '--') + '/' + (d.stMealLunch || d.mealMain || '--') + '/' + (d.stMealDinner || '--');
+                        let bath = d.stBath || d.bath || '--';
+                        
+                        let bStr = "--";
+                        if (d.bowel === "なし") bStr = "なし";
+                        else if (d.bowel === "あり") bStr = `あり (${d.bowelCount || ""}/${d.bowelCondition || ""})`;
+                        
+                        html += `<tr>
+                            <td>${d.date.substring(5).replace('-','/')}</td>
+                            <td>${t}℃</td><td>${p}</td><td>${bp}</td><td>${meal}</td><td>${bath}</td><td>${bStr}</td>
+                        </tr>`;
+                    });
+                    html += `</table>`;
+                }
+                
+                card.innerHTML = html;
+                resultArea.appendChild(card);
+            });
+        };
+    </script>
+</body>
+</html>
