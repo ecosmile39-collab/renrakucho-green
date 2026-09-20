@@ -1,0 +1,1735 @@
+
+
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>連絡帳 入力（グリーンアンドリバーホーム版）</title>
+    
+    <style>
+        body { font-family: sans-serif; background-color: #f0f8ff; padding: 10px; margin: 0; }
+        .form-box { background-color: white; padding: 20px; border-radius: 10px; max-width: 650px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h3 { border-bottom: 2px solid #2b8a3e; color: #2b8a3e; padding-bottom: 5px; margin-top: 25px; font-size: 18px; }
+        label { display: block; margin-top: 15px; font-weight: bold; color: #333; font-size: 15px; }
+        input[type="text"], input[type="number"], input[type="date"], select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+        .flex-box { display: flex; gap: 10px; }
+        .flex-box > div { flex: 1; }
+        .bp-box { display: flex; align-items: center; gap: 5px; }
+        .bp-box input { text-align: center; }
+        .bp-box span { font-weight: bold; font-size: 18px; margin-top: 5px; }
+        .checkbox-group label, .radio-group label { display: inline-block; font-weight: normal; margin-top: 5px; margin-right: 15px; }
+        
+        .belongings-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        .belongings-table th, .belongings-table td { border: 1px solid #ccc; padding: 8px 4px; text-align: center; }
+        .belongings-table th { background-color: #e9ecef; font-weight: bold; color: #495057; }
+        .belongings-table td input[type="text"] { padding: 4px; font-size: 14px; margin: 0; width: 90%; }
+        .belongings-table td input[type="number"] { width: 40px; padding: 4px; font-size: 14px; text-align: center; margin: 0 auto; border: 1px solid #4682b4; border-radius: 4px; }
+        .item-name { text-align: left !important; padding-left: 8px !important; font-size: 13px; }
+
+        .service-select-card { background: linear-gradient(135deg, #ebfbee 0%, #d3f9d8 100%); padding: 16px; border-radius: 8px; border: 2px solid #40c057; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .service-select-card label { margin-top: 0; color: #2b8a3e; font-size: 16px; }
+        .service-select-card select { font-size: 18px; font-weight: bold; border: 2px solid #2b8a3e; background-color: #fff; cursor: pointer; }
+
+        .register-box { background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 12px; border: 1px dashed #adb5bd; }
+        .register-grid { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+        .reg-face-preview { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid #2b8a3e; background-color: #e9ecef; flex-shrink: 0; }
+        .register-btn { padding: 12px; background-color: #2b8a3e; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; font-size: 15px; }
+        .register-btn:hover { background-color: #237032; }
+
+        .camera-btn-area { background-color: #e7f5ff; padding: 15px; border-radius: 8px; margin-top: 10px; border: 2px dashed #339af0; }
+        input[type="file"] { margin-top: 5px; margin-bottom: 12px; font-size: 15px; }
+        #previewArea { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+        .preview-item { display: flex; flex-direction: column; align-items: center; gap: 8px; border: 1px solid #ddd; border-radius: 8px; padding: 8px; background-color: #fff; width: 140px; }
+        img.preview-media-tag, video.preview-media-tag { max-width: 100%; max-height: 95px; object-fit: cover; border-radius: 5px; }
+        .delete-media-btn { background-color: #fa5252; color: white; border: none; border-radius: 4px; padding: 6px; cursor: pointer; font-size: 13px; width: 100%; font-weight: bold; }
+        
+        .pre-upload-btn { background-color: #12b886; color: white; border: none; padding: 14px; width: 100%; border-radius: 5px; font-weight: bold; font-size: 16px; margin-top: 10px; cursor: pointer; }
+        #preUploadedBadge { display: none; background-color: #ebfbee; border: 2px solid #40c057; color: #2b8a3e; padding: 10px; border-radius: 5px; font-weight: bold; margin-top: 12px; text-align: center; }
+        .cancel-upload-btn { display: none; background-color: #ff6b6b; color: white; border: none; padding: 10px; width: 100%; border-radius: 5px; font-weight: bold; font-size: 14px; margin-top: 10px; cursor: pointer; }
+
+        .face-camera-btn { background-color: #fff0f6; padding: 5px; border-radius: 5px; border: 1px solid #ffdeeb; color: #d6336c; font-size: 11px; cursor: pointer; display: inline-block; margin-top: 5px; text-align: center; width: 100%; box-sizing: border-box; }
+        #userFace { display: none; width: 70px; height: 70px; object-fit: cover; border-radius: 50%; border: 2px solid #2b8a3e; background-color: #f0f0f0; }
+
+        .btn-group-bottom { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
+        .temp-save-btn { width: 100%; padding: 15px; background-color: #37b24d; color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .single-send-btn { width: 100%; padding: 15px; background-color: #ff922b; color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .batch-send-btn { margin-top: 10px; width: 100%; padding: 15px; background-color: #f76707; color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .pending-area { background-color: #fff9db; padding: 15px; border-radius: 8px; margin-top: 30px; border: 2px dashed #f59f00; }
+        .pending-list { margin-top: 10px; font-weight: bold; color: #333; }
+        .pending-list span { display: inline-block; background-color: white; padding: 5px 10px; border-radius: 20px; border: 1px solid #ccc; margin: 3px; }
+
+        .scroll-btn-group { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
+        .scroll-btn { background-color: #2b8a3e; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; opacity: 0.8; }
+
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 16px; font-weight: bold; }
+        #toast.show { visibility: visible; -webkit-animation: fadein 0.5s, fadeout 0.5s 4.5s; animation: fadein 0.5s, fadeout 0.5s 4.5s; }
+        @-webkit-keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @-webkit-keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+        #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; flex-direction: column; color: white; font-size: 20px; font-weight: bold; text-align: center; }
+        .spinner { border: 8px solid #f3f3f3; border-top: 8px solid #2b8a3e; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .test-mode-section { display: none; }
+    </style>
+</head>
+<body>
+    <div id="toast">メッセージ</div>
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div id="loadingText">データを送信しています...<br>画面を閉じずにお待ちください</div>
+    </div>
+
+    <div class="form-box" id="mainForm" style="display: none;">
+        
+        <h2 id="secretTitle" style="user-select: none; cursor: pointer; margin-top: 0; color: #2b8a3e;">🌿 グリーンアンドリバーホーム 連絡帳</h2>
+        
+        <div style="text-align: right; margin-bottom: 15px;">
+            <a href="print.html" style="margin-right: 12px; color: #2b8a3e; font-weight: bold;">➡ 印刷画面へ</a>
+            <a href="history.html" style="color: #2b8a3e; font-weight: bold;">➡ 過去データ一覧へ</a>
+        </div>
+
+        <div class="service-select-card">
+            <label>📌 ご入力するサービス種別を選択してください：</label>
+            <select id="serviceType" onchange="onServiceTypeChanged()">
+                <option value="デイサービス">☀️ デイサービス（通所介護・日帰り）</option>
+                <option value="ショートステイ">🌙 ショートステイ（短期入所・宿泊）</option>
+            </select>
+        </div>
+
+        <div class="test-mode-section" style="margin-bottom: 25px; background-color: #e8f5e9; padding: 15px; border-radius: 8px; border: 2px dashed #4caf50; text-align: center;">
+            <h4 style="color: #2e7d32; margin-top: 0; margin-bottom: 8px;">🧪 テスト用サポート機能</h4>
+            <button type="button" id="btnGenerateDummy" style="background-color: #4caf50; color: white; border: none; padding: 12px 20px; border-radius: 5px; font-size: 16px; font-weight: bold; width: 100%; cursor: pointer; margin-bottom: 15px;" onclick="generateDummyData()">
+                🪄 10人×10日分のテストデータを一発自動作成する
+            </button>
+            <p style="font-size: 12px; color: #555; text-align: left; margin-bottom: 10px;">⚠️ すべてのデータを消去したい場合は、以下のボタンを押してください。</p>
+            <button type="button" style="background-color: #e03131; color: white; border: none; padding: 12px 20px; border-radius: 5px; font-size: 16px; font-weight: bold; width: 100%; cursor: pointer;" onclick="deleteAllData()">
+                🗑️ すべてのデータを完全に削除する
+            </button>
+        </div>
+
+        <h3>基本情報</h3>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
+            <div style="flex: 1;">
+                <label style="margin-top: 0;">お名前 <span id="ageDisplay" style="font-weight: bold; color: #d2691e; margin-left: 10px; font-size: 17px;"></span></label>
+                <select id="userName" onchange="onUserSelected()">
+                    <option value="">選択してください</option>
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; width: 80px; flex-shrink: 0;">
+                <img id="userFace" src="" alt="顔写真">
+                <label class="face-camera-btn">📸 写真<br>登録/変更
+                    <input type="file" accept="image/*" capture="environment" onclick="checkPrivacy(event)" onchange="previewFace(event)" style="display: none;">
+                </label>
+            </div>
+        </div>
+
+        <div id="userSettingsArea" style="display: none; margin-top: 10px; padding: 15px; background-color: #f8f9fa; border: 1px solid #ced4da; border-radius: 8px;">
+            <div style="font-weight: bold; color: #495057; font-size: 14px; margin-bottom: 12px; border-bottom: 1px dashed #adb5bd; padding-bottom: 5px;">⚙️ このお客様の個別設定</div>
+            <label style="color: #cc0000; font-weight: bold; margin-top: 0; margin-bottom: 12px; cursor: pointer; font-size: 14px; display: block;">
+                <input type="checkbox" id="photoNgCheck" onchange="updateUserSettings()" style="width: auto; margin-right: 8px;"> 🚫 「写真・動画の映り込みNG」にする
+            </label>
+            <label style="color: #d9480f; font-weight: bold; margin-top: 0; cursor: pointer; font-size: 14px; display: block;">
+                <input type="checkbox" id="existNeedExcretion" onchange="updateUserSettings()" style="width: auto; margin-right: 8px;"> 🚽 「排泄（トイレ）記録」を表示する
+            </label>
+        </div>
+        
+        <div class="register-box">
+            <span style="font-size: 14px; color: #1c7ed6; font-weight: bold;" id="regBoxTitle">➕ 【デイサービス】の名簿に新しく登録する</span>
+            <div style="margin-top: 8px;">
+                <input type="text" id="newUserName" placeholder="例：鈴木 一郎 様">
+                <div style="font-size: 12px; margin-top: 6px; color: #555;">生年月日（任意・お祝いメッセージ自動表示用）：</div>
+                <input type="date" id="newBirthday">
+                <div style="margin-top: 10px; background-color: #fff; padding: 10px; border-radius: 5px; border: 1px solid #ced4da;">
+                    <div style="font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px;">📸 ご本人のお顔写真を撮影／選択</div>
+                    <div class="register-grid">
+                        <img id="newFacePreview" src="" class="reg-face-preview" alt="顔プレビュー">
+                        <div style="flex: 1;">
+                            <input type="file" id="newFaceInput" accept="image/*" capture="environment" onchange="previewNewUserFace(event)" style="margin: 0; font-size: 14px;">
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 12px; background-color: #fff4e6; padding: 10px; border-radius: 5px; border: 1px dashed #ffa94d;">
+                    <label style="margin: 0; color: #d9480f; cursor: pointer; font-size: 14px;">
+                        <input type="checkbox" id="newNeedExcretion" style="width: auto; margin-right: 5px;"> 🚽 このお客様は「排泄（トイレ）記録」を表示する
+                    </label>
+                </div>
+                <button type="button" class="register-btn" onclick="registerNewUser()">お名前・生年月日・各種設定をまとめて名簿に登録</button>
+            </div>
+        </div>
+
+        <label>日付</label>
+        <input type="date" id="date" onchange="onDateChanged()">
+
+        <datalist id="mealList"><option value="100%"></option><option value="75%"></option><option value="50%"></option><option value="25%"></option><option value="0%"></option></datalist>
+        <datalist id="waterList"><option value="0ml"></option><option value="150ml"></option><option value="300ml"></option><option value="500ml"></option><option value="800ml"></option><option value="1000ml"></option><option value="1200ml"></option><option value="1500ml以上"></option></datalist>
+        <datalist id="oralCareList"><option value="未実施"></option><option value="歯ブラシ"></option><option value="うがいのみ"></option><option value="スポンジブラシ"></option><option value="義歯洗浄"></option><option value="毎食後実施"></option></datalist>
+
+        <!-- ========================================== -->
+        <!-- ☀️ 様式A：デイサービス（通所介護用） -->
+        <!-- ========================================== -->
+        <div id="dayServiceSection">
+            <h3>バイタル（デイサービス）</h3>
+            <div class="flex-box">
+                <div>
+                    <label>体温(来所時) ℃ <span id="temp1Alert" style="color: red; font-size: 18px; margin-left: 5px;"></span></label>
+                    <input type="number" step="0.1" id="temp1" list="temp1List" placeholder="例:36.5" oninput="checkTemp('temp1', 'temp1Alert')">
+                    <datalist id="temp1List"><option value="36.0"></option><option value="36.2"></option><option value="36.4"></option><option value="36.6"></option><option value="36.8"></option><option value="37.0"></option></datalist>
+                </div>
+                <div>
+                    <label>体温(途中) ℃ <span id="temp2Alert" style="color: red; font-size: 18px; margin-left: 5px;"></span></label>
+                    <input type="number" step="0.1" id="temp2" list="temp2List" placeholder="例:36.5" oninput="checkTemp('temp2', 'temp2Alert')">
+                    <datalist id="temp2List"><option value="36.0"></option><option value="36.2"></option><option value="36.4"></option><option value="36.6"></option><option value="36.8"></option><option value="37.0"></option></datalist>
+                </div>
+            </div>
+            
+            <div class="flex-box">
+                <div><label>脈拍 (回/分)</label><input type="number" id="pulse" list="pulseList" placeholder="例：78">
+                    <datalist id="pulseList"><option value="60"></option><option value="65"></option><option value="70"></option><option value="75"></option><option value="80"></option><option value="85"></option></datalist>
+                </div>
+                <div><label>酸素飽和度 (%)</label><input type="number" id="spo2" list="spo2List" placeholder="例：98">
+                    <datalist id="spo2List"><option value="95"></option><option value="96"></option><option value="97"></option><option value="98"></option><option value="99"></option><option value="100"></option></datalist>
+                </div>
+            </div>
+            
+            <label>血圧 (mmHg)</label>
+            <div class="bp-box">
+                <input type="number" id="bpHigh" list="bpHighList" placeholder="例：120">
+                <datalist id="bpHighList"><option value="110"></option><option value="120"></option><option value="130"></option><option value="140"></option><option value="150"></option></datalist>
+                <span>/</span>
+                <input type="number" id="bpLow" list="bpLowList" placeholder="例：80">
+                <datalist id="bpLowList"><option value="60"></option><option value="70"></option><option value="80"></option><option value="90"></option></datalist>
+            </div>
+
+            <h3>生活の様子（デイサービス）</h3>
+            <div class="flex-box">
+                <div><label>食事（主食）</label><input type="text" id="mealMain" list="mealList" placeholder="例：100%"></div>
+                <div><label>食事（副食）</label><input type="text" id="mealSub" list="mealList" placeholder="例：100%"></div>
+            </div>
+            
+            <div class="flex-box">
+                <div>
+                    <label>水分</label><input type="text" id="water" list="waterList" placeholder="例：300ml">
+                </div>
+                <div>
+                    <label>服薬・処置</label><input type="text" id="medication" placeholder="例：軟膏等塗布">
+                </div>
+            </div>
+            <div class="flex-box">
+                <div>
+                    <label>口腔ケア</label><input type="text" id="oralCare" list="oralCareList" placeholder="例：歯ブラシ">
+                </div>
+                <div>
+                    <label>入浴</label>
+                    <div class="radio-group"><label><input type="radio" name="bath" value="あり"> 入浴した</label><label><input type="radio" name="bath" value="なし"> 入浴しなかった</label></div>
+                    <input type="text" id="bathReason" placeholder="例：ご本人の希望により中止">
+                </div>
+            </div>
+
+            <div id="dayExcretionArea" style="display: none; background-color: #fff4e6; padding: 12px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; border: 2px dashed #ffa94d;">
+                <h4 style="margin: 0 0 10px 0; color: #d9480f;">🚽 排泄記録</h4>
+                <div class="flex-box">
+                    <div><label style="margin-top:0;">排便</label><select id="dsBowel"><option value="">--</option><option value="あり">あり</option><option value="なし">なし</option></select></div>
+                    <div><label style="margin-top:0;">回数</label><select id="dsBowelCount"><option value="">--</option><option value="1回">1回</option><option value="2回">2回</option><option value="3回以上">3回以上</option></select></div>
+                    <div><label style="margin-top:0;">状態</label><select id="dsBowelCondition"><option value="">--</option><option value="普通便">普通便</option><option value="軟便">軟便</option><option value="硬便">硬便</option><option value="水様便">水様便</option><option value="血便">血便</option></select></div>
+                </div>
+            </div>
+
+            <h3>機能訓練・活動</h3>
+            <label>機能訓練</label>
+            <div class="checkbox-group" style="margin-bottom: 15px; padding: 15px; background-color: #f9f9f9; border-radius: 8px; border: 1px solid #e0e0e0;">
+                <label><input type="checkbox" name="training" value="動作訓練（立ち上がり等）"> 動作訓練</label>
+                <label><input type="checkbox" name="training" value="歩行訓練"> 歩行訓練</label>
+                <label><input type="checkbox" name="training" value="更衣動作訓練"> 更衣動作訓練</label>
+                <label><input type="checkbox" name="training" value="入浴動作訓練"> 入浴動作訓練</label>
+                <label><input type="checkbox" name="training" value="口腔体操・発声練習"> 口腔体操</label>
+                <label><input type="checkbox" name="training" value="レクリエーションを通じた訓練"> レクリエーション</label>
+            </div>
+            <textarea id="activity" rows="3" placeholder="その他の活動（例：朝の会、ラジオ体操、脳トレ、集団体操など）"></textarea>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- 🌙 様式B：ショートステイ（グリーンアンドリバーホーム専用） -->
+        <!-- ========================================== -->
+        <div id="shortStaySection" style="display: none;">
+            
+            <h3 style="color: #2b8a3e; border-color: #2b8a3e;">バイタル（入所時・退所時）</h3>
+            
+            <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ced4da;">
+                <h4 style="margin: 0 0 10px 0; color: #2b8a3e;">【入所時】</h4>
+                <div class="flex-box">
+                    <div>
+                        <label style="margin-top: 0;">体温 ℃ <span id="stTempInAlert" style="color: red; font-size: 18px; margin-left: 5px;"></span></label>
+                        <input type="number" step="0.1" id="stTempIn" list="temp1List" placeholder="例:36.5" oninput="checkTemp('stTempIn', 'stTempInAlert')">
+                    </div>
+                    <div>
+                        <label style="margin-top: 0;">脈拍</label>
+                        <input type="number" id="stPulseIn" list="pulseList" placeholder="例：78">
+                    </div>
+                    <div>
+                        <label style="margin-top: 0;">酸素飽和度 %</label>
+                        <input type="number" id="stSpo2In" list="spo2List" placeholder="例：98">
+                    </div>
+                </div>
+                <label>血圧 (mmHg)</label>
+                <div class="bp-box">
+                    <input type="number" id="stBpHighIn" list="bpHighList" placeholder="例：125">
+                    <span>/</span>
+                    <input type="number" id="stBpLowIn" list="bpLowList" placeholder="例：75">
+                </div>
+            </div>
+
+            <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ced4da;">
+                <h4 style="margin: 0 0 10px 0; color: #e67700;">【退所時】</h4>
+                <div class="flex-box">
+                    <div>
+                        <label style="margin-top: 0;">体温 ℃ <span id="stTempOutAlert" style="color: red; font-size: 18px; margin-left: 5px;"></span></label>
+                        <input type="number" step="0.1" id="stTempOut" list="temp1List" placeholder="例:36.5" oninput="checkTemp('stTempOut', 'stTempOutAlert')">
+                    </div>
+                    <div>
+                        <label style="margin-top: 0;">脈拍</label>
+                        <input type="number" id="stPulseOut" list="pulseList" placeholder="例：78">
+                    </div>
+                    <div>
+                        <label style="margin-top: 0;">酸素飽和度 %</label>
+                        <input type="number" id="stSpo2Out" list="spo2List" placeholder="例：98">
+                    </div>
+                </div>
+                <label>血圧 (mmHg)</label>
+                <div class="bp-box">
+                    <input type="number" id="stBpHighOut" list="bpHighList" placeholder="例：125">
+                    <span>/</span>
+                    <input type="number" id="stBpLowOut" list="bpLowList" placeholder="例：75">
+                </div>
+            </div>
+
+            <h3 style="color: #2b8a3e; border-color: #2b8a3e;">👜 持ち物チェック表</h3>
+            <table class="belongings-table">
+                <tr>
+                    <th width="30%">持参品</th><th width="10%">入所時</th><th width="10%">退所時</th>
+                    <th width="30%">持参品</th><th width="10%">入所時</th><th width="10%">退所時</th>
+                </tr>
+                <tr>
+                    <td class="item-name">上着</td><td><input type="number" id="num_in_1" min="0"></td><td><input type="number" id="num_out_1" min="0"></td>
+                    <td class="item-name">歩行器</td><td><input type="number" id="num_in_17" min="0"></td><td><input type="number" id="num_out_17" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">ズボン</td><td><input type="number" id="num_in_2" min="0"></td><td><input type="number" id="num_out_2" min="0"></td>
+                    <td class="item-name">ZIP・マスク</td><td><input type="number" id="num_in_18" min="0"></td><td><input type="number" id="num_out_18" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">肌着(上)</td><td><input type="number" id="num_in_3" min="0"></td><td><input type="number" id="num_out_3" min="0"></td>
+                    <td class="item-name">レッグウォーマー</td><td><input type="number" id="num_in_19" min="0"></td><td><input type="number" id="num_out_19" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">ズボン下</td><td><input type="number" id="num_in_4" min="0"></td><td><input type="number" id="num_out_4" min="0"></td>
+                    <td class="item-name">BOXティッシュ</td><td><input type="number" id="num_in_20" min="0"></td><td><input type="number" id="num_out_20" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">靴下</td><td><input type="number" id="num_in_5" min="0"></td><td><input type="number" id="num_out_5" min="0"></td>
+                    <td class="item-name">薬入れZIP</td><td><input type="number" id="num_in_21" min="0"></td><td><input type="number" id="num_out_21" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">パジャマ(上)</td><td><input type="number" id="num_in_6" min="0"></td><td><input type="number" id="num_out_6" min="0"></td>
+                    <td class="item-name">ZIP(小)</td><td><input type="number" id="num_in_22" min="0"></td><td><input type="number" id="num_out_22" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">パジャマ(下)</td><td><input type="number" id="num_in_7" min="0"></td><td><input type="number" id="num_out_7" min="0"></td>
+                    <td class="item-name">ZIP(中)</td><td><input type="number" id="num_in_23" min="0"></td><td><input type="number" id="num_out_23" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">羽織り物</td><td><input type="number" id="num_in_8" min="0"></td><td><input type="number" id="num_out_8" min="0"></td>
+                    <td><input type="text" id="free_item_1" placeholder="その他"></td><td><input type="number" id="num_in_free1" min="0"></td><td><input type="number" id="num_out_free1" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">タオル</td><td><input type="number" id="num_in_9" min="0"></td><td><input type="number" id="num_out_9" min="0"></td>
+                    <td><input type="text" id="free_item_2" placeholder="その他"></td><td><input type="number" id="num_in_free2" min="0"></td><td><input type="number" id="num_out_free2" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">カバン</td><td><input type="number" id="num_in_10" min="0"></td><td><input type="number" id="num_out_10" min="0"></td>
+                    <td><input type="text" id="free_item_3" placeholder="その他"></td><td><input type="number" id="num_in_free3" min="0"></td><td><input type="number" id="num_out_free3" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">歯ブラシ・ケース</td><td><input type="number" id="num_in_11" min="0"></td><td><input type="number" id="num_out_11" min="0"></td>
+                    <td><input type="text" id="free_item_4" placeholder="その他"></td><td><input type="number" id="num_in_free4" min="0"></td><td><input type="number" id="num_out_free4" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">歯磨き粉</td><td><input type="number" id="num_in_12" min="0"></td><td><input type="number" id="num_out_12" min="0"></td>
+                    <td><input type="text" id="free_item_5" placeholder="その他"></td><td><input type="number" id="num_in_free5" min="0"></td><td><input type="number" id="num_out_free5" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">コップ・ふた</td><td><input type="number" id="num_in_13" min="0"></td><td><input type="number" id="num_out_13" min="0"></td>
+                    <td><input type="text" id="free_item_6" placeholder="その他"></td><td><input type="number" id="num_in_free6" min="0"></td><td><input type="number" id="num_out_free6" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">義歯(上・下)</td><td><input type="number" id="num_in_14" min="0"></td><td><input type="number" id="num_out_14" min="0"></td>
+                    <td><input type="text" id="free_item_7" placeholder="その他"></td><td><input type="number" id="num_in_free7" min="0"></td><td><input type="number" id="num_out_free7" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">入歯洗浄剤</td><td><input type="number" id="num_in_15" min="0"></td><td><input type="number" id="num_out_15" min="0"></td>
+                    <td><input type="text" id="free_item_8" placeholder="その他"></td><td><input type="number" id="num_in_free8" min="0"></td><td><input type="number" id="num_out_free8" min="0"></td>
+                </tr>
+                <tr>
+                    <td class="item-name">義歯ケース</td><td><input type="number" id="num_in_16" min="0"></td><td><input type="number" id="num_out_16" min="0"></td>
+                    <td><input type="text" id="free_item_9" placeholder="その他"></td><td><input type="number" id="num_in_free9" min="0"></td><td><input type="number" id="num_out_free9" min="0"></td>
+                </tr>
+            </table>
+
+            <div style="margin-top: 10px;">
+                <label>持ち物に関するメモ・特記事項</label>
+                <textarea id="stBelongingMemo" rows="2" placeholder="例：上着に名前の記入なし。ご家族に確認済み。"></textarea>
+            </div>
+
+            <h3 style="color: #2b8a3e; border-color: #2b8a3e;">最終確認項目</h3>
+            <div class="flex-box">
+                <div><label>最終入浴日</label><input type="date" id="lastBathDate"></div>
+                <div><label>最終排便日</label><input type="date" id="lastBowelDate"></div>
+            </div>
+            <div class="flex-box" style="margin-top: 15px;">
+                <div><label>内服薬残り</label>
+                    <select id="medRemain"><option value="">選択</option><option value="有">有</option><option value="無">無</option></select>
+                </div>
+                <div><label>棚/ZIP (Nsサイン)</label><input type="text" id="nsSign" placeholder="例：済"></div>
+            </div>
+            <div class="flex-box" style="margin-top: 15px;">
+                <div><label>入所時確認者(スタッフ)</label><input type="text" id="checkStaffIn" placeholder="例：黒住"></div>
+                <div><label>退所時確認者(スタッフ)</label><input type="text" id="checkStaffOut" placeholder="例：黒住"></div>
+            </div>
+
+            <h3 style="color: #2b8a3e; border-color: #2b8a3e;">生活の様子（食事・水分など）</h3>
+            <div class="flex-box">
+                <div><label>朝食</label><input type="text" id="stMealBreakfast" list="mealList"></div>
+                <div><label>昼食</label><input type="text" id="stMealLunch" list="mealList"></div>
+                <div><label>夕食</label><input type="text" id="stMealDinner" list="mealList"></div>
+            </div>
+            <div class="flex-box">
+                <div><label>水分（1日合計）</label><input type="text" id="stWater" list="waterList"></div>
+                <div><label>口腔ケア</label><input type="text" id="stOralCare" list="oralCareList"></div>
+            </div>
+
+            <label>服薬・処置</label>
+            <input type="text" id="stMedication" placeholder="例：軟膏等塗布">
+
+            <div id="stExcretionArea" style="display: none; background-color: #fff4e6; padding: 12px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; border: 2px dashed #ffa94d;">
+                <h4 style="margin: 0 0 10px 0; color: #d9480f;">🚽 日々の排泄記録（ショートステイ）</h4>
+                <div class="flex-box">
+                    <div><label style="margin-top:0;">排便</label><select id="stBowel"><option value="">--</option><option value="あり">あり</option><option value="なし">なし</option></select></div>
+                    <div><label style="margin-top:0;">回数</label><select id="stBowelCount"><option value="">--</option><option value="1回">1回</option><option value="2回">2回</option><option value="3回以上">3回以上</option></select></div>
+                    <div><label style="margin-top:0;">状態</label><select id="stBowelCondition"><option value="">--</option><option value="普通便">普通便</option><option value="軟便">軟便</option><option value="硬便">硬便</option><option value="水様便">水様便</option><option value="血便">血便</option></select></div>
+                </div>
+            </div>
+
+            <label>日々の入浴</label>
+            <div class="radio-group"><label><input type="radio" name="stBath" value="あり"> 入浴した（一般浴／機械浴）</label><label><input type="radio" name="stBath" value="なし"> 入浴なし（清拭など）</label></div>
+            <input type="text" id="stBathReason" placeholder="特記事項（例：清拭実施など）">
+
+            <h3 style="color: #2b8a3e; border-color: #2b8a3e;">夜間のご様子・日中の活動</h3>
+            <label>夜間のご様子</label>
+            <select id="nightStateTemplate" onchange="insertNightTemplate()" style="margin-bottom: 8px;">
+                <option value="">📝 定型文を選ぶ（選んだ後、自由に追記できます）</option>
+                <option value="夜間は特変なく朝までぐっすりお休みでした。">1. 夜間は特変なく朝までぐっすりお休みでした。</option>
+                <option value="夜間に何度か目を覚まされましたが、その後再入眠されています。">2. 夜間に何度か目を覚まされましたが、その後再入眠されています。</option>
+                <option value="トイレに起きられましたが、転倒なく済まされています。">3. トイレに起きられましたが、転倒なく済まされています。</option>
+            </select>
+            <textarea id="stNightState" rows="2"></textarea>
+
+            <label>日中の活動・レクリエーション</label>
+            <select id="dayActivityTemplate" onchange="insertDayTemplate()" style="margin-bottom: 8px;">
+                <option value="">📝 定型文を選ぶ（選んだ後、自由に追記できます）</option>
+                <option value="デイルームにて他のご入所者様と談笑され、穏やかに過ごされました。">1. デイルームにて他のご入所者様と談笑され、穏やかに過ごされました。</option>
+                <option value="レクリエーションに意欲的に参加され、楽しまれていました。">2. レクリエーションに意欲的に参加され、楽しまれていました。</option>
+                <option value="お部屋でご自身のペースでゆっくりと過ごされました。">3. お部屋でご自身のペースでゆっくりと過ごされました。</option>
+            </select>
+            <textarea id="stDayActivity" rows="2"></textarea>
+        </div>
+
+        <!-- 共通：お客様へのご連絡事項 -->
+        <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">ご利用いただきありがとうございます（連絡事項）</h3>
+        <label><input type="checkbox" id="chkNoChange" style="transform: scale(1.3); margin-right: 8px;"> お変わりなく過ごされています</label>
+        
+        <label style="margin-top: 15px;">連絡事項</label>
+        <select id="messageTemplate" onchange="insertTemplate()" style="margin-bottom: 8px;">
+            <option value="">📝 定型文を選ぶ</option>
+            <option value="終始おだやかな表情で過ごされていました。">1. 終始おだやかな表情で過ごされていました。</option>
+            <option value="お食事もしっかりと召し上がり、活気がありました。">2. お食事もしっかりと召し上がり、活気がありました。</option>
+            <option value="他のお客様とも楽しくお話しされ、にこやかに過ごされていました。">3. 他のお客様とも楽しくお話しされ、にこやかに過ごされていました。</option>
+        </select>
+        <textarea id="message" rows="4">いつもありがとうございます。
+</textarea>
+
+        <!-- 写真・動画エリア -->
+        <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">📷 施設でのご様子 (写真・動画)</h3>
+        <div class="camera-btn-area">
+            <label>📸 その場で写真を撮影する</label>
+            <input type="file" id="imageCameraInput" accept="image/*" capture="environment" onclick="checkPrivacy(event)" onchange="previewMedia(event)">
+            
+            <label>🎥 その場で動画を撮影する</label>
+            <input type="file" id="videoCameraInput" accept="video/*" capture="environment" onclick="checkPrivacy(event)" onchange="previewMedia(event)">
+            
+            <label>📁 アルバムから写真・動画を選ぶ（複数回選んでも蓄積されます）</label>
+            <input type="file" id="mediaFileMultiple" accept="image/*,video/*" multiple onchange="previewMedia(event)">
+            
+            <button type="button" class="pre-upload-btn" onclick="preUploadMedia()">📤 選んだ写真・動画を【今すぐ】金庫に預ける</button>
+            
+            <div id="preUploadedBadge"></div>
+            <button type="button" id="cancelPreUploadBtn" class="cancel-upload-btn" onclick="clearPreUploadedMedia()">🗑️ お預かりした写真・動画を取り消す</button>
+        </div>
+        <div id="previewArea"></div>
+        
+        <div class="btn-group-bottom">
+            <button class="temp-save-btn" onclick="saveToBatch()">📥 この方のデータを一時保存し、次の方を入力する（上に戻る）</button>
+            <button class="single-send-btn" onclick="sendSingleData()">📤 この方だけのデータを今すぐ送信して完了する（一人用）</button>
+        </div>
+
+        <div class="pending-area" id="pendingArea" style="display: none;">
+            <div><b>【送信待ちのお客様】</b></div>
+            <div class="pending-list" id="pendingList"></div>
+            <button class="batch-send-btn" onclick="sendBatchData()">📤 上記のお客様のデータをまとめて送信する</button>
+        </div>
+    </div>
+
+    <div class="scroll-btn-group" id="scrollGroup" style="display: none;">
+        <button class="scroll-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">▲</button>
+        <button class="scroll-btn" onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})">▼</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
+            authDomain: "renrakucho-app-6b157.firebaseapp.com",
+            projectId: "renrakucho-app-6b157",
+            storageBucket: "renrakucho-app-6b157.firebasestorage.app",
+            messagingSenderId: "63418706991",
+            appId: "1:63418706991:web:43085ce485d2a3d6302ada"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const storage = getStorage(app); 
+        const db = getFirestore(app);   
+
+        let batchDataList = [];
+        window.globalUsersData = {}; 
+        let globalNgUsers = []; 
+        const mediaUrlCache = new Map();
+
+        window.currentImageCount = 0; 
+        window.currentVideoCount = 0; 
+        let accumulatedFiles = [];
+        let newFaceBlob = null; 
+
+        window.showToast = function(message, duration = 3000) {
+            let toast = document.getElementById("toast");
+            toast.textContent = message;
+            toast.className = "show";
+            setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, duration);
+        }
+
+        async function compressImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = event => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800; 
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        canvas.toBlob(blob => { resolve(blob); }, 'image/jpeg', 0.7);
+                    };
+                    img.onerror = error => reject(error);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        const defaultIcon = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23aaaaaa'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>";
+
+        window.onload = async function() {
+            let facilityId = localStorage.getItem("currentFacilityId");
+            if (!facilityId) { window.location.replace("login.html"); return; } 
+            
+            localStorage.setItem("currentFacilityName", "グリーンアンドリバーホーム");
+            
+            document.getElementById("mainForm").style.display = "block";
+            document.getElementById("scrollGroup").style.display = "flex";
+            document.getElementById("newFacePreview").src = defaultIcon;
+
+            let today = new Date();
+            let year = today.getFullYear();
+            let month = String(today.getMonth() + 1).padStart(2, '0');
+            let day = String(today.getDate()).padStart(2, '0');
+            document.getElementById("date").value = `${year}-${month}-${day}`;
+            
+            let savedServiceType = localStorage.getItem('currentServiceType');
+            if (savedServiceType) {
+                document.getElementById("serviceType").value = savedServiceType;
+            }
+            
+            let secretClickCount = 0;
+            let secretClickTimer = null;
+            document.getElementById("secretTitle").addEventListener("click", function(e) {
+                e.preventDefault();
+                secretClickCount++;
+                clearTimeout(secretClickTimer);
+                secretClickTimer = setTimeout(() => { secretClickCount = 0; }, 3000); 
+                if (secretClickCount === 3) { 
+                    let testSections = document.querySelectorAll(".test-mode-section");
+                    let isHidden = (testSections[0].style.display === "none");
+                    testSections.forEach(section => { section.style.display = isHidden ? "block" : "none"; });
+                    if (isHidden) window.showToast("🔧 テスト用機能を【表示】しました", 3000);
+                    else window.showToast("🔒 テスト用機能を【非表示】にしました", 3000);
+                    secretClickCount = 0; 
+                }
+            });
+            
+            const listInputs = document.querySelectorAll('input[list]');
+            listInputs.forEach(input => {
+                const clearAndShowList = function() {
+                    if (this.value !== '') {
+                        this.dataset.oldValue = this.value;
+                        this.value = '';
+                        this.dispatchEvent(new Event('input'));
+                    }
+                };
+                input.addEventListener('focus', clearAndShowList);
+                input.addEventListener('click', clearAndShowList);
+
+                input.addEventListener('blur', function() {
+                    if (this.value === '' && this.dataset.oldValue) {
+                        this.value = this.dataset.oldValue;
+                        this.dispatchEvent(new Event('input'));
+                    }
+                });
+            });
+
+            onServiceTypeChanged(); 
+        };
+
+        window.onDateChanged = function() {
+            let userName = document.getElementById("userName").value;
+            let dateStr = document.getElementById("date").value;
+            if (userName && dateStr) {
+                applyDraftOrEmpty(userName, dateStr);
+                fetchServerData(userName, dateStr);
+            }
+        };
+
+        window.onServiceTypeChanged = async function() {
+            let sType = document.getElementById("serviceType").value;
+            localStorage.setItem('currentServiceType', sType);
+
+            let daySec = document.getElementById("dayServiceSection");
+            let stSec = document.getElementById("shortStaySection");
+            let regTitle = document.getElementById("regBoxTitle");
+
+            if (sType === "デイサービス") {
+                daySec.style.display = "block";
+                stSec.style.display = "none";
+                regTitle.textContent = "➕ 【デイサービス】の名簿に新しく登録する";
+            } else {
+                daySec.style.display = "none";
+                stSec.style.display = "block";
+                regTitle.textContent = "➕ 【ショートステイ】の名簿に新しく登録する";
+            }
+
+            let facilityId = localStorage.getItem("currentFacilityId");
+            await loadUserNames(facilityId); 
+            onUserSelected();
+        };
+
+        window.loadUserNames = async function(facilityId) {
+            let currentService = document.getElementById("serviceType").value;
+            let select = document.getElementById("userName");
+            let currentVal = select.value; 
+            select.innerHTML = '<option value="">選択してください</option>';
+            window.globalUsersData = {}; 
+            globalNgUsers = []; 
+
+            try {
+                let usersRef = collection(db, "facilities", facilityId, "users");
+                let snapshot = await getDocs(usersRef);
+                snapshot.forEach((docSnap) => {
+                    let name = docSnap.id;
+                    let data = docSnap.data();
+                    window.globalUsersData[name] = data; 
+                    
+                    let userServices = data.services || (data.serviceType ? [data.serviceType] : ["デイサービス"]);
+                    if (userServices.includes(currentService)) {
+                        let option = document.createElement("option");
+                        option.value = name;
+                        option.textContent = name;
+                        select.appendChild(option);
+                        if(data.photoNg === true) globalNgUsers.push(name);
+                    }
+                });
+                select.value = currentVal; 
+            } catch (error) { console.log("名簿読み込みエラー:", error); }
+        };
+
+        window.previewNewUserFace = async function(event) {
+            let file = event.target.files[0];
+            if (file) {
+                newFaceBlob = await compressImage(file);
+                document.getElementById("newFacePreview").src = URL.createObjectURL(newFaceBlob);
+            }
+        };
+
+        window.registerNewUser = async function() {
+            let newName = document.getElementById("newUserName").value.trim();
+            let newBirthday = document.getElementById("newBirthday").value;
+            let sType = document.getElementById("serviceType").value;
+            let facilityId = localStorage.getItem("currentFacilityId");
+            let needExcretion = document.getElementById("newNeedExcretion").checked;
+
+            if (!newName) { alert("新しいお名前を入力してください。"); return; }
+            if (!facilityId) return;
+
+            showToast(`⏳ ${newName} 様の情報を名簿に登録しています...`);
+            try {
+                let userRef = doc(db, "facilities", facilityId, "users", newName);
+                let docSnap = await getDoc(userRef);
+                let services = [sType];
+
+                if (docSnap.exists()) {
+                    let existingData = docSnap.data();
+                    let existingServices = existingData.services || (existingData.serviceType ? [existingData.serviceType] : []);
+                    if (!existingServices.includes(sType)) existingServices.push(sType);
+                    services = existingServices;
+                }
+
+                let saveData = {
+                    services: services,
+                    needExcretion: needExcretion, 
+                    registeredAt: new Date().toISOString()
+                };
+                if (newBirthday) saveData.birthday = newBirthday;
+                await setDoc(userRef, saveData, { merge: true });
+
+                if (newFaceBlob) {
+                    let faceRef = ref(storage, `faces/${newName}/face.jpg`);
+                    await uploadBytes(faceRef, newFaceBlob);
+                    let url = await getDownloadURL(faceRef);
+                    mediaUrlCache.set(`faces/${newName}/face.jpg`, url);
+                }
+
+                alert(`🎉 ${newName} 様を名簿に登録しました！`);
+                document.getElementById("newUserName").value = ""; 
+                document.getElementById("newBirthday").value = ""; 
+                document.getElementById("newFaceInput").value = "";
+                document.getElementById("newNeedExcretion").checked = false; 
+                document.getElementById("newFacePreview").src = defaultIcon;
+                newFaceBlob = null;
+
+                await loadUserNames(facilityId); 
+                document.getElementById("userName").value = newName;
+                onUserSelected(); 
+
+            } catch (error) { alert("登録エラー: " + error.message); }
+        };
+
+        window.onUserSelected = function() {
+            let userName = document.getElementById("userName").value;
+            let dateStr = document.getElementById("date").value;
+            
+            let dayExcretionArea = document.getElementById("dayExcretionArea");
+            let stExcretionArea = document.getElementById("stExcretionArea");
+            let userSettingsArea = document.getElementById("userSettingsArea"); 
+
+            if(!userName) {
+                document.getElementById("userFace").style.display = "none";
+                document.getElementById("ageDisplay").textContent = "";
+                userSettingsArea.style.display = "none";
+                dayExcretionArea.style.display = "none";
+                stExcretionArea.style.display = "none";
+                resetFormInputs();
+                return;
+            }
+            
+            let userData = window.globalUsersData[userName];
+            let ageDisplay = document.getElementById("ageDisplay");
+            
+            if (userData && userData.birthday) {
+                let birthY = parseInt(userData.birthday.substring(0, 4));
+                let birthM = parseInt(userData.birthday.substring(5, 7));
+                let birthD = parseInt(userData.birthday.substring(8, 10));
+                let targetY = parseInt(dateStr.substring(0, 4));
+                let targetM = parseInt(dateStr.substring(5, 7));
+                let targetD = parseInt(dateStr.substring(8, 10));
+                let age = targetY - birthY;
+                if (targetM < birthM || (targetM === birthM && targetD < birthD)) age--;
+                ageDisplay.textContent = `（ ${age} 歳 ）`;
+            } else {
+                ageDisplay.textContent = "";
+            }
+
+            userSettingsArea.style.display = "block";
+            document.getElementById("photoNgCheck").checked = (userData && userData.photoNg === true);
+            document.getElementById("existNeedExcretion").checked = (userData && userData.needExcretion === true);
+
+            if (userData && userData.needExcretion === true) {
+                dayExcretionArea.style.display = "block";
+                stExcretionArea.style.display = "block";
+            } else {
+                dayExcretionArea.style.display = "none";
+                stExcretionArea.style.display = "none";
+            }
+
+            showUserFace(userName); 
+            applyDraftOrEmpty(userName, dateStr);
+            fetchServerData(userName, dateStr);
+        };
+
+        window.updateUserSettings = async function() {
+            let userName = document.getElementById("userName").value;
+            let facilityId = localStorage.getItem("currentFacilityId");
+            if (!userName || !facilityId) return;
+
+            let isNg = document.getElementById("photoNgCheck").checked;
+            let isExcretion = document.getElementById("existNeedExcretion").checked;
+            
+            try {
+                let userRef = doc(db, "facilities", facilityId, "users", userName);
+                await setDoc(userRef, { photoNg: isNg, needExcretion: isExcretion }, { merge: true });
+                showToast(`✅ ${userName} 様の設定を更新しました。`);
+                await loadUserNames(facilityId); 
+                
+                let dayExcretionArea = document.getElementById("dayExcretionArea");
+                let stExcretionArea = document.getElementById("stExcretionArea");
+                if (isExcretion) {
+                    dayExcretionArea.style.display = "block";
+                    stExcretionArea.style.display = "block";
+                } else {
+                    dayExcretionArea.style.display = "none";
+                    stExcretionArea.style.display = "none";
+                }
+            } catch (e) { alert("設定更新に失敗しました。"); }
+        };
+
+        function applyDraftOrEmpty(userName, dateStr) {
+            let facilityId = localStorage.getItem("currentFacilityId");
+            let draftKey = `draft_${facilityId}_${dateStr}_${userName}`;
+            let draftStr = localStorage.getItem(draftKey);
+            resetFormInputs();
+
+            if (draftStr) {
+                let d = JSON.parse(draftStr);
+                document.getElementById("temp1").value = d.temp1 || "";
+                document.getElementById("temp2").value = d.temp2 || "";
+                document.getElementById("pulse").value = d.pulse || "";
+                document.getElementById("spo2").value = d.spo2 || "";
+                document.getElementById("bpHigh").value = d.bpHigh || "";
+                document.getElementById("bpLow").value = d.bpLow || "";
+                document.getElementById("mealMain").value = d.mealMain || "";
+                document.getElementById("mealSub").value = d.mealSub || "";
+                document.getElementById("water").value = d.water || "";
+                document.getElementById("medication").value = d.medication || "";
+                document.getElementById("oralCare").value = d.oralCare || "";
+                
+                document.getElementById("dsBowel").value = d.bowel || "";
+                document.getElementById("dsBowelCount").value = d.bowelCount || "";
+                document.getElementById("dsBowelCondition").value = d.bowelCondition || "";
+
+                document.getElementById("bathReason").value = d.bathReason || "";
+                document.getElementsByName("bath").forEach(r => { if(r.value === d.bath) r.checked = true; });
+                let trainingArray = d.training || [];
+                document.getElementsByName("training").forEach(c => c.checked = trainingArray.includes(c.value));
+                document.getElementById("activity").value = d.activity || "";
+
+                if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = d.stTempIn || d.stTemp1 || d.temp1 || "";
+                if(document.getElementById("stPulseIn")) document.getElementById("stPulseIn").value = d.stPulseIn || d.stPulse || d.pulse || "";
+                if(document.getElementById("stSpo2In")) document.getElementById("stSpo2In").value = d.stSpo2In || d.spo2 || "";
+                if(document.getElementById("stBpHighIn")) document.getElementById("stBpHighIn").value = d.stBpHighIn || d.stBpHigh || d.bpHigh || "";
+                if(document.getElementById("stBpLowIn")) document.getElementById("stBpLowIn").value = d.stBpLowIn || d.stBpLow || d.bpLow || "";
+
+                if(document.getElementById("stTempOut")) document.getElementById("stTempOut").value = d.stTempOut || "";
+                if(document.getElementById("stPulseOut")) document.getElementById("stPulseOut").value = d.stPulseOut || "";
+                if(document.getElementById("stSpo2Out")) document.getElementById("stSpo2Out").value = d.stSpo2Out || "";
+                if(document.getElementById("stBpHighOut")) document.getElementById("stBpHighOut").value = d.stBpHighOut || "";
+                if(document.getElementById("stBpLowOut")) document.getElementById("stBpLowOut").value = d.stBpLowOut || "";
+                
+                for(let i=1; i<=23; i++) {
+                    if(document.getElementById("num_in_"+i)) document.getElementById("num_in_"+i).value = d["num_in_"+i] || "";
+                    if(document.getElementById("num_out_"+i)) document.getElementById("num_out_"+i).value = d["num_out_"+i] || "";
+                }
+                for(let i=1; i<=9; i++) {
+                    if(document.getElementById("free_item_"+i)) document.getElementById("free_item_"+i).value = d["free_item_"+i] || "";
+                    if(document.getElementById("num_in_free"+i)) document.getElementById("num_in_free"+i).value = d["num_in_free"+i] || "";
+                    if(document.getElementById("num_out_free"+i)) document.getElementById("num_out_free"+i).value = d["num_out_free"+i] || "";
+                }
+                document.getElementById("stBelongingMemo").value = d.stBelongingMemo || "";
+
+                document.getElementById("lastBathDate").value = d.lastBathDate || "";
+                document.getElementById("lastBowelDate").value = d.lastBowelDate || "";
+                document.getElementById("medRemain").value = d.medRemain || "";
+                document.getElementById("nsSign").value = d.nsSign || "";
+                document.getElementById("checkStaffIn").value = d.checkStaffIn || "";
+                document.getElementById("checkStaffOut").value = d.checkStaffOut || "";
+                document.getElementById("chkNoChange").checked = d.chkNoChange || false;
+
+                document.getElementById("stMealBreakfast").value = d.stMealBreakfast || "";
+                document.getElementById("stMealLunch").value = d.stMealLunch || "";
+                document.getElementById("stMealDinner").value = d.stMealDinner || "";
+                document.getElementById("stWater").value = d.stWater || "";
+                document.getElementById("stOralCare").value = d.stOralCare || "";
+                
+                document.getElementById("stBowel").value = d.stBowel || d.bowel || "";
+                document.getElementById("stBowelCount").value = d.stBowelCount || d.bowelCount || "";
+                document.getElementById("stBowelCondition").value = d.stBowelCondition || d.bowelCondition || "";
+
+                if(document.getElementById("stMedication")) document.getElementById("stMedication").value = d.stMedication || "";
+                if(document.getElementById("stBathReason")) document.getElementById("stBathReason").value = d.stBathReason || "";
+                document.getElementsByName("stBath").forEach(r => { if(r.value === d.stBath) r.checked = true; });
+                if(document.getElementById("stNightState")) document.getElementById("stNightState").value = d.stNightState || "";
+                if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = d.stDayActivity || "";
+
+                document.getElementById("message").value = d.message || "いつもありがとうございます。\n";
+            }
+            window.checkTemp('temp1', 'temp1Alert');
+            window.checkTemp('stTempIn', 'stTempInAlert');
+            window.checkTemp('stTempOut', 'stTempOutAlert');
+        }
+
+        async function fetchServerData(userName, date) {
+            let facilityId = localStorage.getItem("currentFacilityId");
+            if (!userName || !date || !facilityId) return;
+
+            try {
+                let currentServiceType = document.getElementById("serviceType").value;
+                let docId = `${date}_${userName}`;
+                let docRef = doc(db, "facilities", facilityId, "daily_records", docId);
+                let docSnap = await getDoc(docRef);
+                
+                window.currentImageCount = 0; window.currentVideoCount = 0;
+                let badge = document.getElementById("preUploadedBadge");
+                let cancelBtn = document.getElementById("cancelPreUploadBtn");
+                badge.style.display = "none"; cancelBtn.style.display = "none"; 
+
+                if (!docSnap.exists()) {
+                     resetFormInputs();
+                     return;
+                }
+
+                if (docSnap.exists()) {
+                    let data = docSnap.data();
+
+                    if (data.serviceType && data.serviceType !== currentServiceType) {
+                        resetFormInputs(); 
+                        return;
+                    }
+
+                    window.currentImageCount = data.imageCount !== undefined ? data.imageCount : (data.hasImage ? 1 : 0);
+                    window.currentVideoCount = data.videoCount !== undefined ? data.videoCount : (data.hasVideo ? 1 : 0);
+                    
+                    if(window.currentImageCount > 0 || window.currentVideoCount > 0) {
+                        badge.style.display = "block"; cancelBtn.style.display = "block";
+                        let txt = "✅ 本日は以下のデータがお預かり済みです：";
+                        if(window.currentImageCount > 0) txt += ` 📷写真（${window.currentImageCount}枚） `;
+                        if(window.currentVideoCount > 0) txt += ` 🎥動画（${window.currentVideoCount}つ） `;
+                        badge.innerHTML = txt + "<br><span style='font-size:12px; font-weight:normal;'>夕方は文字の入力だけでOKです！</span>";
+                    }
+                    
+                    document.getElementById("temp1").value = data.temp1 || "";
+                    document.getElementById("temp2").value = data.temp2 || "";
+                    document.getElementById("pulse").value = data.pulse || "";
+                    document.getElementById("spo2").value = data.spo2 || "";
+                    document.getElementById("bpHigh").value = data.bpHigh || "";
+                    document.getElementById("bpLow").value = data.bpLow || "";
+                    document.getElementById("mealMain").value = data.mealMain || "";
+                    document.getElementById("mealSub").value = data.mealSub || "";
+                    document.getElementById("water").value = data.water || "";
+                    document.getElementById("medication").value = data.medication || "";
+                    document.getElementById("oralCare").value = data.oralCare || "";
+
+                    document.getElementById("dsBowel").value = data.bowel || "";
+                    document.getElementById("dsBowelCount").value = data.bowelCount || "";
+                    document.getElementById("dsBowelCondition").value = data.bowelCondition || "";
+
+                    document.getElementById("bathReason").value = data.bathReason || "";
+                    document.getElementsByName("bath").forEach(r => { if(r.value === data.bath) r.checked = true; });
+                    let trainingArray = data.training ? data.training.split("、") : [];
+                    document.getElementsByName("training").forEach(c => c.checked = trainingArray.includes(c.value));
+                    document.getElementById("activity").value = data.activity || "";
+
+                    if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = data.stTempIn || data.stTemp1 || data.temp1 || "";
+                    if(document.getElementById("stPulseIn")) document.getElementById("stPulseIn").value = data.stPulseIn || data.stPulse || data.pulse || "";
+                    if(document.getElementById("stSpo2In")) document.getElementById("stSpo2In").value = data.stSpo2In || data.spo2 || "";
+                    if(document.getElementById("stBpHighIn")) document.getElementById("stBpHighIn").value = data.stBpHighIn || data.stBpHigh || data.bpHigh || "";
+                    if(document.getElementById("stBpLowIn")) document.getElementById("stBpLowIn").value = data.stBpLowIn || data.stBpLow || data.bpLow || "";
+
+                    if(document.getElementById("stTempOut")) document.getElementById("stTempOut").value = data.stTempOut || "";
+                    if(document.getElementById("stPulseOut")) document.getElementById("stPulseOut").value = data.stPulseOut || "";
+                    if(document.getElementById("stSpo2Out")) document.getElementById("stSpo2Out").value = data.stSpo2Out || "";
+                    if(document.getElementById("stBpHighOut")) document.getElementById("stBpHighOut").value = data.stBpHighOut || "";
+                    if(document.getElementById("stBpLowOut")) document.getElementById("stBpLowOut").value = data.stBpLowOut || "";
+                    
+                    for(let i=1; i<=23; i++) {
+                        if(document.getElementById("num_in_"+i)) document.getElementById("num_in_"+i).value = data["num_in_"+i] || "";
+                        if(document.getElementById("num_out_"+i)) document.getElementById("num_out_"+i).value = data["num_out_"+i] || "";
+                    }
+                    for(let i=1; i<=9; i++) {
+                        if(document.getElementById("free_item_"+i)) document.getElementById("free_item_"+i).value = data["free_item_"+i] || "";
+                        if(document.getElementById("num_in_free"+i)) document.getElementById("num_in_free"+i).value = data["num_in_free"+i] || "";
+                        if(document.getElementById("num_out_free"+i)) document.getElementById("num_out_free"+i).value = data["num_out_free"+i] || "";
+                    }
+                    document.getElementById("stBelongingMemo").value = data.stBelongingMemo || "";
+
+                    document.getElementById("lastBathDate").value = data.lastBathDate || "";
+                    document.getElementById("lastBowelDate").value = data.lastBowelDate || "";
+                    document.getElementById("medRemain").value = data.medRemain || "";
+                    document.getElementById("nsSign").value = data.nsSign || "";
+                    document.getElementById("checkStaffIn").value = data.checkStaffIn || "";
+                    document.getElementById("checkStaffOut").value = data.checkStaffOut || "";
+                    document.getElementById("chkNoChange").checked = data.chkNoChange || false;
+
+                    document.getElementById("stMealBreakfast").value = data.stMealBreakfast || "";
+                    document.getElementById("stMealLunch").value = data.stMealLunch || data.mealMain || "";
+                    document.getElementById("stMealDinner").value = data.stMealDinner || "";
+                    document.getElementById("stWater").value = data.stWater || "";
+                    document.getElementById("stOralCare").value = data.stOralCare || data.oralCare || "";
+                    
+                    document.getElementById("stBowel").value = data.stBowel || data.bowel || "";
+                    document.getElementById("stBowelCount").value = data.stBowelCount || data.bowelCount || "";
+                    document.getElementById("stBowelCondition").value = data.stBowelCondition || data.bowelCondition || "";
+
+                    if(document.getElementById("stMedication")) document.getElementById("stMedication").value = data.stMedication || data.medication || "";
+                    if(document.getElementById("stBathReason")) document.getElementById("stBathReason").value = data.stBathReason || data.bathReason || "";
+                    document.getElementsByName("stBath").forEach(r => { if(r.value === (data.stBath || data.bath)) r.checked = true; });
+                    if(document.getElementById("stNightState")) document.getElementById("stNightState").value = data.stNightState || "";
+                    if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = data.stDayActivity || data.activity || "";
+
+                    document.getElementById("message").value = data.message || "いつもありがとうございます。\n";
+                }
+            } catch (e) { console.log(e); }
+            window.checkTemp('temp1', 'temp1Alert');
+            window.checkTemp('stTempIn', 'stTempInAlert');
+            window.checkTemp('stTempOut', 'stTempOutAlert');
+        }
+
+        window.showUserFace = async function(userName) {
+            let faceImg = document.getElementById("userFace");
+            if (!userName) { faceImg.style.display = "none"; return; }
+            faceImg.style.display = "block";
+            faceImg.src = defaultIcon; 
+            
+            let path = `faces/${userName}/face.jpg`;
+            if (mediaUrlCache.has(path)) {
+                faceImg.src = mediaUrlCache.get(path);
+                return;
+            }
+            try { 
+                let url = await getDownloadURL(ref(storage, path)); 
+                mediaUrlCache.set(path, url); 
+                faceImg.src = url; 
+            } catch (error) {}
+        };
+
+        window.previewFace = async function(event) {
+            let userName = document.getElementById("userName").value;
+            if (!userName) { alert("先にお名前を選択してください。"); return; }
+            let file = event.target.files[0];
+            if (file) {
+                showToast("⏳ 顔写真を登録しています...");
+                let faceRef = ref(storage, `faces/${userName}/face.jpg`); 
+                try {
+                    let compressedBlob = await compressImage(file);
+                    await uploadBytes(faceRef, compressedBlob);
+                    let url = await getDownloadURL(faceRef);
+                    mediaUrlCache.set(`faces/${userName}/face.jpg`, url); 
+                    document.getElementById("userFace").src = url;
+                    showToast(`✅ ${userName} 様の顔写真を更新しました！`);
+                } catch (error) { alert("エラー: " + error.message); }
+            }
+            event.target.value = "";
+        };
+
+        window.previewMedia = function(event) {
+            let files = event.target.files;
+            if (files.length > 0) {
+                for (let i = 0; i < files.length; i++) accumulatedFiles.push(files[i]);
+            }
+            renderPreviewArea();
+            event.target.value = ""; 
+        };
+
+        function renderPreviewArea() {
+            let previewArea = document.getElementById("previewArea");
+            previewArea.innerHTML = "";
+            accumulatedFiles.forEach((file, index) => {
+                let fileURL = URL.createObjectURL(file);
+                let itemDiv = document.createElement("div");
+                itemDiv.className = "preview-item";
+                
+                let mediaTag;
+                if (file.type.startsWith("image/")) { mediaTag = document.createElement("img"); } 
+                else if (file.type.startsWith("video/")) { mediaTag = document.createElement("video"); mediaTag.controls = true; }
+                
+                if (mediaTag) {
+                    mediaTag.src = fileURL;
+                    mediaTag.className = "preview-media-tag";
+                    itemDiv.appendChild(mediaTag);
+                }
+                
+                let deleteBtn = document.createElement("button");
+                deleteBtn.className = "delete-media-btn";
+                deleteBtn.textContent = "✖ 取消";
+                deleteBtn.type = "button"; 
+                deleteBtn.onclick = function() {
+                    accumulatedFiles.splice(index, 1); 
+                    renderPreviewArea();
+                };
+                itemDiv.appendChild(deleteBtn);
+                previewArea.appendChild(itemDiv);
+            });
+        }
+
+        window.preUploadMedia = async function() {
+            let userName = document.getElementById("userName").value;
+            let date = document.getElementById("date").value;
+            let facilityId = localStorage.getItem("currentFacilityId");
+            let sType = document.getElementById("serviceType").value;
+
+            if (!userName) { showToast("⚠️ 先にお名前を選択してください。"); return; }
+            let imageFiles = accumulatedFiles.filter(f => f.type.startsWith('image/'));
+            let videoFiles = accumulatedFiles.filter(f => f.type.startsWith('video/'));
+
+            if(imageFiles.length === 0 && videoFiles.length === 0) {
+                showToast("⚠️ 写真や動画が選択されていません。");
+                return;
+            }
+
+            accumulatedFiles = [];
+            document.getElementById("previewArea").innerHTML = "";
+            showToast(`⏳ ${userName} 様の写真・動画を金庫へ預けています...`, 4000);
+            
+            try {
+                let iCount = 0; let vCount = 0;
+                if (imageFiles.length > 0) {
+                    let uploadPromises = imageFiles.map(async (file, idx) => {
+                        let imageRef = ref(storage, `images/${userName}/image_${idx+1}.jpg`);
+                        let compressedBlob = await compressImage(file);
+                        await uploadBytes(imageRef, compressedBlob);
+                    });
+                    await Promise.all(uploadPromises); 
+                    iCount = imageFiles.length;
+                }
+                if (videoFiles.length > 0) {
+                    let uploadPromises = videoFiles.map(async (file, idx) => {
+                        let videoRef = ref(storage, `videos/${userName}/${date}_video_${idx+1}.mp4`);
+                        await uploadBytes(videoRef, file);
+                    });
+                    await Promise.all(uploadPromises);
+                    vCount = videoFiles.length;
+                }
+
+                let docRef = doc(db, "facilities", facilityId, "daily_records", `${date}_${userName}`);
+                await setDoc(docRef, {
+                    facilityId: facilityId, userName: userName, date: date,
+                    serviceType: sType, imageCount: iCount, videoCount: vCount 
+                }, { merge: true });
+
+                showToast(`✅ 大成功！${userName} 様の写真・動画をお預かりしました！`, 5000);
+                fetchServerData(userName, date);
+            } catch (error) {
+                showToast(`❌ アップロードエラー: ${error.message}`, 6000);
+            }
+        };
+
+        window.clearPreUploadedMedia = async function() {
+            let userName = document.getElementById("userName").value;
+            let date = document.getElementById("date").value;
+            let facilityId = localStorage.getItem("currentFacilityId");
+            if (!userName || !date || !facilityId) return;
+
+            if (!confirm(`⚠️ 確認\n${userName} 様について、現在お預かりしている写真・動画の記録をすべて取り消しますか？`)) return;
+
+            try {
+                let docRef = doc(db, "facilities", facilityId, "daily_records", `${date}_${userName}`);
+                await setDoc(docRef, { hasImage: false, imageCount: 0, videoCount: 0 }, { merge: true });
+                window.currentImageCount = 0; window.currentVideoCount = 0;
+                document.getElementById("preUploadedBadge").style.display = "none";
+                document.getElementById("cancelPreUploadBtn").style.display = "none";
+                showToast(`✅ ${userName} 様のお預かり記録を取り消しました。`);
+            } catch (error) { alert("エラー: " + error.message); }
+        };
+
+        function getFormData() {
+            let sType = document.getElementById("serviceType").value;
+            let userName = document.getElementById("userName").value;
+            let date = document.getElementById("date").value;
+            let facilityId = localStorage.getItem("currentFacilityId");
+
+            let imageFiles = accumulatedFiles.filter(f => f.type.startsWith('image/'));
+            let videoFiles = accumulatedFiles.filter(f => f.type.startsWith('video/'));
+            let finalImageCount = (imageFiles.length > 0) ? imageFiles.length : window.currentImageCount;
+
+            let data = {
+                facilityId: facilityId, userName: userName, date: date, serviceType: sType,
+                message: document.getElementById("message").value,
+                imageCount: finalImageCount, videoCount: window.currentVideoCount,
+                imageFiles: imageFiles, videoFiles: videoFiles
+            };
+
+            if (sType === "デイサービス") {
+                let bathVal = ""; document.getElementsByName("bath").forEach(r => { if(r.checked) bathVal = r.value; });
+                let tList = []; document.getElementsByName("training").forEach(c => { if(c.checked) tList.push(c.value); });
+                data.temp1 = document.getElementById("temp1").value;
+                data.temp2 = document.getElementById("temp2").value;
+                data.pulse = document.getElementById("pulse").value;
+                data.spo2 = document.getElementById("spo2").value;
+                data.bpHigh = document.getElementById("bpHigh").value;
+                data.bpLow = document.getElementById("bpLow").value;
+                data.mealMain = document.getElementById("mealMain").value;
+                data.mealSub = document.getElementById("mealSub").value;
+                data.water = document.getElementById("water").value;
+                data.medication = document.getElementById("medication").value;
+                data.oralCare = document.getElementById("oralCare").value;
+                
+                data.bowel = document.getElementById("dsBowel").value;
+                data.bowelCount = document.getElementById("dsBowelCount").value;
+                data.bowelCondition = document.getElementById("dsBowelCondition").value;
+
+                data.bath = bathVal;
+                data.bathReason = document.getElementById("bathReason").value;
+                data.training = tList.join("、");
+                data.activity = document.getElementById("activity").value;
+            } else {
+                let stBathVal = ""; document.getElementsByName("stBath").forEach(r => { if(r.checked) stBathVal = r.value; });
+                
+                data.stTempIn = document.getElementById("stTempIn").value;
+                data.stPulseIn = document.getElementById("stPulseIn").value;
+                data.stSpo2In = document.getElementById("stSpo2In").value;
+                data.stBpHighIn = document.getElementById("stBpHighIn").value;
+                data.stBpLowIn = document.getElementById("stBpLowIn").value;
+
+                data.stTempOut = document.getElementById("stTempOut").value;
+                data.stPulseOut = document.getElementById("stPulseOut").value;
+                data.stSpo2Out = document.getElementById("stSpo2Out").value;
+                data.stBpHighOut = document.getElementById("stBpHighOut").value;
+                data.stBpLowOut = document.getElementById("stBpLowOut").value;
+
+                data.pulse = data.stPulseIn;
+                data.bpHigh = data.stBpHighIn;
+                data.bpLow = data.stBpLowIn;
+                data.spo2 = data.stSpo2In;
+                
+                for(let i=1; i<=23; i++) {
+                    if(document.getElementById("num_in_"+i)) data["num_in_"+i] = document.getElementById("num_in_"+i).value;
+                    if(document.getElementById("num_out_"+i)) data["num_out_"+i] = document.getElementById("num_out_"+i).value;
+                }
+                
+                for(let i=1; i<=9; i++) {
+                    if(document.getElementById("free_item_"+i)) data["free_item_"+i] = document.getElementById("free_item_"+i).value;
+                    if(document.getElementById("num_in_free"+i)) data["num_in_free"+i] = document.getElementById("num_in_free"+i).value;
+                    if(document.getElementById("num_out_free"+i)) data["num_out_free"+i] = document.getElementById("num_out_free"+i).value;
+                }
+
+                data.stBelongingMemo = document.getElementById("stBelongingMemo").value;
+
+                data.lastBathDate = document.getElementById("lastBathDate").value;
+                data.lastBowelDate = document.getElementById("lastBowelDate").value;
+                data.medRemain = document.getElementById("medRemain").value;
+                data.nsSign = document.getElementById("nsSign").value;
+                data.checkStaffIn = document.getElementById("checkStaffIn").value;
+                data.checkStaffOut = document.getElementById("checkStaffOut").value;
+                data.chkNoChange = document.getElementById("chkNoChange").checked;
+
+                data.stMealBreakfast = document.getElementById("stMealBreakfast").value;
+                data.stMealLunch = document.getElementById("stMealLunch").value;
+                data.mealMain = data.stMealLunch; 
+                data.stMealDinner = document.getElementById("stMealDinner").value;
+                data.stWater = document.getElementById("stWater").value; data.water = data.stWater;
+                data.stOralCare = document.getElementById("stOralCare").value; data.oralCare = data.stOralCare;
+                
+                data.stBowel = document.getElementById("stBowel").value;
+                data.stBowelCount = document.getElementById("stBowelCount").value;
+                data.stBowelCondition = document.getElementById("stBowelCondition").value;
+                data.bowel = data.stBowel;
+                data.bowelCount = data.stBowelCount;
+                data.bowelCondition = data.stBowelCondition;
+
+                let stMedEl = document.getElementById("stMedication");
+                data.stMedication = stMedEl ? stMedEl.value : "";
+                data.medication = data.stMedication;
+                
+                data.stBath = stBathVal; data.bath = stBathVal;
+                
+                let stBathRsnEl = document.getElementById("stBathReason");
+                data.stBathReason = stBathRsnEl ? stBathRsnEl.value : "";
+                data.bathReason = data.stBathReason;
+                
+                let stNightEl = document.getElementById("stNightState");
+                data.stNightState = stNightEl ? stNightEl.value : "";
+                
+                let stDayEl = document.getElementById("stDayActivity");
+                data.stDayActivity = stDayEl ? stDayEl.value : "";
+                
+                data.activity = (data.stNightState ? `【夜間】${data.stNightState}\n` : "") + (data.stDayActivity ? `【日中】${data.stDayActivity}` : "");
+            }
+            return data;
+        }
+
+        window.saveToBatch = function() {
+            let userName = document.getElementById("userName").value;
+            let date = document.getElementById("date").value;
+            let sType = document.getElementById("serviceType").value;
+            if (!userName) { showToast("⚠️ お名前を選択してください。"); return; }
+            if (!date) { showToast("⚠️ 日付を入力してください。"); return; }
+
+            let recordData = getFormData();
+            let existingIndex = batchDataList.findIndex(d => d.userName === userName);
+            if (existingIndex >= 0) batchDataList[existingIndex] = recordData;
+            else batchDataList.push(recordData);
+
+            updatePendingListUI();
+            resetFormInputs();
+            localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${userName}`);
+            
+            showToast(`✅ ${userName} 様（${sType}）のデータを一時保存しました。`, 3000);
+            document.getElementById("userName").value = "";
+            onUserSelected();
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        };
+
+        window.sendSingleData = async function() {
+            let userName = document.getElementById("userName").value;
+            let date = document.getElementById("date").value;
+            let sType = document.getElementById("serviceType").value;
+            if (!userName || !date) { showToast("⚠️ お名前と日付をご確認ください。"); return; }
+
+            if (!confirm(`⚠️【確認】\n${userName} 様（${sType}）1名分のデータを今すぐ送信します。\nよろしいですか？`)) return;
+
+            let recordData = getFormData();
+            document.getElementById("loadingOverlay").style.display = "flex";
+
+            try {
+                let docRef = doc(db, "facilities", recordData.facilityId, "daily_records", `${date}_${userName}`);
+                let saveObj = { ...recordData };
+                delete saveObj.imageFiles; delete saveObj.videoFiles;
+
+                if (recordData.imageFiles && recordData.imageFiles.length > 0) {
+                    let imgPromises = recordData.imageFiles.map(async (iFile, idx) => {
+                        let imageRef = ref(storage, `images/${userName}/image_${idx+1}.jpg`);
+                        let compressedBlob = await compressImage(iFile);
+                        await uploadBytes(imageRef, compressedBlob);
+                    });
+                    await Promise.all(imgPromises);
+                }
+                if (recordData.videoFiles && recordData.videoFiles.length > 0) {
+                    let vidPromises = recordData.videoFiles.map(async (vFile, idx) => {
+                        let videoRef = ref(storage, `videos/${userName}/${date}_video_${idx+1}.mp4`);
+                        await uploadBytes(videoRef, vFile);
+                    });
+                    await Promise.all(vidPromises);
+                }
+
+                await setDoc(docRef, saveObj);
+
+                batchDataList = batchDataList.filter(d => d.userName !== userName);
+                updatePendingListUI();
+                resetFormInputs();
+                localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${userName}`);
+                document.getElementById("userName").value = "";
+                onUserSelected();
+
+                document.getElementById("loadingOverlay").style.display = "none";
+                showToast("🎉 大成功！1名分のデータが正常に送信・保存されました！", 5000);
+                window.scrollTo({top: 0, behavior: 'smooth'}); 
+
+            } catch (error) {
+                document.getElementById("loadingOverlay").style.display = "none";
+                showToast("❌ 送信エラー: " + error.message, 6000);
+            }
+        };
+
+        function updatePendingListUI() {
+            let pendingArea = document.getElementById("pendingArea");
+            let pendingList = document.getElementById("pendingList");
+            if (batchDataList.length > 0) {
+                pendingArea.style.display = "block";
+                pendingList.innerHTML = "";
+                batchDataList.forEach(data => {
+                    let span = document.createElement("span");
+                    span.textContent = data.userName + " 様 (" + (data.serviceType === "デイサービス" ? "デイ" : "ショート") + ")";
+                    pendingList.appendChild(span);
+                });
+            } else {
+                pendingArea.style.display = "none";
+            }
+        }
+
+        window.sendBatchData = async function() {
+            if (batchDataList.length === 0) return;
+            let names = batchDataList.map(d => d.userName).join("、");
+            if (!confirm(`以下の ${batchDataList.length} 名様のデータをまとめて送信します。\n【 ${names} 】\nよろしいですか？`)) return;
+
+            document.getElementById("loadingOverlay").style.display = "flex";
+            try {
+                const uploadPromises = batchDataList.map(async (data) => {
+                    let docRef = doc(db, "facilities", data.facilityId, "daily_records", `${data.date}_${data.userName}`);
+                    let saveObj = { ...data };
+                    delete saveObj.imageFiles; delete saveObj.videoFiles;
+
+                    if (data.imageFiles && data.imageFiles.length > 0) {
+                        let imgPromises = data.imageFiles.map(async (iFile, idx) => {
+                            let imageRef = ref(storage, `images/${data.userName}/image_${idx+1}.jpg`);
+                            let compressedBlob = await compressImage(iFile);
+                            await uploadBytes(imageRef, compressedBlob);
+                        });
+                        await Promise.all(imgPromises);
+                    }
+                    if (data.videoFiles && data.videoFiles.length > 0) {
+                        let vidPromises = data.videoFiles.map(async (vFile, idx) => {
+                            let videoRef = ref(storage, `videos/${data.userName}/${data.date}_video_${idx+1}.mp4`);
+                            await uploadBytes(videoRef, vFile);
+                        });
+                        await Promise.all(vidPromises);
+                    }
+                    await setDoc(docRef, saveObj);
+                });
+
+                await Promise.all(uploadPromises);
+                document.getElementById("loadingOverlay").style.display = "none";
+                showToast("🎉 大成功！全員分のデータが正常に送信されました！", 5000);
+                batchDataList = [];
+                updatePendingListUI();
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            } catch (error) {
+                document.getElementById("loadingOverlay").style.display = "none";
+                showToast("❌ 送信エラー: " + error.message, 6000);
+            }
+        };
+
+        function resetFormInputs() {
+            accumulatedFiles = []; 
+            document.getElementById("previewArea").innerHTML = "";
+            document.getElementById("imageCameraInput").value = "";
+            document.getElementById("videoCameraInput").value = "";
+            document.getElementById("mediaFileMultiple").value = "";
+            
+            document.getElementById("temp1Alert").textContent = ""; document.getElementById("temp1").value = "";
+            document.getElementById("temp2Alert").textContent = ""; document.getElementById("temp2").value = "";
+            document.getElementById("pulse").value = ""; document.getElementById("spo2").value = "";
+            document.getElementById("bpHigh").value = ""; document.getElementById("bpLow").value = "";
+            document.getElementById("medication").value = ""; document.getElementById("bathReason").value = "";
+            document.getElementById("activity").value = "";
+            document.getElementsByName("bath").forEach(r => r.checked = false);
+            document.getElementsByName("training").forEach(c => c.checked = false);
+
+            if(document.getElementById("stTempInAlert")) document.getElementById("stTempInAlert").textContent = "";
+            if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = "";
+            if(document.getElementById("stPulseIn")) document.getElementById("stPulseIn").value = "";
+            if(document.getElementById("stSpo2In")) document.getElementById("stSpo2In").value = "";
+            if(document.getElementById("stBpHighIn")) document.getElementById("stBpHighIn").value = "";
+            if(document.getElementById("stBpLowIn")) document.getElementById("stBpLowIn").value = "";
+
+            if(document.getElementById("stTempOutAlert")) document.getElementById("stTempOutAlert").textContent = "";
+            if(document.getElementById("stTempOut")) document.getElementById("stTempOut").value = "";
+            if(document.getElementById("stPulseOut")) document.getElementById("stPulseOut").value = "";
+            if(document.getElementById("stSpo2Out")) document.getElementById("stSpo2Out").value = "";
+            if(document.getElementById("stBpHighOut")) document.getElementById("stBpHighOut").value = "";
+            if(document.getElementById("stBpLowOut")) document.getElementById("stBpLowOut").value = "";
+            
+            for(let i=1; i<=23; i++) {
+                if(document.getElementById("num_in_"+i)) document.getElementById("num_in_"+i).value = "";
+                if(document.getElementById("num_out_"+i)) document.getElementById("num_out_"+i).value = "";
+            }
+            
+            for(let i=1; i<=9; i++) {
+                if(document.getElementById("free_item_"+i)) document.getElementById("free_item_"+i).value = "";
+                if(document.getElementById("num_in_free"+i)) document.getElementById("num_in_free"+i).value = "";
+                if(document.getElementById("num_out_free"+i)) document.getElementById("num_out_free"+i).value = "";
+            }
+
+            document.getElementById("stBelongingMemo").value = "";
+
+            document.getElementById("lastBathDate").value = "";
+            document.getElementById("lastBowelDate").value = "";
+            document.getElementById("medRemain").value = "";
+            document.getElementById("nsSign").value = "";
+            document.getElementById("checkStaffIn").value = "";
+            document.getElementById("checkStaffOut").value = "";
+            document.getElementById("chkNoChange").checked = false;
+
+            if(document.getElementById("stMedication")) document.getElementById("stMedication").value = ""; 
+            if(document.getElementById("stBathReason")) document.getElementById("stBathReason").value = "";
+            if(document.getElementById("stNightState")) document.getElementById("stNightState").value = ""; 
+            if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = "";
+            
+            document.getElementsByName("stBath").forEach(r => r.checked = false);
+
+            document.getElementById("mealMain").value = "";
+            document.getElementById("mealSub").value = "";
+            document.getElementById("water").value = "";
+            document.getElementById("oralCare").value = "";
+            document.getElementById("stMealBreakfast").value = "";
+            document.getElementById("stMealLunch").value = "";
+            document.getElementById("stMealDinner").value = "";
+            document.getElementById("stWater").value = "";
+            document.getElementById("stOralCare").value = "";
+
+            document.getElementById("dsBowel").value = "";
+            document.getElementById("dsBowelCount").value = "";
+            document.getElementById("dsBowelCondition").value = "";
+            document.getElementById("stBowel").value = "";
+            document.getElementById("stBowelCount").value = "";
+            document.getElementById("stBowelCondition").value = "";
+
+            document.getElementById("message").value = "いつもありがとうございます。\n";
+            window.currentImageCount = 0; window.currentVideoCount = 0;
+            document.getElementById("preUploadedBadge").style.display = "none";
+            document.getElementById("cancelPreUploadBtn").style.display = "none"; 
+        }
+
+        window.checkTemp = function(inputId, alertId) {
+            let el = document.getElementById(inputId);
+            let val = parseFloat(el.value);
+            let alertSpan = document.getElementById(alertId);
+            if (!isNaN(val) && val >= 37.0) {
+                el.style.color = "red"; el.style.backgroundColor = "#ffeef0"; alertSpan.textContent = "★";
+            } else {
+                el.style.color = ""; el.style.backgroundColor = ""; alertSpan.textContent = "";
+            }
+        };
+
+        window.insertTemplate = function() {
+            let sel = document.getElementById("messageTemplate");
+            let box = document.getElementById("message");
+            if (sel.value) {
+                box.value += (box.value ? "\n" : "") + sel.value;
+                sel.value = "";
+            }
+        };
+
+        window.insertNightTemplate = function() {
+            let sel = document.getElementById("nightStateTemplate");
+            let box = document.getElementById("stNightState");
+            if (sel.value) {
+                box.value += (box.value ? "\n" : "") + sel.value;
+                sel.value = "";
+            }
+        };
+
+        window.insertDayTemplate = function() {
+            let sel = document.getElementById("dayActivityTemplate");
+            let box = document.getElementById("stDayActivity");
+            if (sel.value) {
+                box.value += (box.value ? "\n" : "") + sel.value;
+                sel.value = "";
+            }
+        };
+
+        window.checkPrivacy = function(event) {
+            let ngMessage = "";
+            let currentUserName = document.getElementById("userName").value;
+            
+            let filteredNgUsers = globalNgUsers.filter(n => n !== currentUserName);
+
+            if (filteredNgUsers.length > 0) {
+                let nameList = filteredNgUsers.map(n => n + " 様").join("、");
+                ngMessage = `\n\n🚨【絶対注意】\n以下の利用者様は映り込みNGです！\n▶ ${nameList}\n`;
+            }
+            
+            let isConfirm = confirm(`⚠️【確認】\n背景に他のお客様が写り込んでいませんか？\nもう一度周りをご確認ください。${ngMessage}\nよろしければカメラを起動します。`);
+            if (!isConfirm) { event.preventDefault(); }
+        };
+
+        window.generateDummyData = async function() {
+            let facilityId = localStorage.getItem("currentFacilityId");
+            let date = document.getElementById("date").value;
+            if (!facilityId || !date) { alert("日付を選択してください。"); return; }
+
+            let sType = document.getElementById("serviceType").value;
+
+            if (!confirm(`🧪 テスト用サポート\n${date} を基準に、「${sType}」の10名様 × 10日分のダミーデータを一括作成しますか？\n\n・10名の名簿登録\n・持ち物チェック・最終確認項目\n・バイタル、お食事、生活記録\n・サンプル写真\n\nがすべて自動で作成されます！`)) return;
+
+            let btn = document.getElementById("btnGenerateDummy");
+            btn.disabled = true;
+            btn.textContent = "⚡ 10人×10日分を生成中... (十数秒お待ちください)";
+
+            let dateParts = date.split('-');
+            let curD = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+
+            const dummyPatients = [
+                { name: "三宅 恒子", birthday: "1940-05-24", t1: "36.9", p: "94", bh: "128", bl: "80", ng: false, ex: true },
+                { name: "佐藤 健一", birthday: "1942-08-15", t1: "36.5", p: "72", bh: "125", bl: "75", ng: false, ex: true },
+                { name: "田中 幸子", birthday: "1938-11-03", t1: "36.6", p: "78", bh: "135", bl: "80", ng: false, ex: false },
+                { name: "鈴木 一郎", birthday: "1945-02-20", t1: "36.3", p: "68", bh: "118", bl: "68", ng: false, ex: true },
+                { name: "高橋 ハル", birthday: "1935-09-19", t1: "37.1", p: "84", bh: "142", bl: "85", ng: true, ex: false },
+                { name: "伊藤 正夫", birthday: "1943-07-30", t1: "36.5", p: "76", bh: "128", bl: "74", ng: false, ex: true },
+                { name: "渡辺 静江", birthday: "1939-04-18", t1: "36.2", p: "70", bh: "122", bl: "70", ng: false, ex: false },
+                { name: "山本 和男", birthday: "1944-12-05", t1: "36.5", p: "74", bh: "130", bl: "76", ng: false, ex: false },
+                { name: "中村 敏子", birthday: "1937-10-22", t1: "36.7", p: "80", bh: "138", bl: "82", ng: false, ex: true },
+                { name: "小林 茂",   birthday: "1946-01-10", t1: "36.4", p: "66", bh: "115", bl: "65", ng: false, ex: false }
+            ];
+
+            function makeDummyImage(text, bgColor) {
+                const c = document.createElement('canvas'); c.width = 400; c.height = 300;
+                const ctx = c.getContext('2d'); ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 400, 300);
+                ctx.fillStyle = "#ffffff"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText(text, 200, 140); ctx.font = "16px sans-serif"; ctx.fillText("サンプル写真", 200, 180);
+                return new Promise(res => c.toBlob(b => res(b), 'image/jpeg', 0.8));
+            }
+
+            try {
+                let patientPromises = dummyPatients.map(async (p, i) => {
+                    let userRef = doc(db, "facilities", facilityId, "users", p.name);
+                    let docSnap = await getDoc(userRef);
+                    let services = ["デイサービス", "ショートステイ"];
+                    await setDoc(userRef, { birthday: p.birthday, photoNg: p.ng, needExcretion: p.ex, registeredAt: new Date().toISOString(), services: services }, { merge: true });
+
+                    let faceBlob = await makeDummyImage(p.name, "#2b8a3e");
+                    await uploadBytes(ref(storage, `faces/${p.name}/face.jpg`), faceBlob);
+
+                    let imgBlob = await makeDummyImage(`${p.name} 様\n本日のご様子`, "#4682b4");
+                    await uploadBytes(ref(storage, `images/${p.name}/image_1.jpg`), imgBlob);
+
+                    let dayPromises = [];
+                    for (let dOffset = 0; dOffset < 10; dOffset++) {
+                        let targetDateObj = new Date(curD);
+                        targetDateObj.setDate(targetDateObj.getDate() - dOffset);
+                        let py = targetDateObj.getFullYear();
+                        let pm = String(targetDateObj.getMonth() + 1).padStart(2, '0');
+                        let pd = String(targetDateObj.getDate()).padStart(2, '0');
+                        let targetDateStr = `${py}-${pm}-${pd}`;
+
+                        let randTemp = (Math.random() * 0.6 - 0.3);
+                        let randBp = Math.floor(Math.random() * 8) - 4;
+                        let t1 = (parseFloat(p.t1) + randTemp).toFixed(1);
+                        let pulse = String(parseInt(p.p) + randBp);
+                        let bpHigh = String(parseInt(p.bh) + randBp * 2);
+                        let bpLow = String(parseInt(p.bl) + randBp);
+
+                        let recordRef = doc(db, "facilities", facilityId, "daily_records", `${targetDateStr}_${p.name}`);
+
+                        if (sType === "デイサービス") {
+                            dayPromises.push(setDoc(recordRef, {
+                                facilityId: facilityId, userName: p.name, date: targetDateStr,
+                                serviceType: "デイサービス",
+                                temp1: t1, temp2: t1, pulse: pulse, spo2: "98", bpHigh: bpHigh, bpLow: bpLow,
+                                mealMain: "100%", mealSub: "100%", water: "300ml", medication: "軟膏塗布", oralCare: "歯ブラシ",
+                                bath: "あり", bathReason: "", bowel: p.ex ? "あり" : "なし", bowelCount: "1回", bowelCondition: "普通便",
+                                training: "動作訓練（立ち上がり等）、歩行訓練", activity: "朝の会、レクリエーション（塗り絵、脳トレ）",
+                                message: "いつもご利用いただき、ありがとうございます。\n終始おだやかな表情で過ごされていました。",
+                                imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0
+                            }));
+                        } else {
+                            dayPromises.push(setDoc(recordRef, {
+                                facilityId: facilityId, userName: p.name, date: targetDateStr,
+                                serviceType: "ショートステイ",
+                                stTempIn: t1, stPulseIn: pulse, stSpo2In: "98", stBpHighIn: bpHigh, stBpLowIn: bpLow,
+                                stTempOut: t1, stPulseOut: pulse, stSpo2Out: "98", stBpHighOut: bpHigh, stBpLowOut: bpLow,
+                                temp1: t1, temp2: t1, pulse: pulse, spo2: "98", bpHigh: bpHigh, bpLow: bpLow,
+                                
+                                stMealBreakfast: "100%", stMealLunch: "100%", stMealDinner: "100%",
+                                stWater: "1000ml", stOralCare: "毎食後実施", stBath: "あり", stBathReason: "",
+                                stBowel: p.ex ? "あり" : "なし", stBowelCount: "1回", stBowelCondition: "普通便",
+                                stNightState: "夜間は特変なく朝までぐっすりお休みでした。",
+                                stDayActivity: "デイルームにて他のご入所者様と談笑され、穏やかに過ごされました。",
+                                message: "いつもご利用いただき、ありがとうございます。\n終始おだやかな表情で過ごされていました。",
+                                imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0,
+                                num_in_1: "1", num_out_1: "1", num_in_2: "1", num_out_2: "1", num_in_3: "2", num_out_3: "2",
+                                num_in_4: "2", num_out_4: "2", num_in_5: "2", num_out_5: "2", num_in_6: "1", num_out_6: "1",
+                                num_in_7: "1", num_out_7: "1", num_in_9: "2", num_out_9: "2", num_in_11: "1", num_out_11: "1",
+                                num_in_17: "1", num_out_17: "1",
+                                stBelongingMemo: "持参品すべてお名前の記入を確認いたしました。",
+                                lastBathDate: "2026-05-25", lastBowelDate: "2026-05-26", medRemain: "無", nsSign: "済",
+                                checkStaffIn: "黒住", checkStaffOut: "黒住", chkNoChange: true,
+                                free_item_3: "ひげそり", num_in_free3: "1", num_out_free3: "1" 
+                            }));
+                        }
+                    }
+                    await Promise.all(dayPromises);
+                });
+
+                await Promise.all(patientPromises);
+
+                showToast("🎉 大成功！10名様×10日分のデータが完全に作成されました！", 4000);
+                await loadUserNames(facilityId);
+                
+                document.getElementById("userName").value = "三宅 恒子";
+                onUserSelected();
+
+                btn.disabled = false;
+                btn.textContent = "🪄 10人×10日分のテストデータを一発自動作成する";
+
+            } catch (err) {
+                showToast("❌ 生成エラー: " + err.message, 5000);
+                btn.disabled = false;
+                btn.textContent = "🪄 10人×10日分のテストデータを一発自動作成する";
+            }
+        };
+
+        window.deleteAllData = async function() {
+            let facilityId = localStorage.getItem("currentFacilityId");
+            if (!facilityId) return;
+
+            if (!confirm("⚠️ 警告 ⚠️\n今ログインしている施設の「連絡帳の記録」「写真・動画」「名簿」をすべて削除します。\n本当によろしいですか？")) return;
+            if (!confirm("最終確認です。\n削除したデータは二度と戻りません。\n本当に削除して初期状態に戻しますか？")) return;
+
+            document.getElementById("loadingOverlay").style.display = "flex";
+            document.getElementById("loadingText").innerHTML = "施設のデータを安全に削除しています...<br>画面を閉じずにお待ちください";
+
+            try {
+                let usersSnap = await getDocs(collection(db, "facilities", facilityId, "users"));
+                let userNames = [];
+                usersSnap.forEach(docSnap => { userNames.push(docSnap.id); });
+
+                async function deleteFolderContents(folderPath) {
+                    try {
+                        let folderRef = ref(storage, folderPath);
+                        let res = await listAll(folderRef);
+                        let promises = [];
+                        res.items.forEach((itemRef) => promises.push(deleteObject(itemRef)));
+                        for (let prefixRef of res.prefixes) { await deleteFolderContents(prefixRef.fullPath); }
+                        await Promise.all(promises);
+                    } catch (e) {}
+                }
+
+                for (let userName of userNames) {
+                    await deleteFolderContents(`images/${userName}`);
+                    await deleteFolderContents(`videos/${userName}`);
+                    await deleteFolderContents(`faces/${userName}`);
+                }
+
+                let recordsSnap = await getDocs(collection(db, "facilities", facilityId, "daily_records"));
+                let deletePromises = [];
+                recordsSnap.forEach(docSnap => deletePromises.push(deleteDoc(docSnap.ref)));
+                await Promise.all(deletePromises);
+
+                let userDeletePromises = [];
+                usersSnap.forEach(docSnap => userDeletePromises.push(deleteDoc(docSnap.ref)));
+                await Promise.all(userDeletePromises);
+
+                let keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    let key = localStorage.key(i);
+                    if (key && key.startsWith(`draft_${facilityId}_`)) { keysToRemove.push(key); }
+                }
+                keysToRemove.forEach(k => localStorage.removeItem(k));
+
+                document.getElementById("loadingOverlay").style.display = "none";
+                alert("大成功！この施設のデータだけを安全に削除し、初期状態に戻しました。");
+                window.location.reload();
+
+            } catch (error) {
+                document.getElementById("loadingOverlay").style.display = "none";
+                alert("削除中にエラーが発生しました: " + error.message);
+            }
+        };
+    </script>
+</body>
+</html>
