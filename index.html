@@ -444,7 +444,6 @@
             <textarea id="stDayActivity" rows="2"></textarea>
         </div>
 
-        <!-- ★ 修正ポイント：チェックボックスを削除し、連絡事項の初期値を空にしました -->
         <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">ご利用いただきありがとうございます（連絡事項）</h3>
         
         <label style="margin-top: 15px;">連絡事項</label>
@@ -1240,7 +1239,7 @@
                 data.nsSign = document.getElementById("nsSign").value;
                 data.checkStaffIn = document.getElementById("checkStaffIn").value;
                 data.checkStaffOut = document.getElementById("checkStaffOut").value;
-
+                
                 data.stMealBreakfast = document.getElementById("stMealBreakfast").value;
                 data.stMealLunch = document.getElementById("stMealLunch").value;
                 data.mealMain = data.stMealLunch; 
@@ -1609,6 +1608,7 @@
 
                         let recordRef = doc(db, "facilities", facilityId, "daily_records", `${targetDateStr}_${sType}_${p.name}`);
 
+                        /* ★ ここが修正ポイントです！テストデータのメッセージから「いつもご利用いただき…」を削除しました */
                         if (sType === "デイサービス") {
                             dayPromises.push(setDoc(recordRef, {
                                 facilityId: facilityId, userName: p.name, date: targetDateStr,
@@ -1617,7 +1617,7 @@
                                 mealMain: "100%", mealSub: "100%", water: "300ml", medication: "軟膏塗布", oralCare: "歯ブラシ",
                                 bath: "あり", bathReason: "", bowel: p.ex ? "あり" : "なし", bowelCount: "1回", bowelCondition: "普通便",
                                 training: "動作訓練（立ち上がり等）、歩行訓練", activity: "朝の会、レクリエーション（塗り絵、脳トレ）",
-                                message: "",
+                                message: "終始おだやかな表情で過ごされていました。",
                                 imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0
                             }));
                         } else {
@@ -1633,7 +1633,7 @@
                                 stBowel: p.ex ? "あり" : "なし", stBowelCount: "1回", stBowelCondition: "普通便",
                                 stNightState: "夜間は特変なく朝までぐっすりお休みでした。",
                                 stDayActivity: "デイルームにて他のご入所者様と談笑され、穏やかに過ごされました。",
-                                message: "",
+                                message: "終始おだやかな表情で過ごされていました。",
                                 imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0,
                                 num_in_1: "1", num_out_1: "1", num_in_2: "1", num_out_2: "1", num_in_3: "2", num_out_3: "2",
                                 num_in_4: "2", num_out_4: "2", num_in_5: "2", num_out_5: "2", num_in_6: "1", num_out_6: "1",
