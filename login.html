@@ -1,0 +1,201 @@
+
+
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>施設ログイン - 連絡帳アプリ</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f8ff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-box { background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 440px; box-sizing: border-box; }
+        h2 { color: #4682b4; margin-bottom: 20px; margin-top: 0; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 15px; }
+        button { width: 100%; padding: 15px; background-color: #ff7f50; color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        button:hover { background-color: #ff6347; }
+        .btn-register { background-color: #4caf50; }
+        .btn-register:hover { background-color: #388e3c; }
+        
+        .link { margin-top: 25px; display: block; color: #4682b4; text-decoration: none; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .link:hover { text-decoration: underline; }
+        .error { color: red; margin-top: 15px; font-weight: bold; display: none; }
+        .description { font-size: 13px; color: #555; margin-bottom: 15px; text-align: left; background-color: #f9f9f9; padding: 10px; border-radius: 5px; border-left: 4px solid #4caf50; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        
+        <div id="loginFormArea">
+            <h2>施設ログイン</h2>
+            <input type="text" id="loginFacilityName" placeholder="施設名（例：さくらデイサービス）">
+            <input type="password" id="loginPassword" placeholder="パスワード">
+            <button onclick="handleLogin()">ログインする</button>
+            <p id="loginError" class="error">エラーメッセージ</p>
+            
+            <a onclick="toggleForm('register')" class="link">🌱 はじめて利用する方（新規登録）はこちら</a>
+            <a href="change_password.html" class="link" style="font-size: 13px; margin-top: 15px; color: #888;">🔑 パスワードを変更する場合</a>
+        </div>
+
+        <div id="registerFormArea" style="display: none;">
+            <h2 style="color: #2e7d32;">新規利用登録</h2>
+            <div class="description">
+                ダウンロード時にお渡しした<b>「秘密の合言葉」</b>、お好きな施設名・パスワード、および<b>緊急時のサポート連絡先</b>を入力してください。
+            </div>
+            
+            <input type="text" id="secretKey" placeholder="🔑 秘密の合言葉">
+            <input type="text" id="regFacilityName" placeholder="📛 好きな施設名（ログインIDになります）">
+            <input type="password" id="regPassword" placeholder="🔐 好きなパスワード">
+            
+            <input type="email" id="regEmail" placeholder="✉️ 連絡先メールアドレス（必須・緊急時連絡用）">
+            <input type="tel" id="regPhone" placeholder="📞 ご連絡先お電話番号（任意）">
+            
+            <button class="btn-register" onclick="handleRegister()">合言葉でシステムに登録する</button>
+            <p id="registerError" class="error">エラーメッセージ</p>
+            
+            <a onclick="toggleForm('login')" class="link">⬅️ 登録済みの方（ログイン）に戻る</a>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
+            authDomain: "renrakucho-app-6b157.firebaseapp.com",
+            projectId: "renrakucho-app-6b157",
+            storageBucket: "renrakucho-app-6b157.firebasestorage.app",
+            messagingSenderId: "63418706991",
+            appId: "1:63418706991:web:43085ce485d2a3d6302ada"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const SECRET_KEY = "ecosma2026";
+
+        window.toggleForm = function(type) {
+            document.getElementById('loginError').style.display = 'none';
+            document.getElementById('registerError').style.display = 'none';
+            
+            if (type === 'register') {
+                document.getElementById('loginFormArea').style.display = 'none';
+                document.getElementById('registerFormArea').style.display = 'block';
+            } else {
+                document.getElementById('registerFormArea').style.display = 'none';
+                document.getElementById('loginFormArea').style.display = 'block';
+            }
+        };
+
+        window.handleLogin = async function() {
+            const name = document.getElementById("loginFacilityName").value.trim();
+            const pass = document.getElementById("loginPassword").value.trim();
+            const errorMsg = document.getElementById("loginError");
+            errorMsg.style.display = "none";
+
+            if (!name || !pass) {
+                errorMsg.textContent = "施設名とパスワードを入力してください。";
+                errorMsg.style.display = "block";
+                return;
+            }
+
+            const docRef = doc(db, "facilities", name);
+
+            try {
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.password !== pass) {
+                        errorMsg.textContent = "パスワードが違います。";
+                        errorMsg.style.display = "block";
+                        return;
+                    }
+                    if (data.status === "locked") {
+                        errorMsg.textContent = "システムが利用停止中です。管理者にお問い合わせください。";
+                        errorMsg.style.display = "block";
+                        return;
+                    }
+                    loginSuccess(name);
+                } else {
+                    errorMsg.textContent = "この施設名は登録されていません。はじめての方は下の「新規登録」からお進みください。";
+                    errorMsg.style.display = "block";
+                }
+            } catch (error) {
+                errorMsg.textContent = "通信エラーが発生しました。インターネット環境を確認してください。";
+                errorMsg.style.display = "block";
+            }
+        };
+
+        // 合言葉でシステムに登録する処理
+        window.handleRegister = async function() {
+            const secretInput = document.getElementById("secretKey").value.trim();
+            const newName = document.getElementById("regFacilityName").value.trim();
+            const newPass = document.getElementById("regPassword").value.trim();
+            const email = document.getElementById("regEmail").value.trim();
+            const phone = document.getElementById("regPhone").value.trim();
+            const errorMsg = document.getElementById("registerError");
+            errorMsg.style.display = "none";
+
+            // 1. 入力モレのチェック（メールアドレスも必須にします）
+            if (!secretInput || !newName || !newPass || !email) {
+                errorMsg.textContent = "合言葉、施設名、パスワード、メールアドレスは必須です。";
+                errorMsg.style.display = "block";
+                return;
+            }
+
+            // 簡単なメールアドレス形式チェック
+            if (!email.includes("@")) {
+                errorMsg.textContent = "正しいメールアドレスを入力してください。";
+                errorMsg.style.display = "block";
+                return;
+            }
+
+            // 2. 合言葉のチェック
+            if (secretInput !== SECRET_KEY) {
+                errorMsg.textContent = "秘密の合言葉が間違っています。";
+                errorMsg.style.display = "block";
+                return;
+            }
+
+            const docRef = doc(db, "facilities", newName);
+
+            try {
+                const docSnap = await getDoc(docRef);
+
+                // 3. 施設名の重複チェック
+                if (docSnap.exists()) {
+                    errorMsg.textContent = "その施設名はすでに使われています。別の名前にしてください。";
+                    errorMsg.style.display = "block";
+                    return;
+                }
+
+                // 4. メールアドレスや電話番号も一緒に金庫へ保存！
+                await setDoc(docRef, {
+                    facilityName: newName,
+                    password: newPass,
+                    email: email,
+                    phone: phone || "未登録",
+                    status: "active",
+                    createdAt: new Date().toISOString()
+                });
+                
+                alert("🎉 施設の登録が完了しました！\nさっそくシステムをご利用いただけます。");
+                loginSuccess(newName);
+
+            } catch (error) {
+                errorMsg.textContent = "通信エラーが発生しました。もう一度お試しください。";
+                errorMsg.style.display = "block";
+            }
+        };
+
+        function loginSuccess(facilityName) {
+            localStorage.setItem("currentFacilityId", facilityName);
+            localStorage.setItem("currentFacilityName", facilityName);
+            localStorage.setItem("isStaffAuthenticated", "true"); 
+            window.location.href = "index.html"; 
+        }
+    </script>
+</body>
+</html>
