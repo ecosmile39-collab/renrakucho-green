@@ -143,7 +143,6 @@
             table.belongings-print-table { margin-bottom: 6px !important; font-size: 11px !important; }
             table.belongings-print-table th, table.belongings-print-table td { padding: 2px !important; }
             
-            /* ★ グラフは消し、平均値は残す。入所時バイタル表は消す。 */
             .chart-container { display: none !important; }
             .admission-vitals-table { display: none !important; } 
             
@@ -572,11 +571,8 @@
                 let md = d.date.substring(5).replace('-', '/'); 
                 let tM = d.stTempIn || d.stTemp1 || d.temp1 || '--';
                 let p = d.stPulseIn || d.stPulse || d.pulse || '--';
-                
-                let bpHigh = d.stBpHighIn || d.stBpHigh || d.bpHigh ? (d.stBpHighIn || d.stBpHigh || d.bpHigh) : '';
-                let bpLow = d.stBpLowIn || d.stBpLow || d.bpLow ? (d.stBpLowIn || d.stBpLow || d.bpLow) : '';
-                let bp = (bpHigh || bpLow) ? bpHigh + '/' + bpLow : '--';
-                
+                let bp = (d.stBpHighIn || d.stBpHigh || d.bpHigh || '--') + '/' + (d.stBpLowIn || d.stBpLow || d.bpLow || '--');
+                if (bp === '--/--') bp = '--';
                 let mB = d.stMealBreakfast || '--';
                 let mL = d.stMealLunch || d.mealMain || '--';
                 let mD = d.stMealDinner || '--';
@@ -644,20 +640,14 @@
             let mediaResults = await Promise.all(mediaPromises);
             let mediaHtml = mediaResults.join("");
 
-            let chkNoChangeStr = firstData.chkNoChange ? "☑ お変わりなく過ごされています" : "□ お変わりなく過ごされています";
-
-            let bpIn = '--';
-            if (firstData.stBpHighIn || firstData.stBpLowIn) {
-                let h = firstData.stBpHighIn ? firstData.stBpHighIn : '';
-                let l = firstData.stBpLowIn ? firstData.stBpLowIn : '';
-                bpIn = h + '/' + l;
-            }
-
-            let bpOut = '--';
-            if (lastData.stBpHighOut || lastData.stBpLowOut) {
-                let h = lastData.stBpHighOut ? lastData.stBpHighOut : '';
-                let l = lastData.stBpLowOut ? lastData.stBpLowOut : '';
-                bpOut = h + '/' + l;
+            /* ★ ここが修正ポイント！ チェックボックスのコードを完全に削除し、メッセージだけを表示するようにしました。 */
+            let finalMessageHtml = "";
+            if (commentsHtml) {
+                finalMessageHtml = `<div class="text-box">${commentsHtml}</div>`;
+            } else if (firstData.message) {
+                finalMessageHtml = `<div class="text-box">${firstData.message}</div>`;
+            } else {
+                finalMessageHtml = `<div class="text-box">特になし</div>`;
             }
 
             pageDiv.innerHTML = `
@@ -681,14 +671,14 @@
                         <th width="12%">体温</th><td width="10%">${firstData.stTempIn ? firstData.stTempIn + '℃' : '--'}</td>
                         <th width="12%">脈拍</th><td width="10%">${firstData.stPulseIn ? firstData.stPulseIn + '回' : '--'}</td>
                         <th width="12%">SpO2</th><td width="10%">${firstData.stSpo2In ? firstData.stSpo2In + '%' : '--'}</td>
-                        <th width="12%">血圧</th><td width="10%">${bpIn}</td>
+                        <th width="12%">血圧</th><td width="10%">${(firstData.stBpHighIn || firstData.stBpLowIn) ? `${firstData.stBpHighIn \vert{}\vert{} ''}/${firstData.stBpLowIn || ''}` : '--'}</td>
                     </tr>
                     <tr>
                         <th>【退所時】</th>
                         <th>体温</th><td>${lastData.stTempOut ? lastData.stTempOut + '℃' : '--'}</td>
                         <th>脈拍</th><td>${lastData.stPulseOut ? lastData.stPulseOut + '回' : '--'}</td>
                         <th>SpO2</th><td>${lastData.stSpo2Out ? lastData.stSpo2Out + '%' : '--'}</td>
-                        <th>血圧</th><td>${bpOut}</td>
+                        <th>血圧</th><td>${(lastData.stBpHighOut || lastData.stBpLowOut) ? `${lastData.stBpHighOut \vert{}\vert{} ''}/${lastData.stBpLowOut || ''}` : '--'}</td>
                     </tr>
                 </table>
 
@@ -735,8 +725,7 @@
                 <div class="text-box">${dayActivityHtml || '特になし'}</div>
 
                 <div class="section-title">■ ご利用いただきありがとうございます（連絡事項）</div>
-                <div style="font-weight:bold; font-size:13px; margin: 4px 0;">${chkNoChangeStr}</div>
-                <div class="text-box">${commentsHtml || firstData.message || '特になし'}</div>
+                ${finalMessageHtml}
 
                 <div class="section-title">■ 施設でのご様子 (写真・動画)</div>
                 <div class="media-print-area">${mediaHtml}</div>
@@ -815,6 +804,7 @@
                 bpStrDay = h + '/' + l;
             }
 
+            /* ★ デイサービスの画面からもチェックボックスの表示を削除しました */
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 <div class="print-header">
@@ -856,7 +846,7 @@
                 <div class="section-title">■ 機能訓練・活動の様子</div>
                 <div class="text-box">${trainAct || '特になし'}</div>
                 <div class="section-title">■ お客様への御連絡事項</div>
-                <div class="text-box">${data.message || ''}</div>
+                <div class="text-box">${data.message || '特になし'}</div>
                 <div class="section-title">■ 本日のご様子 (写真・動画)</div>
                 <div class="media-print-area">${mediaHtml}</div>
             `;
