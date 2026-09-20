@@ -143,7 +143,7 @@
             table.belongings-print-table { margin-bottom: 6px !important; font-size: 11px !important; }
             table.belongings-print-table th, table.belongings-print-table td { padding: 2px !important; }
             
-            /* ★ 修正：グラフは消し、平均値は残す。入所時バイタル表は消す。 */
+            /* ★ グラフは消し、平均値は残す。入所時バイタル表は消す。 */
             .chart-container { display: none !important; }
             .admission-vitals-table { display: none !important; } 
             
@@ -173,11 +173,13 @@
                 </select>
             </div>
 
+            <!-- ★ デイサービスを選んだ時はこちらが表示されます（1日だけ） -->
             <div class="filter-row" id="dayServiceDateRow">
                 <span class="filter-label">📅 ご利用日：</span>
                 <input type="date" id="singleDate" class="date-input" onchange="onDateChanged()">
             </div>
 
+            <!-- ★ ショートステイを選んだ時はこちらが自動で表示されます（開始日と終了日） -->
             <div class="filter-row" id="shortStayDateRow" style="display: none;">
                 <span class="filter-label">📅 ご宿泊期間：</span>
                 <input type="date" id="startDate" class="date-input" onchange="onDateChanged()">
@@ -237,6 +239,7 @@
         window.matchedRecordsGlobal = [];
         const mediaUrlCache = new Map();
 
+        // 画面が開いたときに一番最初に動くプログラム
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; }
@@ -257,6 +260,8 @@
             }
             
             await loadUserNames(facilityId);
+            
+            // ★ ここで「デイかショートか」を判定して、正しい日付枠を自動で表示します！
             onServiceTypeChanged();
         };
 
@@ -271,10 +276,12 @@
             } catch (error) { console.log("名簿エラー:", error); }
         }
 
+        // サービス種別を切り替えたときに動くプログラム
         window.onServiceTypeChanged = function() {
             let sType = document.getElementById("selectServiceType").value;
             localStorage.setItem('currentServiceType', sType);
 
+            // デイサービスなら「ご利用日（1つ）」、ショートステイなら「ご宿泊期間（2つ）」に切り替えます
             if (sType === "デイサービス") {
                 document.getElementById("dayServiceDateRow").style.display = "flex";
                 document.getElementById("shortStayDateRow").style.display = "none";
@@ -282,9 +289,12 @@
                 document.getElementById("dayServiceDateRow").style.display = "none";
                 document.getElementById("shortStayDateRow").style.display = "flex";
             }
+            
+            // 切り替わったら、自動的にデータを検索し直します
             onDateChanged();
         };
 
+        // 日付が変わったときにデータを検索するプログラム
         window.onDateChanged = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             let sType = document.getElementById("selectServiceType").value;
@@ -473,7 +483,6 @@
             chartInstances.push(cInstance);
         }
 
-        /* ★グリーンアンドリバーホーム専用ショートステイ印刷レイアウト */
         async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate) {
             let pageDiv = document.createElement("div");
             pageDiv.className = "print-page";
@@ -644,7 +653,6 @@
 
             let chkNoChangeStr = firstData.chkNoChange ? "☑ お変わりなく過ごされています" : "□ お変わりなく過ごされています";
 
-            // ★修正：入所時バイタルテーブルに admission-vitals-table というクラスをつけました（印刷時消すため）
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 
@@ -731,7 +739,6 @@
             drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
         }
 
-        /* デイサービス用レイアウト（デイサービス印刷時用） */
         async function renderDayServiceSheet(container, data, facilityName, monthRecords, index) {
             let pageDiv = document.createElement("div");
             pageDiv.className = "print-page";
