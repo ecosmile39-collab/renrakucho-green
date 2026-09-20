@@ -571,8 +571,11 @@
                 let md = d.date.substring(5).replace('-', '/'); 
                 let tM = d.stTempIn || d.stTemp1 || d.temp1 || '--';
                 let p = d.stPulseIn || d.stPulse || d.pulse || '--';
-                let bp = (d.stBpHighIn || d.stBpHigh || d.bpHigh || '--') + '/' + (d.stBpLowIn || d.stBpLow || d.bpLow || '--');
-                if (bp === '--/--') bp = '--';
+                
+                let bpHigh = d.stBpHighIn || d.stBpHigh || d.bpHigh ? (d.stBpHighIn || d.stBpHigh || d.bpHigh) : '';
+                let bpLow = d.stBpLowIn || d.stBpLow || d.bpLow ? (d.stBpLowIn || d.stBpLow || d.bpLow) : '';
+                let bp = (bpHigh || bpLow) ? bpHigh + '/' + bpLow : '--';
+                
                 let mB = d.stMealBreakfast || '--';
                 let mL = d.stMealLunch || d.mealMain || '--';
                 let mD = d.stMealDinner || '--';
@@ -640,7 +643,21 @@
             let mediaResults = await Promise.all(mediaPromises);
             let mediaHtml = mediaResults.join("");
 
-            /* ★ ここが修正ポイント！ チェックボックスのコードを完全に削除し、メッセージだけを表示するようにしました。 */
+            let bpIn = '--';
+            if (firstData.stBpHighIn || firstData.stBpLowIn) {
+                let h = firstData.stBpHighIn ? firstData.stBpHighIn : '';
+                let l = firstData.stBpLowIn ? firstData.stBpLowIn : '';
+                bpIn = h + '/' + l;
+            }
+
+            let bpOut = '--';
+            if (lastData.stBpHighOut || lastData.stBpLowOut) {
+                let h = lastData.stBpHighOut ? lastData.stBpHighOut : '';
+                let l = lastData.stBpLowOut ? lastData.stBpLowOut : '';
+                bpOut = h + '/' + l;
+            }
+
+            /* ★ ここが修正ポイントです！ ショートステイでもメッセージ欄を空っぽにしました。 */
             let finalMessageHtml = "";
             if (commentsHtml) {
                 finalMessageHtml = `<div class="text-box">${commentsHtml}</div>`;
@@ -671,14 +688,14 @@
                         <th width="12%">体温</th><td width="10%">${firstData.stTempIn ? firstData.stTempIn + '℃' : '--'}</td>
                         <th width="12%">脈拍</th><td width="10%">${firstData.stPulseIn ? firstData.stPulseIn + '回' : '--'}</td>
                         <th width="12%">SpO2</th><td width="10%">${firstData.stSpo2In ? firstData.stSpo2In + '%' : '--'}</td>
-                        <th width="12%">血圧</th><td width="10%">${(firstData.stBpHighIn || firstData.stBpLowIn) ? `${firstData.stBpHighIn \vert{}\vert{} ''}/${firstData.stBpLowIn || ''}` : '--'}</td>
+                        <th width="12%">血圧</th><td width="10%">${bpIn}</td>
                     </tr>
                     <tr>
                         <th>【退所時】</th>
                         <th>体温</th><td>${lastData.stTempOut ? lastData.stTempOut + '℃' : '--'}</td>
                         <th>脈拍</th><td>${lastData.stPulseOut ? lastData.stPulseOut + '回' : '--'}</td>
                         <th>SpO2</th><td>${lastData.stSpo2Out ? lastData.stSpo2Out + '%' : '--'}</td>
-                        <th>血圧</th><td>${(lastData.stBpHighOut || lastData.stBpLowOut) ? `${lastData.stBpHighOut \vert{}\vert{} ''}/${lastData.stBpLowOut || ''}` : '--'}</td>
+                        <th>血圧</th><td>${bpOut}</td>
                     </tr>
                 </table>
 
@@ -804,7 +821,6 @@
                 bpStrDay = h + '/' + l;
             }
 
-            /* ★ デイサービスの画面からもチェックボックスの表示を削除しました */
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 <div class="print-header">
