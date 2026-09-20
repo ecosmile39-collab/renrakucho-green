@@ -818,7 +818,8 @@
 
         function applyDraftOrEmpty(userName, dateStr) {
             let facilityId = localStorage.getItem("currentFacilityId");
-            let draftKey = `draft_${facilityId}_${dateStr}_${userName}`;
+            let sType = document.getElementById("serviceType").value;
+            let draftKey = `draft_${facilityId}_${dateStr}_${sType}_${userName}`;
             let draftStr = localStorage.getItem(draftKey);
             resetFormInputs();
 
@@ -906,7 +907,7 @@
 
             try {
                 let currentServiceType = document.getElementById("serviceType").value;
-                let docId = `${date}_${userName}`;
+                let docId = `${date}_${currentServiceType}_${userName}`;
                 let docRef = doc(db, "facilities", facilityId, "daily_records", docId);
                 let docSnap = await getDoc(docRef);
                 
@@ -1132,7 +1133,7 @@
                     vCount = videoFiles.length;
                 }
 
-                let docRef = doc(db, "facilities", facilityId, "daily_records", `${date}_${userName}`);
+                let docRef = doc(db, "facilities", facilityId, "daily_records", `${date}_${sType}_${userName}`);
                 await setDoc(docRef, {
                     facilityId: facilityId, userName: userName, date: date,
                     serviceType: sType, imageCount: iCount, videoCount: vCount 
@@ -1149,12 +1150,13 @@
             let userName = document.getElementById("userName").value;
             let date = document.getElementById("date").value;
             let facilityId = localStorage.getItem("currentFacilityId");
+            let sType = document.getElementById("serviceType").value;
             if (!userName || !date || !facilityId) return;
 
             if (!confirm(`⚠️ 確認\n${userName} 様について、現在お預かりしている写真・動画の記録をすべて取り消しますか？`)) return;
 
             try {
-                let docRef = doc(db, "facilities", facilityId, "daily_records", `${date}_${userName}`);
+                let docRef = doc(db, "facilities", facilityId, "daily_records", `${date}_${sType}_${userName}`);
                 await setDoc(docRef, { hasImage: false, imageCount: 0, videoCount: 0 }, { merge: true });
                 window.currentImageCount = 0; window.currentVideoCount = 0;
                 document.getElementById("preUploadedBadge").style.display = "none";
@@ -1293,7 +1295,7 @@
 
             updatePendingListUI();
             resetFormInputs();
-            localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${userName}`);
+            localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${sType}_${userName}`);
             
             showToast(`✅ ${userName} 様（${sType}）のデータを一時保存しました。`, 3000);
             document.getElementById("userName").value = "";
@@ -1313,7 +1315,7 @@
             document.getElementById("loadingOverlay").style.display = "flex";
 
             try {
-                let docRef = doc(db, "facilities", recordData.facilityId, "daily_records", `${date}_${userName}`);
+                let docRef = doc(db, "facilities", recordData.facilityId, "daily_records", `${date}_${sType}_${userName}`);
                 let saveObj = { ...recordData };
                 delete saveObj.imageFiles; delete saveObj.videoFiles;
 
@@ -1338,7 +1340,7 @@
                 batchDataList = batchDataList.filter(d => d.userName !== userName);
                 updatePendingListUI();
                 resetFormInputs();
-                localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${userName}`);
+                localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${sType}_${userName}`);
                 document.getElementById("userName").value = "";
                 onUserSelected();
 
@@ -1376,7 +1378,7 @@
             document.getElementById("loadingOverlay").style.display = "flex";
             try {
                 const uploadPromises = batchDataList.map(async (data) => {
-                    let docRef = doc(db, "facilities", data.facilityId, "daily_records", `${data.date}_${data.userName}`);
+                    let docRef = doc(db, "facilities", data.facilityId, "daily_records", `${data.date}_${data.serviceType}_${data.userName}`);
                     let saveObj = { ...data };
                     delete saveObj.imageFiles; delete saveObj.videoFiles;
 
@@ -1551,8 +1553,7 @@
 
             let sType = document.getElementById("serviceType").value;
 
-            // ★ 確認メッセージもわかりやすくしました！
-            if (!confirm(`🧪 テスト用サポート\n${date} を基準に、「${sType}」の10名様 × 10日分のダミーデータを一括作成しますか？\n\n※データが混ざって消えないよう、\n・デイサービス：今日から過去10日分\n・ショートステイ：さらにその前の10日分\nとして作成されます！`)) return;
+            if (!confirm(`🧪 テスト用サポート\n${date} を基準に、「${sType}」の10名様 × 10日分のダミーデータを一括作成しますか？`)) return;
 
             let btn = document.getElementById("btnGenerateDummy");
             btn.disabled = true;
@@ -1599,9 +1600,8 @@
                     for (let dOffset = 0; dOffset < 10; dOffset++) {
                         let targetDateObj = new Date(curD);
                         
-                        // ★ ここが魔法のずらしコードです！ショートステイはさらに10日過去になります
-                        let offsetDays = (sType === "デイサービス") ? dOffset : dOffset + 10;
-                        targetDateObj.setDate(targetDateObj.getDate() - offsetDays);
+                        // ★ もうずらしません！デイもショートも今日からの日付で作ります
+                        targetDateObj.setDate(targetDateObj.getDate() - dOffset);
                         
                         let py = targetDateObj.getFullYear();
                         let pm = String(targetDateObj.getMonth() + 1).padStart(2, '0');
@@ -1615,7 +1615,8 @@
                         let bpHigh = String(parseInt(p.bh) + randBp * 2);
                         let bpLow = String(parseInt(p.bl) + randBp);
 
-                        let recordRef = doc(db, "facilities", facilityId, "daily_records", `${targetDateStr}_${p.name}`);
+                        // ★ ここが大改造ポイント！ 保存箱の名前に「サービス種別」を入れました
+                        let recordRef = doc(db, "facilities", facilityId, "daily_records", `${targetDateStr}_${sType}_${p.name}`);
 
                         if (sType === "デイサービス") {
                             dayPromises.push(setDoc(recordRef, {
