@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>連絡帳 印刷画面（グリーンアンドリバーホーム版）</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f8ff; padding: 20px; margin: 0; color: #333; }
+        
+        .no-print { background-color: white; padding: 20px; border-radius: 10px; max-width: 800px; margin: 0 auto 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { color: #2b8a3e; margin-top: 0; }
+        
+        .nav-links { text-align: right; margin-bottom: 15px; }
+        .nav-links a { color: #2b8a3e; font-weight: bold; text-decoration: none; margin-left: 15px; }
+        .nav-links a:hover { text-decoration: underline; }
+
+        .btn { padding: 10px 20px; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        
+        .filter-panel { background-color: #ebfbee; padding: 20px; border-radius: 8px; border: 2px solid #40c057; margin-bottom: 20px; }
+        .filter-row { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 12px; }
+        .filter-row:last-child { margin-bottom: 0; }
+        .filter-label { font-weight: bold; font-size: 16px; min-width: 140px; color: #2b8a3e; }
+        .filter-select { font-size: 16px; padding: 8px 12px; border-radius: 5px; border: 1px solid #40c057; font-weight: bold; }
+        .date-input { font-size: 16px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
+
+        .user-select-box { background-color: #fff; padding: 20px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .user-checkbox-wrapper { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; margin-bottom: 20px; }
+        .user-checkbox-label { cursor: pointer; font-size: 16px; padding: 6px 12px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9; display: flex; align-items: center; gap: 6px; }
+        .user-checkbox-label:hover { background-color: #e6f2ff; border-color: #2b8a3e; }
+
+        .btn-batch-print { background-color: #2b8a3e; font-size: 18px; padding: 12px 24px; width: 100%; margin-bottom: 10px; }
+        .btn-batch-print:hover { background-color: #237032; }
+        .btn-batch-exec { background-color: #e65100; font-size: 18px; padding: 12px 24px; width: 100%; display: none; }
+        .btn-batch-exec:hover { background-color: #bf360c; }
+
+        .scroll-btn-group { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
+        .scroll-btn { background-color: #2b8a3e; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; opacity: 0.8; }
+
+        #printArea { width: 210mm; margin: 0 auto; }
+
+        .print-page { 
+            background-color: white; 
+            padding: 10mm 10mm 10mm 20mm; 
+            box-sizing: border-box; 
+            margin-bottom: 30px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+            position: relative; 
+            min-height: 297mm; 
+            width: 100%;
+        }
+        
+        .punch-mark {
+            position: absolute;
+            top: 50%;
+            left: 2mm;
+            transform: translateY(-50%); 
+            color: #b0c4de; 
+            font-size: 24px;
+            user-select: none; 
+        }
+
+        .print-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-end; 
+            margin-bottom: 12px; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 6px; 
+        }
+        .print-header h1 { margin: 0; font-size: 22px; letter-spacing: 1px; text-align: right; }
+        .facility-name { font-size: 16px; font-weight: bold; color: #2b8a3e; }
+        .print-date { text-align: right; font-size: 14px; margin-bottom: 10px; margin-top: 5px; font-weight: bold; color: #2b8a3e; }
+        
+        .birthday-banner { background-color: #fff0f5; color: #d2691e; text-align: center; font-size: 16px; font-weight: bold; padding: 6px 10px; margin: 0 0 10px 0; border: 2px dashed #ffb6c1; border-radius: 6px; }
+        
+        table.compact-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13px; }
+        table.compact-table th, table.compact-table td { border: 1px solid #333; padding: 6px; text-align: center; }
+        table.compact-table th { background-color: #f9f9f9; font-weight: normal; }
+        table.compact-table td { font-weight: bold; }
+
+        table.belongings-print-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; }
+        table.belongings-print-table th, table.belongings-print-table td { border: 1px solid #333; padding: 4px; text-align: center; }
+        table.belongings-print-table th { background-color: #f0f0f0; }
+        table.belongings-print-table td.item-name { text-align: left; padding-left: 6px; font-weight: normal; }
+
+        .compact-avg { text-align: center; font-size: 13px; color: #333; margin: 10px 0; font-weight: bold; background-color: #fffacd; border: 1px solid #daa520; padding: 8px; border-radius: 5px; }
+        
+        .chart-container { height: 180px; width: 100%; position: relative; display: block; margin-bottom: 15px; }
+        .section-title { font-weight: bold; font-size: 14px; margin-top: 15px; margin-bottom: 4px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+        .text-box { border: 1px solid #333; padding: 10px; font-size: 13px; min-height: 50px; white-space: pre-wrap; margin-bottom: 12px; border-radius: 3px; line-height: 1.4; }
+        .family-box { min-height: 80px; }
+        
+        .media-print-area { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; justify-content: flex-start; }
+        .media-print-box { text-align: center; }
+        .media-print-box img.photo { max-height: 120px; max-width: 160px; object-fit: contain; border: 1px solid #ccc; padding: 2px; }
+        .media-print-box img.qr { width: 100px; height: 100px; border: 1px solid #ccc; padding: 2px; margin-bottom: 2px; }
+        .media-print-box .media-label { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
+
+        @media print {
+            @page { size: A4 portrait; margin: 0; } 
+            body { background-color: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            #printArea { max-width: 100% !important; margin: 0 !important; width: 210mm !important; }
+            
+            .print-page { 
+                padding: 10mm 10mm 10mm 20mm !important; 
+                box-shadow: none !important; 
+                width: 210mm !important; 
+                min-height: 297mm !important; 
+                page-break-after: always !important; 
+                margin: 0 !important; 
+                position: relative !important; 
+                box-sizing: border-box !important;
+            }
+
+            .punch-mark {
+                position: fixed !important; 
+                top: 148.5mm !important; 
+                transform: translateY(-50%) !important;
+                left: 5mm !important; 
+                color: #aaa !important; 
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .text-box, .family-box, table, tr, .chart-container, .compact-avg, .section-title, .media-print-area {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+            
+            .print-header { margin-bottom: 8px !important; padding-bottom: 4px !important; }
+            .print-header h1 { font-size: 20px !important; }
+            .facility-name { font-size: 15px !important; }
+            .print-date { margin-bottom: 4px !important; font-size: 13px !important; }
+            table.compact-table { margin-bottom: 8px !important; font-size: 11px !important; }
+            table.compact-table th, table.compact-table td { padding: 4px !important; }
+            table.belongings-print-table { margin-bottom: 8px !important; font-size: 11px !important; }
+            table.belongings-print-table th, table.belongings-print-table td { padding: 3px !important; }
+            .chart-container { height: 160px !important; margin-bottom: 10px !important; }
+            .text-box { min-height: 40px !important; margin-bottom: 8px !important; padding: 6px !important; font-size: 11px !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <h2>🖨️ 連絡帳 印刷画面（グリーンアンドリバーホーム版）</h2>
+        
+        <div class="nav-links">
+            <a href="index.html">⬅ 入力画面へ戻る</a>
+            <a href="history.html">➡ 過去データ一覧へ</a>
+        </div>
+
+        <div class="filter-panel">
+            <div class="filter-row">
+                <span class="filter-label">📌 サービス種別：</span>
+                <select id="selectServiceType" class="filter-select" onchange="onServiceTypeChanged()">
+                    <option value="デイサービス" selected>☀️ デイサービス（日帰り）</option>
+                    <option value="ショートステイ">🌙 ショートステイ（宿泊）</option>
+                </select>
+            </div>
+
+            <div class="filter-row" id="dayServiceDateRow">
+                <span class="filter-label">📅 ご利用日：</span>
+                <input type="date" id="singleDate" class="date-input" onchange="onDateChanged()">
+            </div>
+
+            <div class="filter-row" id="shortStayDateRow" style="display: none;">
+                <span class="filter-label">📅 ご宿泊期間：</span>
+                <input type="date" id="startDate" class="date-input" onchange="onDateChanged()">
+                <span style="font-weight: bold;">～</span>
+                <input type="date" id="endDate" class="date-input" onchange="onDateChanged()">
+            </div>
+        </div>
+        
+        <div class="user-select-box" id="userSelectBox" style="display: none;">
+            <div id="selectBoxTitle" style="font-weight: bold; color: #2b8a3e; margin-bottom: 15px; font-size: 18px;">
+                ☑ 印刷するお客様を選んでください
+            </div>
+            
+            <label style="font-weight: bold; border-bottom: 2px dashed #ccc; padding-bottom: 10px; display: block; cursor: pointer; margin-bottom: 15px;">
+                <input type="checkbox" id="checkAll" checked onchange="toggleAllUsers()"> すべて選択／解除
+            </label>
+            
+            <div class="user-checkbox-wrapper" id="userCheckboxes"></div>
+            
+            <button class="btn btn-batch-print" id="batchPrintBtn" onclick="loadSelectedAndPrint()">
+                📄 選んだ人の連絡帳を画面に表示する（確認用）
+            </button>
+            
+            <button class="btn btn-batch-exec" id="batchPrintExecBtn" onclick="window.print()">
+                🖨️ 確認OK！表示されている連絡帳をプリンターで一括印刷する
+            </button>
+        </div>
+    </div>
+
+    <div id="printArea"></div>
+
+    <div class="scroll-btn-group no-print" id="scrollGroup">
+        <button class="scroll-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">▲</button>
+        <button class="scroll-btn" onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})">▼</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
+            authDomain: "renrakucho-app-6b157.firebaseapp.com",
+            projectId: "renrakucho-app-6b157",
+            storageBucket: "renrakucho-app-6b157.firebasestorage.app",
+            messagingSenderId: "63418706991",
+            appId: "1:63418706991:web:43085ce485d2a3d6302ada"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        let chartInstances = [];
+        window.globalUsersData = {};
+        window.matchedRecordsGlobal = [];
+        const mediaUrlCache = new Map();
+
+        window.onload = async function() {
+            let facilityId = localStorage.getItem("currentFacilityId");
+            if (!facilityId) { window.location.replace("login.html"); return; }
+            
+            let today = new Date();
+            let year = today.getFullYear();
+            let month = String(today.getMonth() + 1).padStart(2, '0');
+            let day = String(today.getDate()).padStart(2, '0');
+            let todayStr = `${year}-${month}-${day}`;
+            
+            document.getElementById("singleDate").value = todayStr;
+            document.getElementById("startDate").value = todayStr;
+            document.getElementById("endDate").value = todayStr;
+
+            let savedServiceType = localStorage.getItem('currentServiceType');
+            if (savedServiceType) {
+                document.getElementById("selectServiceType").value = savedServiceType;
+            }
+            
+            await loadUserNames(facilityId);
+            onServiceTypeChanged();
+        };
+
+        async function loadUserNames(facilityId) {
+            try {
+                let usersRef = collection(db, "facilities", facilityId, "users");
+                let snapshot = await getDocs(usersRef);
+                window.globalUsersData = {}; 
+                snapshot.forEach((docSnap) => {
+                    window.globalUsersData[docSnap.id] = docSnap.data();
+                });
+            } catch (error) { console.log("名簿エラー:", error); }
+        }
+
+        window.onServiceTypeChanged = function() {
+            let sType = document.getElementById("selectServiceType").value;
+            localStorage.setItem('currentServiceType', sType);
+
+            if (sType === "デイサービス") {
+                document.getElementById("dayServiceDateRow").style.display = "flex";
+                document.getElementById("shortStayDateRow").style.display = "none";
+            } else {
+                document.getElementById("dayServiceDateRow").style.display = "none";
+                document.getElementById("shortStayDateRow").style.display = "flex";
+            }
+            onDateChanged();
+        };
+
+        window.onDateChanged = async function() {
+            let facilityId = localStorage.getItem("currentFacilityId");
+            let sType = document.getElementById("selectServiceType").value;
+            
+            let startDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
+            let endDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
+
+            let selectBox = document.getElementById("userSelectBox");
+            let checkboxesArea = document.getElementById("userCheckboxes");
+            
+            document.getElementById("printArea").innerHTML = "";
+            document.getElementById("batchPrintExecBtn").style.display = "none";
+            document.getElementById("batchPrintBtn").style.display = "none";
+            
+            if (!startDate || !endDate || !facilityId) {
+                selectBox.style.display = "none";
+                return;
+            }
+
+            if (startDate > endDate) {
+                selectBox.style.display = "block";
+                checkboxesArea.innerHTML = `<span style="color: red; font-weight: bold;">エラー：開始日は終了日より前の日付を指定してください。</span>`;
+                return;
+            }
+
+            selectBox.style.display = "block";
+            checkboxesArea.innerHTML = `⏳ 【${sType}】の利用データを検索中...`;
+
+            try {
+                let recordsRef = collection(db, "facilities", facilityId, "daily_records");
+                let q = query(recordsRef, where("date", ">=", startDate), where("date", "<=", endDate));
+                let snapshot = await getDocs(q);
+
+                window.matchedRecordsGlobal = [];
+                let uniqueUsers = new Set();
+
+                snapshot.forEach(docSnap => {
+                    let data = docSnap.data();
+                    let recordService = data.serviceType || "デイサービス";
+
+                    if (recordService === sType) {
+                        window.matchedRecordsGlobal.push(data);
+                        uniqueUsers.add(data.userName);
+                    }
+                });
+
+                if (window.matchedRecordsGlobal.length === 0) {
+                    let periodText = (startDate === endDate) ? `${startDate}` : `${startDate} ～ ${endDate}`;
+                    checkboxesArea.innerHTML = `<span style="color: red; font-weight: bold;">${periodText} の【${sType}】の連絡帳データはありません。</span>`;
+                    return;
+                }
+
+                checkboxesArea.innerHTML = "";
+                document.getElementById("checkAll").checked = true;
+                
+                Array.from(uniqueUsers).sort().forEach((userName) => {
+                    let lbl = document.createElement("label");
+                    lbl.className = "user-checkbox-label";
+                    lbl.innerHTML = `<input type="checkbox" class="user-chk" value="${userName}" checked> ${userName} 様`;
+                    checkboxesArea.appendChild(lbl);
+                });
+
+                document.getElementById("batchPrintBtn").style.display = "block";
+                document.getElementById("batchPrintBtn").textContent = `📄 【${sType}】の連絡帳を画面に表示する（確認用）`;
+                document.getElementById("batchPrintBtn").disabled = false;
+
+            } catch (error) {
+                checkboxesArea.innerHTML = "検索エラー: " + error.message;
+            }
+        };
+
+        window.toggleAllUsers = function() {
+            let isChecked = document.getElementById("checkAll").checked;
+            document.querySelectorAll(".user-chk").forEach(chk => chk.checked = isChecked);
+        };
+
+        window.loadSelectedAndPrint = async function() {
+            let facilityId = localStorage.getItem("currentFacilityId");
+            let sType = document.getElementById("selectServiceType").value;
+            let startDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
+            let endDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
+            let facilityName = "グリーンアンドリバーホーム";
+            let btn = document.getElementById("batchPrintBtn");
+            let printArea = document.getElementById("printArea");
+
+            let chks = document.querySelectorAll(".user-chk:checked");
+            if (chks.length === 0) {
+                alert("印刷するお客様を1名以上選んでください。");
+                return;
+            }
+            let selectedUserNames = Array.from(chks).map(chk => chk.value);
+
+            let targetRecords = window.matchedRecordsGlobal.filter(record => selectedUserNames.includes(record.userName));
+            
+            let recordsByUser = {};
+            targetRecords.forEach(r => {
+                if(!recordsByUser[r.userName]) recordsByUser[r.userName] = [];
+                recordsByUser[r.userName].push(r);
+            });
+
+            btn.disabled = true;
+            btn.textContent = `⚡ 【${sType}】の連絡帳を生成中...`;
+
+            try {
+                let yearMonth = startDate.substring(0, 7);
+                let recordsRef = collection(db, "facilities", facilityId, "daily_records");
+                let allMonthQuery = query(recordsRef, where("date", ">=", `${yearMonth}-01`), where("date", "<=", `${yearMonth}-31`));
+                let monthSnap = await getDocs(allMonthQuery);
+                
+                let monthlyDataByUser = {};
+                monthSnap.forEach(docSnap => {
+                    let d = docSnap.data();
+                    if (!monthlyDataByUser[d.userName]) monthlyDataByUser[d.userName] = [];
+                    monthlyDataByUser[d.userName].push(d);
+                });
+
+                printArea.innerHTML = "";
+                document.getElementById("batchPrintExecBtn").style.display = "none";
+                
+                chartInstances.forEach(c => c.destroy());
+                chartInstances = [];
+
+                let chartIndex = 0;
+                let sheetPromises = [];
+
+                Object.keys(recordsByUser).forEach(userName => {
+                    let userPeriodRecords = recordsByUser[userName];
+                    userPeriodRecords.sort((a, b) => a.date.localeCompare(b.date)); 
+                    let userMonthRecords = monthlyDataByUser[userName] || userPeriodRecords;
+
+                    if (sType === "ショートステイ") {
+                        sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, userPeriodRecords, userMonthRecords, chartIndex++, startDate, endDate));
+                    } else {
+                        userPeriodRecords.forEach(data => {
+                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++));
+                        });
+                    }
+                });
+
+                await Promise.all(sheetPromises);
+
+                btn.disabled = false;
+                btn.textContent = "🔄 表示を更新する";
+                document.getElementById("batchPrintExecBtn").style.display = "block";
+
+            } catch (error) {
+                alert("エラーが発生しました: " + error.message);
+                btn.disabled = false;
+                btn.textContent = `📄 【${sType}】の連絡帳を画面に表示する（確認用）`;
+            }
+        };
+
+        async function getCachedUrl(path) {
+            if (mediaUrlCache.has(path)) return mediaUrlCache.get(path);
+            try {
+                let url = await getDownloadURL(ref(storage, path));
+                mediaUrlCache.set(path, url);
+                return url;
+            } catch(e) {
+                return null;
+            }
+        }
+
+        function drawChart(canvasId, labels, temps, bpHighs, bpLows) {
+            let ctx = document.getElementById(canvasId).getContext('2d');
+            let cInstance = new Chart(ctx, {
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { type: 'line', label: '体温(℃)', data: temps, borderColor: 'red', backgroundColor: 'red', yAxisID: 'y1', spanGaps: true, pointRadius: 3, borderWidth: 2 },
+                        { type: 'bar', label: '最高血圧', data: bpHighs, backgroundColor: 'rgba(0, 0, 255, 0.5)', yAxisID: 'y2' },
+                        { type: 'bar', label: '最低血圧', data: bpLows, backgroundColor: 'rgba(91, 192, 222, 0.5)', yAxisID: 'y2' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    animation: false, 
+                    plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 10 } } } },
+                    scales: {
+                        y1: { type: 'linear', position: 'left', min: 35.0, max: 39.0, ticks: { font: { size: 9 } } },
+                        y2: { type: 'linear', position: 'right', min: 50, max: 180, grid: { drawOnChartArea: false }, ticks: { font: { size: 9 } } },
+                        x: { ticks: { font: { size: 9 } } }
+                    }
+                }
+            });
+            chartInstances.push(cInstance);
+        }
+
+        /* ★グリーンアンドリバーホーム専用ショートステイ印刷レイアウト */
+        async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate) {
+            let pageDiv = document.createElement("div");
+            pageDiv.className = "print-page";
+            let chartCanvasId = `chart_${index}`;
+
+            let firstData = periodRecords[0] || {};
+            let lastData = periodRecords[periodRecords.length - 1] || {};
+
+            let tableRows = "";
+            let commentsHtml = "";
+            let dayActivityHtml = "";
+            let labels = [], temps = [], bpHighs = [], bpLows = [];
+
+            let sumTemp = 0, sumPulse = 0, sumBpHigh = 0, sumBpLow = 0;
+            let cTemp = 0, cPulse = 0, cBpHigh = 0, cBpLow = 0;
+
+            monthRecords.forEach(d => {
+                let t = parseFloat(d.stTempIn || d.stTemp1 || d.temp1); if (!isNaN(t)) { sumTemp += t; cTemp++; }
+                let p = parseFloat(d.stPulseIn || d.stPulse || d.pulse); if (!isNaN(p)) { sumPulse += p; cPulse++; }
+                let bh = parseFloat(d.stBpHighIn || d.stBpHigh || d.bpHigh); if (!isNaN(bh)) { sumBpHigh += bh; cBpHigh++; }
+                let bl = parseFloat(d.stBpLowIn || d.stBpLow || d.bpLow); if (!isNaN(bl)) { sumBpLow += bl; cBpLow++; }
+            });
+
+            let avgTempStr = cTemp > 0 ? (sumTemp / cTemp).toFixed(1) : "--";
+            let avgPulseStr = cPulse > 0 ? Math.round(sumPulse / cPulse) : "--";
+            let avgBpHighStr = cBpHigh > 0 ? Math.round(sumBpHigh / cBpHigh) : "--";
+            let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
+
+            let birthdayBannerHtml = "";
+            let uData = window.globalUsersData[userName];
+            if (uData && uData.birthday) {
+                let birthM = parseInt(uData.birthday.substring(5, 7));
+                let birthD = parseInt(uData.birthday.substring(8, 10));
+                periodRecords.forEach(d => {
+                    let tM = parseInt(d.date.substring(5, 7));
+                    let tD = parseInt(d.date.substring(8, 10));
+                    if (birthM === tM && birthD === tD) {
+                        let birthY = parseInt(uData.birthday.substring(0, 4));
+                        let targetY = parseInt(d.date.substring(0, 4));
+                        let age = targetY - birthY;
+                        birthdayBannerHtml = `<div class="birthday-banner">🎂 期間中の ${tM}月${tD}日 は ${age} 歳のお誕生日でした！おめでとうございます！ 🎂</div>`;
+                    }
+                });
+            }
+
+            let leftItems = [
+                { name: "上着", in: firstData.num_in_1, out: lastData.num_out_1 },
+                { name: "ズボン", in: firstData.num_in_2, out: lastData.num_out_2 },
+                { name: "肌着(上)", in: firstData.num_in_3, out: lastData.num_out_3 },
+                { name: "ズボン下", in: firstData.num_in_4, out: lastData.num_out_4 },
+                { name: "靴下", in: firstData.num_in_5, out: lastData.num_out_5 },
+                { name: "パジャマ(上)", in: firstData.num_in_6, out: lastData.num_out_6 },
+                { name: "パジャマ(下)", in: firstData.num_in_7, out: lastData.num_out_7 },
+                { name: "羽織り物", in: firstData.num_in_8, out: lastData.num_out_8 },
+                { name: "タオル", in: firstData.num_in_9, out: lastData.num_out_9 },
+                { name: "カバン", in: firstData.num_in_10, out: lastData.num_out_10 },
+                { name: "歯ブラシ・ケース", in: firstData.num_in_11, out: lastData.num_out_11 },
+                { name: "歯磨き粉", in: firstData.num_in_12, out: lastData.num_out_12 },
+                { name: "コップ・ふた", in: firstData.num_in_13, out: lastData.num_out_13 },
+                { name: "義歯(上・下)", in: firstData.num_in_14, out: lastData.num_out_14 },
+                { name: "入歯洗浄剤", in: firstData.num_in_15, out: lastData.num_out_15 },
+                { name: "義歯ケース", in: firstData.num_in_16, out: lastData.num_out_16 }
+            ];
+
+            let rightItems = [
+                { name: "歩行器", in: firstData.num_in_17, out: lastData.num_out_17 },
+                { name: "ZIP・マスク", in: firstData.num_in_18, out: lastData.num_out_18 },
+                { name: "レッグウォーマー", in: firstData.num_in_19, out: lastData.num_out_19 },
+                { name: "BOXティッシュ", in: firstData.num_in_20, out: lastData.num_out_20 },
+                { name: "薬入れZIP", in: firstData.num_in_21, out: lastData.num_out_21 },
+                { name: "ZIP(小)", in: firstData.num_in_22, out: lastData.num_out_22 },
+                { name: "ZIP(中)", in: firstData.num_in_23, out: lastData.num_out_23 },
+                { name: firstData.free_item_1 || "その他", in: firstData.num_in_free1, out: lastData.num_out_free1 },
+                { name: firstData.free_item_2 || "その他", in: firstData.num_in_free2, out: lastData.num_out_free2 },
+                { name: firstData.free_item_3 || "その他", in: firstData.num_in_free3, out: lastData.num_out_free3 },
+                { name: firstData.free_item_4 || "その他", in: firstData.num_in_free4, out: lastData.num_out_free4 },
+                { name: firstData.free_item_5 || "その他", in: firstData.num_in_free5, out: lastData.num_out_free5 },
+                { name: firstData.free_item_6 || "その他", in: firstData.num_in_free6, out: lastData.num_out_free6 },
+                { name: firstData.free_item_7 || "その他", in: firstData.num_in_free7, out: lastData.num_out_free7 },
+                { name: firstData.free_item_8 || "その他", in: firstData.num_in_free8, out: lastData.num_out_free8 },
+                { name: firstData.free_item_9 || "その他", in: firstData.num_in_free9, out: lastData.num_out_free9 }
+            ];
+
+            let belongingsTableHtml = "";
+            let maxRows = Math.max(leftItems.length, rightItems.length);
+            for(let r=0; r<maxRows; r++) {
+                let l = leftItems[r] || { name: "", in: "", out: "" };
+                let rt = rightItems[r] || { name: "", in: "", out: "" };
+                
+                let lHtml = l.name ? `<td class="item-name">${l.name}</td><td>${l.in || ''}</td><td>${l.out || ''}</td>` : `<td colspan="3" style="border: none;"></td>`;
+                let rHtml = rt.name ? `<td class="item-name">${rt.name}</td><td>${rt.in || ''}</td><td>${rt.out || ''}</td>` : `<td colspan="3" style="border: none;"></td>`;
+                
+                belongingsTableHtml += `<tr>${lHtml}${rHtml}</tr>`;
+            }
+
+            periodRecords.forEach(d => {
+                let md = d.date.substring(5).replace('-', '/'); 
+                let tM = d.stTempIn || d.stTemp1 || d.temp1 || '--';
+                let p = d.stPulseIn || d.stPulse || d.pulse || '--';
+                let bp = (d.stBpHighIn || d.stBpHigh || d.bpHigh || '--') + '/' + (d.stBpLowIn || d.stBpLow || d.bpLow || '--');
+                if (bp === '--/--') bp = '--';
+                let mB = d.stMealBreakfast || '--';
+                let mL = d.stMealLunch || d.mealMain || '--';
+                let mD = d.stMealDinner || '--';
+                let bath = d.stBath || d.bath || '--';
+                if(d.stBathReason || d.bathReason) bath += `<br><span style="font-size:10px;">(${d.stBathReason || d.bathReason})</span>`;
+
+                let bStr = "--";
+                if (d.bowel === "なし") bStr = "なし";
+                else if (d.bowel === "あり") {
+                    bStr = `${d.bowelCount || ""}<br>${d.bowelCondition || ""}`;
+                }
+
+                tableRows += `
+                <tr>
+                    <td>${md}</td>
+                    <td>${tM}℃</td>
+                    <td>${p}</td>
+                    <td>${bp}</td>
+                    <td>${mB} / ${mL} / ${mD}</td>
+                    <td>${bath}</td>
+                    <td>${bStr}</td>
+                </tr>
+                `;
+
+                if (d.message) {
+                    commentsHtml += `<div style="margin-bottom:6px;"><b>【${md}】</b> ${d.message.replace(/\n/g, '<br>')}</div>`;
+                }
+                
+                let act = "";
+                if(d.stNightState) act += `[夜間] ${d.stNightState}<br>`;
+                if(d.stDayActivity) act += `[日中] ${d.stDayActivity}`;
+                if(act) {
+                    dayActivityHtml += `<div style="margin-bottom:6px;"><b>【${md}】</b><br>${act}</div>`;
+                }
+
+                labels.push(parseInt(d.date.substring(8, 10), 10) + "日");
+                let t = parseFloat(d.stTempIn || d.stTemp1 || d.temp1); temps.push(!isNaN(t) ? t : null);
+                let bh = parseFloat(d.stBpHighIn || d.stBpHigh || d.bpHigh); bpHighs.push(!isNaN(bh) ? bh : null);
+                let bl = parseFloat(d.stBpLowIn || d.stBpLow || d.bpLow); bpLows.push(!isNaN(bl) ? bl : null);
+            });
+
+            let mediaPromises = [];
+            periodRecords.forEach(d => {
+                let md = d.date.substring(5).replace('-', '/');
+                let iCount = d.imageCount || 0;
+                for (let i = 1; i <= iCount; i++) {
+                    mediaPromises.push((async () => {
+                        let url = await getCachedUrl(`images/${userName}/image_${i}.jpg`);
+                        if (url) return `<div class="media-print-box"><div class="media-label">📷 ${md}</div><img src="${url}" class="photo"></div>`;
+                        return "";
+                    })());
+                }
+                let vCount = d.videoCount || 0;
+                for (let i = 1; i <= vCount; i++) {
+                    mediaPromises.push((async () => {
+                        let url = await getCachedUrl(`videos/${userName}/${d.date}_video_${i}.mp4`);
+                        if (url) {
+                            let qr = new QRious({ value: url, size: 150 });
+                            return `<div class="media-print-box"><div class="media-label">🎥 ${md}</div><img src="${qr.toDataURL()}" class="qr"><br></div>`;
+                        }
+                        return "";
+                    })());
+                }
+            });
+            let mediaResults = await Promise.all(mediaPromises);
+            let mediaHtml = mediaResults.join("");
+
+            let chkNoChangeStr = firstData.chkNoChange ? "☑ お変わりなく過ごされています" : "□ お変わりなく過ごされています";
+
+            pageDiv.innerHTML = `
+                <div class="punch-mark">▷</div>
+                
+                <div class="print-header">
+                    <div class="facility-name">${facilityName}</div>
+                    <h1>ショートステイ ご利用報告書</h1>
+                </div>
+
+                ${birthdayBannerHtml}
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h2 style="font-size: 18px; margin: 0;">お名前： ${userName} 様</h2>
+                    <div class="print-date" style="margin: 0;">ご利用期間： ${startDate} ～ ${endDate}</div>
+                </div>
+
+                <table class="compact-table" style="margin-bottom: 8px;">
+                    <tr>
+                        <th width="20%">入所時 血圧</th><td width="30%">${(firstData.stBpHighIn || firstData.stBpLowIn) ? `${firstData.stBpHighIn || ''}/${firstData.stBpLowIn || ''}` : '--'}</td>
+                        <th width="20%">入所時 脈拍</th><td width="30%">${firstData.stPulseIn ? firstData.stPulseIn + ' 回/分' : '--'}</td>
+                        <th width="20%">入所時 体温</th><td width="30%">${firstData.stTempIn ? firstData.stTempIn + ' ℃' : '--'}</td>
+                    </tr>
+                </table>
+
+                <div class="section-title" style="margin-top: 5px;">■ 持参品・持ち物チェック</div>
+                <table class="belongings-print-table">
+                    <tr>
+                        <th width="26%">持参品</th><th width="12%">入所(数量)</th><th width="12%">退所(数量)</th>
+                        <th width="26%">持参品</th><th width="12%">入所(数量)</th><th width="12%">退所(数量)</th>
+                    </tr>
+                    ${belongingsTableHtml}
+                </table>
+
+                ${firstData.stBelongingMemo ? `<div style="font-size:12px; margin-bottom:8px;"><b>【持ち物メモ】</b> ${firstData.stBelongingMemo}</div>` : ''}
+
+                <table class="compact-table" style="margin-bottom: 12px; font-size: 11px;">
+                    <tr>
+                        <th width="16%">最終入浴日</th><td width="17%">${firstData.lastBathDate || '--'}</td>
+                        <th width="16%">最終排便日</th><td width="17%">${firstData.lastBowelDate || '--'}</td>
+                        <th width="16%">内服薬残り</th><td width="18%">${firstData.medRemain || '--'} (Ns: ${firstData.nsSign || '--'})</td>
+                    </tr>
+                    <tr>
+                        <th>入所時確認者</th><td colspan="2">${firstData.checkStaffIn || '--'}</td>
+                        <th>退所時確認者</th><td colspan="2">${firstData.checkStaffOut || '--'}</td>
+                    </tr>
+                </table>
+
+                <div class="section-title">■ 期間中のバイタル・お食事・生活記録</div>
+                <table class="compact-table">
+                    <tr>
+                        <th width="12%">日付</th><th width="15%">体温</th><th width="10%">脈拍</th><th width="15%">血圧</th><th width="24%">食事(朝/昼/夕)</th><th width="12%">入浴</th><th width="12%">排泄</th>
+                    </tr>
+                    ${tableRows}
+                </table>
+
+                <div class="compact-avg">
+                    📊 ご利用日数の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="${chartCanvasId}"></canvas>
+                </div>
+
+                <div class="section-title">■ ご利用中の活動・夜間のご様子</div>
+                <div class="text-box">${dayActivityHtml || '特になし'}</div>
+
+                <div class="section-title">■ ご利用いただきありがとうございます（連絡事項）</div>
+                <div style="font-weight:bold; font-size:13px; margin: 4px 0;">${chkNoChangeStr}</div>
+                <div class="text-box">${commentsHtml || firstData.message || '特になし'}</div>
+
+                <div class="section-title">■ 施設でのご様子 (写真・動画)</div>
+                <div class="media-print-area">${mediaHtml}</div>
+            `;
+
+            container.appendChild(pageDiv);
+            drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
+        }
+
+        /* デイサービス用レイアウト（デイサービス印刷時用） */
+        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index) {
+            let pageDiv = document.createElement("div");
+            pageDiv.className = "print-page";
+
+            let trainAct = "";
+            if (data.training) trainAct += "【機能訓練】\n" + data.training + "\n\n";
+            if (data.activity) trainAct += "【その他の活動】\n" + data.activity;
+
+            let cloned = [...monthRecords].sort((a, b) => a.date.localeCompare(b.date));
+            let sumTemp = 0, sumPulse = 0, sumBpHigh = 0, sumBpLow = 0;
+            let cTemp = 0, cPulse = 0, cBpHigh = 0, cBpLow = 0;
+            let labels = [], temps = [], bpHighs = [], bpLows = [];
+
+            cloned.forEach(d => {
+                labels.push(parseInt(d.date.substring(8, 10), 10) + "日");
+                let t = parseFloat(d.temp1); if (!isNaN(t)) { sumTemp += t; cTemp++; temps.push(t); } else { temps.push(null); }
+                let p = parseFloat(d.pulse); if (!isNaN(p)) { sumPulse += p; cPulse++; }
+                let bh = parseFloat(d.bpHigh); if (!isNaN(bh)) { sumBpHigh += bh; cBpHigh++; bpHighs.push(bh); } else { bpHighs.push(null); }
+                let bl = parseFloat(d.bpLow); if (!isNaN(bl)) { sumBpLow += bl; cBpLow++; bpLows.push(bl); } else { bpLows.push(null); }
+            });
+
+            let avgTempStr = cTemp > 0 ? (sumTemp / cTemp).toFixed(1) : "--";
+            let avgPulseStr = cPulse > 0 ? Math.round(sumPulse / cPulse) : "--";
+            let avgBpHighStr = cBpHigh > 0 ? Math.round(sumBpHigh / cBpHigh) : "--";
+            let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
+
+            let chartCanvasId = `chart_${index}`;
+
+            let mediaPromises = [];
+            let iCount = data.imageCount || 0;
+            for (let i = 1; i <= iCount; i++) {
+                mediaPromises.push((async () => {
+                    let url = await getCachedUrl(`images/${data.userName}/image_${i}.jpg`);
+                    if (url) return `<div class="media-print-box"><div class="media-label">📷 本日の写真</div><img src="${url}" class="photo"></div>`;
+                    return "";
+                })());
+            }
+
+            let vCount = data.videoCount || 0;
+            for (let i = 1; i <= vCount; i++) {
+                mediaPromises.push((async () => {
+                    let url = await getCachedUrl(`videos/${data.userName}/${data.date}_video_${i}.mp4`);
+                    if (url) {
+                        let qr = new QRious({ value: url, size: 150 });
+                        return `<div class="media-print-box"><div class="media-label">🎥 動画 (QR読取)</div><img src="${qr.toDataURL()}" class="qr"><br></div>`;
+                    }
+                    return "";
+                })());
+            }
+
+            let mediaResults = await Promise.all(mediaPromises);
+            let mediaHtml = mediaResults.join("");
+
+            let uData = window.globalUsersData[data.userName];
+            let excretionRow = "";
+            if (uData && uData.needExcretion) {
+                let bStr = "未入力";
+                if (data.bowel === "なし") bStr = "なし";
+                else if (data.bowel === "あり") bStr = `あり （${data.bowelCount || "回数不明"} ／ ${data.bowelCondition || "状態不明"}）`;
+                excretionRow = `<tr><th>排泄記録</th><td colspan="7">${bStr}</td></tr>`;
+            }
+
+            pageDiv.innerHTML = `
+                <div class="punch-mark">▷</div>
+                <div class="print-header">
+                    <div class="facility-name">${facilityName}</div>
+                    <h1>本日の連絡帳</h1>
+                </div>
+                <div class="print-date">📓 記録日： ${data.date}</div>
+                <table class="compact-table">
+                    <tr>
+                        <th width="15%">お名前</th><td width="20%">${data.userName} 様</td>
+                        <th width="15%">体温(来所時)</th><td width="15%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td>
+                        <th width="15%">体温(途中)</th><td width="20%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td>
+                    </tr>
+                    <tr>
+                        <th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td>
+                        <th>酸素飽和度</th><td>${data.spo2 ? data.spo2 + '%' : '未入力'}</td>
+                        <th>血圧</th><td>${(data.bpHigh || data.bpLow) ? (data.bpHigh || '') + '/' + (data.bpLow || '') : '未入力'}</td>
+                    </tr>
+                </table>
+                <table class="compact-table">
+                    <tr>
+                        <th width="12%">食事(主食)</th><td width="13%">${data.mealMain || '未入力'}</td>
+                        <th width="12%">食事(副食)</th><td width="13%">${data.mealSub || '未入力'}</td>
+                        <th width="10%">水分</th><td width="15%">${data.water || '未入力'}</td>
+                        <th width="10%">口腔ケア</th><td width="15%">${data.oralCare || '未実施'}</td>
+                    </tr>
+                    <tr>
+                        <th>入浴</th><td colspan="3">${data.bath || '未入力'} <span style="font-size:10px;">${data.bathReason ? '(' + data.bathReason + ')' : ''}</span></td>
+                        <th>服薬・処置</th><td colspan="3">${data.medication || 'なし'}</td>
+                    </tr>
+                    ${excretionRow}
+                </table>
+                <div class="compact-avg">
+                    📊 この1ヶ月の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分
+                </div>
+                <div class="chart-container">
+                    <canvas id="${chartCanvasId}"></canvas>
+                </div>
+                <div class="section-title">■ 機能訓練・活動の様子</div>
+                <div class="text-box">${trainAct || '特になし'}</div>
+                <div class="section-title">■ お客様への御連絡事項</div>
+                <div class="text-box">${data.message || ''}</div>
+                <div class="section-title">■ 本日のご様子 (写真・動画)</div>
+                <div class="media-print-area">${mediaHtml}</div>
+            `;
+
+            container.appendChild(pageDiv);
+            drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
+        }
+    </script>
+</body>
+</html>
