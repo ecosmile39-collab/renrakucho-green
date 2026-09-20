@@ -173,13 +173,11 @@
                 </select>
             </div>
 
-            <!-- ★ デイサービスを選んだ時はこちらが表示されます（1日だけ） -->
             <div class="filter-row" id="dayServiceDateRow">
                 <span class="filter-label">📅 ご利用日：</span>
                 <input type="date" id="singleDate" class="date-input" onchange="onDateChanged()">
             </div>
 
-            <!-- ★ ショートステイを選んだ時はこちらが自動で表示されます（開始日と終了日） -->
             <div class="filter-row" id="shortStayDateRow" style="display: none;">
                 <span class="filter-label">📅 ご宿泊期間：</span>
                 <input type="date" id="startDate" class="date-input" onchange="onDateChanged()">
@@ -239,7 +237,6 @@
         window.matchedRecordsGlobal = [];
         const mediaUrlCache = new Map();
 
-        // 画面が開いたときに一番最初に動くプログラム
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; }
@@ -260,8 +257,6 @@
             }
             
             await loadUserNames(facilityId);
-            
-            // ★ ここで「デイかショートか」を判定して、正しい日付枠を自動で表示します！
             onServiceTypeChanged();
         };
 
@@ -276,12 +271,10 @@
             } catch (error) { console.log("名簿エラー:", error); }
         }
 
-        // サービス種別を切り替えたときに動くプログラム
         window.onServiceTypeChanged = function() {
             let sType = document.getElementById("selectServiceType").value;
             localStorage.setItem('currentServiceType', sType);
 
-            // デイサービスなら「ご利用日（1つ）」、ショートステイなら「ご宿泊期間（2つ）」に切り替えます
             if (sType === "デイサービス") {
                 document.getElementById("dayServiceDateRow").style.display = "flex";
                 document.getElementById("shortStayDateRow").style.display = "none";
@@ -289,12 +282,9 @@
                 document.getElementById("dayServiceDateRow").style.display = "none";
                 document.getElementById("shortStayDateRow").style.display = "flex";
             }
-            
-            // 切り替わったら、自動的にデータを検索し直します
             onDateChanged();
         };
 
-        // 日付が変わったときにデータを検索するプログラム
         window.onDateChanged = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             let sType = document.getElementById("selectServiceType").value;
@@ -582,8 +572,11 @@
                 let md = d.date.substring(5).replace('-', '/'); 
                 let tM = d.stTempIn || d.stTemp1 || d.temp1 || '--';
                 let p = d.stPulseIn || d.stPulse || d.pulse || '--';
-                let bp = (d.stBpHighIn || d.stBpHigh || d.bpHigh || '--') + '/' + (d.stBpLowIn || d.stBpLow || d.bpLow || '--');
-                if (bp === '--/--') bp = '--';
+                
+                let bpHigh = d.stBpHighIn || d.stBpHigh || d.bpHigh ? (d.stBpHighIn || d.stBpHigh || d.bpHigh) : '';
+                let bpLow = d.stBpLowIn || d.stBpLow || d.bpLow ? (d.stBpLowIn || d.stBpLow || d.bpLow) : '';
+                let bp = (bpHigh || bpLow) ? bpHigh + '/' + bpLow : '--';
+                
                 let mB = d.stMealBreakfast || '--';
                 let mL = d.stMealLunch || d.mealMain || '--';
                 let mD = d.stMealDinner || '--';
@@ -653,6 +646,20 @@
 
             let chkNoChangeStr = firstData.chkNoChange ? "☑ お変わりなく過ごされています" : "□ お変わりなく過ごされています";
 
+            let bpIn = '--';
+            if (firstData.stBpHighIn || firstData.stBpLowIn) {
+                let h = firstData.stBpHighIn ? firstData.stBpHighIn : '';
+                let l = firstData.stBpLowIn ? firstData.stBpLowIn : '';
+                bpIn = h + '/' + l;
+            }
+
+            let bpOut = '--';
+            if (lastData.stBpHighOut || lastData.stBpLowOut) {
+                let h = lastData.stBpHighOut ? lastData.stBpHighOut : '';
+                let l = lastData.stBpLowOut ? lastData.stBpLowOut : '';
+                bpOut = h + '/' + l;
+            }
+
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 
@@ -674,14 +681,14 @@
                         <th width="12%">体温</th><td width="10%">${firstData.stTempIn ? firstData.stTempIn + '℃' : '--'}</td>
                         <th width="12%">脈拍</th><td width="10%">${firstData.stPulseIn ? firstData.stPulseIn + '回' : '--'}</td>
                         <th width="12%">SpO2</th><td width="10%">${firstData.stSpo2In ? firstData.stSpo2In + '%' : '--'}</td>
-                        <th width="12%">血圧</th><td width="10%">${(firstData.stBpHighIn || firstData.stBpLowIn) ? `${firstData.stBpHighIn \vert{}\vert{} ''}/${firstData.stBpLowIn || ''}` : '--'}</td>
+                        <th width="12%">血圧</th><td width="10%">${bpIn}</td>
                     </tr>
                     <tr>
                         <th>【退所時】</th>
                         <th>体温</th><td>${lastData.stTempOut ? lastData.stTempOut + '℃' : '--'}</td>
                         <th>脈拍</th><td>${lastData.stPulseOut ? lastData.stPulseOut + '回' : '--'}</td>
                         <th>SpO2</th><td>${lastData.stSpo2Out ? lastData.stSpo2Out + '%' : '--'}</td>
-                        <th>血圧</th><td>${(lastData.stBpHighOut || lastData.stBpLowOut) ? `${lastData.stBpHighOut \vert{}\vert{} ''}/${lastData.stBpLowOut || ''}` : '--'}</td>
+                        <th>血圧</th><td>${bpOut}</td>
                     </tr>
                 </table>
 
@@ -801,6 +808,13 @@
                 excretionRow = `<tr><th>排泄記録</th><td colspan="7">${bStr}</td></tr>`;
             }
 
+            let bpStrDay = '--';
+            if (data.bpHigh || data.bpLow) {
+                let h = data.bpHigh ? data.bpHigh : '';
+                let l = data.bpLow ? data.bpLow : '';
+                bpStrDay = h + '/' + l;
+            }
+
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 <div class="print-header">
@@ -817,7 +831,7 @@
                     <tr>
                         <th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td>
                         <th>酸素飽和度</th><td>${data.spo2 ? data.spo2 + '%' : '未入力'}</td>
-                        <th>血圧</th><td>${(data.bpHigh || data.bpLow) ? (data.bpHigh || '') + '/' + (data.bpLow || '') : '未入力'}</td>
+                        <th>血圧</th><td>${bpStrDay}</td>
                     </tr>
                 </table>
                 <table class="compact-table">
