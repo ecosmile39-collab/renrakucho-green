@@ -1,6 +1,3 @@
-
-
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -1554,7 +1551,8 @@
 
             let sType = document.getElementById("serviceType").value;
 
-            if (!confirm(`🧪 テスト用サポート\n${date} を基準に、「${sType}」の10名様 × 10日分のダミーデータを一括作成しますか？\n\n・10名の名簿登録\n・持ち物チェック・最終確認項目\n・バイタル、お食事、生活記録\n・サンプル写真\n\nがすべて自動で作成されます！`)) return;
+            // ★ 確認メッセージもわかりやすくしました！
+            if (!confirm(`🧪 テスト用サポート\n${date} を基準に、「${sType}」の10名様 × 10日分のダミーデータを一括作成しますか？\n\n※データが混ざって消えないよう、\n・デイサービス：今日から過去10日分\n・ショートステイ：さらにその前の10日分\nとして作成されます！`)) return;
 
             let btn = document.getElementById("btnGenerateDummy");
             btn.disabled = true;
@@ -1600,7 +1598,11 @@
                     let dayPromises = [];
                     for (let dOffset = 0; dOffset < 10; dOffset++) {
                         let targetDateObj = new Date(curD);
-                        targetDateObj.setDate(targetDateObj.getDate() - dOffset);
+                        
+                        // ★ ここが魔法のずらしコードです！ショートステイはさらに10日過去になります
+                        let offsetDays = (sType === "デイサービス") ? dOffset : dOffset + 10;
+                        targetDateObj.setDate(targetDateObj.getDate() - offsetDays);
+                        
                         let py = targetDateObj.getFullYear();
                         let pm = String(targetDateObj.getMonth() + 1).padStart(2, '0');
                         let pd = String(targetDateObj.getDate()).padStart(2, '0');
