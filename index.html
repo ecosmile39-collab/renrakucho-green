@@ -929,7 +929,6 @@
                 document.getElementById("message").value = d.message || "";
                 if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = d.familyMessage || "";
                 
-                // ★ 施設PR枠を復元
                 if(document.getElementById("facilityPR")) document.getElementById("facilityPR").value = d.facilityPR || "";
             }
             window.checkTemp('temp1', 'temp1Alert');
@@ -1046,8 +1045,6 @@
 
                     document.getElementById("message").value = data.message || "";
                     if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = data.familyMessage || "";
-                    
-                    // ★ 施設PR枠を金庫から復元
                     if(document.getElementById("facilityPR")) document.getElementById("facilityPR").value = data.facilityPR || "";
                 }
             } catch (e) { console.log(e); }
@@ -1218,7 +1215,6 @@
                 facilityId: facilityId, userName: userName, date: date, serviceType: sType,
                 message: document.getElementById("message").value,
                 familyMessage: document.getElementById("familyMessage").value,
-                /* ★ 施設PR枠の内容を保存データに追加 */
                 facilityPR: document.getElementById("facilityPR") ? document.getElementById("facilityPR").value : "",
                 imageCount: finalImageCount, videoCount: window.currentVideoCount,
                 imageFiles: imageFiles, videoFiles: videoFiles
@@ -1668,7 +1664,7 @@
                                 training: "動作訓練（立ち上がり等）、歩行訓練", activity: "朝の会、レクリエーション（塗り絵、脳トレ）",
                                 message: "終始おだやかな表情で過ごされていました。",
                                 familyMessage: "", 
-                                facilityPR: "季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。", /* ★ テストデータにPR文章を自動セット */
+                                facilityPR: "", /* ★ テストデータは空欄にしておきます */
                                 imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0
                             }));
                         } else {
@@ -1686,7 +1682,7 @@
                                 stDayActivity: "デイルームにて他のご入所者様と談笑され、穏やかに過ごされました。",
                                 message: "終始おだやかな表情で過ごされていました。",
                                 familyMessage: "", 
-                                facilityPR: "季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。",
+                                facilityPR: "",
                                 imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0,
                                 num_in_1: "1", num_out_1: "1", num_in_2: "1", num_out_2: "1", num_in_3: "2", num_out_3: "2",
                                 num_in_4: "2", num_out_4: "2", num_in_5: "2", num_out_5: "2", num_in_6: "1", num_out_6: "1",
