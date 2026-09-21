@@ -101,7 +101,7 @@
         .print-only { display: none; }
 
         /* ==========================================
-           🖨️ 印刷時専用のスタイル（印刷プレビュー用）
+           🖨️ 印刷時専用のスタイル（印刷プレビュー時）
            ========================================== */
         @media print {
             @page { size: A4 portrait; margin: 0; } 
@@ -147,20 +147,16 @@
             table.belongings-print-table { margin-bottom: 4px !important; font-size: 10.5px !important; }
             table.belongings-print-table th, table.belongings-print-table td { padding: 2px !important; }
             
-            /* ★ ショートステイだけグラフを隠します */
             .st-chart { display: none !important; }
             .admission-vitals-table { display: none !important; } 
             
-            /* ★ デイサービスのグラフは印刷時も高さを確保してしっかり表示！ */
             .ds-chart { display: block !important; height: 130px !important; margin-bottom: 4px !important; }
-            /* ブラウザの白紙化バグを防ぐため、印刷プレビュー時は画像側を表示 */
             .ds-chart canvas { display: none !important; }
             .ds-chart img.chart-print-img { display: block !important; }
 
             .compact-avg { margin: 4px 0 !important; padding: 3px !important; font-size: 10.5px !important; }
 
             .text-box { min-height: 20px !important; margin-bottom: 4px !important; padding: 3px !important; font-size: 10.5px !important; }
-            /* ★ お客様からの御連絡事項枠は、手書きできるように十分な高さを確保！ */
             .family-box { min-height: 60px !important; }
 
             .section-title { margin-top: 5px !important; margin-bottom: 2px !important; font-size: 11.5px !important; }
@@ -381,7 +377,7 @@
             let sType = document.getElementById("selectServiceType").value;
             let startDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
             let endDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
-            let facilityName = "グリーンアンドリバーホーム";
+            let facilityName = localStorage.getItem("currentFacilityName") || "施設名未設定";
             let btn = document.getElementById("batchPrintBtn");
             let printArea = document.getElementById("printArea");
 
@@ -490,15 +486,14 @@
             });
             chartInstances.push(cInstance);
 
-            /* ★ ここが魔法の処理！ 印刷プレビューで消えないように、グラフを画像化して配置します */
-            try {
-                let imgData = cInstance.toBase64Image();
-                let img = document.createElement("img");
-                img.src = imgData;
-                img.className = "chart-print-img";
-                img.style.cssText = "display: none; width: 100%; height: 100%; object-fit: contain;";
-                canvas.parentNode.appendChild(img);
-            } catch(e) {}
+            setTimeout(() => {
+                try {
+                    let imgEl = document.getElementById(canvasId + '_print_img');
+                    if (imgEl) {
+                        imgEl.src = cInstance.toBase64Image();
+                    }
+                } catch(e) {}
+            }, 100);
         }
 
         async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate) {
@@ -695,6 +690,17 @@
                 finalMessageHtml = `<div class="text-box">特になし</div>`;
             }
 
+            let familyMessageText = lastData.familyMessage ? lastData.familyMessage.replace(/\n/g, '<br>') : '';
+            let prHtml = "";
+            if (lastData.facilityPR) {
+                let prText = lastData.facilityPR.replace(/\n/g, '<br>');
+                prHtml = `
+                <div class="print-only" style="margin-top: 15px; border: 2px dashed #2b8a3e; padding: 10px; border-radius: 5px; text-align: center; color: #2b8a3e; font-size: 12px;">
+                    <strong>【${facilityName}からのお知らせ】</strong><br>
+                    ${prText}
+                </div>`;
+            }
+
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 
@@ -764,16 +770,22 @@
 
                 <div class="chart-container st-chart">
                     <canvas id="${chartCanvasId}"></canvas>
+                    <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 130px; object-fit: contain;">
                 </div>
 
                 <div class="section-title">■ ご利用中の活動・夜間のご様子</div>
                 <div class="text-box">${dayActivityHtml || '特になし'}</div>
 
-                <div class="section-title">■ ご利用いただきありがとうございます（連絡事項）</div>
+                <div class="section-title">■ お客様への御連絡事項</div>
                 ${finalMessageHtml}
+                
+                <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 10px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
+                <div class="text-box family-box">${familyMessageText}</div>
 
                 <div class="section-title">■ 施設でのご様子 (写真・動画)</div>
                 <div class="media-print-area">${mediaHtml}</div>
+                
+                ${prHtml}
             `;
 
             container.appendChild(pageDiv);
@@ -850,6 +862,15 @@
             }
 
             let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
+            let prHtml = "";
+            if (data.facilityPR) {
+                let prText = data.facilityPR.replace(/\n/g, '<br>');
+                prHtml = `
+                <div class="print-only" style="margin-top: 15px; border: 2px dashed #2b8a3e; padding: 10px; border-radius: 5px; text-align: center; color: #2b8a3e; font-size: 12px;">
+                    <strong>【${facilityName}からのお知らせ】</strong><br>
+                    ${prText}
+                </div>`;
+            }
 
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
@@ -889,6 +910,7 @@
                 
                 <div class="chart-container ds-chart">
                     <canvas id="${chartCanvasId}"></canvas>
+                    <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 130px; object-fit: contain;">
                 </div>
                 
                 <div class="section-title">■ 機能訓練・活動の様子</div>
@@ -903,10 +925,7 @@
                 <div class="section-title">■ 本日のご様子 (写真・動画)</div>
                 <div class="media-print-area">${mediaHtml}</div>
                 
-                <div class="print-only" style="margin-top: 15px; border: 2px dashed #2b8a3e; padding: 10px; border-radius: 5px; text-align: center; color: #2b8a3e; font-size: 12px;">
-                    <strong>【グリーンアンドリバーホームからのお知らせ】</strong><br>
-                    季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。
-                </div>
+                ${prHtml}
             `;
 
             container.appendChild(pageDiv);
