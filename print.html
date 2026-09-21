@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>連絡帳 印刷画面（グリーンアンドリバーホーム版）</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- ★ グラフの外部ツールを安定して動くバージョンに固定しました！ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         body { font-family: sans-serif; background-color: #f0f8ff; padding: 20px; margin: 0; color: #333; }
@@ -98,6 +99,8 @@
         .media-print-box img.qr { width: 100px; height: 100px; border: 1px solid #ccc; padding: 2px; margin-bottom: 2px; }
         .media-print-box .media-label { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
 
+        .print-only { display: none; }
+
         /* ==========================================
            🖨️ 印刷時専用のスタイル（A4 1枚に収める工夫）
            ========================================== */
@@ -107,6 +110,8 @@
             .no-print { display: none !important; }
             #printArea { max-width: 100% !important; margin: 0 !important; width: 210mm !important; }
             
+            .print-only { display: block !important; }
+
             .print-page { 
                 padding: 8mm 10mm 8mm 15mm !important; 
                 box-shadow: none !important; 
@@ -143,10 +148,13 @@
             table.belongings-print-table { margin-bottom: 6px !important; font-size: 11px !important; }
             table.belongings-print-table th, table.belongings-print-table td { padding: 2px !important; }
             
-            .chart-container { display: none !important; }
+            /* ★ グラフを全部消してしまう古い設定を削除し、ショートステイだけ消すようにしました！ */
+            .st-chart { display: none !important; }
             .admission-vitals-table { display: none !important; } 
             
             .text-box { min-height: 25px !important; margin-bottom: 6px !important; padding: 4px !important; font-size: 11px !important; }
+            .family-box { min-height: 70px !important; }
+
             .section-title { margin-top: 8px !important; margin-bottom: 2px !important; font-size: 13px !important; }
             .birthday-banner { margin-bottom: 4px !important; padding: 4px !important; font-size: 12px !important; }
             .media-print-box img.photo { max-height: 100px !important; max-width: 140px !important; }
@@ -733,7 +741,7 @@
                     📊 ご利用日数の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分
                 </div>
 
-                <div class="chart-container">
+                <div class="chart-container st-chart">
                     <canvas id="${chartCanvasId}"></canvas>
                 </div>
 
@@ -820,7 +828,9 @@
                 bpStrDay = h + '/' + l;
             }
 
-            /* ★ ここが修正ポイントです！ お客様への御連絡事項の右側に感謝のメッセージを追加しました。 */
+            /* ★ ここに「お客様からの御連絡事項」を表示する枠の魔法を追加しています */
+            let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
+
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 <div class="print-header">
@@ -856,15 +866,27 @@
                 <div class="compact-avg">
                     📊 この1ヶ月の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分
                 </div>
-                <div class="chart-container">
+                
+                <div class="chart-container ds-chart">
                     <canvas id="${chartCanvasId}"></canvas>
                 </div>
+                
                 <div class="section-title">■ 機能訓練・活動の様子</div>
                 <div class="text-box">${trainAct || '特になし'}</div>
+                
                 <div class="section-title">■ お客様への御連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
                 <div class="text-box">${data.message || '特になし'}</div>
+                
+                <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 10px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
+                <div class="text-box family-box">${familyMessageText}</div>
+
                 <div class="section-title">■ 本日のご様子 (写真・動画)</div>
                 <div class="media-print-area">${mediaHtml}</div>
+                
+                <div class="print-only" style="margin-top: 15px; border: 2px dashed #2b8a3e; padding: 10px; border-radius: 5px; text-align: center; color: #2b8a3e; font-size: 12px;">
+                    <strong>【グリーンアンドリバーホームからのお知らせ】</strong><br>
+                    季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。
+                </div>
             `;
 
             container.appendChild(pageDiv);
