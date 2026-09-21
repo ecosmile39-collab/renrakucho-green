@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>連絡帳 印刷画面（グリーンアンドリバーホーム版）</title>
-    <!-- ★ グラフの外部ツールを安定して動くバージョンに固定しました！ -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
@@ -88,21 +87,21 @@
 
         .compact-avg { text-align: center; font-size: 13px; color: #333; margin: 10px 0; font-weight: bold; background-color: #fffacd; border: 1px solid #daa520; padding: 8px; border-radius: 5px; }
         
-        .chart-container { height: 180px; width: 100%; position: relative; display: block; margin-bottom: 15px; }
-        .section-title { font-weight: bold; font-size: 14px; margin-top: 15px; margin-bottom: 4px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
-        .text-box { border: 1px solid #333; padding: 10px; font-size: 13px; min-height: 50px; white-space: pre-wrap; margin-bottom: 12px; border-radius: 3px; line-height: 1.4; }
-        .family-box { min-height: 80px; }
+        .chart-container { height: 160px; width: 100%; position: relative; display: block; margin-bottom: 10px; }
+        .section-title { font-weight: bold; font-size: 14px; margin-top: 12px; margin-bottom: 4px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+        .text-box { border: 1px solid #333; padding: 8px; font-size: 13px; min-height: 40px; white-space: pre-wrap; margin-bottom: 8px; border-radius: 3px; line-height: 1.4; }
+        .family-box { min-height: 70px; }
         
         .media-print-area { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; justify-content: flex-start; }
         .media-print-box { text-align: center; }
-        .media-print-box img.photo { max-height: 120px; max-width: 160px; object-fit: contain; border: 1px solid #ccc; padding: 2px; }
-        .media-print-box img.qr { width: 100px; height: 100px; border: 1px solid #ccc; padding: 2px; margin-bottom: 2px; }
+        .media-print-box img.photo { max-height: 110px; max-width: 150px; object-fit: contain; border: 1px solid #ccc; padding: 2px; }
+        .media-print-box img.qr { width: 90px; height: 90px; border: 1px solid #ccc; padding: 2px; margin-bottom: 2px; }
         .media-print-box .media-label { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
 
         .print-only { display: none; }
 
         /* ==========================================
-           🖨️ 印刷時専用のスタイル（A4 1枚に収める工夫）
+           🖨️ 印刷時専用のスタイル（印刷プレビュー用）
            ========================================== */
         @media print {
             @page { size: A4 portrait; margin: 0; } 
@@ -113,7 +112,7 @@
             .print-only { display: block !important; }
 
             .print-page { 
-                padding: 8mm 10mm 8mm 15mm !important; 
+                padding: 6mm 10mm 6mm 15mm !important; 
                 box-shadow: none !important; 
                 width: 210mm !important; 
                 min-height: 297mm !important; 
@@ -133,32 +132,41 @@
                 print-color-adjust: exact;
             }
             
-            .text-box, .family-box, table, tr, .section-title, .media-print-area {
+            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
             
-            .print-header { margin-bottom: 6px !important; padding-bottom: 2px !important; }
-            .print-header h1 { font-size: 18px !important; }
-            .facility-name { font-size: 14px !important; }
-            .print-date { margin-bottom: 4px !important; font-size: 12px !important; }
+            .print-header { margin-bottom: 4px !important; padding-bottom: 2px !important; }
+            .print-header h1 { font-size: 17px !important; }
+            .facility-name { font-size: 13px !important; }
+            .print-date { margin-bottom: 3px !important; font-size: 11px !important; }
             
-            table.compact-table { margin-bottom: 6px !important; font-size: 11px !important; }
-            table.compact-table th, table.compact-table td { padding: 3px !important; }
-            table.belongings-print-table { margin-bottom: 6px !important; font-size: 11px !important; }
+            table.compact-table { margin-bottom: 4px !important; font-size: 10.5px !important; }
+            table.compact-table th, table.compact-table td { padding: 2px !important; }
+            table.belongings-print-table { margin-bottom: 4px !important; font-size: 10.5px !important; }
             table.belongings-print-table th, table.belongings-print-table td { padding: 2px !important; }
             
-            /* ★ グラフを全部消してしまう古い設定を削除し、ショートステイだけ消すようにしました！ */
+            /* ★ ショートステイだけグラフを隠します */
             .st-chart { display: none !important; }
             .admission-vitals-table { display: none !important; } 
             
-            .text-box { min-height: 25px !important; margin-bottom: 6px !important; padding: 4px !important; font-size: 11px !important; }
-            .family-box { min-height: 70px !important; }
+            /* ★ デイサービスのグラフは印刷時も高さを確保してしっかり表示！ */
+            .ds-chart { display: block !important; height: 130px !important; margin-bottom: 4px !important; }
+            /* ブラウザの白紙化バグを防ぐため、印刷プレビュー時は画像側を表示 */
+            .ds-chart canvas { display: none !important; }
+            .ds-chart img.chart-print-img { display: block !important; }
 
-            .section-title { margin-top: 8px !important; margin-bottom: 2px !important; font-size: 13px !important; }
-            .birthday-banner { margin-bottom: 4px !important; padding: 4px !important; font-size: 12px !important; }
-            .media-print-box img.photo { max-height: 100px !important; max-width: 140px !important; }
-            .media-print-box img.qr { width: 80px !important; height: 80px !important; }
+            .compact-avg { margin: 4px 0 !important; padding: 3px !important; font-size: 10.5px !important; }
+
+            .text-box { min-height: 20px !important; margin-bottom: 4px !important; padding: 3px !important; font-size: 10.5px !important; }
+            /* ★ お客様からの御連絡事項枠は、手書きできるように十分な高さを確保！ */
+            .family-box { min-height: 60px !important; }
+
+            .section-title { margin-top: 5px !important; margin-bottom: 2px !important; font-size: 11.5px !important; }
+            .birthday-banner { margin-bottom: 3px !important; padding: 2px !important; font-size: 11px !important; }
+            .media-print-box img.photo { max-height: 80px !important; max-width: 120px !important; }
+            .media-print-box img.qr { width: 65px !important; height: 65px !important; }
         }
     </style>
 </head>
@@ -456,7 +464,9 @@
         }
 
         function drawChart(canvasId, labels, temps, bpHighs, bpLows) {
-            let ctx = document.getElementById(canvasId).getContext('2d');
+            let canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            let ctx = canvas.getContext('2d');
             let cInstance = new Chart(ctx, {
                 data: {
                     labels: labels,
@@ -467,7 +477,8 @@
                     ]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
+                    responsive: true,
+                    maintainAspectRatio: false,
                     animation: false, 
                     plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 10 } } } },
                     scales: {
@@ -478,6 +489,16 @@
                 }
             });
             chartInstances.push(cInstance);
+
+            /* ★ ここが魔法の処理！ 印刷プレビューで消えないように、グラフを画像化して配置します */
+            try {
+                let imgData = cInstance.toBase64Image();
+                let img = document.createElement("img");
+                img.src = imgData;
+                img.className = "chart-print-img";
+                img.style.cssText = "display: none; width: 100%; height: 100%; object-fit: contain;";
+                canvas.parentNode.appendChild(img);
+            } catch(e) {}
         }
 
         async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate) {
@@ -828,7 +849,6 @@
                 bpStrDay = h + '/' + l;
             }
 
-            /* ★ ここに「お客様からの御連絡事項」を表示する枠の魔法を追加しています */
             let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
 
             pageDiv.innerHTML = `
