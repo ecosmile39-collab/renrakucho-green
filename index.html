@@ -72,6 +72,11 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .test-mode-section { display: none; }
+        
+        /* 機能訓練カテゴリーのスタイル */
+        .training-category { font-weight: bold; color: #1c7ed6; margin-top: 15px; margin-bottom: 5px; border-bottom: 1px dashed #ccc; padding-bottom: 5px; font-size: 14px; }
+        .training-category::before { content: "■ "; }
+        .training-items { margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -236,15 +241,46 @@
                 </div>
             </div>
 
+            <!-- ★ 機能訓練の項目をカテゴリーごとに細かく分類しました！ -->
             <h3>機能訓練・活動</h3>
             <label>機能訓練</label>
             <div class="checkbox-group" style="margin-bottom: 15px; padding: 15px; background-color: #f9f9f9; border-radius: 8px; border: 1px solid #e0e0e0;">
-                <label><input type="checkbox" name="training" value="動作訓練（立ち上がり等）"> 動作訓練</label>
-                <label><input type="checkbox" name="training" value="歩行訓練"> 歩行訓練</label>
-                <label><input type="checkbox" name="training" value="更衣動作訓練"> 更衣動作訓練</label>
-                <label><input type="checkbox" name="training" value="入浴動作訓練"> 入浴動作訓練</label>
-                <label><input type="checkbox" name="training" value="口腔体操・発声練習"> 口腔体操</label>
-                <label><input type="checkbox" name="training" value="レクリエーションを通じた訓練"> レクリエーション</label>
+                
+                <div class="training-category" style="margin-top: 0;">基本動作・移動</div>
+                <div class="training-items">
+                    <label><input type="checkbox" name="training" value="動作訓練（立ち上がり等）"> 動作訓練（立ち上がり等）</label>
+                    <label><input type="checkbox" name="training" value="移乗動作訓練"> 移乗動作訓練</label>
+                    <label><input type="checkbox" name="training" value="歩行訓練"> 歩行訓練</label>
+                    <label><input type="checkbox" name="training" value="階段昇降訓練"> 階段昇降訓練</label>
+                    <label><input type="checkbox" name="training" value="バランス訓練"> バランス訓練</label>
+                    <label><input type="checkbox" name="training" value="体位変換・寝返り訓練"> 体位変換・寝返り訓練</label>
+                </div>
+
+                <div class="training-category">日常生活動作（ADL）</div>
+                <div class="training-items">
+                    <label><input type="checkbox" name="training" value="更衣動作訓練"> 更衣動作訓練</label>
+                    <label><input type="checkbox" name="training" value="入浴動作訓練"> 入浴動作訓練</label>
+                    <label><input type="checkbox" name="training" value="排泄動作訓練"> 排泄動作訓練</label>
+                    <label><input type="checkbox" name="training" value="食事動作訓練"> 食事動作訓練</label>
+                </div>
+
+                <div class="training-category">上肢・手指</div>
+                <div class="training-items">
+                    <label><input type="checkbox" name="training" value="手指の巧緻性訓練"> 手指の巧緻性訓練</label>
+                    <label><input type="checkbox" name="training" value="上肢のストレッチ・関節可動域訓練"> 上肢のストレッチ・関節可動域訓練</label>
+                </div>
+
+                <div class="training-category">口腔・嚥下</div>
+                <div class="training-items">
+                    <label><input type="checkbox" name="training" value="口腔体操・発声練習"> 口腔体操・発声練習</label>
+                    <label><input type="checkbox" name="training" value="咀嚼・嚥下訓練"> 咀嚼・嚥下訓練</label>
+                </div>
+
+                <div class="training-category">認知・生活機能向上</div>
+                <div class="training-items">
+                    <label><input type="checkbox" name="training" value="調理・洗濯・掃除などの実践的訓練"> 調理・洗濯・掃除などの実践的訓練</label>
+                    <label><input type="checkbox" name="training" value="レクリエーションを通じた訓練"> レクリエーションを通じた訓練</label>
+                </div>
             </div>
             <textarea id="activity" rows="3" placeholder="その他の活動（例：朝の会、ラジオ体操、脳トレ、集団体操など）"></textarea>
         </div>
@@ -1239,7 +1275,7 @@
                 data.nsSign = document.getElementById("nsSign").value;
                 data.checkStaffIn = document.getElementById("checkStaffIn").value;
                 data.checkStaffOut = document.getElementById("checkStaffOut").value;
-                
+
                 data.stMealBreakfast = document.getElementById("stMealBreakfast").value;
                 data.stMealLunch = document.getElementById("stMealLunch").value;
                 data.mealMain = data.stMealLunch; 
@@ -1608,7 +1644,6 @@
 
                         let recordRef = doc(db, "facilities", facilityId, "daily_records", `${targetDateStr}_${sType}_${p.name}`);
 
-                        /* ★ ここが修正ポイントです！テストデータのメッセージから「いつもご利用いただき…」を削除しました */
                         if (sType === "デイサービス") {
                             dayPromises.push(setDoc(recordRef, {
                                 facilityId: facilityId, userName: p.name, date: targetDateStr,
