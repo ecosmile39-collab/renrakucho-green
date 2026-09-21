@@ -73,7 +73,6 @@
 
         .test-mode-section { display: none; }
         
-        /* 機能訓練カテゴリーのスタイル */
         .training-category { font-weight: bold; color: #1c7ed6; margin-top: 15px; margin-bottom: 5px; border-bottom: 1px dashed #ccc; padding-bottom: 5px; font-size: 14px; }
         .training-category::before { content: "■ "; }
         .training-items { margin-bottom: 10px; }
@@ -241,11 +240,9 @@
                 </div>
             </div>
 
-            <!-- ★ 機能訓練の項目をカテゴリーごとに細かく分類しました！ -->
             <h3>機能訓練・活動</h3>
             <label>機能訓練</label>
             <div class="checkbox-group" style="margin-bottom: 15px; padding: 15px; background-color: #f9f9f9; border-radius: 8px; border: 1px solid #e0e0e0;">
-                
                 <div class="training-category" style="margin-top: 0;">基本動作・移動</div>
                 <div class="training-items">
                     <label><input type="checkbox" name="training" value="動作訓練（立ち上がり等）"> 動作訓練（立ち上がり等）</label>
@@ -255,7 +252,6 @@
                     <label><input type="checkbox" name="training" value="バランス訓練"> バランス訓練</label>
                     <label><input type="checkbox" name="training" value="体位変換・寝返り訓練"> 体位変換・寝返り訓練</label>
                 </div>
-
                 <div class="training-category">日常生活動作（ADL）</div>
                 <div class="training-items">
                     <label><input type="checkbox" name="training" value="更衣動作訓練"> 更衣動作訓練</label>
@@ -263,19 +259,16 @@
                     <label><input type="checkbox" name="training" value="排泄動作訓練"> 排泄動作訓練</label>
                     <label><input type="checkbox" name="training" value="食事動作訓練"> 食事動作訓練</label>
                 </div>
-
                 <div class="training-category">上肢・手指</div>
                 <div class="training-items">
                     <label><input type="checkbox" name="training" value="手指の巧緻性訓練"> 手指の巧緻性訓練</label>
                     <label><input type="checkbox" name="training" value="上肢のストレッチ・関節可動域訓練"> 上肢のストレッチ・関節可動域訓練</label>
                 </div>
-
                 <div class="training-category">口腔・嚥下</div>
                 <div class="training-items">
                     <label><input type="checkbox" name="training" value="口腔体操・発声練習"> 口腔体操・発声練習</label>
                     <label><input type="checkbox" name="training" value="咀嚼・嚥下訓練"> 咀嚼・嚥下訓練</label>
                 </div>
-
                 <div class="training-category">認知・生活機能向上</div>
                 <div class="training-items">
                     <label><input type="checkbox" name="training" value="調理・洗濯・掃除などの実践的訓練"> 調理・洗濯・掃除などの実践的訓練</label>
@@ -482,7 +475,7 @@
 
         <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">ご利用いただきありがとうございます（連絡事項）</h3>
         
-        <label style="margin-top: 15px;">連絡事項</label>
+        <label style="margin-top: 15px;">施設からの御連絡事項</label>
         <select id="messageTemplate" onchange="insertTemplate()" style="margin-bottom: 8px;">
             <option value="">📝 定型文を選ぶ</option>
             <option value="終始おだやかな表情で過ごされていました。">1. 終始おだやかな表情で過ごされていました。</option>
@@ -490,6 +483,10 @@
             <option value="他のお客様とも楽しくお話しされ、にこやかに過ごされていました。">3. 他のお客様とも楽しくお話しされ、にこやかに過ごされていました。</option>
         </select>
         <textarea id="message" rows="4"></textarea>
+
+        <!-- ★ お客様からの御連絡事項 の入力枠を追加しました！ -->
+        <label style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal;">（ご家庭でのご様子など）</span></label>
+        <textarea id="familyMessage" rows="3" placeholder="ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。"></textarea>
 
         <!-- 写真・動画エリア -->
         <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">📷 施設でのご様子 (写真・動画)</h3>
@@ -927,6 +924,8 @@
                 if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = d.stDayActivity || "";
 
                 document.getElementById("message").value = d.message || "";
+                /* ★ ドラフトからお客様の連絡事項を復元 */
+                if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = d.familyMessage || "";
             }
             window.checkTemp('temp1', 'temp1Alert');
             window.checkTemp('stTempIn', 'stTempInAlert');
@@ -1041,6 +1040,8 @@
                     if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = data.stDayActivity || data.activity || "";
 
                     document.getElementById("message").value = data.message || "";
+                    /* ★ 金庫からお客様の連絡事項を復元 */
+                    if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = data.familyMessage || "";
                 }
             } catch (e) { console.log(e); }
             window.checkTemp('temp1', 'temp1Alert');
@@ -1209,6 +1210,8 @@
             let data = {
                 facilityId: facilityId, userName: userName, date: date, serviceType: sType,
                 message: document.getElementById("message").value,
+                /* ★ 保存データに「お客様からの連絡事項」を追加 */
+                familyMessage: document.getElementById("familyMessage").value,
                 imageCount: finalImageCount, videoCount: window.currentVideoCount,
                 imageFiles: imageFiles, videoFiles: videoFiles
             };
@@ -1517,6 +1520,9 @@
             document.getElementById("stBowelCondition").value = "";
 
             document.getElementById("message").value = "";
+            /* ★ お客様からの連絡事項の入力欄を空にする */
+            if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = "";
+
             window.currentImageCount = 0; window.currentVideoCount = 0;
             document.getElementById("preUploadedBadge").style.display = "none";
             document.getElementById("cancelPreUploadBtn").style.display = "none"; 
@@ -1653,6 +1659,7 @@
                                 bath: "あり", bathReason: "", bowel: p.ex ? "あり" : "なし", bowelCount: "1回", bowelCondition: "普通便",
                                 training: "動作訓練（立ち上がり等）、歩行訓練", activity: "朝の会、レクリエーション（塗り絵、脳トレ）",
                                 message: "終始おだやかな表情で過ごされていました。",
+                                familyMessage: "", /* ★ 空のメッセージ枠を作ります */
                                 imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0
                             }));
                         } else {
@@ -1669,6 +1676,7 @@
                                 stNightState: "夜間は特変なく朝までぐっすりお休みでした。",
                                 stDayActivity: "デイルームにて他のご入所者様と談笑され、穏やかに過ごされました。",
                                 message: "終始おだやかな表情で過ごされていました。",
+                                familyMessage: "", /* ★ 空のメッセージ枠を作ります */
                                 imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0,
                                 num_in_1: "1", num_out_1: "1", num_in_2: "1", num_out_2: "1", num_in_3: "2", num_out_3: "2",
                                 num_in_4: "2", num_out_4: "2", num_in_5: "2", num_out_5: "2", num_in_6: "1", num_out_6: "1",
