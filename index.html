@@ -170,9 +170,6 @@
         <datalist id="waterList"><option value="0ml"></option><option value="150ml"></option><option value="300ml"></option><option value="500ml"></option><option value="800ml"></option><option value="1000ml"></option><option value="1200ml"></option><option value="1500ml以上"></option></datalist>
         <datalist id="oralCareList"><option value="未実施"></option><option value="歯ブラシ"></option><option value="うがいのみ"></option><option value="スポンジブラシ"></option><option value="義歯洗浄"></option><option value="毎食後実施"></option></datalist>
 
-        <!-- ========================================== -->
-        <!-- ☀️ 様式A：デイサービス（通所介護用） -->
-        <!-- ========================================== -->
         <div id="dayServiceSection">
             <h3>バイタル（デイサービス）</h3>
             <div class="flex-box">
@@ -278,9 +275,6 @@
             <textarea id="activity" rows="3" placeholder="その他の活動（例：朝の会、ラジオ体操、脳トレ、集団体操など）"></textarea>
         </div>
 
-        <!-- ========================================== -->
-        <!-- 🌙 様式B：ショートステイ（グリーンアンドリバーホーム専用） -->
-        <!-- ========================================== -->
         <div id="shortStaySection" style="display: none;">
             
             <h3 style="color: #2b8a3e; border-color: #2b8a3e;">バイタル（入所時・退所時）</h3>
@@ -484,11 +478,12 @@
         </select>
         <textarea id="message" rows="4"></textarea>
 
-        <!-- ★ お客様からの御連絡事項 の入力枠を追加しました！ -->
         <label style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal;">（ご家庭でのご様子など）</span></label>
         <textarea id="familyMessage" rows="3" placeholder="ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。"></textarea>
 
-        <!-- 写真・動画エリア -->
+        <label style="margin-top: 15px; color: #2b8a3e;">📢 施設からのお知らせ・PR <span style="font-size: 12px; font-weight: normal;">（印刷用紙の一番下に表示されます・空欄なら非表示）</span></label>
+        <textarea id="facilityNotice" rows="2" placeholder="例：季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。"></textarea>
+
         <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">📷 施設でのご様子 (写真・動画)</h3>
         <div class="camera-btn-area">
             <label>📸 その場で写真を撮影する</label>
@@ -924,8 +919,8 @@
                 if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = d.stDayActivity || "";
 
                 document.getElementById("message").value = d.message || "";
-                /* ★ ドラフトからお客様の連絡事項を復元 */
                 if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = d.familyMessage || "";
+                if(document.getElementById("facilityNotice")) document.getElementById("facilityNotice").value = d.facilityNotice || "";
             }
             window.checkTemp('temp1', 'temp1Alert');
             window.checkTemp('stTempIn', 'stTempInAlert');
@@ -1040,8 +1035,8 @@
                     if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = data.stDayActivity || data.activity || "";
 
                     document.getElementById("message").value = data.message || "";
-                    /* ★ 金庫からお客様の連絡事項を復元 */
                     if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = data.familyMessage || "";
+                    if(document.getElementById("facilityNotice")) document.getElementById("facilityNotice").value = data.facilityNotice || "";
                 }
             } catch (e) { console.log(e); }
             window.checkTemp('temp1', 'temp1Alert');
@@ -1210,8 +1205,9 @@
             let data = {
                 facilityId: facilityId, userName: userName, date: date, serviceType: sType,
                 message: document.getElementById("message").value,
-                /* ★ 保存データに「お客様からの連絡事項」を追加 */
                 familyMessage: document.getElementById("familyMessage").value,
+                /* ★ 施設からのお知らせの入力内容を保存データに含めます */
+                facilityNotice: document.getElementById("facilityNotice").value,
                 imageCount: finalImageCount, videoCount: window.currentVideoCount,
                 imageFiles: imageFiles, videoFiles: videoFiles
             };
@@ -1520,8 +1516,8 @@
             document.getElementById("stBowelCondition").value = "";
 
             document.getElementById("message").value = "";
-            /* ★ お客様からの連絡事項の入力欄を空にする */
             if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = "";
+            if(document.getElementById("facilityNotice")) document.getElementById("facilityNotice").value = "";
 
             window.currentImageCount = 0; window.currentVideoCount = 0;
             document.getElementById("preUploadedBadge").style.display = "none";
@@ -1659,7 +1655,8 @@
                                 bath: "あり", bathReason: "", bowel: p.ex ? "あり" : "なし", bowelCount: "1回", bowelCondition: "普通便",
                                 training: "動作訓練（立ち上がり等）、歩行訓練", activity: "朝の会、レクリエーション（塗り絵、脳トレ）",
                                 message: "終始おだやかな表情で過ごされていました。",
-                                familyMessage: "", /* ★ 空のメッセージ枠を作ります */
+                                familyMessage: "",
+                                facilityNotice: "季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。",
                                 imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0
                             }));
                         } else {
@@ -1676,7 +1673,8 @@
                                 stNightState: "夜間は特変なく朝までぐっすりお休みでした。",
                                 stDayActivity: "デイルームにて他のご入所者様と談笑され、穏やかに過ごされました。",
                                 message: "終始おだやかな表情で過ごされていました。",
-                                familyMessage: "", /* ★ 空のメッセージ枠を作ります */
+                                familyMessage: "",
+                                facilityNotice: "",
                                 imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0,
                                 num_in_1: "1", num_out_1: "1", num_in_2: "1", num_out_2: "1", num_in_3: "2", num_out_3: "2",
                                 num_in_4: "2", num_out_4: "2", num_in_5: "2", num_out_5: "2", num_in_6: "1", num_out_6: "1",
