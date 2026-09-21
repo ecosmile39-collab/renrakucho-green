@@ -46,8 +46,10 @@
         #preUploadedBadge { display: none; background-color: #ebfbee; border: 2px solid #40c057; color: #2b8a3e; padding: 10px; border-radius: 5px; font-weight: bold; margin-top: 12px; text-align: center; }
         .cancel-upload-btn { display: none; background-color: #ff6b6b; color: white; border: none; padding: 10px; width: 100%; border-radius: 5px; font-weight: bold; font-size: 14px; margin-top: 10px; cursor: pointer; }
 
-        .face-camera-btn { background-color: #fff0f6; padding: 5px; border-radius: 5px; border: 1px solid #ffdeeb; color: #d6336c; font-size: 11px; cursor: pointer; display: inline-block; margin-top: 5px; text-align: center; width: 100%; box-sizing: border-box; }
-        #userFace { display: none; width: 70px; height: 70px; object-fit: cover; border-radius: 50%; border: 2px solid #2b8a3e; background-color: #f0f0f0; }
+        .face-camera-btn { background-color: #fff0f6; padding: 5px; border-radius: 5px; border: 1px solid #ffdeeb; color: #d6336c; font-size: 11px; cursor: pointer; display: inline-block; margin-top: 6px; text-align: center; width: 100%; box-sizing: border-box; font-weight: bold; }
+        
+        /* ★ 確認用写真（顔写真）を大きく見やすく設定（105px） */
+        #userFace { display: none; width: 105px; height: 105px; object-fit: cover; border-radius: 50%; border: 3px solid #2b8a3e; background-color: #f0f0f0; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
 
         .btn-group-bottom { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
         .temp-save-btn { width: 100%; padding: 15px; background-color: #37b24d; color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer; }
@@ -114,16 +116,16 @@
         </div>
 
         <h3>基本情報</h3>
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px; background-color: #fdfdfd; padding: 10px; border-radius: 8px; border: 1px solid #e9ecef;">
             <div style="flex: 1;">
                 <label style="margin-top: 0;">お名前 <span id="ageDisplay" style="font-weight: bold; color: #d2691e; margin-left: 10px; font-size: 17px;"></span></label>
-                <select id="userName" onchange="onUserSelected()">
+                <select id="userName" onchange="onUserSelected()" style="font-size: 17px; font-weight: bold; border: 2px solid #2b8a3e;">
                     <option value="">選択してください</option>
                 </select>
             </div>
-            <div style="display: flex; flex-direction: column; align-items: center; width: 80px; flex-shrink: 0;">
+            <div style="display: flex; flex-direction: column; align-items: center; width: 115px; flex-shrink: 0;">
                 <img id="userFace" src="" alt="顔写真">
-                <label class="face-camera-btn">📸 写真<br>登録/変更
+                <label class="face-camera-btn">📸 写真 登録/変更
                     <input type="file" accept="image/*" capture="environment" onclick="checkPrivacy(event)" onchange="previewFace(event)" style="display: none;">
                 </label>
             </div>
@@ -170,9 +172,6 @@
         <datalist id="waterList"><option value="0ml"></option><option value="150ml"></option><option value="300ml"></option><option value="500ml"></option><option value="800ml"></option><option value="1000ml"></option><option value="1200ml"></option><option value="1500ml以上"></option></datalist>
         <datalist id="oralCareList"><option value="未実施"></option><option value="歯ブラシ"></option><option value="うがいのみ"></option><option value="スポンジブラシ"></option><option value="義歯洗浄"></option><option value="毎食後実施"></option></datalist>
 
-        <!-- ========================================== -->
-        <!-- ☀️ 様式A：デイサービス（通所介護用） -->
-        <!-- ========================================== -->
         <div id="dayServiceSection">
             <h3>バイタル（デイサービス）</h3>
             <div class="flex-box">
@@ -278,9 +277,6 @@
             <textarea id="activity" rows="3" placeholder="その他の活動（例：朝の会、ラジオ体操、脳トレ、集団体操など）"></textarea>
         </div>
 
-        <!-- ========================================== -->
-        <!-- 🌙 様式B：ショートステイ（グリーンアンドリバーホーム専用） -->
-        <!-- ========================================== -->
         <div id="shortStaySection" style="display: none;">
             
             <h3 style="color: #2b8a3e; border-color: #2b8a3e;">バイタル（入所時・退所時）</h3>
@@ -485,13 +481,11 @@
         <textarea id="message" rows="4"></textarea>
 
         <label style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal;">（ご家庭でのご様子など）</span></label>
-        <textarea id="familyMessage" rows="3" placeholder="ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。"></textarea>
+        <textarea id="familyMessage" rows="3"></textarea>
 
-        <!-- ★ 追加：施設からのお知らせ・PR枠 -->
         <label style="margin-top: 15px; color: #2b8a3e; font-weight: bold;">📢 施設からのお知らせ・PR <span style="font-size: 12px; font-weight: normal; color: #666;">（印刷用紙の一番下に表示されます・空欄なら非表示）</span></label>
-        <textarea id="facilityPR" rows="2" placeholder="例：季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。"></textarea>
+        <textarea id="facilityPR" rows="2"></textarea>
 
-        <!-- 写真・動画エリア -->
         <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">📷 施設でのご様子 (写真・動画)</h3>
         <div class="camera-btn-area">
             <label>📸 その場で写真を撮影する</label>
@@ -928,7 +922,6 @@
 
                 document.getElementById("message").value = d.message || "";
                 if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = d.familyMessage || "";
-                
                 if(document.getElementById("facilityPR")) document.getElementById("facilityPR").value = d.facilityPR || "";
             }
             window.checkTemp('temp1', 'temp1Alert');
