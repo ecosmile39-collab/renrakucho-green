@@ -94,8 +94,9 @@
         
         .media-print-area { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; justify-content: flex-start; }
         .media-print-box { text-align: center; }
-        .media-print-box img.photo { max-height: 110px; max-width: 150px; object-fit: contain; border: 1px solid #ccc; padding: 2px; }
-        .media-print-box img.qr { width: 90px; height: 90px; border: 1px solid #ccc; padding: 2px; margin-bottom: 2px; }
+        /* ★ 画面上の写真とQRコードも大きく見やすくしました */
+        .media-print-box img.photo { max-height: 160px; max-width: 220px; object-fit: contain; border: 1px solid #ccc; padding: 2px; }
+        .media-print-box img.qr { width: 110px; height: 110px; border: 1px solid #ccc; padding: 2px; margin-bottom: 2px; }
         .media-print-box .media-label { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
 
         .print-only { display: none; }
@@ -147,23 +148,28 @@
             table.belongings-print-table { margin-bottom: 4px !important; font-size: 10.5px !important; }
             table.belongings-print-table th, table.belongings-print-table td { padding: 2px !important; }
             
-            /* ★ ショートステイのグラフと入所時バイタルを隠す */
+            /* ショートステイはグラフと入所時バイタルを隠す */
             .st-chart { display: none !important; }
             .admission-vitals-table { display: none !important; } 
             
-            /* ★ デイサービスのグラフは、そのまま高さを確保して印刷表示させる王道設定に戻しました */
+            /* デイサービスのグラフ枠は印刷時も高さを確保して確実に表示 */
             .ds-chart { display: block !important; height: 130px !important; margin-bottom: 4px !important; }
-            .ds-chart canvas { display: block !important; width: 100% !important; height: 130px !important; }
+            /* Canvasの代わりに、自動生成した高画質画像を表示して白紙化を防止 */
+            .ds-chart canvas { display: none !important; }
+            .ds-chart img.chart-print-image { display: block !important; }
 
             .compact-avg { margin: 4px 0 !important; padding: 3px !important; font-size: 10.5px !important; }
 
             .text-box { min-height: 20px !important; margin-bottom: 4px !important; padding: 3px !important; font-size: 10.5px !important; }
+            /* お客様からの連絡事項枠は手書き可能な高さを確保 */
             .family-box { min-height: 65px !important; }
 
             .section-title { margin-top: 5px !important; margin-bottom: 2px !important; font-size: 11.5px !important; }
             .birthday-banner { margin-bottom: 3px !important; padding: 2px !important; font-size: 11px !important; }
-            .media-print-box img.photo { max-height: 80px !important; max-width: 120px !important; }
-            .media-print-box img.qr { width: 65px !important; height: 65px !important; }
+            
+            /* ★ 印刷時の写真とQRコードのサイズを最大限に大きくしました！ */
+            .media-print-box img.photo { max-height: 140px !important; max-width: 200px !important; }
+            .media-print-box img.qr { width: 95px !important; height: 95px !important; }
         }
     </style>
 </head>
@@ -465,7 +471,6 @@
             if (!canvas) return;
             let ctx = canvas.getContext('2d');
             
-            // ★ 画像化の複雑な処理を削除し、純粋にCanvasを印刷させるシンプルな設定にしました！
             let cInstance = new Chart(ctx, {
                 data: {
                     labels: labels,
@@ -488,6 +493,15 @@
                 }
             });
             chartInstances.push(cInstance);
+
+            setTimeout(() => {
+                try {
+                    let imgEl = document.getElementById(canvasId + '_print_img');
+                    if (imgEl) {
+                        imgEl.src = cInstance.toBase64Image();
+                    }
+                } catch(e) {}
+            }, 100);
         }
 
         async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate) {
@@ -753,6 +767,7 @@
 
                 <div class="chart-container st-chart">
                     <canvas id="${chartCanvasId}"></canvas>
+                    <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 130px; object-fit: contain;">
                 </div>
 
                 <div class="section-title">■ ご利用中の活動・夜間のご様子</div>
@@ -887,6 +902,7 @@
                 
                 <div class="chart-container ds-chart">
                     <canvas id="${chartCanvasId}"></canvas>
+                    <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 130px; object-fit: contain;">
                 </div>
                 
                 <div class="section-title">■ 機能訓練・活動の様子</div>
