@@ -73,6 +73,8 @@
         .facility-name { font-size: 16px; font-weight: bold; color: #2b8a3e; }
         .print-date { text-align: right; font-size: 14px; margin-bottom: 10px; margin-top: 5px; font-weight: bold; color: #2b8a3e; }
         
+        .birthday-banner { background-color: #fff0f5; color: #d2691e; text-align: center; font-size: 14px; font-weight: bold; padding: 5px 10px; margin: 0 0 8px 0; border: 2px dashed #ffb6c1; border-radius: 6px; }
+        
         table.compact-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13px; }
         table.compact-table th, table.compact-table td { border: 1px solid #333; padding: 6px; text-align: center; }
         table.compact-table th { background-color: #f9f9f9; font-weight: normal; }
@@ -96,35 +98,74 @@
         .media-print-box img.qr { width: 90px; height: 90px; border: 1px solid #ccc; padding: 2px; margin-bottom: 2px; }
         .media-print-box .media-label { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
 
-        /* ★ 豪華なお誕生日お祝いカードの専用デザイン ★ */
-        .grand-birthday-card {
-            background: linear-gradient(135deg, #fff5f5 0%, #fff9db 50%, #f4fce3 100%);
-            border: 2px solid #f59f00;
-            border-radius: 8px;
-            padding: 10px 15px;
+        /* ==========================================
+           🎉 誕生日カード専用のスタイル（2枚目用）
+           ========================================== */
+        .birthday-card-wrapper {
+            background: linear-gradient(135deg, #fff0f6 0%, #ffe3e3 100%);
+            border: 12px double #faa2c1;
+            border-radius: 20px;
+            padding: 40px;
             text-align: center;
-            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 270mm; /* A4用紙に合わせた高さ */
             box-sizing: border-box;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
-        .grand-birthday-title {
-            font-size: 14px;
+        .card-title {
+            font-size: 48px;
+            color: #d6336c;
             font-weight: bold;
-            color: #d9480f;
-            letter-spacing: 2px;
-            margin-bottom: 4px;
+            margin-bottom: 15px;
+            letter-spacing: 5px;
         }
-        .grand-birthday-main {
-            font-size: 18px;
+        .card-subtitle {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 40px;
             font-weight: bold;
-            color: #c92a2a;
-            margin-bottom: 4px;
-            line-height: 1.3;
         }
-        .grand-birthday-sub {
-            font-size: 12px;
+        .card-photo-area {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            margin-bottom: 40px;
+            width: 100%;
+        }
+        .card-photo-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .card-photo-box span {
+            font-size: 20px;
+            font-weight: bold;
+            color: #a61e4d;
+            margin-bottom: 15px;
+            background-color: #fff;
+            padding: 8px 25px;
+            border-radius: 25px;
+            border: 2px solid #faa2c1;
+        }
+        .card-photo-box img {
+            width: 300px;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 20px;
+            border: 8px solid #fff;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        .card-message {
+            font-size: 24px;
+            line-height: 1.8;
             color: #495057;
-            line-height: 1.3;
+            font-weight: bold;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 25px 50px;
+            border-radius: 15px;
         }
 
         .print-only { display: none; }
@@ -151,6 +192,12 @@
                 box-sizing: border-box !important;
             }
 
+            /* ★ ここが2枚目に強制的に分ける魔法です */
+            .page-break {
+                page-break-before: always !important;
+                padding: 10mm !important; /* 誕生日カード用の余白 */
+            }
+
             .punch-mark {
                 position: fixed !important; 
                 top: 148.5mm !important; 
@@ -161,7 +208,7 @@
                 print-color-adjust: exact;
             }
             
-            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .grand-birthday-card {
+            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-wrapper {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
@@ -191,22 +238,15 @@
             .family-box { min-height: 50px !important; }
 
             .section-title { margin-top: 6px !important; margin-bottom: 2px !important; font-size: 13.5px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
+            .birthday-banner { margin-bottom: 4px !important; padding: 3px !important; font-size: 12.5px !important; }
             
-            /* ★ 印刷時のお誕生日豪華カード設定 */
-            .grand-birthday-card {
-                margin-bottom: 6px !important;
-                padding: 10px 12px !important;
-                border: 2px solid #f59f00 !important;
-                background: linear-gradient(135deg, #fff5f5 0%, #fff9db 50%, #f4fce3 100%) !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            .grand-birthday-title { font-size: 13px !important; }
-            .grand-birthday-main { font-size: 17px !important; }
-            .grand-birthday-sub { font-size: 11px !important; }
-
             .media-print-box img.photo { max-height: 125px !important; max-width: 175px !important; }
             .media-print-box img.qr { width: 90px !important; height: 90px !important; }
+
+            .birthday-card-wrapper {
+                height: 277mm !important; 
+                border-width: 10px !important;
+            }
         }
     </style>
 </head>
@@ -291,6 +331,7 @@
         window.globalUsersData = {};
         window.matchedRecordsGlobal = [];
         const mediaUrlCache = new Map();
+        const defaultIcon = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23aaaaaa'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>";
 
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
@@ -547,7 +588,7 @@
             }, 100);
         }
 
-        // ★ 当日または7日以内のお誕生日判定ロジック
+        // 当日または7日以内のお誕生日判定ロジック
         function getBirthdayData(birthdayStr, targetDateStr, isShortStay = false, startDateStr = null, endDateStr = null) {
             if (!birthdayStr) return null;
             const bParts = birthdayStr.split("-");
@@ -594,22 +635,6 @@
             }
         }
 
-        // ★ グラフの代わりに表示する「豪華お祝いカード」のHTML生成
-        function createGrandBirthdayCardHtml(bData) {
-            if (!bData) return "";
-            let mainTxt = bData.isToday 
-                ? `本日 ${bData.month}月${bData.day}日は ${bData.age} 歳のお誕生日です！おめでとうございます！`
-                : `${bData.month}月${bData.day}日は ${bData.age} 歳のお誕生日でしたね。おめでとうございます！`;
-
-            return `
-                <div class="grand-birthday-card">
-                    <div class="grand-birthday-title">🎉 HAPPY BIRTHDAY 🎂</div>
-                    <div class="grand-birthday-main">🌸 ${mainTxt} 🌸</div>
-                    <div class="grand-birthday-sub">いつも素敵な笑顔をありがとうございます。これからも健やかで笑顔あふれる毎日をお過ごしいただけますよう、スタッフ一同心よりお祈り申し上げます。</div>
-                </div>
-            `;
-        }
-
         async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate) {
             let pageDiv = document.createElement("div");
             pageDiv.className = "print-page";
@@ -640,10 +665,15 @@
             let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
             let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
 
-            // ★ ショートステイの誕生日判定＆豪華カード生成
+            // ★ ショートステイの誕生日判定（1枚目用の小さなバナー）
             let uData = window.globalUsersData[userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, null, true, startDate, endDate);
-            let birthdayCardHtml = createGrandBirthdayCardHtml(bData);
+            
+            let birthdayBannerHtml = "";
+            if (bData) {
+                let ageTxt = bData.isToday ? `期間中の ${bData.month}月${bData.day}日 は ${bData.age} 歳のお誕生日でした！` : `${bData.month}月${bData.day}日は ${bData.age} 歳のお誕生日でしたね。`;
+                birthdayBannerHtml = `<div class="birthday-banner">🎂 ${ageTxt}おめでとうございます！ 🎂</div>`;
+            }
 
             let leftItems = [
                 { name: "上着", in: firstData.num_in_1, out: lastData.num_out_1 },
@@ -821,18 +851,15 @@
             let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
             let familyMessageText = lastData.familyMessage ? lastData.familyMessage.replace(/\n/g, '<br>') : '';
 
-            // ★ ショートステイでも、誕生日カードがある場合はグラフ枠の位置に表示！
-            let middleAreaHtml = birthdayCardHtml 
-                ? birthdayCardHtml 
-                : `<div class="chart-container st-chart"><canvas id="${chartCanvasId}"></canvas><img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 130px; object-fit: contain;"></div>`;
-
+            // ★ 1枚目（連絡帳）の出力 ★
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
-                
                 <div class="print-header">
                     <div class="facility-name">${facilityName}</div>
                     <h1>ショートステイ ご利用報告書</h1>
                 </div>
+
+                ${birthdayBannerHtml}
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h2 style="font-size: 18px; margin: 0;">お名前： ${userName} 様</h2>
@@ -891,7 +918,10 @@
                     📊 ご利用日数の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%
                 </div>
 
-                ${middleAreaHtml}
+                <div class="chart-container st-chart">
+                    <canvas id="${chartCanvasId}"></canvas>
+                    <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 130px; object-fit: contain;">
+                </div>
 
                 <div class="section-title">■ ご利用中の活動・夜間のご様子</div>
                 <div class="text-box">${dayActivityHtml || '特になし'}</div>
@@ -907,8 +937,41 @@
             `;
 
             container.appendChild(pageDiv);
-            if (!birthdayCardHtml) {
-                drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
+            drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
+
+            // ★ 2枚目（豪華誕生日カード）の出力 ★
+            if (bData) {
+                let faceUrl = await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon;
+                let todayImgUrl = await getCachedUrl(`images/${userName}/image_1.jpg`);
+                if (!todayImgUrl) todayImgUrl = faceUrl; // 当日の写真がなければ顔写真で代用
+
+                let cardPageDiv = document.createElement("div");
+                cardPageDiv.className = "print-page page-break"; // 強制的に次のページへ
+                cardPageDiv.innerHTML = `
+                    <div class="birthday-card-wrapper">
+                        <div class="card-title">🎉 HAPPY BIRTHDAY 🎂</div>
+                        <div class="card-subtitle">${userName} 様 祝 ${bData.age} 歳</div>
+                        
+                        <div class="card-photo-area">
+                            <div class="card-photo-box">
+                                <span>いつもの素敵な笑顔</span>
+                                <img src="${faceUrl}" alt="顔写真">
+                            </div>
+                            <div class="card-photo-box">
+                                <span>本日のご様子</span>
+                                <img src="${todayImgUrl}" alt="本日の写真">
+                            </div>
+                        </div>
+                        
+                        <div class="card-message">
+                            お誕生日おめでとうございます！<br>
+                            これからも健やかで笑顔あふれる毎日をお過ごしいただけますよう、<br>
+                            スタッフ一同、心よりお祈り申し上げます。<br><br>
+                            <span style="font-size: 18px; color: #868e96;">${facilityName}</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(cardPageDiv);
             }
         }
 
@@ -940,10 +1003,15 @@
             let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
             let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
 
-            // ★ デイサービスの誕生日判定
+            // ★ デイサービスの誕生日判定（1枚目用の小さなバナー）
             let uData = window.globalUsersData[data.userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, data.date, false);
-            let birthdayCardHtml = createGrandBirthdayCardHtml(bData);
+            
+            let birthdayBannerHtml = "";
+            if (bData) {
+                let ageTxt = bData.isToday ? `本日は ${bData.age} 歳のお誕生日です！` : `${bData.month}月${bData.day}日は ${bData.age} 歳のお誕生日でしたね。`;
+                birthdayBannerHtml = `<div class="birthday-banner">🎂 ${ageTxt}おめでとうございます！ 🎂</div>`;
+            }
 
             let chartCanvasId = `chart_${index}`;
 
@@ -1018,17 +1086,15 @@
             let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
             let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
 
-            // ★ ここが魔法の核心！お誕生日カードがある時はグラフを消して豪華カードを表示、ない時はグラフを表示！
-            let middleAreaHtml = birthdayCardHtml 
-                ? birthdayCardHtml 
-                : `<div class="chart-container ds-chart"><canvas id="${chartCanvasId}"></canvas><img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 120px; object-fit: contain;"></div>`;
-
+            // ★ 1枚目（連絡帳）の出力 ★
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 <div class="print-header">
                     <div class="facility-name">${facilityName}</div>
                     <h1>本日の連絡帳</h1>
                 </div>
+
+                ${birthdayBannerHtml}
                 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <h2 style="font-size: 19px; margin: 0;">お名前： ${data.userName} 様</h2>
@@ -1064,7 +1130,10 @@
                     📊 この1ヶ月の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%
                 </div>
                 
-                ${middleAreaHtml}
+                <div class="chart-container ds-chart">
+                    <canvas id="${chartCanvasId}"></canvas>
+                    <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 120px; object-fit: contain;">
+                </div>
                 
                 <div class="section-title">■ 機能訓練・活動の様子</div>
                 <div class="text-box">${trainAct || '特になし'}</div>
@@ -1080,9 +1149,41 @@
             `;
 
             container.appendChild(pageDiv);
-            // 誕生日カードが表示されていない時だけ、グラフを描画します
-            if (!birthdayCardHtml) {
-                drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
+            drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
+
+            // ★ 2枚目（豪華誕生日カード）の出力 ★
+            if (bData) {
+                let faceUrl = await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon;
+                let todayImgUrl = await getCachedUrl(`images/${data.userName}/image_1.jpg`);
+                if (!todayImgUrl) todayImgUrl = faceUrl; // 当日の写真がなければ顔写真で代用
+
+                let cardPageDiv = document.createElement("div");
+                cardPageDiv.className = "print-page page-break"; // 強制的に次のページへ
+                cardPageDiv.innerHTML = `
+                    <div class="birthday-card-wrapper">
+                        <div class="card-title">🎉 HAPPY BIRTHDAY 🎂</div>
+                        <div class="card-subtitle">${data.userName} 様 祝 ${bData.age} 歳</div>
+                        
+                        <div class="card-photo-area">
+                            <div class="card-photo-box">
+                                <span>いつもの素敵な笑顔</span>
+                                <img src="${faceUrl}" alt="顔写真">
+                            </div>
+                            <div class="card-photo-box">
+                                <span>本日のご様子</span>
+                                <img src="${todayImgUrl}" alt="本日の写真">
+                            </div>
+                        </div>
+                        
+                        <div class="card-message">
+                            お誕生日おめでとうございます！<br>
+                            これからも健やかで笑顔あふれる毎日をお過ごしいただけますよう、<br>
+                            スタッフ一同、心よりお祈り申し上げます。<br><br>
+                            <span style="font-size: 18px; color: #868e96;">${facilityName}</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(cardPageDiv);
             }
         }
     </script>
