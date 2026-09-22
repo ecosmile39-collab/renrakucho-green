@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>連絡帳 入力（グリーンアンドリバーホーム版）</title>
+    <title>連絡帳 入力画面</title>
     
     <style>
         body { font-family: sans-serif; background-color: #f0f8ff; padding: 10px; margin: 0; }
@@ -86,6 +86,33 @@
         <div id="loadingText">データを送信しています...<br>画面を閉じずにお待ちください</div>
     </div>
 
+    <div id="editUserModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10001; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 25px; border-radius: 10px; width: 92%; max-width: 420px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); box-sizing: border-box;">
+            <h3 style="margin-top: 0; color: #1c7ed6; border-bottom: 2px solid #1c7ed6; padding-bottom: 8px;">✏️ 利用者情報の変更</h3>
+            
+            <label style="margin-top: 10px; font-size: 14px;">お名前</label>
+            <input type="text" id="editUserName" style="font-size: 16px; padding: 8px;">
+
+            <label style="margin-top: 12px; font-size: 14px;">生年月日（任意）</label>
+            <input type="date" id="editUserBirthday" style="font-size: 16px; padding: 8px;">
+
+            <label style="margin-top: 12px; font-size: 14px;">ご利用サービス種別（複数選択可）</label>
+            <div style="display: flex; gap: 15px; margin-top: 6px;">
+                <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" id="editServiceDay" style="width: auto; margin-right: 5px;">☀️ デイサービス
+                </label>
+                <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" id="editServiceShort" style="width: auto; margin-right: 5px;">🌙 ショートステイ
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button type="button" onclick="closeEditUserModal()" style="flex: 1; padding: 12px; background-color: #adb5bd; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 15px;">キャンセル</button>
+                <button type="button" onclick="saveEditedUser()" style="flex: 1; padding: 12px; background-color: #1c7ed6; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 15px;">変更を保存</button>
+            </div>
+        </div>
+    </div>
+
     <div class="form-box" id="mainForm" style="display: none;">
         
         <h2 id="secretTitle" style="user-select: none; cursor: pointer; margin-top: 0; color: #2b8a3e;">🌿 <span id="displayFacilityName">施設名読込中...</span> 連絡帳</h2>
@@ -128,6 +155,15 @@
                     <input type="file" accept="image/*" capture="environment" onclick="checkPrivacy(event)" onchange="previewFace(event)" style="display: none;">
                 </label>
             </div>
+        </div>
+
+        <div id="userActionBtns" style="display: none; gap: 10px; margin-top: 10px;">
+            <button type="button" onclick="openEditUserModal()" style="flex: 1; padding: 9px; background-color: #1c7ed6; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">
+                ✏️ 登録情報の変更
+            </button>
+            <button type="button" onclick="deleteSelectedUser()" style="flex: 1; padding: 9px; background-color: #e03131; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">
+                🗑️ この方を名簿から削除
+            </button>
         </div>
 
         <div id="userSettingsArea" style="display: none; margin-top: 10px; padding: 15px; background-color: #f8f9fa; border: 1px solid #ced4da; border-radius: 8px;">
@@ -687,7 +723,6 @@
             onServiceTypeChanged(); 
         };
 
-        // ★ PRボタンの開閉をコントロールする魔法
         window.togglePRField = function() {
             let prArea = document.getElementById("prInputArea");
             let btn = document.getElementById("togglePRBtn");
@@ -848,11 +883,13 @@
             let dayExcretionArea = document.getElementById("dayExcretionArea");
             let stExcretionArea = document.getElementById("stExcretionArea");
             let userSettingsArea = document.getElementById("userSettingsArea"); 
+            let userActionBtns = document.getElementById("userActionBtns");
 
             if(!userName) {
                 document.getElementById("userFace").style.display = "none";
                 document.getElementById("ageDisplay").textContent = "";
                 userSettingsArea.style.display = "none";
+                userActionBtns.style.display = "none";
                 dayExcretionArea.style.display = "none";
                 stExcretionArea.style.display = "none";
                 resetFormInputs();
@@ -877,6 +914,7 @@
             }
 
             userSettingsArea.style.display = "block";
+            userActionBtns.style.display = "flex";
             document.getElementById("photoNgCheck").checked = (userData && userData.photoNg === true);
             document.getElementById("existNeedExcretion").checked = (userData && userData.needExcretion === true);
 
@@ -891,6 +929,114 @@
             showUserFace(userName); 
             applyDraftOrEmpty(userName, dateStr);
             fetchServerData(userName, dateStr);
+        };
+
+        // ★ ✏️ 利用者情報 変更モーダルを開く
+        window.openEditUserModal = function() {
+            let userName = document.getElementById("userName").value;
+            if (!userName) return;
+            let userData = window.globalUsersData[userName] || {};
+            let userServices = userData.services || (userData.serviceType ? [userData.serviceType] : ["デイサービス"]);
+
+            document.getElementById("editUserName").value = userName;
+            document.getElementById("editUserBirthday").value = userData.birthday || "";
+            document.getElementById("editServiceDay").checked = userServices.includes("デイサービス");
+            document.getElementById("editServiceShort").checked = userServices.includes("ショートステイ");
+
+            document.getElementById("editUserModal").style.display = "flex";
+        };
+
+        window.closeEditUserModal = function() {
+            document.getElementById("editUserModal").style.display = "none";
+        };
+
+        // ★ ✏️ 利用者情報の変更を保存
+        window.saveEditedUser = async function() {
+            let oldName = document.getElementById("userName").value;
+            let newName = document.getElementById("editUserName").value.trim();
+            let newBirthday = document.getElementById("editUserBirthday").value;
+            let facilityId = localStorage.getItem("currentFacilityId");
+
+            if (!newName) { alert("お名前を入力してください。"); return; }
+            let isDay = document.getElementById("editServiceDay").checked;
+            let isShort = document.getElementById("editServiceShort").checked;
+            if (!isDay && !isShort) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
+
+            let newServices = [];
+            if (isDay) newServices.push("デイサービス");
+            if (isShort) newServices.push("ショートステイ");
+
+            let currentData = window.globalUsersData[oldName] || {};
+
+            showToast(`⏳ ${oldName} 様の登録情報を更新しています...`);
+
+            try {
+                let userRef = doc(db, "facilities", facilityId, "users", newName);
+
+                // 名前が変更された場合
+                if (newName !== oldName) {
+                    let docSnap = await getDoc(userRef);
+                    if (docSnap.exists()) {
+                        alert(`「${newName}」様は既に名簿に登録されています。別のお名前にしてください。`);
+                        return;
+                    }
+                    // 新規Doc作成＆旧Doc削除
+                    let saveData = { ...currentData, services: newServices };
+                    if (newBirthday) saveData.birthday = newBirthday;
+                    else delete saveData.birthday;
+                    
+                    await setDoc(userRef, saveData);
+                    await deleteDoc(doc(db, "facilities", facilityId, "users", oldName));
+                } else {
+                    // 名前が同じ場合
+                    let saveData = { services: newServices };
+                    if (newBirthday) saveData.birthday = newBirthday;
+                    else saveData.birthday = "";
+                    await setDoc(userRef, saveData, { merge: true });
+                }
+
+                closeEditUserModal();
+                showToast(`✅ ${newName} 様の情報を更新しました！`, 4000);
+                await loadUserNames(facilityId);
+                document.getElementById("userName").value = newName;
+                onUserSelected();
+
+            } catch (err) {
+                alert("更新エラー: " + err.message);
+            }
+        };
+
+        // ★ 🗑️ 利用者を名簿から削除
+        window.deleteSelectedUser = async function() {
+            let userName = document.getElementById("userName").value;
+            let facilityId = localStorage.getItem("currentFacilityId");
+            if (!userName || !facilityId) return;
+
+            let isConfirm = confirm(`⚠️【名簿からの削除確認】\n「${userName} 様」を名簿から削除しますか？\n\n※過去の連絡帳データや写真は金庫の中に残ります。\n※入力画面の選択肢から名前が外れます。`);
+            if (!isConfirm) return;
+
+            showToast(`⏳ ${userName} 様を名簿から削除しています...`);
+
+            try {
+                let userRef = doc(db, "facilities", facilityId, "users", userName);
+                await deleteDoc(userRef);
+
+                // 下書きデータもお掃除
+                let keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    let key = localStorage.key(i);
+                    if (key && key.includes(`_${userName}`)) { keysToRemove.push(key); }
+                }
+                keysToRemove.forEach(k => localStorage.removeItem(k));
+
+                document.getElementById("userName").value = "";
+                await loadUserNames(facilityId);
+                onUserSelected();
+                showToast(`🗑️ ${userName} 様を名簿から削除しました。`, 4000);
+
+            } catch (err) {
+                alert("削除エラー: " + err.message);
+            }
         };
 
         window.updateUserSettings = async function() {
@@ -1001,7 +1147,6 @@
                 document.getElementById("message").value = d.message || "";
                 if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = d.familyMessage || "";
                 
-                // ★ データ復元時に、PR文章があれば枠を開いて表示する魔法
                 if(document.getElementById("facilityPR")) {
                     document.getElementById("facilityPR").value = d.facilityPR || "";
                     if (d.facilityPR) {
@@ -1131,7 +1276,6 @@
                         document.getElementById("message").value = data.message || "";
                         if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = data.familyMessage || "";
                         
-                        // ★ 金庫のデータを復元時にも、PR文章があれば枠を開いて表示する魔法
                         if(document.getElementById("facilityPR")) {
                             document.getElementById("facilityPR").value = data.facilityPR || "";
                             if (data.facilityPR) {
@@ -1641,7 +1785,6 @@
             document.getElementById("message").value = "";
             if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = "";
             
-            // ★ 入力欄リセット時にPRエリアも隠す
             if(document.getElementById("facilityPR")) {
                 document.getElementById("facilityPR").value = "";
                 document.getElementById("prInputArea").style.display = "none";
