@@ -232,9 +232,26 @@
             <div id="dayExcretionArea" style="display: none; background-color: #fff4e6; padding: 12px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; border: 2px dashed #ffa94d;">
                 <h4 style="margin: 0 0 10px 0; color: #d9480f;">🚽 排泄記録</h4>
                 <div class="flex-box">
-                    <div><label style="margin-top:0;">排便</label><select id="dsBowel"><option value="">--</option><option value="あり">あり</option><option value="なし">なし</option></select></div>
-                    <div><label style="margin-top:0;">回数</label><select id="dsBowelCount"><option value="">--</option><option value="1回">1回</option><option value="2回">2回</option><option value="3回以上">3回以上</option></select></div>
-                    <div><label style="margin-top:0;">状態</label><select id="dsBowelCondition"><option value="">--</option><option value="普通便">普通便</option><option value="軟便">軟便</option><option value="硬便">硬便</option><option value="水様便">水様便</option><option value="血便">血便</option></select></div>
+                    <div><label style="margin-top:0;">排便</label>
+                        <select id="dsBowel">
+                            <option value="">--</option><option value="あり">あり</option><option value="なし">なし</option>
+                        </select>
+                    </div>
+                    <div><label style="margin-top:0;">1回目</label>
+                        <select id="dsBowel1">
+                            <option value="">--</option><option value="普通便">普通便</option><option value="軟便">軟便</option><option value="硬便">硬便</option><option value="水様便">水様便</option><option value="血便">血便</option>
+                        </select>
+                    </div>
+                    <div><label style="margin-top:0;">2回目</label>
+                        <select id="dsBowel2">
+                            <option value="">--</option><option value="普通便">普通便</option><option value="軟便">軟便</option><option value="硬便">硬便</option><option value="水様便">水様便</option><option value="血便">血便</option>
+                        </select>
+                    </div>
+                    <div><label style="margin-top:0;">3回目</label>
+                        <select id="dsBowel3">
+                            <option value="">--</option><option value="普通便">普通便</option><option value="軟便">軟便</option><option value="硬便">硬便</option><option value="水様便">水様便</option><option value="血便">血便</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -438,9 +455,26 @@
             <div id="stExcretionArea" style="display: none; background-color: #fff4e6; padding: 12px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; border: 2px dashed #ffa94d;">
                 <h4 style="margin: 0 0 10px 0; color: #d9480f;">🚽 日々の排泄記録（ショートステイ）</h4>
                 <div class="flex-box">
-                    <div><label style="margin-top:0;">排便</label><select id="stBowel"><option value="">--</option><option value="あり">あり</option><option value="なし">なし</option></select></div>
-                    <div><label style="margin-top:0;">回数</label><select id="stBowelCount"><option value="">--</option><option value="1回">1回</option><option value="2回">2回</option><option value="3回以上">3回以上</option></select></div>
-                    <div><label style="margin-top:0;">状態</label><select id="stBowelCondition"><option value="">--</option><option value="普通便">普通便</option><option value="軟便">軟便</option><option value="硬便">硬便</option><option value="水様便">水様便</option><option value="血便">血便</option></select></div>
+                    <div><label style="margin-top:0;">排便</label>
+                        <select id="stBowel">
+                            <option value="">--</option><option value="あり">あり</option><option value="なし">なし</option>
+                        </select>
+                    </div>
+                    <div><label style="margin-top:0;">1回目</label>
+                        <select id="stBowel1">
+                            <option value="">--</option><option value="普通便">普通便</option><option value="軟便">軟便</option><option value="硬便">硬便</option><option value="水様便">水様便</option><option value="血便">血便</option>
+                        </select>
+                    </div>
+                    <div><label style="margin-top:0;">2回目</label>
+                        <select id="stBowel2">
+                            <option value="">--</option><option value="普通便">普通便</option><option value="軟便">軟便</option><option value="硬便">硬便</option><option value="水様便">水様便</option><option value="血便">血便</option>
+                        </select>
+                    </div>
+                    <div><label style="margin-top:0;">3回目</label>
+                        <select id="stBowel3">
+                            <option value="">--</option><option value="普通便">普通便</option><option value="軟便">軟便</option><option value="硬便">硬便</option><option value="水様便">水様便</option><option value="血便">血便</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -480,10 +514,10 @@
         <textarea id="message" rows="4"></textarea>
 
         <label style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal;">（ご家庭でのご様子など）</span></label>
-        <textarea id="familyMessage" rows="3"></textarea>
+        <textarea id="familyMessage" rows="3" placeholder="ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。"></textarea>
 
         <label style="margin-top: 15px; color: #2b8a3e; font-weight: bold;">📢 施設からのお知らせ・PR <span style="font-size: 12px; font-weight: normal; color: #666;">（印刷用紙の一番下に表示されます・空欄なら非表示）</span></label>
-        <textarea id="facilityPR" rows="2"></textarea>
+        <textarea id="facilityPR" rows="2" placeholder="例：季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。"></textarea>
 
         <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">📷 施設でのご様子 (写真・動画)</h3>
         <div class="camera-btn-area">
@@ -599,7 +633,7 @@
             
             let savedServiceType = localStorage.getItem('currentServiceType');
             if (savedServiceType) {
-                document.getElementById("serviceType").value = savedServiceType;
+                document.getElementById("selectServiceType").value = savedServiceType;
             }
             
             let secretClickCount = 0;
@@ -864,8 +898,10 @@
                 document.getElementById("oralCare").value = d.oralCare || "";
                 
                 document.getElementById("dsBowel").value = d.bowel || "";
-                document.getElementById("dsBowelCount").value = d.bowelCount || "";
-                document.getElementById("dsBowelCondition").value = d.bowelCondition || "";
+                /* ★ ドラフトから排泄回数データを復元 */
+                if(document.getElementById("dsBowel1")) document.getElementById("dsBowel1").value = d.bowel1 || d.bowelCondition || "";
+                if(document.getElementById("dsBowel2")) document.getElementById("dsBowel2").value = d.bowel2 || "";
+                if(document.getElementById("dsBowel3")) document.getElementById("dsBowel3").value = d.bowel3 || "";
 
                 document.getElementById("bathReason").value = d.bathReason || "";
                 document.getElementsByName("bath").forEach(r => { if(r.value === d.bath) r.checked = true; });
@@ -910,8 +946,10 @@
                 document.getElementById("stOralCare").value = d.stOralCare || "";
                 
                 document.getElementById("stBowel").value = d.stBowel || d.bowel || "";
-                document.getElementById("stBowelCount").value = d.stBowelCount || d.bowelCount || "";
-                document.getElementById("stBowelCondition").value = d.stBowelCondition || d.bowelCondition || "";
+                /* ★ ドラフトから排泄回数データを復元 */
+                if(document.getElementById("stBowel1")) document.getElementById("stBowel1").value = d.stBowel1 || d.stBowelCondition || d.bowelCondition || "";
+                if(document.getElementById("stBowel2")) document.getElementById("stBowel2").value = d.stBowel2 || "";
+                if(document.getElementById("stBowel3")) document.getElementById("stBowel3").value = d.stBowel3 || "";
 
                 if(document.getElementById("stMedication")) document.getElementById("stMedication").value = d.stMedication || "";
                 if(document.getElementById("stBathReason")) document.getElementById("stBathReason").value = d.stBathReason || "";
@@ -921,6 +959,7 @@
 
                 document.getElementById("message").value = d.message || "";
                 if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = d.familyMessage || "";
+                
                 if(document.getElementById("facilityPR")) document.getElementById("facilityPR").value = d.facilityPR || "";
             }
             window.checkTemp('temp1', 'temp1Alert');
@@ -980,8 +1019,10 @@
                     document.getElementById("oralCare").value = data.oralCare || "";
 
                     document.getElementById("dsBowel").value = data.bowel || "";
-                    document.getElementById("dsBowelCount").value = data.bowelCount || "";
-                    document.getElementById("dsBowelCondition").value = data.bowelCondition || "";
+                    /* ★ 金庫から排泄回数データを復元 */
+                    if(document.getElementById("dsBowel1")) document.getElementById("dsBowel1").value = data.bowel1 || data.bowelCondition || "";
+                    if(document.getElementById("dsBowel2")) document.getElementById("dsBowel2").value = data.bowel2 || "";
+                    if(document.getElementById("dsBowel3")) document.getElementById("dsBowel3").value = data.bowel3 || "";
 
                     document.getElementById("bathReason").value = data.bathReason || "";
                     document.getElementsByName("bath").forEach(r => { if(r.value === data.bath) r.checked = true; });
@@ -999,7 +1040,7 @@
                     if(document.getElementById("stPulseOut")) document.getElementById("stPulseOut").value = data.stPulseOut || "";
                     if(document.getElementById("stSpo2Out")) document.getElementById("stSpo2Out").value = data.stSpo2Out || "";
                     if(document.getElementById("stBpHighOut")) document.getElementById("stBpHighOut").value = data.stBpHighOut || "";
-                    if(document.getElementById("stBpLowOut")) document.getElementById("stBpLowOut").value = data.stBpLowOut || "";
+                    if(document.getElementById("stBpLowOut")) document.getElementById("stBpLowOut").value = data.stBpLowOut || data.stBpLow || "";
                     
                     for(let i=1; i<=23; i++) {
                         if(document.getElementById("num_in_"+i)) document.getElementById("num_in_"+i).value = data["num_in_"+i] || "";
@@ -1026,8 +1067,10 @@
                     document.getElementById("stOralCare").value = data.stOralCare || data.oralCare || "";
                     
                     document.getElementById("stBowel").value = data.stBowel || data.bowel || "";
-                    document.getElementById("stBowelCount").value = data.stBowelCount || data.bowelCount || "";
-                    document.getElementById("stBowelCondition").value = data.stBowelCondition || data.bowelCondition || "";
+                    /* ★ 金庫から排泄回数データを復元 */
+                    if(document.getElementById("stBowel1")) document.getElementById("stBowel1").value = data.stBowel1 || data.stBowelCondition || data.bowelCondition || "";
+                    if(document.getElementById("stBowel2")) document.getElementById("stBowel2").value = data.stBowel2 || "";
+                    if(document.getElementById("stBowel3")) document.getElementById("stBowel3").value = data.stBowel3 || "";
 
                     if(document.getElementById("stMedication")) document.getElementById("stMedication").value = data.stMedication || data.medication || "";
                     if(document.getElementById("stBathReason")) document.getElementById("stBathReason").value = data.stBathReason || data.bathReason || "";
@@ -1122,7 +1165,6 @@
             });
         }
 
-        // ★ ここが修正ポイントです！
         window.preUploadMedia = async function() {
             let userName = document.getElementById("userName").value;
             let date = document.getElementById("date").value;
@@ -1138,7 +1180,6 @@
                 return;
             }
 
-            // ★ 現在入力中の全データを取得します
             let currentFormData = getFormData();
 
             accumulatedFiles = [];
@@ -1167,7 +1208,6 @@
 
                 let docRef = doc(db, "facilities", facilityId, "daily_records", `${date}_${sType}_${userName}`);
                 
-                // ★ 写真の枚数だけを更新して、他の入力データと一緒に金庫に保存します
                 currentFormData.imageCount = iCount;
                 currentFormData.videoCount = vCount;
                 delete currentFormData.imageFiles; 
@@ -1175,7 +1215,6 @@
 
                 await setDoc(docRef, currentFormData, { merge: true });
 
-                // ★ 金庫からデータを引っ張り出さずに（画面を上書きせずに）、バッジだけを表示させます
                 window.currentImageCount = iCount;
                 window.currentVideoCount = vCount;
                 let badge = document.getElementById("preUploadedBadge");
@@ -1246,8 +1285,10 @@
                 data.oralCare = document.getElementById("oralCare").value;
                 
                 data.bowel = document.getElementById("dsBowel").value;
-                data.bowelCount = document.getElementById("dsBowelCount").value;
-                data.bowelCondition = document.getElementById("dsBowelCondition").value;
+                /* ★ 排泄の各回データを保存 */
+                data.bowel1 = document.getElementById("dsBowel1") ? document.getElementById("dsBowel1").value : "";
+                data.bowel2 = document.getElementById("dsBowel2") ? document.getElementById("dsBowel2").value : "";
+                data.bowel3 = document.getElementById("dsBowel3") ? document.getElementById("dsBowel3").value : "";
 
                 data.bath = bathVal;
                 data.bathReason = document.getElementById("bathReason").value;
@@ -1301,11 +1342,14 @@
                 data.stOralCare = document.getElementById("stOralCare").value; data.oralCare = data.stOralCare;
                 
                 data.stBowel = document.getElementById("stBowel").value;
-                data.stBowelCount = document.getElementById("stBowelCount").value;
-                data.stBowelCondition = document.getElementById("stBowelCondition").value;
+                /* ★ 排泄の各回データを保存 */
+                data.stBowel1 = document.getElementById("stBowel1") ? document.getElementById("stBowel1").value : "";
+                data.stBowel2 = document.getElementById("stBowel2") ? document.getElementById("stBowel2").value : "";
+                data.stBowel3 = document.getElementById("stBowel3") ? document.getElementById("stBowel3").value : "";
                 data.bowel = data.stBowel;
-                data.bowelCount = data.stBowelCount;
-                data.bowelCondition = data.stBowelCondition;
+                data.bowel1 = data.stBowel1;
+                data.bowel2 = data.stBowel2;
+                data.bowel3 = data.stBowel3;
 
                 let stMedEl = document.getElementById("stMedication");
                 data.stMedication = stMedEl ? stMedEl.value : "";
@@ -1527,11 +1571,15 @@
             document.getElementById("stOralCare").value = "";
 
             document.getElementById("dsBowel").value = "";
-            document.getElementById("dsBowelCount").value = "";
-            document.getElementById("dsBowelCondition").value = "";
+            /* ★ 入力欄のリセット */
+            if(document.getElementById("dsBowel1")) document.getElementById("dsBowel1").value = "";
+            if(document.getElementById("dsBowel2")) document.getElementById("dsBowel2").value = "";
+            if(document.getElementById("dsBowel3")) document.getElementById("dsBowel3").value = "";
+
             document.getElementById("stBowel").value = "";
-            document.getElementById("stBowelCount").value = "";
-            document.getElementById("stBowelCondition").value = "";
+            if(document.getElementById("stBowel1")) document.getElementById("stBowel1").value = "";
+            if(document.getElementById("stBowel2")) document.getElementById("stBowel2").value = "";
+            if(document.getElementById("stBowel3")) document.getElementById("stBowel3").value = "";
 
             document.getElementById("message").value = "";
             if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = "";
@@ -1670,7 +1718,8 @@
                                 serviceType: "デイサービス",
                                 temp1: t1, temp2: t1, pulse: pulse, spo2: "98", bpHigh: bpHigh, bpLow: bpLow,
                                 mealMain: "100%", mealSub: "100%", water: "300ml", medication: "軟膏塗布", oralCare: "歯ブラシ",
-                                bath: "あり", bathReason: "", bowel: p.ex ? "あり" : "なし", bowelCount: "1回", bowelCondition: "普通便",
+                                /* ★ テストデータで回数ごとのダミーを設定 */
+                                bath: "あり", bathReason: "", bowel: p.ex ? "あり" : "なし", bowel1: p.ex ? "普通便" : "", bowel2: "", bowel3: "",
                                 training: "動作訓練（立ち上がり等）、歩行訓練", activity: "朝の会、レクリエーション（塗り絵、脳トレ）",
                                 message: "終始おだやかな表情で過ごされていました。",
                                 familyMessage: "", 
@@ -1687,7 +1736,8 @@
                                 
                                 stMealBreakfast: "100%", stMealLunch: "100%", stMealDinner: "100%",
                                 stWater: "1000ml", stOralCare: "毎食後実施", stBath: "あり", stBathReason: "",
-                                stBowel: p.ex ? "あり" : "なし", stBowelCount: "1回", stBowelCondition: "普通便",
+                                /* ★ テストデータで回数ごとのダミーを設定 */
+                                stBowel: p.ex ? "あり" : "なし", stBowel1: p.ex ? "普通便" : "", stBowel2: "", stBowel3: "",
                                 stNightState: "夜間は特変なく朝までぐっすりお休みでした。",
                                 stDayActivity: "デイルームにて他のご入所者様と談笑され、穏やかに過ごされました。",
                                 message: "終始おだやかな表情で過ごされていました。",
