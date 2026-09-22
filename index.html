@@ -48,7 +48,6 @@
 
         .face-camera-btn { background-color: #fff0f6; padding: 5px; border-radius: 5px; border: 1px solid #ffdeeb; color: #d6336c; font-size: 11px; cursor: pointer; display: inline-block; margin-top: 6px; text-align: center; width: 100%; box-sizing: border-box; font-weight: bold; }
         
-        /* ★ 確認用写真（顔写真）を大きく見やすく設定（105px） */
         #userFace { display: none; width: 105px; height: 105px; object-fit: cover; border-radius: 50%; border: 3px solid #2b8a3e; background-color: #f0f0f0; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
 
         .btn-group-bottom { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
@@ -1123,6 +1122,7 @@
             });
         }
 
+        // ★ ここが修正ポイントです！
         window.preUploadMedia = async function() {
             let userName = document.getElementById("userName").value;
             let date = document.getElementById("date").value;
@@ -1137,6 +1137,9 @@
                 showToast("⚠️ 写真や動画が選択されていません。");
                 return;
             }
+
+            // ★ 現在入力中の全データを取得します
+            let currentFormData = getFormData();
 
             accumulatedFiles = [];
             document.getElementById("previewArea").innerHTML = "";
@@ -1163,13 +1166,27 @@
                 }
 
                 let docRef = doc(db, "facilities", facilityId, "daily_records", `${date}_${sType}_${userName}`);
-                await setDoc(docRef, {
-                    facilityId: facilityId, userName: userName, date: date,
-                    serviceType: sType, imageCount: iCount, videoCount: vCount 
-                }, { merge: true });
+                
+                // ★ 写真の枚数だけを更新して、他の入力データと一緒に金庫に保存します
+                currentFormData.imageCount = iCount;
+                currentFormData.videoCount = vCount;
+                delete currentFormData.imageFiles; 
+                delete currentFormData.videoFiles;
+
+                await setDoc(docRef, currentFormData, { merge: true });
+
+                // ★ 金庫からデータを引っ張り出さずに（画面を上書きせずに）、バッジだけを表示させます
+                window.currentImageCount = iCount;
+                window.currentVideoCount = vCount;
+                let badge = document.getElementById("preUploadedBadge");
+                let cancelBtn = document.getElementById("cancelPreUploadBtn");
+                badge.style.display = "block"; cancelBtn.style.display = "block"; 
+                let txt = "✅ 本日は以下のデータがお預かり済みです：";
+                if(iCount > 0) txt += ` 📷写真（${iCount}枚） `;
+                if(vCount > 0) txt += ` 🎥動画（${vCount}つ） `;
+                badge.innerHTML = txt + "<br><span style='font-size:12px; font-weight:normal;'>夕方は文字の入力だけでOKです！</span>";
 
                 showToast(`✅ 大成功！${userName} 様の写真・動画をお預かりしました！`, 5000);
-                fetchServerData(userName, date);
             } catch (error) {
                 showToast(`❌ アップロードエラー: ${error.message}`, 6000);
             }
@@ -1657,7 +1674,7 @@
                                 training: "動作訓練（立ち上がり等）、歩行訓練", activity: "朝の会、レクリエーション（塗り絵、脳トレ）",
                                 message: "終始おだやかな表情で過ごされていました。",
                                 familyMessage: "", 
-                                facilityPR: "", /* ★ テストデータは空欄にしておきます */
+                                facilityPR: "", 
                                 imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0
                             }));
                         } else {
