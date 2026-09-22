@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>連絡帳 入力（グリーンアンドリバーホーム版）</title>
+    <title>連絡帳 入力画面</title>
     
     <style>
         body { font-family: sans-serif; background-color: #f0f8ff; padding: 10px; margin: 0; }
@@ -88,7 +88,8 @@
 
     <div class="form-box" id="mainForm" style="display: none;">
         
-        <h2 id="secretTitle" style="user-select: none; cursor: pointer; margin-top: 0; color: #2b8a3e;">🌿 グリーンアンドリバーホーム 連絡帳</h2>
+        <!-- ★ ここが「透明な名札入れ」です。ログインした施設名が自動で入ります -->
+        <h2 id="secretTitle" style="user-select: none; cursor: pointer; margin-top: 0; color: #2b8a3e;">🌿 <span id="displayFacilityName">施設名読込中...</span> 連絡帳</h2>
         
         <div style="text-align: right; margin-bottom: 15px;">
             <a href="print.html" style="margin-right: 12px; color: #2b8a3e; font-weight: bold;">➡ 印刷画面へ</a>
@@ -294,9 +295,7 @@
         </div>
 
         <div id="shortStaySection" style="display: none;">
-            
             <h3 style="color: #2b8a3e; border-color: #2b8a3e;">バイタル（入所時・退所時）</h3>
-            
             <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ced4da;">
                 <h4 style="margin: 0 0 10px 0; color: #2b8a3e;">【入所時】</h4>
                 <div class="flex-box">
@@ -514,11 +513,12 @@
         <textarea id="message" rows="4"></textarea>
 
         <label style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal;">（ご家庭でのご様子など）</span></label>
-        <textarea id="familyMessage" rows="3"></textarea>
+        <textarea id="familyMessage" rows="3" placeholder="ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。"></textarea>
 
         <label style="margin-top: 15px; color: #2b8a3e; font-weight: bold;">📢 施設からのお知らせ・PR <span style="font-size: 12px; font-weight: normal; color: #666;">（印刷用紙の一番下に表示されます・空欄なら非表示）</span></label>
-        <textarea id="facilityPR" rows="2"></textarea>
+        <textarea id="facilityPR" rows="2" placeholder="例：季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。"></textarea>
 
+        <!-- 写真・動画エリア -->
         <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">📷 施設でのご様子 (写真・動画)</h3>
         <div class="camera-btn-area">
             <label>📸 その場で写真を撮影する</label>
@@ -619,8 +619,10 @@
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; } 
             
-            localStorage.setItem("currentFacilityName", "グリーンアンドリバーホーム");
-            
+            // ★ マジックの文字を消し、システムに「施設名」を教えてもらって表示します
+            let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
+            document.getElementById("displayFacilityName").textContent = facilityName;
+
             document.getElementById("mainForm").style.display = "block";
             document.getElementById("scrollGroup").style.display = "flex";
             document.getElementById("newFacePreview").src = defaultIcon;
@@ -673,14 +675,12 @@
                 });
             });
 
-            // ★ 入力や変更があった瞬間に自動セーブするイベントリスナーを登録
             document.getElementById("mainForm").addEventListener("input", autoSaveDraft);
             document.getElementById("mainForm").addEventListener("change", autoSaveDraft);
 
             onServiceTypeChanged(); 
         };
 
-        // ★ 文字入力や選択を変えた瞬間に自動的に下書き保存する魔法
         function autoSaveDraft() {
             let userName = document.getElementById("userName").value;
             let date = document.getElementById("date").value;
@@ -998,7 +998,6 @@
                 let cancelBtn = document.getElementById("cancelPreUploadBtn");
                 badge.style.display = "none"; cancelBtn.style.display = "none"; 
 
-                // ★ 金庫にデータがなくても、ローカルに下書きがある場合はクリアしない
                 let draftKey = `draft_${facilityId}_${date}_${currentServiceType}_${userName}`;
                 if (!docSnap.exists()) {
                      if (!localStorage.getItem(draftKey)) {
@@ -1026,7 +1025,6 @@
                         badge.innerHTML = txt + "<br><span style='font-size:12px; font-weight:normal;'>夕方は文字の入力だけでOKです！</span>";
                     }
                     
-                    // 下書きがない場合のみサーバーの確定データで上書き
                     if (!localStorage.getItem(draftKey)) {
                         document.getElementById("temp1").value = data.temp1 || "";
                         document.getElementById("temp2").value = data.temp2 || "";
@@ -1061,7 +1059,7 @@
                         if(document.getElementById("stPulseOut")) document.getElementById("stPulseOut").value = data.stPulseOut || "";
                         if(document.getElementById("stSpo2Out")) document.getElementById("stSpo2Out").value = data.stSpo2Out || "";
                         if(document.getElementById("stBpHighOut")) document.getElementById("stBpHighOut").value = data.stBpHighOut || "";
-                        if(document.getElementById("stBpLowOut")) document.getElementById("stBpLowOut").value = data.stBpLowOut || "";
+                        if(document.getElementById("stBpLowOut")) document.getElementById("stBpLowOut").value = data.stBpLowOut || data.stBpLow || "";
                         
                         for(let i=1; i<=23; i++) {
                             if(document.getElementById("num_in_"+i)) document.getElementById("num_in_"+i).value = data["num_in_"+i] || "";
@@ -1450,7 +1448,6 @@
                 batchDataList = batchDataList.filter(d => d.userName !== userName);
                 updatePendingListUI();
                 resetFormInputs();
-                // ★ 送信完了で下書き（ドラフト）を綺麗にお掃除
                 localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${sType}_${userName}`);
                 document.getElementById("userName").value = "";
                 onUserSelected();
