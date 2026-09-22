@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>連絡帳 印刷画面（グリーンアンドリバーホーム版）</title>
+    <title>連絡帳 印刷画面</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
@@ -161,15 +161,15 @@
 
             .section-title { margin-top: 5px !important; margin-bottom: 2px !important; font-size: 11.5px !important; }
             .birthday-banner { margin-bottom: 3px !important; padding: 2px !important; font-size: 11px !important; }
-            
-            .media-print-box img.photo { max-height: 140px !important; max-width: 200px !important; }
-            .media-print-box img.qr { width: 95px !important; height: 95px !important; }
+            .media-print-box img.photo { max-height: 190px !important; max-width: 260px !important; }
+            .media-print-box img.qr { width: 120px !important; height: 120px !important; }
         }
     </style>
 </head>
 <body>
     <div class="no-print">
-        <h2>🖨️ 連絡帳 印刷画面（グリーンアンドリバーホーム版）</h2>
+        <!-- ★ ここが「透明な名札入れ」です -->
+        <h2>🖨️ <span id="displayFacilityName">施設名読込中...</span> 印刷画面</h2>
         
         <div class="nav-links">
             <a href="index.html">⬅ 入力画面へ戻る</a>
@@ -252,6 +252,10 @@
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; }
+            
+            // ★ マジックの文字を消し、システムに「施設名」を教えてもらって表示します
+            let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
+            document.getElementById("displayFacilityName").textContent = facilityName;
             
             let today = new Date();
             let year = today.getFullYear();
@@ -378,7 +382,10 @@
             let sType = document.getElementById("selectServiceType").value;
             let startDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
             let endDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
-            let facilityName = localStorage.getItem("currentFacilityName") || "グリーンアンドリバーホーム";
+            
+            // ★ システムから現在ログイン中の施設名を取り出します
+            let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
+            
             let btn = document.getElementById("batchPrintBtn");
             let printArea = document.getElementById("printArea");
 
@@ -709,6 +716,7 @@
             }
 
             let familyMessageText = lastData.familyMessage ? lastData.familyMessage.replace(/\n/g, '<br>') : '';
+            
             let prHtml = "";
             if (lastData.facilityPR && lastData.facilityPR.trim() !== "") {
                 let prText = lastData.facilityPR.trim().replace(/\n/g, '<br>');
@@ -960,7 +968,7 @@
                 <div class="section-title">■ お客様への御連絡事項 <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
                 <div class="text-box">${data.message || '特になし'}</div>
                 
-                <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 10px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
+                <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
                 <div class="text-box family-box">${familyMessageText}</div>
 
                 <div class="section-title">■ 本日のご様子 (写真・動画)</div>
