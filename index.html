@@ -516,8 +516,15 @@
         <label style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal;">（ご家庭でのご様子など）</span></label>
         <textarea id="familyMessage" rows="3"></textarea>
 
-        <label style="margin-top: 15px; color: #2b8a3e; font-weight: bold;">📢 施設からのお知らせ・PR <span style="font-size: 12px; font-weight: normal; color: #666;">（印刷用紙の一番下に表示されます・空欄なら非表示）</span></label>
-        <textarea id="facilityPR" rows="2"></textarea>
+        <div style="margin-top: 15px;">
+            <button type="button" id="togglePRBtn" onclick="togglePRField()" style="background-color: #f8f9fa; color: #2b8a3e; border: 1px solid #2b8a3e; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px;">
+                📢 施設からのお知らせ・PRを追加する
+            </button>
+        </div>
+        <div id="prInputArea" style="display: none; margin-top: 10px; padding: 10px; background-color: #ebfbee; border: 1px dashed #2b8a3e; border-radius: 5px;">
+            <label style="margin-top: 0; color: #2b8a3e; font-weight: bold; font-size: 14px;">📢 施設からのお知らせ・PR <span style="font-size: 12px; font-weight: normal; color: #666;">（「お客様への御連絡事項」の枠内に表示されます）</span></label>
+            <textarea id="facilityPR" rows="2" placeholder="例：季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。"></textarea>
+        </div>
 
         <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">📷 施設でのご様子 (写真・動画)</h3>
         <div class="camera-btn-area">
@@ -680,7 +687,19 @@
             onServiceTypeChanged(); 
         };
 
-        // ★ 入力項目以外の切り替え時は、空っぽの画面を保存しないようにブロックします
+        // ★ PRボタンの開閉をコントロールする魔法
+        window.togglePRField = function() {
+            let prArea = document.getElementById("prInputArea");
+            let btn = document.getElementById("togglePRBtn");
+            if (prArea.style.display === "none") {
+                prArea.style.display = "block";
+                btn.innerHTML = "📢 施設からのお知らせ・PRを隠す";
+            } else {
+                prArea.style.display = "none";
+                btn.innerHTML = "📢 施設からのお知らせ・PRを追加する";
+            }
+        };
+
         function autoSaveDraft(event) {
             if (event && event.target) {
                 let id = event.target.id;
@@ -981,7 +1000,15 @@
 
                 document.getElementById("message").value = d.message || "";
                 if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = d.familyMessage || "";
-                if(document.getElementById("facilityPR")) document.getElementById("facilityPR").value = d.facilityPR || "";
+                
+                // ★ データ復元時に、PR文章があれば枠を開いて表示する魔法
+                if(document.getElementById("facilityPR")) {
+                    document.getElementById("facilityPR").value = d.facilityPR || "";
+                    if (d.facilityPR) {
+                        document.getElementById("prInputArea").style.display = "block";
+                        document.getElementById("togglePRBtn").innerHTML = "📢 施設からのお知らせ・PRを隠す";
+                    }
+                }
             }
             window.checkTemp('temp1', 'temp1Alert');
             window.checkTemp('stTempIn', 'stTempInAlert');
@@ -1103,7 +1130,15 @@
 
                         document.getElementById("message").value = data.message || "";
                         if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = data.familyMessage || "";
-                        if(document.getElementById("facilityPR")) document.getElementById("facilityPR").value = data.facilityPR || "";
+                        
+                        // ★ 金庫のデータを復元時にも、PR文章があれば枠を開いて表示する魔法
+                        if(document.getElementById("facilityPR")) {
+                            document.getElementById("facilityPR").value = data.facilityPR || "";
+                            if (data.facilityPR) {
+                                document.getElementById("prInputArea").style.display = "block";
+                                document.getElementById("togglePRBtn").innerHTML = "📢 施設からのお知らせ・PRを隠す";
+                            }
+                        }
                     }
                 }
             } catch (e) { console.log(e); }
@@ -1511,6 +1546,7 @@
                         await Promise.all(vidPromises);
                     }
                     await setDoc(docRef, saveObj);
+                    localStorage.removeItem(`draft_${data.facilityId}_${data.date}_${data.serviceType}_${data.userName}`);
                 });
 
                 await Promise.all(uploadPromises);
@@ -1604,7 +1640,13 @@
 
             document.getElementById("message").value = "";
             if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = "";
-            if(document.getElementById("facilityPR")) document.getElementById("facilityPR").value = "";
+            
+            // ★ 入力欄リセット時にPRエリアも隠す
+            if(document.getElementById("facilityPR")) {
+                document.getElementById("facilityPR").value = "";
+                document.getElementById("prInputArea").style.display = "none";
+                document.getElementById("togglePRBtn").innerHTML = "📢 施設からのお知らせ・PRを追加する";
+            }
 
             window.currentImageCount = 0; window.currentVideoCount = 0;
             document.getElementById("preUploadedBadge").style.display = "none";
@@ -1667,7 +1709,6 @@
             if (!isConfirm) { event.preventDefault(); }
         };
 
-        // ★ テストデータ生成時に、邪魔な下書きデータを綺麗にお掃除するようにしました
         window.generateDummyData = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             let date = document.getElementById("date").value;
