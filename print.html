@@ -137,7 +137,6 @@
                 break-inside: avoid !important;
             }
             
-            /* ★ 1ページに収まるようにバランスと余白を微調整しました ★ */
             .print-header { margin-bottom: 8px !important; padding-bottom: 4px !important; border-bottom: 2px solid #333 !important; }
             .print-header h1 { font-size: 22px !important; margin: 0 !important; }
             .facility-name { font-size: 16px !important; font-weight: bold !important; }
@@ -164,11 +163,9 @@
             .section-title { margin-top: 10px !important; margin-bottom: 4px !important; font-size: 15px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
             .birthday-banner { margin-bottom: 6px !important; padding: 4px !important; font-size: 13px !important; }
             
-            /* ★ 写真とQRコードを、A4用紙1枚にはみ出さない限界のサイズに調整 ★ */
+            /* ★ 1ページに収まるように写真サイズを微調整 */
             .media-print-box img.photo { max-height: 145px !important; max-width: 200px !important; }
             .media-print-box img.qr { width: 100px !important; height: 100px !important; }
-            
-            .print-only { margin-top: 12px !important; border: 2px dashed #2b8a3e !important; padding: 10px !important; border-radius: 5px !important; text-align: center !important; font-size: 13px !important; }
         }
     </style>
 </head>
@@ -710,26 +707,29 @@
                 bpOut = h + '/' + l;
             }
 
-            let finalMessageHtml = "";
+            let mainMessage = "";
             if (commentsHtml) {
-                finalMessageHtml = `<div class="text-box">${commentsHtml}</div>`;
+                mainMessage = commentsHtml;
             } else if (firstData.message) {
-                finalMessageHtml = `<div class="text-box">${firstData.message}</div>`;
+                mainMessage = firstData.message.replace(/\n/g, '<br>');
             } else {
-                finalMessageHtml = `<div class="text-box">特になし</div>`;
+                mainMessage = "特になし";
             }
 
-            let familyMessageText = lastData.familyMessage ? lastData.familyMessage.replace(/\n/g, '<br>') : '';
-            
-            let prHtml = "";
+            // ★ 施設PRがあれば、お客様への御連絡事項の枠内に線を引いて合流させます
+            let prPart = "";
             if (lastData.facilityPR && lastData.facilityPR.trim() !== "") {
                 let prText = lastData.facilityPR.trim().replace(/\n/g, '<br>');
-                prHtml = `
-                <div class="print-only" style="margin-top: 15px; border: 2px dashed #2b8a3e; padding: 10px; border-radius: 5px; text-align: center; color: #2b8a3e; font-size: 14px;">
-                    <strong>【${facilityName}からのお知らせ】</strong><br>
-                    ${prText}
-                </div>`;
+                prPart = `
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; color: #2b8a3e;">
+                        <strong>【${facilityName}からのお知らせ】</strong><br>
+                        ${prText}
+                    </div>
+                `;
             }
+
+            let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
+            let familyMessageText = lastData.familyMessage ? lastData.familyMessage.replace(/\n/g, '<br>') : '';
 
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
@@ -814,8 +814,6 @@
 
                 <div class="section-title">■ 施設でのご様子 (写真・動画)</div>
                 <div class="media-print-area">${mediaHtml}</div>
-                
-                ${prHtml}
             `;
 
             container.appendChild(pageDiv);
@@ -909,16 +907,22 @@
                 bpStrDay = h + '/' + l;
             }
 
-            let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
-            let prHtml = "";
+            let mainMessage = data.message ? data.message.replace(/\n/g, '<br>') : '特になし';
+
+            // ★ 施設PRがあれば、お客様への御連絡事項の枠内に線を引いて合流させます
+            let prPart = "";
             if (data.facilityPR && data.facilityPR.trim() !== "") {
                 let prText = data.facilityPR.trim().replace(/\n/g, '<br>');
-                prHtml = `
-                <div class="print-only" style="margin-top: 15px; border: 2px dashed #2b8a3e; padding: 10px; border-radius: 5px; text-align: center; color: #2b8a3e; font-size: 14px;">
-                    <strong>【${facilityName}からのお知らせ】</strong><br>
-                    ${prText}
-                </div>`;
+                prPart = `
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; color: #2b8a3e;">
+                        <strong>【${facilityName}からのお知らせ】</strong><br>
+                        ${prText}
+                    </div>
+                `;
             }
+            
+            let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
+            let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
 
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
@@ -970,15 +974,13 @@
                 <div class="text-box">${trainAct || '特になし'}</div>
                 
                 <div class="section-title">■ お客様への御連絡事項 <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
-                <div class="text-box">${data.message || '特になし'}</div>
+                ${finalMessageHtml}
                 
                 <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
                 <div class="text-box family-box">${familyMessageText}</div>
 
                 <div class="section-title">■ 本日のご様子 (写真・動画)</div>
                 <div class="media-print-area">${mediaHtml}</div>
-                
-                ${prHtml}
             `;
 
             container.appendChild(pageDiv);
