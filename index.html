@@ -645,7 +645,6 @@
                 secretClickTimer = setTimeout(() => { secretClickCount = 0; }, 3000); 
                 if (secretClickCount === 3) { 
                     let testSections = document.querySelectorAll(".test-mode-section");
-                    // 確実に表示を切り替えるように修正
                     let isHidden = (window.getComputedStyle(testSections[0]).display === "none");
                     testSections.forEach(section => { section.style.display = isHidden ? "block" : "none"; });
                     if (isHidden) window.showToast("🔧 テスト用機能を【表示】しました", 3000);
@@ -674,8 +673,27 @@
                 });
             });
 
+            // ★ 入力や変更があった瞬間に自動セーブするイベントリスナーを登録
+            document.getElementById("mainForm").addEventListener("input", autoSaveDraft);
+            document.getElementById("mainForm").addEventListener("change", autoSaveDraft);
+
             onServiceTypeChanged(); 
         };
+
+        // ★ 文字入力や選択を変えた瞬間に自動的に下書き保存する魔法
+        function autoSaveDraft() {
+            let userName = document.getElementById("userName").value;
+            let date = document.getElementById("date").value;
+            let facilityId = localStorage.getItem("currentFacilityId");
+            let sType = document.getElementById("serviceType").value;
+            if (!userName || !date || !facilityId) return;
+
+            let data = getFormData();
+            delete data.imageFiles;
+            delete data.videoFiles;
+            let draftKey = `draft_${facilityId}_${date}_${sType}_${userName}`;
+            localStorage.setItem(draftKey, JSON.stringify(data));
+        }
 
         window.onDateChanged = function() {
             let userName = document.getElementById("userName").value;
@@ -958,7 +976,6 @@
 
                 document.getElementById("message").value = d.message || "";
                 if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = d.familyMessage || "";
-                
                 if(document.getElementById("facilityPR")) document.getElementById("facilityPR").value = d.facilityPR || "";
             }
             window.checkTemp('temp1', 'temp1Alert');
@@ -981,8 +998,12 @@
                 let cancelBtn = document.getElementById("cancelPreUploadBtn");
                 badge.style.display = "none"; cancelBtn.style.display = "none"; 
 
+                // ★ 金庫にデータがなくても、ローカルに下書きがある場合はクリアしない
+                let draftKey = `draft_${facilityId}_${date}_${currentServiceType}_${userName}`;
                 if (!docSnap.exists()) {
-                     resetFormInputs();
+                     if (!localStorage.getItem(draftKey)) {
+                         resetFormInputs();
+                     }
                      return;
                 }
 
@@ -990,7 +1011,7 @@
                     let data = docSnap.data();
 
                     if (data.serviceType && data.serviceType !== currentServiceType) {
-                        resetFormInputs(); 
+                        if (!localStorage.getItem(draftKey)) resetFormInputs(); 
                         return;
                     }
 
@@ -1005,79 +1026,82 @@
                         badge.innerHTML = txt + "<br><span style='font-size:12px; font-weight:normal;'>夕方は文字の入力だけでOKです！</span>";
                     }
                     
-                    document.getElementById("temp1").value = data.temp1 || "";
-                    document.getElementById("temp2").value = data.temp2 || "";
-                    document.getElementById("pulse").value = data.pulse || "";
-                    document.getElementById("spo2").value = data.spo2 || "";
-                    document.getElementById("bpHigh").value = data.bpHigh || "";
-                    document.getElementById("bpLow").value = data.bpLow || "";
-                    document.getElementById("mealMain").value = data.mealMain || "";
-                    document.getElementById("mealSub").value = data.mealSub || "";
-                    document.getElementById("water").value = data.water || "";
-                    document.getElementById("medication").value = data.medication || "";
-                    document.getElementById("oralCare").value = data.oralCare || "";
+                    // 下書きがない場合のみサーバーの確定データで上書き
+                    if (!localStorage.getItem(draftKey)) {
+                        document.getElementById("temp1").value = data.temp1 || "";
+                        document.getElementById("temp2").value = data.temp2 || "";
+                        document.getElementById("pulse").value = data.pulse || "";
+                        document.getElementById("spo2").value = data.spo2 || "";
+                        document.getElementById("bpHigh").value = data.bpHigh || "";
+                        document.getElementById("bpLow").value = data.bpLow || "";
+                        document.getElementById("mealMain").value = data.mealMain || "";
+                        document.getElementById("mealSub").value = data.mealSub || "";
+                        document.getElementById("water").value = data.water || "";
+                        document.getElementById("medication").value = data.medication || "";
+                        document.getElementById("oralCare").value = data.oralCare || "";
 
-                    document.getElementById("dsBowel").value = data.bowel || "";
-                    if(document.getElementById("dsBowel1")) document.getElementById("dsBowel1").value = data.bowel1 || data.bowelCondition || "";
-                    if(document.getElementById("dsBowel2")) document.getElementById("dsBowel2").value = data.bowel2 || "";
-                    if(document.getElementById("dsBowel3")) document.getElementById("dsBowel3").value = data.bowel3 || "";
+                        document.getElementById("dsBowel").value = data.bowel || "";
+                        if(document.getElementById("dsBowel1")) document.getElementById("dsBowel1").value = data.bowel1 || data.bowelCondition || "";
+                        if(document.getElementById("dsBowel2")) document.getElementById("dsBowel2").value = data.bowel2 || "";
+                        if(document.getElementById("dsBowel3")) document.getElementById("dsBowel3").value = data.bowel3 || "";
 
-                    document.getElementById("bathReason").value = data.bathReason || "";
-                    document.getElementsByName("bath").forEach(r => { if(r.value === data.bath) r.checked = true; });
-                    let trainingArray = data.training ? data.training.split("、") : [];
-                    document.getElementsByName("training").forEach(c => c.checked = trainingArray.includes(c.value));
-                    document.getElementById("activity").value = data.activity || "";
+                        document.getElementById("bathReason").value = data.bathReason || "";
+                        document.getElementsByName("bath").forEach(r => { if(r.value === data.bath) r.checked = true; });
+                        let trainingArray = data.training ? data.training.split("、") : [];
+                        document.getElementsByName("training").forEach(c => c.checked = trainingArray.includes(c.value));
+                        document.getElementById("activity").value = data.activity || "";
 
-                    if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = data.stTempIn || data.stTemp1 || data.temp1 || "";
-                    if(document.getElementById("stPulseIn")) document.getElementById("stPulseIn").value = data.stPulseIn || data.stPulse || data.pulse || "";
-                    if(document.getElementById("stSpo2In")) document.getElementById("stSpo2In").value = data.stSpo2In || data.spo2 || "";
-                    if(document.getElementById("stBpHighIn")) document.getElementById("stBpHighIn").value = data.stBpHighIn || data.stBpHigh || data.bpHigh || "";
-                    if(document.getElementById("stBpLowIn")) document.getElementById("stBpLowIn").value = data.stBpLowIn || data.stBpLow || data.bpLow || "";
+                        if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = data.stTempIn || data.stTemp1 || data.temp1 || "";
+                        if(document.getElementById("stPulseIn")) document.getElementById("stPulseIn").value = data.stPulseIn || data.stPulse || data.pulse || "";
+                        if(document.getElementById("stSpo2In")) document.getElementById("stSpo2In").value = data.stSpo2In || data.spo2 || "";
+                        if(document.getElementById("stBpHighIn")) document.getElementById("stBpHighIn").value = data.stBpHighIn || data.stBpHigh || data.bpHigh || "";
+                        if(document.getElementById("stBpLowIn")) document.getElementById("stBpLowIn").value = data.stBpLowIn || data.stBpLow || data.bpLow || "";
 
-                    if(document.getElementById("stTempOut")) document.getElementById("stTempOut").value = data.stTempOut || "";
-                    if(document.getElementById("stPulseOut")) document.getElementById("stPulseOut").value = data.stPulseOut || "";
-                    if(document.getElementById("stSpo2Out")) document.getElementById("stSpo2Out").value = data.stSpo2Out || "";
-                    if(document.getElementById("stBpHighOut")) document.getElementById("stBpHighOut").value = data.stBpHighOut || "";
-                    if(document.getElementById("stBpLowOut")) document.getElementById("stBpLowOut").value = data.stBpLowOut || data.stBpLow || "";
-                    
-                    for(let i=1; i<=23; i++) {
-                        if(document.getElementById("num_in_"+i)) document.getElementById("num_in_"+i).value = data["num_in_"+i] || "";
-                        if(document.getElementById("num_out_"+i)) document.getElementById("num_out_"+i).value = data["num_out_"+i] || "";
+                        if(document.getElementById("stTempOut")) document.getElementById("stTempOut").value = data.stTempOut || "";
+                        if(document.getElementById("stPulseOut")) document.getElementById("stPulseOut").value = data.stPulseOut || "";
+                        if(document.getElementById("stSpo2Out")) document.getElementById("stSpo2Out").value = data.stSpo2Out || "";
+                        if(document.getElementById("stBpHighOut")) document.getElementById("stBpHighOut").value = data.stBpHighOut || "";
+                        if(document.getElementById("stBpLowOut")) document.getElementById("stBpLowOut").value = data.stBpLowOut || "";
+                        
+                        for(let i=1; i<=23; i++) {
+                            if(document.getElementById("num_in_"+i)) document.getElementById("num_in_"+i).value = data["num_in_"+i] || "";
+                            if(document.getElementById("num_out_"+i)) document.getElementById("num_out_"+i).value = data["num_out_"+i] || "";
+                        }
+                        for(let i=1; i<=9; i++) {
+                            if(document.getElementById("free_item_"+i)) document.getElementById("free_item_"+i).value = data["free_item_"+i] || "";
+                            if(document.getElementById("num_in_free"+i)) document.getElementById("num_in_free"+i).value = data["num_in_free"+i] || "";
+                            if(document.getElementById("num_out_free"+i)) document.getElementById("num_out_free"+i).value = data["num_out_free"+i] || "";
+                        }
+                        document.getElementById("stBelongingMemo").value = data.stBelongingMemo || "";
+
+                        document.getElementById("lastBathDate").value = data.lastBathDate || "";
+                        document.getElementById("lastBowelDate").value = data.lastBowelDate || "";
+                        document.getElementById("medRemain").value = data.medRemain || "";
+                        document.getElementById("nsSign").value = data.nsSign || "";
+                        document.getElementById("checkStaffIn").value = data.checkStaffIn || "";
+                        document.getElementById("checkStaffOut").value = data.checkStaffOut || "";
+                        
+                        document.getElementById("stMealBreakfast").value = data.stMealBreakfast || "";
+                        document.getElementById("stMealLunch").value = data.stMealLunch || data.mealMain || "";
+                        document.getElementById("stMealDinner").value = data.stMealDinner || "";
+                        document.getElementById("stWater").value = data.stWater || "";
+                        document.getElementById("stOralCare").value = data.stOralCare || data.oralCare || "";
+                        
+                        document.getElementById("stBowel").value = data.stBowel || data.bowel || "";
+                        if(document.getElementById("stBowel1")) document.getElementById("stBowel1").value = data.stBowel1 || data.stBowelCondition || data.bowelCondition || "";
+                        if(document.getElementById("stBowel2")) document.getElementById("stBowel2").value = data.stBowel2 || "";
+                        if(document.getElementById("stBowel3")) document.getElementById("stBowel3").value = data.stBowel3 || "";
+
+                        if(document.getElementById("stMedication")) document.getElementById("stMedication").value = data.stMedication || data.medication || "";
+                        if(document.getElementById("stBathReason")) document.getElementById("stBathReason").value = data.stBathReason || data.bathReason || "";
+                        document.getElementsByName("stBath").forEach(r => { if(r.value === (data.stBath || data.bath)) r.checked = true; });
+                        if(document.getElementById("stNightState")) document.getElementById("stNightState").value = data.stNightState || "";
+                        if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = data.stDayActivity || data.activity || "";
+
+                        document.getElementById("message").value = data.message || "";
+                        if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = data.familyMessage || "";
+                        if(document.getElementById("facilityPR")) document.getElementById("facilityPR").value = data.facilityPR || "";
                     }
-                    for(let i=1; i<=9; i++) {
-                        if(document.getElementById("free_item_"+i)) document.getElementById("free_item_"+i).value = data["free_item_"+i] || "";
-                        if(document.getElementById("num_in_free"+i)) document.getElementById("num_in_free"+i).value = data["num_in_free"+i] || "";
-                        if(document.getElementById("num_out_free"+i)) document.getElementById("num_out_free"+i).value = data["num_out_free"+i] || "";
-                    }
-                    document.getElementById("stBelongingMemo").value = data.stBelongingMemo || "";
-
-                    document.getElementById("lastBathDate").value = data.lastBathDate || "";
-                    document.getElementById("lastBowelDate").value = data.lastBowelDate || "";
-                    document.getElementById("medRemain").value = data.medRemain || "";
-                    document.getElementById("nsSign").value = data.nsSign || "";
-                    document.getElementById("checkStaffIn").value = data.checkStaffIn || "";
-                    document.getElementById("checkStaffOut").value = data.checkStaffOut || "";
-                    
-                    document.getElementById("stMealBreakfast").value = data.stMealBreakfast || "";
-                    document.getElementById("stMealLunch").value = data.stMealLunch || data.mealMain || "";
-                    document.getElementById("stMealDinner").value = data.stMealDinner || "";
-                    document.getElementById("stWater").value = data.stWater || "";
-                    document.getElementById("stOralCare").value = data.stOralCare || data.oralCare || "";
-                    
-                    document.getElementById("stBowel").value = data.stBowel || data.bowel || "";
-                    if(document.getElementById("stBowel1")) document.getElementById("stBowel1").value = data.stBowel1 || data.stBowelCondition || data.bowelCondition || "";
-                    if(document.getElementById("stBowel2")) document.getElementById("stBowel2").value = data.stBowel2 || "";
-                    if(document.getElementById("stBowel3")) document.getElementById("stBowel3").value = data.stBowel3 || "";
-
-                    if(document.getElementById("stMedication")) document.getElementById("stMedication").value = data.stMedication || data.medication || "";
-                    if(document.getElementById("stBathReason")) document.getElementById("stBathReason").value = data.stBathReason || data.bathReason || "";
-                    document.getElementsByName("stBath").forEach(r => { if(r.value === (data.stBath || data.bath)) r.checked = true; });
-                    if(document.getElementById("stNightState")) document.getElementById("stNightState").value = data.stNightState || "";
-                    if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = data.stDayActivity || data.activity || "";
-
-                    document.getElementById("message").value = data.message || "";
-                    if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = data.familyMessage || "";
-                    if(document.getElementById("facilityPR")) document.getElementById("facilityPR").value = data.facilityPR || "";
                 }
             } catch (e) { console.log(e); }
             window.checkTemp('temp1', 'temp1Alert');
@@ -1426,6 +1450,7 @@
                 batchDataList = batchDataList.filter(d => d.userName !== userName);
                 updatePendingListUI();
                 resetFormInputs();
+                // ★ 送信完了で下書き（ドラフト）を綺麗にお掃除
                 localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${sType}_${userName}`);
                 document.getElementById("userName").value = "";
                 onUserSelected();
@@ -1484,6 +1509,7 @@
                         await Promise.all(vidPromises);
                     }
                     await setDoc(docRef, saveObj);
+                    localStorage.removeItem(`draft_${data.facilityId}_${data.date}_${data.serviceType}_${data.userName}`);
                 });
 
                 await Promise.all(uploadPromises);
@@ -1601,6 +1627,7 @@
             if (sel.value) {
                 box.value += (box.value ? "\n" : "") + sel.value;
                 sel.value = "";
+                autoSaveDraft();
             }
         };
 
@@ -1610,6 +1637,7 @@
             if (sel.value) {
                 box.value += (box.value ? "\n" : "") + sel.value;
                 sel.value = "";
+                autoSaveDraft();
             }
         };
 
@@ -1619,6 +1647,7 @@
             if (sel.value) {
                 box.value += (box.value ? "\n" : "") + sel.value;
                 sel.value = "";
+                autoSaveDraft();
             }
         };
 
