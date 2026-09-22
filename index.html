@@ -514,10 +514,10 @@
         <textarea id="message" rows="4"></textarea>
 
         <label style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal;">（ご家庭でのご様子など）</span></label>
-        <textarea id="familyMessage" rows="3" placeholder="ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。"></textarea>
+        <textarea id="familyMessage" rows="3"></textarea>
 
         <label style="margin-top: 15px; color: #2b8a3e; font-weight: bold;">📢 施設からのお知らせ・PR <span style="font-size: 12px; font-weight: normal; color: #666;">（印刷用紙の一番下に表示されます・空欄なら非表示）</span></label>
-        <textarea id="facilityPR" rows="2" placeholder="例：季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。"></textarea>
+        <textarea id="facilityPR" rows="2"></textarea>
 
         <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">📷 施設でのご様子 (写真・動画)</h3>
         <div class="camera-btn-area">
@@ -633,7 +633,7 @@
             
             let savedServiceType = localStorage.getItem('currentServiceType');
             if (savedServiceType) {
-                document.getElementById("selectServiceType").value = savedServiceType;
+                document.getElementById("serviceType").value = savedServiceType;
             }
             
             let secretClickCount = 0;
@@ -645,7 +645,8 @@
                 secretClickTimer = setTimeout(() => { secretClickCount = 0; }, 3000); 
                 if (secretClickCount === 3) { 
                     let testSections = document.querySelectorAll(".test-mode-section");
-                    let isHidden = (testSections[0].style.display === "none");
+                    // 確実に表示を切り替えるように修正
+                    let isHidden = (window.getComputedStyle(testSections[0]).display === "none");
                     testSections.forEach(section => { section.style.display = isHidden ? "block" : "none"; });
                     if (isHidden) window.showToast("🔧 テスト用機能を【表示】しました", 3000);
                     else window.showToast("🔒 テスト用機能を【非表示】にしました", 3000);
@@ -898,7 +899,6 @@
                 document.getElementById("oralCare").value = d.oralCare || "";
                 
                 document.getElementById("dsBowel").value = d.bowel || "";
-                /* ★ ドラフトから排泄回数データを復元 */
                 if(document.getElementById("dsBowel1")) document.getElementById("dsBowel1").value = d.bowel1 || d.bowelCondition || "";
                 if(document.getElementById("dsBowel2")) document.getElementById("dsBowel2").value = d.bowel2 || "";
                 if(document.getElementById("dsBowel3")) document.getElementById("dsBowel3").value = d.bowel3 || "";
@@ -946,7 +946,6 @@
                 document.getElementById("stOralCare").value = d.stOralCare || "";
                 
                 document.getElementById("stBowel").value = d.stBowel || d.bowel || "";
-                /* ★ ドラフトから排泄回数データを復元 */
                 if(document.getElementById("stBowel1")) document.getElementById("stBowel1").value = d.stBowel1 || d.stBowelCondition || d.bowelCondition || "";
                 if(document.getElementById("stBowel2")) document.getElementById("stBowel2").value = d.stBowel2 || "";
                 if(document.getElementById("stBowel3")) document.getElementById("stBowel3").value = d.stBowel3 || "";
@@ -1019,7 +1018,6 @@
                     document.getElementById("oralCare").value = data.oralCare || "";
 
                     document.getElementById("dsBowel").value = data.bowel || "";
-                    /* ★ 金庫から排泄回数データを復元 */
                     if(document.getElementById("dsBowel1")) document.getElementById("dsBowel1").value = data.bowel1 || data.bowelCondition || "";
                     if(document.getElementById("dsBowel2")) document.getElementById("dsBowel2").value = data.bowel2 || "";
                     if(document.getElementById("dsBowel3")) document.getElementById("dsBowel3").value = data.bowel3 || "";
@@ -1067,7 +1065,6 @@
                     document.getElementById("stOralCare").value = data.stOralCare || data.oralCare || "";
                     
                     document.getElementById("stBowel").value = data.stBowel || data.bowel || "";
-                    /* ★ 金庫から排泄回数データを復元 */
                     if(document.getElementById("stBowel1")) document.getElementById("stBowel1").value = data.stBowel1 || data.stBowelCondition || data.bowelCondition || "";
                     if(document.getElementById("stBowel2")) document.getElementById("stBowel2").value = data.stBowel2 || "";
                     if(document.getElementById("stBowel3")) document.getElementById("stBowel3").value = data.stBowel3 || "";
@@ -1285,7 +1282,6 @@
                 data.oralCare = document.getElementById("oralCare").value;
                 
                 data.bowel = document.getElementById("dsBowel").value;
-                /* ★ 排泄の各回データを保存 */
                 data.bowel1 = document.getElementById("dsBowel1") ? document.getElementById("dsBowel1").value : "";
                 data.bowel2 = document.getElementById("dsBowel2") ? document.getElementById("dsBowel2").value : "";
                 data.bowel3 = document.getElementById("dsBowel3") ? document.getElementById("dsBowel3").value : "";
@@ -1342,7 +1338,6 @@
                 data.stOralCare = document.getElementById("stOralCare").value; data.oralCare = data.stOralCare;
                 
                 data.stBowel = document.getElementById("stBowel").value;
-                /* ★ 排泄の各回データを保存 */
                 data.stBowel1 = document.getElementById("stBowel1") ? document.getElementById("stBowel1").value : "";
                 data.stBowel2 = document.getElementById("stBowel2") ? document.getElementById("stBowel2").value : "";
                 data.stBowel3 = document.getElementById("stBowel3") ? document.getElementById("stBowel3").value : "";
@@ -1571,7 +1566,6 @@
             document.getElementById("stOralCare").value = "";
 
             document.getElementById("dsBowel").value = "";
-            /* ★ 入力欄のリセット */
             if(document.getElementById("dsBowel1")) document.getElementById("dsBowel1").value = "";
             if(document.getElementById("dsBowel2")) document.getElementById("dsBowel2").value = "";
             if(document.getElementById("dsBowel3")) document.getElementById("dsBowel3").value = "";
@@ -1718,7 +1712,6 @@
                                 serviceType: "デイサービス",
                                 temp1: t1, temp2: t1, pulse: pulse, spo2: "98", bpHigh: bpHigh, bpLow: bpLow,
                                 mealMain: "100%", mealSub: "100%", water: "300ml", medication: "軟膏塗布", oralCare: "歯ブラシ",
-                                /* ★ テストデータで回数ごとのダミーを設定 */
                                 bath: "あり", bathReason: "", bowel: p.ex ? "あり" : "なし", bowel1: p.ex ? "普通便" : "", bowel2: "", bowel3: "",
                                 training: "動作訓練（立ち上がり等）、歩行訓練", activity: "朝の会、レクリエーション（塗り絵、脳トレ）",
                                 message: "終始おだやかな表情で過ごされていました。",
@@ -1736,7 +1729,6 @@
                                 
                                 stMealBreakfast: "100%", stMealLunch: "100%", stMealDinner: "100%",
                                 stWater: "1000ml", stOralCare: "毎食後実施", stBath: "あり", stBathReason: "",
-                                /* ★ テストデータで回数ごとのダミーを設定 */
                                 stBowel: p.ex ? "あり" : "なし", stBowel1: p.ex ? "普通便" : "", stBowel2: "", stBowel3: "",
                                 stNightState: "夜間は特変なく朝までぐっすりお休みでした。",
                                 stDayActivity: "デイルームにて他のご入所者様と談笑され、穏やかに過ごされました。",
