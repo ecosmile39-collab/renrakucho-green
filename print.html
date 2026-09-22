@@ -161,6 +161,7 @@
 
             .section-title { margin-top: 5px !important; margin-bottom: 2px !important; font-size: 11.5px !important; }
             .birthday-banner { margin-bottom: 3px !important; padding: 2px !important; font-size: 11px !important; }
+            
             .media-print-box img.photo { max-height: 190px !important; max-width: 260px !important; }
             .media-print-box img.qr { width: 120px !important; height: 120px !important; }
         }
@@ -168,8 +169,8 @@
 </head>
 <body>
     <div class="no-print">
-        <!-- ★ ここが「透明な名札入れ」です -->
-        <h2>🖨️ <span id="displayFacilityName">施設名読込中...</span> 印刷画面</h2>
+        <!-- ★ ここを「透明な名札入れ」に書き換えました！ -->
+        <h2 style="color: #2b8a3e; margin-top: 0;">🖨️ <span id="displayFacilityName">施設名読込中...</span> 連絡帳（印刷・確認画面）</h2>
         
         <div class="nav-links">
             <a href="index.html">⬅ 入力画面へ戻る</a>
@@ -253,10 +254,11 @@
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; }
             
-            // ★ マジックの文字を消し、システムに「施設名」を教えてもらって表示します
+            // ★ システムから「施設名」を教えてもらって表示します
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
-            document.getElementById("displayFacilityName").textContent = facilityName;
-            
+            let nameEl = document.getElementById("displayFacilityName");
+            if (nameEl) nameEl.textContent = facilityName;
+
             let today = new Date();
             let year = today.getFullYear();
             let month = String(today.getMonth() + 1).padStart(2, '0');
@@ -383,7 +385,7 @@
             let startDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
             let endDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
             
-            // ★ システムから現在ログイン中の施設名を取り出します
+            // ★ 連絡帳に印字する施設名も自動で読み取ります
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
             
             let btn = document.getElementById("batchPrintBtn");
@@ -716,7 +718,6 @@
             }
 
             let familyMessageText = lastData.familyMessage ? lastData.familyMessage.replace(/\n/g, '<br>') : '';
-            
             let prHtml = "";
             if (lastData.facilityPR && lastData.facilityPR.trim() !== "") {
                 let prText = lastData.facilityPR.trim().replace(/\n/g, '<br>');
