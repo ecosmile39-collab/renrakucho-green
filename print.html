@@ -163,7 +163,6 @@
             .section-title { margin-top: 10px !important; margin-bottom: 4px !important; font-size: 15px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
             .birthday-banner { margin-bottom: 6px !important; padding: 4px !important; font-size: 13px !important; }
             
-            /* ★ 1ページに収まるように写真サイズを微調整 */
             .media-print-box img.photo { max-height: 145px !important; max-width: 200px !important; }
             .media-print-box img.qr { width: 100px !important; height: 100px !important; }
         }
@@ -716,12 +715,12 @@
                 mainMessage = "特になし";
             }
 
-            // ★ 施設PRがあれば、お客様への御連絡事項の枠内に線を引いて合流させます
+            // ★ 施設からのお知らせを「■ お客様への御連絡事項」の枠内（finalMessageHtml内）に入れる魔法
             let prPart = "";
             if (lastData.facilityPR && lastData.facilityPR.trim() !== "") {
                 let prText = lastData.facilityPR.trim().replace(/\n/g, '<br>');
                 prPart = `
-                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; color: #2b8a3e;">
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999; color: #2b8a3e;">
                         <strong>【${facilityName}からのお知らせ】</strong><br>
                         ${prText}
                     </div>
@@ -909,12 +908,12 @@
 
             let mainMessage = data.message ? data.message.replace(/\n/g, '<br>') : '特になし';
 
-            // ★ 施設PRがあれば、お客様への御連絡事項の枠内に線を引いて合流させます
+            // ★ 施設からのお知らせを「■ お客様への御連絡事項」の枠内（finalMessageHtml内）に入れる魔法
             let prPart = "";
             if (data.facilityPR && data.facilityPR.trim() !== "") {
                 let prText = data.facilityPR.trim().replace(/\n/g, '<br>');
                 prPart = `
-                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; color: #2b8a3e;">
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #999; color: #2b8a3e;">
                         <strong>【${facilityName}からのお知らせ】</strong><br>
                         ${prText}
                     </div>
