@@ -86,6 +86,7 @@
         <div id="loadingText">データを送信しています...<br>画面を閉じずにお待ちください</div>
     </div>
 
+    <!-- ✏️ 利用者情報 編集モーダルウィンドウ -->
     <div id="editUserModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10001; justify-content: center; align-items: center;">
         <div style="background: white; padding: 25px; border-radius: 10px; width: 92%; max-width: 420px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); box-sizing: border-box;">
             <h3 style="margin-top: 0; color: #1c7ed6; border-bottom: 2px solid #1c7ed6; padding-bottom: 8px;">✏️ 利用者情報の変更</h3>
@@ -130,10 +131,20 @@
             </select>
         </div>
 
+        <!-- ★ テスト用サポート機能に、画像選択ボタンを追加しました ★ -->
         <div class="test-mode-section" style="margin-bottom: 25px; background-color: #e8f5e9; padding: 15px; border-radius: 8px; border: 2px dashed #4caf50; text-align: center;">
             <h4 style="color: #2e7d32; margin-top: 0; margin-bottom: 8px;">🧪 テスト用サポート機能</h4>
+            <div style="background-color: #fff; padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: left; font-size: 14px; border: 1px solid #ccc;">
+                <p style="margin-top: 0; margin-bottom: 5px; font-weight: bold; color: #333;">【画像準備】リアルな写真を反映させる</p>
+                <label style="display: block; font-size: 12px; color: #555; margin-bottom: 3px;">① テスト用の「顔写真」を10枚選ぶ：</label>
+                <input type="file" id="dummyFaceFiles" accept="image/*" multiple style="font-size: 13px; margin-bottom: 10px;">
+                <label style="display: block; font-size: 12px; color: #555; margin-bottom: 3px;">② テスト用の「活動風景写真」を10枚選ぶ：</label>
+                <input type="file" id="dummyActFiles" accept="image/*" multiple style="font-size: 13px;">
+                <p style="font-size: 11px; color: #e03131; margin-top: 8px; margin-bottom: 0;">※画像を選んでから下のボタンを押してください。選ばなかった分は文字画像になります。</p>
+            </div>
+
             <button type="button" id="btnGenerateDummy" style="background-color: #4caf50; color: white; border: none; padding: 12px 20px; border-radius: 5px; font-size: 16px; font-weight: bold; width: 100%; cursor: pointer; margin-bottom: 15px;" onclick="generateDummyData()">
-                🪄 10人×10日分のテストデータを一発自動作成する
+                🪄 選んだ写真を使って10人×10日分のテストデータを作成する
             </button>
             <p style="font-size: 12px; color: #555; text-align: left; margin-bottom: 10px;">⚠️ すべてのデータを消去したい場合は、以下のボタンを押してください。</p>
             <button type="button" style="background-color: #e03131; color: white; border: none; padding: 12px 20px; border-radius: 5px; font-size: 16px; font-weight: bold; width: 100%; cursor: pointer;" onclick="deleteAllData()">
@@ -1787,6 +1798,10 @@
             window.currentImageCount = 0; window.currentVideoCount = 0;
             document.getElementById("preUploadedBadge").style.display = "none";
             document.getElementById("cancelPreUploadBtn").style.display = "none"; 
+            
+            // ★ 画像選択ファイルのリセット
+            if(document.getElementById("dummyFaceFiles")) document.getElementById("dummyFaceFiles").value = "";
+            if(document.getElementById("dummyActFiles")) document.getElementById("dummyActFiles").value = "";
         }
 
         window.checkTemp = function(inputId, alertId) {
@@ -1845,20 +1860,24 @@
             if (!isConfirm) { event.preventDefault(); }
         };
 
-        // ★ テストデータ生成の魔法 ★
-        // CORS対応済みのフリー画像APIから、シニアの顔写真と風景を自動でダウンロードします
+        // ★ 【方法A】パソコンにあるお好きな写真をテストデータとして金庫に入れる魔法
         window.generateDummyData = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             let date = document.getElementById("date").value;
             if (!facilityId || !date) { alert("日付を選択してください。"); return; }
 
             let sType = document.getElementById("serviceType").value;
+            
+            let faceInput = document.getElementById("dummyFaceFiles");
+            let actInput = document.getElementById("dummyActFiles");
+            let faceFiles = faceInput ? faceInput.files : [];
+            let actFiles = actInput ? actInput.files : [];
 
-            if (!confirm(`🧪 テスト用サポート\n${date} を基準に、「${sType}」の10名様 × 10日分のダミーデータを一括作成しますか？\n\n★今回は「リアルなシニアの顔写真」や「風景写真」をインターネットから自動で取得してセットします！（※数分かかる場合があります）\n\n（※現在の下書きデータはリセットされます）`)) return;
+            if (!confirm(`🧪 テスト用サポート\n${date} を基準に、「${sType}」の10名様 × 10日分のダミーデータを作成しますか？\n\n・選んだ顔写真：${faceFiles.length} 枚\n・選んだ風景写真：${actFiles.length} 枚\n（※現在の下書きデータはリセットされます）`)) return;
 
             let btn = document.getElementById("btnGenerateDummy");
             btn.disabled = true;
-            btn.textContent = "⚡ 10人×10日分とリアル写真を生成中... (しばらくお待ちください)";
+            btn.textContent = "⚡ テストデータと写真を金庫に保存中... (しばらくお待ちください)";
 
             let keysToRemove = [];
             for (let i = 0; i < localStorage.length; i++) {
@@ -1870,34 +1889,25 @@
             let dateParts = date.split('-');
             let curD = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
 
-            // シニア顔写真のAPI URLと、活動風景写真（PicsumのID）を割り当てています
             const dummyPatients = [
-                { name: "三宅 恒子", birthday: "1940-05-24", t1: "36.9", p: "94", bh: "128", bl: "80", ng: false, ex: true, faceUrl: "https://randomuser.me/api/portraits/women/68.jpg", actId: "106" },
-                { name: "佐藤 健一", birthday: "1942-08-15", t1: "36.5", p: "72", bh: "125", bl: "75", ng: false, ex: true, faceUrl: "https://randomuser.me/api/portraits/men/78.jpg", actId: "237" },
-                { name: "田中 幸子", birthday: "1938-11-03", t1: "36.6", p: "78", bh: "135", bl: "80", ng: false, ex: false, faceUrl: "https://randomuser.me/api/portraits/women/43.jpg", actId: "1025" },
-                { name: "鈴木 一郎", birthday: "1945-02-20", t1: "36.3", p: "68", bh: "118", bl: "68", ng: false, ex: true, faceUrl: "https://randomuser.me/api/portraits/men/32.jpg", actId: "1005" },
-                { name: "高橋 ハル", birthday: "1935-09-19", t1: "37.1", p: "84", bh: "142", bl: "85", ng: true, ex: false, faceUrl: "https://randomuser.me/api/portraits/women/94.jpg", actId: "10" },
-                { name: "伊藤 正夫", birthday: "1943-07-30", t1: "36.5", p: "76", bh: "128", bl: "74", ng: false, ex: true, faceUrl: "https://randomuser.me/api/portraits/men/66.jpg", actId: "1011" },
-                { name: "渡辺 静江", birthday: "1939-04-18", t1: "36.2", p: "70", bh: "122", bl: "70", ng: false, ex: false, faceUrl: "https://randomuser.me/api/portraits/women/79.jpg", actId: "1012" },
-                { name: "山本 和男", birthday: "1944-12-05", t1: "36.5", p: "74", bh: "130", bl: "76", ng: false, ex: false, faceUrl: "https://randomuser.me/api/portraits/men/46.jpg", actId: "1015" },
-                { name: "中村 敏子", birthday: "1937-10-22", t1: "36.7", p: "80", bh: "138", bl: "82", ng: false, ex: true, faceUrl: "https://randomuser.me/api/portraits/women/60.jpg", actId: "1021" },
-                { name: "小林 茂",   birthday: "1946-01-10", t1: "36.4", p: "66", bh: "115", bl: "65", ng: false, ex: false, faceUrl: "https://randomuser.me/api/portraits/men/22.jpg", actId: "1024" }
+                { name: "三宅 恒子", birthday: "1940-05-24", t1: "36.9", p: "94", bh: "128", bl: "80", ng: false, ex: true },
+                { name: "佐藤 健一", birthday: "1942-08-15", t1: "36.5", p: "72", bh: "125", bl: "75", ng: false, ex: true },
+                { name: "田中 幸子", birthday: "1938-11-03", t1: "36.6", p: "78", bh: "135", bl: "80", ng: false, ex: false },
+                { name: "鈴木 一郎", birthday: "1945-02-20", t1: "36.3", p: "68", bh: "118", bl: "68", ng: false, ex: true },
+                { name: "高橋 ハル", birthday: "1935-09-19", t1: "37.1", p: "84", bh: "142", bl: "85", ng: true, ex: false },
+                { name: "伊藤 正夫", birthday: "1943-07-30", t1: "36.5", p: "76", bh: "128", bl: "74", ng: false, ex: true },
+                { name: "渡辺 静江", birthday: "1939-04-18", t1: "36.2", p: "70", bh: "122", bl: "70", ng: false, ex: false },
+                { name: "山本 和男", birthday: "1944-12-05", t1: "36.5", p: "74", bh: "130", bl: "76", ng: false, ex: false },
+                { name: "中村 敏子", birthday: "1937-10-22", t1: "36.7", p: "80", bh: "138", bl: "82", ng: false, ex: true },
+                { name: "小林 茂",   birthday: "1946-01-10", t1: "36.4", p: "66", bh: "115", bl: "65", ng: false, ex: false }
             ];
 
-            // リアル画像をインターネットからダウンロードする関数
-            async function getRealDummyImage(url, fallbackText, bgColor) {
-                try {
-                    let response = await fetch(url);
-                    if (!response.ok) throw new Error("画像取得失敗");
-                    return await response.blob();
-                } catch (e) {
-                    // ネット回線等の理由で万が一失敗した場合は、いつもの色付き文字画像を生成します
-                    const c = document.createElement('canvas'); c.width = 400; c.height = 300;
-                    const ctx = c.getContext('2d'); ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 400, 300);
-                    ctx.fillStyle = "#ffffff"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center";
-                    ctx.fillText(fallbackText, 200, 140); ctx.font = "16px sans-serif"; ctx.fillText("サンプル写真", 200, 180);
-                    return new Promise(res => c.toBlob(b => res(b), 'image/jpeg', 0.8));
-                }
+            function makeDummyImage(text, bgColor) {
+                const c = document.createElement('canvas'); c.width = 400; c.height = 300;
+                const ctx = c.getContext('2d'); ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 400, 300);
+                ctx.fillStyle = "#ffffff"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText(text, 200, 140); ctx.font = "16px sans-serif"; ctx.fillText("サンプル写真", 200, 180);
+                return new Promise(res => c.toBlob(b => res(b), 'image/jpeg', 0.8));
             }
 
             try {
@@ -1907,13 +1917,23 @@
                     let services = ["デイサービス", "ショートステイ"];
                     await setDoc(userRef, { birthday: p.birthday, photoNg: p.ng, needExcretion: p.ex, registeredAt: new Date().toISOString(), services: services }, { merge: true });
 
-                    // ① 顔写真（シニアのリアル画像）を取得して金庫へ
-                    let faceBlob = await getRealDummyImage(p.faceUrl, p.name, "#2b8a3e");
+                    // 顔写真をアップロード（選んでいればその写真を、なければ文字画像を）
+                    let faceBlob;
+                    if (faceFiles.length > i) {
+                        faceBlob = await compressImage(faceFiles[i]);
+                    } else {
+                        faceBlob = await makeDummyImage(p.name, "#2b8a3e");
+                    }
                     await uploadBytes(ref(storage, `faces/${p.name}/face.jpg`), faceBlob);
 
-                    // ② 本日の様子（風景や活動のリアル画像）を取得して金庫へ
-                    let imgBlob = await getRealDummyImage(`https://picsum.photos/id/${p.actId}/400/300`, `${p.name} 様\n本日のご様子`, "#4682b4");
-                    await uploadBytes(ref(storage, `images/${p.name}/image_1.jpg`), imgBlob);
+                    // 風景・活動写真をアップロード（選んでいればその写真を、なければ文字画像を）
+                    let actBlob;
+                    if (actFiles.length > i) {
+                        actBlob = await compressImage(actFiles[i]);
+                    } else {
+                        actBlob = await makeDummyImage(`${p.name} 様\n本日のご様子`, "#4682b4");
+                    }
+                    await uploadBytes(ref(storage, `images/${p.name}/image_1.jpg`), actBlob);
 
                     let dayPromises = [];
                     for (let dOffset = 0; dOffset < 10; dOffset++) {
@@ -1980,19 +2000,19 @@
 
                 await Promise.all(patientPromises);
 
-                showToast("🎉 大成功！10名様×10日分のデータとリアル写真が完全に作成されました！", 5000);
+                showToast("🎉 大成功！選んだ写真を使ってテストデータが完全に作成されました！", 4000);
                 await loadUserNames(facilityId);
                 
                 document.getElementById("userName").value = "三宅 恒子";
                 onUserSelected();
 
                 btn.disabled = false;
-                btn.textContent = "🪄 10人×10日分のテストデータを一発自動作成する";
+                btn.textContent = "🪄 選んだ写真を使って10人×10日分のテストデータを作成する";
 
             } catch (err) {
                 showToast("❌ 生成エラー: " + err.message, 5000);
                 btn.disabled = false;
-                btn.textContent = "🪄 10人×10日分のテストデータを一発自動作成する";
+                btn.textContent = "🪄 選んだ写真を使って10人×10日分のテストデータを作成する";
             }
         };
 
