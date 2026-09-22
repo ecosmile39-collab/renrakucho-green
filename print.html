@@ -112,7 +112,6 @@
             .print-only { display: block !important; }
 
             .print-page { 
-                /* ★ 紙の上下の余白を少し狭くして、全体の入る量を増やしました */
                 padding: 8mm 12mm 8mm 15mm !important; 
                 box-shadow: none !important; 
                 width: 210mm !important; 
@@ -138,35 +137,33 @@
                 break-inside: avoid !important;
             }
             
-            /* ★ 全体的にすき間（margin, padding）を限界まで詰めました */
             .print-header { margin-bottom: 4px !important; padding-bottom: 2px !important; border-bottom: 2px solid #333 !important; }
             .print-header h1 { font-size: 20px !important; margin: 0 !important; }
             .facility-name { font-size: 15px !important; font-weight: bold !important; }
             .print-date { margin-bottom: 4px !important; font-size: 12px !important; font-weight: bold !important; }
             h2 { font-size: 18px !important; margin: 0 !important; }
             
-            table.compact-table { margin-bottom: 4px !important; font-size: 12px !important; }
-            table.compact-table th, table.compact-table td { padding: 4px !important; border: 1px solid #333 !important; }
-            table.belongings-print-table { margin-bottom: 4px !important; font-size: 11px !important; }
-            table.belongings-print-table th, table.belongings-print-table td { padding: 2px !important; border: 1px solid #333 !important; }
+            table.compact-table { margin-bottom: 8px !important; font-size: 13.5px !important; }
+            table.compact-table th, table.compact-table td { padding: 6.5px !important; border: 1px solid #333 !important; }
+            
+            table.belongings-print-table { margin-bottom: 8px !important; font-size: 11px !important; }
+            table.belongings-print-table th, table.belongings-print-table td { padding: 3px !important; border: 1px solid #333 !important; }
             
             .st-chart { display: none !important; }
             .admission-vitals-table { display: none !important; } 
             
-            /* グラフの高さも少しスリムに */
             .ds-chart { display: block !important; height: 120px !important; margin-bottom: 4px !important; }
             .ds-chart canvas { display: none !important; }
             .ds-chart img.chart-print-image { display: block !important; width: 100% !important; height: 120px !important; object-fit: contain !important; }
 
-            .compact-avg { margin: 4px 0 !important; padding: 2px !important; font-size: 11px !important; font-weight: bold !important; border: 1px solid #daa520 !important; border-radius: 5px !important; background-color: #fffacd !important; }
+            .compact-avg { margin: 4px 0 !important; padding: 4px !important; font-size: 12px !important; font-weight: bold !important; border: 1px solid #daa520 !important; border-radius: 5px !important; background-color: #fffacd !important; }
 
-            .text-box { min-height: 25px !important; margin-bottom: 4px !important; padding: 4px !important; font-size: 12px !important; line-height: 1.3 !important; border: 1px solid #333 !important; border-radius: 3px !important; }
+            .text-box { min-height: 25px !important; margin-bottom: 4px !important; padding: 5px !important; font-size: 12.5px !important; line-height: 1.3 !important; border: 1px solid #333 !important; border-radius: 3px !important; }
             .family-box { min-height: 50px !important; }
 
-            .section-title { margin-top: 6px !important; margin-bottom: 2px !important; font-size: 13px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
+            .section-title { margin-top: 8px !important; margin-bottom: 2px !important; font-size: 14px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
             .birthday-banner { margin-bottom: 4px !important; padding: 2px !important; font-size: 12px !important; }
             
-            /* ★ 写真とQRコードを、はみ出さないベストなサイズに調整 */
             .media-print-box img.photo { max-height: 125px !important; max-width: 175px !important; }
             .media-print-box img.qr { width: 90px !important; height: 90px !important; }
         }
@@ -719,14 +716,12 @@
                 mainMessage = "特になし";
             }
 
-            // ★ 施設PRをスッキリとした余白で合流させます
             let prPart = "";
             if (lastData.facilityPR && lastData.facilityPR.trim() !== "") {
-                let prText = lastData.facilityPR.trim().replace(/\n/g, '<br>');
+                let prText = lastData.facilityPR.trim().replace(/\n+/g, '<br>');
                 prPart = `
-                    <div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed #999; color: #2b8a3e;">
-                        <strong>【${facilityName}からのお知らせ】</strong><br>
-                        ${prText}
+                    <div style="margin-top: 2px; padding-top: 2px; border-top: 1px dashed #999; color: #2b8a3e; line-height: 1.2;">
+                        <span style="font-weight:bold;">【${facilityName}からのお知らせ】</span> ${prText}
                     </div>
                 `;
             }
@@ -912,14 +907,13 @@
 
             let mainMessage = data.message ? data.message.replace(/\n/g, '<br>') : '特になし';
 
-            // ★ 施設PRをスッキリとした余白で合流させます
+            // ★ ここが魔法のポイント！不要な改行をカットし、点線とのすき間を削ります
             let prPart = "";
             if (data.facilityPR && data.facilityPR.trim() !== "") {
-                let prText = data.facilityPR.trim().replace(/\n/g, '<br>');
+                let prText = data.facilityPR.trim().replace(/\n+/g, '<br>');
                 prPart = `
-                    <div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed #999; color: #2b8a3e;">
-                        <strong>【${facilityName}からのお知らせ】</strong><br>
-                        ${prText}
+                    <div style="margin-top: 2px; padding-top: 2px; border-top: 1px dashed #999; color: #2b8a3e; line-height: 1.2;">
+                        <span style="font-weight:bold;">【${facilityName}からのお知らせ】</span> ${prText}
                     </div>
                 `;
             }
