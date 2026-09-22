@@ -112,7 +112,7 @@
             .print-only { display: block !important; }
 
             .print-page { 
-                padding: 6mm 10mm 6mm 15mm !important; 
+                padding: 10mm 15mm 10mm 20mm !important; 
                 box-shadow: none !important; 
                 width: 210mm !important; 
                 min-height: 297mm !important; 
@@ -137,39 +137,42 @@
                 break-inside: avoid !important;
             }
             
-            .print-header { margin-bottom: 4px !important; padding-bottom: 2px !important; }
-            .print-header h1 { font-size: 17px !important; }
-            .facility-name { font-size: 13px !important; }
-            .print-date { margin-bottom: 3px !important; font-size: 11px !important; }
+            /* ★ 枠を高く、文字を限界まで大きくする魔法 ★ */
+            .print-header { margin-bottom: 10px !important; padding-bottom: 5px !important; border-bottom: 2px solid #333 !important; }
+            .print-header h1 { font-size: 24px !important; margin: 0 !important; }
+            .facility-name { font-size: 18px !important; font-weight: bold !important; }
+            .print-date { margin-bottom: 8px !important; font-size: 14px !important; font-weight: bold !important; }
+            h2 { font-size: 22px !important; }
             
-            table.compact-table { margin-bottom: 4px !important; font-size: 10.5px !important; }
-            table.compact-table th, table.compact-table td { padding: 2px !important; }
-            table.belongings-print-table { margin-bottom: 4px !important; font-size: 10.5px !important; }
-            table.belongings-print-table th, table.belongings-print-table td { padding: 2px !important; }
+            table.compact-table { margin-bottom: 12px !important; font-size: 14px !important; }
+            table.compact-table th, table.compact-table td { padding: 8px !important; border: 1px solid #333 !important; }
+            table.belongings-print-table { margin-bottom: 10px !important; font-size: 12px !important; }
+            table.belongings-print-table th, table.belongings-print-table td { padding: 4px !important; border: 1px solid #333 !important; }
             
             .st-chart { display: none !important; }
             .admission-vitals-table { display: none !important; } 
             
-            .ds-chart { display: block !important; height: 130px !important; margin-bottom: 4px !important; }
+            .ds-chart { display: block !important; height: 140px !important; margin-bottom: 10px !important; }
             .ds-chart canvas { display: none !important; }
-            .ds-chart img.chart-print-image { display: block !important; }
+            .ds-chart img.chart-print-image { display: block !important; width: 100% !important; height: 140px !important; object-fit: contain !important; }
 
-            .compact-avg { margin: 4px 0 !important; padding: 3px !important; font-size: 10.5px !important; }
+            .compact-avg { margin: 10px 0 !important; padding: 6px !important; font-size: 13px !important; font-weight: bold !important; border: 1px solid #daa520 !important; border-radius: 5px !important; background-color: #fffacd !important; }
 
-            .text-box { min-height: 20px !important; margin-bottom: 4px !important; padding: 3px !important; font-size: 10.5px !important; }
-            .family-box { min-height: 65px !important; }
+            .text-box { min-height: 40px !important; margin-bottom: 10px !important; padding: 8px !important; font-size: 14px !important; line-height: 1.5 !important; border: 1px solid #333 !important; border-radius: 3px !important; }
+            .family-box { min-height: 90px !important; }
 
-            .section-title { margin-top: 5px !important; margin-bottom: 2px !important; font-size: 11.5px !important; }
-            .birthday-banner { margin-bottom: 3px !important; padding: 2px !important; font-size: 11px !important; }
+            .section-title { margin-top: 12px !important; margin-bottom: 6px !important; font-size: 16px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
+            .birthday-banner { margin-bottom: 8px !important; padding: 6px !important; font-size: 14px !important; }
             
             .media-print-box img.photo { max-height: 190px !important; max-width: 260px !important; }
             .media-print-box img.qr { width: 120px !important; height: 120px !important; }
+            
+            .print-only { margin-top: 15px !important; border: 2px dashed #2b8a3e !important; padding: 12px !important; border-radius: 5px !important; text-align: center !important; font-size: 14px !important; }
         }
     </style>
 </head>
 <body>
     <div class="no-print">
-        <!-- ★ ここを「透明な名札入れ」に書き換えました！ -->
         <h2 style="color: #2b8a3e; margin-top: 0;">🖨️ <span id="displayFacilityName">施設名読込中...</span> 連絡帳（印刷・確認画面）</h2>
         
         <div class="nav-links">
@@ -254,7 +257,6 @@
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; }
             
-            // ★ システムから「施設名」を教えてもらって表示します
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
             let nameEl = document.getElementById("displayFacilityName");
             if (nameEl) nameEl.textContent = facilityName;
@@ -385,7 +387,6 @@
             let startDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
             let endDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
             
-            // ★ 連絡帳に印字する施設名も自動で読み取ります
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
             
             let btn = document.getElementById("batchPrintBtn");
@@ -792,7 +793,7 @@
                 </table>
 
                 <div class="compact-avg">
-                    📊 ご利用日数の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%
+                    📊 ご利用日数の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽চ্ছু度 ${avgSpo2Str}%
                 </div>
 
                 <div class="chart-container st-chart">
@@ -925,7 +926,7 @@
                 </div>
                 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <h2 style="font-size: 19px; margin: 0;">お名前： ${data.userName} 様</h2>
+                    <h2 style="font-size: 20px; margin: 0;">お名前： ${data.userName} 様</h2>
                     <div class="print-date" style="margin: 0;">📓 記録日： ${data.date}</div>
                 </div>
 
@@ -960,7 +961,7 @@
                 
                 <div class="chart-container ds-chart">
                     <canvas id="${chartCanvasId}"></canvas>
-                    <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 130px; object-fit: contain;">
+                    <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 140px; object-fit: contain;">
                 </div>
                 
                 <div class="section-title">■ 機能訓練・活動の様子</div>
