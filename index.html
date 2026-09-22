@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>連絡帳 入力画面</title>
+    <title>連絡帳 入力（グリーンアンドリバーホーム版）</title>
     
     <style>
         body { font-family: sans-serif; background-color: #f0f8ff; padding: 10px; margin: 0; }
@@ -550,7 +550,7 @@
         <textarea id="message" rows="4"></textarea>
 
         <label style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal;">（ご家庭でのご様子など）</span></label>
-        <textarea id="familyMessage" rows="3"></textarea>
+        <textarea id="familyMessage" rows="3" placeholder="ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。"></textarea>
 
         <div style="margin-top: 15px;">
             <button type="button" id="togglePRBtn" onclick="togglePRField()" style="background-color: #f8f9fa; color: #2b8a3e; border: 1px solid #2b8a3e; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px;">
@@ -931,7 +931,6 @@
             fetchServerData(userName, dateStr);
         };
 
-        // ★ ✏️ 利用者情報 変更モーダルを開く
         window.openEditUserModal = function() {
             let userName = document.getElementById("userName").value;
             if (!userName) return;
@@ -950,7 +949,6 @@
             document.getElementById("editUserModal").style.display = "none";
         };
 
-        // ★ ✏️ 利用者情報の変更を保存
         window.saveEditedUser = async function() {
             let oldName = document.getElementById("userName").value;
             let newName = document.getElementById("editUserName").value.trim();
@@ -973,14 +971,12 @@
             try {
                 let userRef = doc(db, "facilities", facilityId, "users", newName);
 
-                // 名前が変更された場合
                 if (newName !== oldName) {
                     let docSnap = await getDoc(userRef);
                     if (docSnap.exists()) {
                         alert(`「${newName}」様は既に名簿に登録されています。別のお名前にしてください。`);
                         return;
                     }
-                    // 新規Doc作成＆旧Doc削除
                     let saveData = { ...currentData, services: newServices };
                     if (newBirthday) saveData.birthday = newBirthday;
                     else delete saveData.birthday;
@@ -988,7 +984,6 @@
                     await setDoc(userRef, saveData);
                     await deleteDoc(doc(db, "facilities", facilityId, "users", oldName));
                 } else {
-                    // 名前が同じ場合
                     let saveData = { services: newServices };
                     if (newBirthday) saveData.birthday = newBirthday;
                     else saveData.birthday = "";
@@ -1006,7 +1001,6 @@
             }
         };
 
-        // ★ 🗑️ 利用者を名簿から削除
         window.deleteSelectedUser = async function() {
             let userName = document.getElementById("userName").value;
             let facilityId = localStorage.getItem("currentFacilityId");
@@ -1021,7 +1015,6 @@
                 let userRef = doc(db, "facilities", facilityId, "users", userName);
                 await deleteDoc(userRef);
 
-                // 下書きデータもお掃除
                 let keysToRemove = [];
                 for (let i = 0; i < localStorage.length; i++) {
                     let key = localStorage.key(i);
@@ -1852,6 +1845,8 @@
             if (!isConfirm) { event.preventDefault(); }
         };
 
+        // ★ テストデータ生成の魔法 ★
+        // CORS対応済みのフリー画像APIから、シニアの顔写真と風景を自動でダウンロードします
         window.generateDummyData = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             let date = document.getElementById("date").value;
@@ -1859,11 +1854,11 @@
 
             let sType = document.getElementById("serviceType").value;
 
-            if (!confirm(`🧪 テスト用サポート\n${date} を基準に、「${sType}」の10名様 × 10日分のダミーデータを一括作成しますか？\n（※現在の下書きデータはリセットされます）`)) return;
+            if (!confirm(`🧪 テスト用サポート\n${date} を基準に、「${sType}」の10名様 × 10日分のダミーデータを一括作成しますか？\n\n★今回は「リアルなシニアの顔写真」や「風景写真」をインターネットから自動で取得してセットします！（※数分かかる場合があります）\n\n（※現在の下書きデータはリセットされます）`)) return;
 
             let btn = document.getElementById("btnGenerateDummy");
             btn.disabled = true;
-            btn.textContent = "⚡ 10人×10日分を生成中... (十数秒お待ちください)";
+            btn.textContent = "⚡ 10人×10日分とリアル写真を生成中... (しばらくお待ちください)";
 
             let keysToRemove = [];
             for (let i = 0; i < localStorage.length; i++) {
@@ -1875,25 +1870,34 @@
             let dateParts = date.split('-');
             let curD = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
 
+            // シニア顔写真のAPI URLと、活動風景写真（PicsumのID）を割り当てています
             const dummyPatients = [
-                { name: "三宅 恒子", birthday: "1940-05-24", t1: "36.9", p: "94", bh: "128", bl: "80", ng: false, ex: true },
-                { name: "佐藤 健一", birthday: "1942-08-15", t1: "36.5", p: "72", bh: "125", bl: "75", ng: false, ex: true },
-                { name: "田中 幸子", birthday: "1938-11-03", t1: "36.6", p: "78", bh: "135", bl: "80", ng: false, ex: false },
-                { name: "鈴木 一郎", birthday: "1945-02-20", t1: "36.3", p: "68", bh: "118", bl: "68", ng: false, ex: true },
-                { name: "高橋 ハル", birthday: "1935-09-19", t1: "37.1", p: "84", bh: "142", bl: "85", ng: true, ex: false },
-                { name: "伊藤 正夫", birthday: "1943-07-30", t1: "36.5", p: "76", bh: "128", bl: "74", ng: false, ex: true },
-                { name: "渡辺 静江", birthday: "1939-04-18", t1: "36.2", p: "70", bh: "122", bl: "70", ng: false, ex: false },
-                { name: "山本 和男", birthday: "1944-12-05", t1: "36.5", p: "74", bh: "130", bl: "76", ng: false, ex: false },
-                { name: "中村 敏子", birthday: "1937-10-22", t1: "36.7", p: "80", bh: "138", bl: "82", ng: false, ex: true },
-                { name: "小林 茂",   birthday: "1946-01-10", t1: "36.4", p: "66", bh: "115", bl: "65", ng: false, ex: false }
+                { name: "三宅 恒子", birthday: "1940-05-24", t1: "36.9", p: "94", bh: "128", bl: "80", ng: false, ex: true, faceUrl: "https://randomuser.me/api/portraits/women/68.jpg", actId: "106" },
+                { name: "佐藤 健一", birthday: "1942-08-15", t1: "36.5", p: "72", bh: "125", bl: "75", ng: false, ex: true, faceUrl: "https://randomuser.me/api/portraits/men/78.jpg", actId: "237" },
+                { name: "田中 幸子", birthday: "1938-11-03", t1: "36.6", p: "78", bh: "135", bl: "80", ng: false, ex: false, faceUrl: "https://randomuser.me/api/portraits/women/43.jpg", actId: "1025" },
+                { name: "鈴木 一郎", birthday: "1945-02-20", t1: "36.3", p: "68", bh: "118", bl: "68", ng: false, ex: true, faceUrl: "https://randomuser.me/api/portraits/men/32.jpg", actId: "1005" },
+                { name: "高橋 ハル", birthday: "1935-09-19", t1: "37.1", p: "84", bh: "142", bl: "85", ng: true, ex: false, faceUrl: "https://randomuser.me/api/portraits/women/94.jpg", actId: "10" },
+                { name: "伊藤 正夫", birthday: "1943-07-30", t1: "36.5", p: "76", bh: "128", bl: "74", ng: false, ex: true, faceUrl: "https://randomuser.me/api/portraits/men/66.jpg", actId: "1011" },
+                { name: "渡辺 静江", birthday: "1939-04-18", t1: "36.2", p: "70", bh: "122", bl: "70", ng: false, ex: false, faceUrl: "https://randomuser.me/api/portraits/women/79.jpg", actId: "1012" },
+                { name: "山本 和男", birthday: "1944-12-05", t1: "36.5", p: "74", bh: "130", bl: "76", ng: false, ex: false, faceUrl: "https://randomuser.me/api/portraits/men/46.jpg", actId: "1015" },
+                { name: "中村 敏子", birthday: "1937-10-22", t1: "36.7", p: "80", bh: "138", bl: "82", ng: false, ex: true, faceUrl: "https://randomuser.me/api/portraits/women/60.jpg", actId: "1021" },
+                { name: "小林 茂",   birthday: "1946-01-10", t1: "36.4", p: "66", bh: "115", bl: "65", ng: false, ex: false, faceUrl: "https://randomuser.me/api/portraits/men/22.jpg", actId: "1024" }
             ];
 
-            function makeDummyImage(text, bgColor) {
-                const c = document.createElement('canvas'); c.width = 400; c.height = 300;
-                const ctx = c.getContext('2d'); ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 400, 300);
-                ctx.fillStyle = "#ffffff"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center";
-                ctx.fillText(text, 200, 140); ctx.font = "16px sans-serif"; ctx.fillText("サンプル写真", 200, 180);
-                return new Promise(res => c.toBlob(b => res(b), 'image/jpeg', 0.8));
+            // リアル画像をインターネットからダウンロードする関数
+            async function getRealDummyImage(url, fallbackText, bgColor) {
+                try {
+                    let response = await fetch(url);
+                    if (!response.ok) throw new Error("画像取得失敗");
+                    return await response.blob();
+                } catch (e) {
+                    // ネット回線等の理由で万が一失敗した場合は、いつもの色付き文字画像を生成します
+                    const c = document.createElement('canvas'); c.width = 400; c.height = 300;
+                    const ctx = c.getContext('2d'); ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 400, 300);
+                    ctx.fillStyle = "#ffffff"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center";
+                    ctx.fillText(fallbackText, 200, 140); ctx.font = "16px sans-serif"; ctx.fillText("サンプル写真", 200, 180);
+                    return new Promise(res => c.toBlob(b => res(b), 'image/jpeg', 0.8));
+                }
             }
 
             try {
@@ -1903,10 +1907,12 @@
                     let services = ["デイサービス", "ショートステイ"];
                     await setDoc(userRef, { birthday: p.birthday, photoNg: p.ng, needExcretion: p.ex, registeredAt: new Date().toISOString(), services: services }, { merge: true });
 
-                    let faceBlob = await makeDummyImage(p.name, "#2b8a3e");
+                    // ① 顔写真（シニアのリアル画像）を取得して金庫へ
+                    let faceBlob = await getRealDummyImage(p.faceUrl, p.name, "#2b8a3e");
                     await uploadBytes(ref(storage, `faces/${p.name}/face.jpg`), faceBlob);
 
-                    let imgBlob = await makeDummyImage(`${p.name} 様\n本日のご様子`, "#4682b4");
+                    // ② 本日の様子（風景や活動のリアル画像）を取得して金庫へ
+                    let imgBlob = await getRealDummyImage(`https://picsum.photos/id/${p.actId}/400/300`, `${p.name} 様\n本日のご様子`, "#4682b4");
                     await uploadBytes(ref(storage, `images/${p.name}/image_1.jpg`), imgBlob);
 
                     let dayPromises = [];
@@ -1974,7 +1980,7 @@
 
                 await Promise.all(patientPromises);
 
-                showToast("🎉 大成功！10名様×10日分のデータが完全に作成されました！", 4000);
+                showToast("🎉 大成功！10名様×10日分のデータとリアル写真が完全に作成されました！", 5000);
                 await loadUserNames(facilityId);
                 
                 document.getElementById("userName").value = "三宅 恒子";
