@@ -162,9 +162,8 @@
             .section-title { margin-top: 5px !important; margin-bottom: 2px !important; font-size: 11.5px !important; }
             .birthday-banner { margin-bottom: 3px !important; padding: 2px !important; font-size: 11px !important; }
             
-            /* ★ 限界まで写真とQRコードのサイズを大きくしました！ */
-            .media-print-box img.photo { max-height: 180px !important; max-width: 250px !important; }
-            .media-print-box img.qr { width: 110px !important; height: 110px !important; }
+            .media-print-box img.photo { max-height: 140px !important; max-width: 200px !important; }
+            .media-print-box img.qr { width: 95px !important; height: 95px !important; }
         }
     </style>
 </head>
@@ -710,7 +709,6 @@
             }
 
             let familyMessageText = lastData.familyMessage ? lastData.familyMessage.replace(/\n/g, '<br>') : '';
-            
             let prHtml = "";
             if (lastData.facilityPR && lastData.facilityPR.trim() !== "") {
                 let prText = lastData.facilityPR.trim().replace(/\n/g, '<br>');
@@ -916,17 +914,21 @@
                     <div class="facility-name">${facilityName}</div>
                     <h1>本日の連絡帳</h1>
                 </div>
-                <div class="print-date">📓 記録日： ${data.date}</div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h2 style="font-size: 19px; margin: 0;">お名前： ${data.userName} 様</h2>
+                    <div class="print-date" style="margin: 0;">📓 記録日： ${data.date}</div>
+                </div>
+
                 <table class="compact-table">
                     <tr>
-                        <th width="15%">お名前</th><td width="20%">${data.userName} 様</td>
-                        <th width="15%">体温(来所時)</th><td width="15%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td>
-                        <th width="15%">体温(途中)</th><td width="20%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td>
+                        <th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td>
+                        <th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td>
+                        <th width="16%">血圧</th><td width="18%">${bpStrDay}</td>
                     </tr>
                     <tr>
                         <th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td>
-                        <th>酸素飽和度</th><td>${data.spo2 ? data.spo2 + '%' : '未入力'}</td>
-                        <th>血圧</th><td>${bpStrDay}</td>
+                        <th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td>
                     </tr>
                 </table>
                 <table class="compact-table">
@@ -958,7 +960,7 @@
                 <div class="section-title">■ お客様への御連絡事項 <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
                 <div class="text-box">${data.message || '特になし'}</div>
                 
-                <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
+                <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 10px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
                 <div class="text-box family-box">${familyMessageText}</div>
 
                 <div class="section-title">■ 本日のご様子 (写真・動画)</div>
