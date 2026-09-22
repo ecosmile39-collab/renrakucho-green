@@ -518,7 +518,6 @@
                 let p = parseFloat(d.stPulseIn || d.stPulse || d.pulse); if (!isNaN(p)) { sumPulse += p; cPulse++; }
                 let bh = parseFloat(d.stBpHighIn || d.stBpHigh || d.bpHigh); if (!isNaN(bh)) { sumBpHigh += bh; cBpHigh++; }
                 let bl = parseFloat(d.stBpLowIn || d.stBpLow || d.bpLow); if (!isNaN(bl)) { sumBpLow += bl; cBpLow++; }
-                // ★ 酸素飽和度のデータを集めて計算します
                 let s = parseFloat(d.stSpo2In || d.spo2); if (!isNaN(s)) { sumSpo2 += s; cSpo2++; }
             });
 
@@ -610,10 +609,25 @@
                 let bath = d.stBath || d.bath || '--';
                 if(d.stBathReason || d.bathReason) bath += `<br><span style="font-size:10px;">(${d.stBathReason || d.bathReason})</span>`;
 
+                // ★ ショートステイの排泄を「回数ごと」に表示！
                 let bStr = "--";
-                if (d.bowel === "なし") bStr = "なし";
-                else if (d.bowel === "あり") {
-                    bStr = `${d.bowelCount || ""}<br>${d.bowelCondition || ""}`;
+                if (d.stBowel === "なし" || (!d.stBowel && d.bowel === "なし")) {
+                    bStr = "なし";
+                } else if (d.stBowel === "あり" || (!d.stBowel && d.bowel === "あり")) {
+                    let details = [];
+                    if (d.stBowel1) details.push(`1回目:${d.stBowel1}`);
+                    if (d.stBowel2) details.push(`2回目:${d.stBowel2}`);
+                    if (d.stBowel3) details.push(`3回目:${d.stBowel3}`);
+                    
+                    if (details.length === 0 && d.stBowelCondition) {
+                        details.push(`${d.stBowelCount || ""} ${d.stBowelCondition}`);
+                    }
+
+                    if (details.length > 0) {
+                        bStr = `あり <span style="font-size:10px;">(${details.join(', ')})</span>`;
+                    } else {
+                        bStr = "あり";
+                    }
                 }
 
                 tableRows += `
@@ -816,7 +830,6 @@
                 let p = parseFloat(d.pulse); if (!isNaN(p)) { sumPulse += p; cPulse++; }
                 let bh = parseFloat(d.bpHigh); if (!isNaN(bh)) { sumBpHigh += bh; cBpHigh++; bpHighs.push(bh); } else { bpHighs.push(null); }
                 let bl = parseFloat(d.bpLow); if (!isNaN(bl)) { sumBpLow += bl; cBpLow++; bpLows.push(bl); } else { bpLows.push(null); }
-                // ★ 酸素飽和度のデータを集めて計算します
                 let s = parseFloat(d.spo2); if (!isNaN(s)) { sumSpo2 += s; cSpo2++; }
             });
 
@@ -856,9 +869,26 @@
             let uData = window.globalUsersData[data.userName];
             let excretionRow = "";
             if (uData && uData.needExcretion) {
+                // ★ デイサービスの排泄を「回数ごと」に表示！
                 let bStr = "未入力";
-                if (data.bowel === "なし") bStr = "なし";
-                else if (data.bowel === "あり") bStr = `あり （${data.bowelCount || "回数不明"} ／ ${data.bowelCondition || "状態不明"}）`;
+                if (data.bowel === "なし" || (!data.bowel && data.dsBowel === "なし")) {
+                    bStr = "なし";
+                } else if (data.bowel === "あり" || (!data.bowel && data.dsBowel === "あり")) {
+                    let details = [];
+                    if (data.bowel1) details.push(`1回目:${data.bowel1}`);
+                    if (data.bowel2) details.push(`2回目:${data.bowel2}`);
+                    if (data.bowel3) details.push(`3回目:${data.bowel3}`);
+                    
+                    if (details.length === 0 && data.bowelCondition) {
+                        details.push(`${data.bowelCount || "回数不明"} ／ ${data.bowelCondition || "状態不明"}`);
+                    }
+
+                    if (details.length > 0) {
+                        bStr = `あり （${details.join('、')}）`;
+                    } else {
+                        bStr = "あり";
+                    }
+                }
                 excretionRow = `<tr><th>排泄記録</th><td colspan="7">${bStr}</td></tr>`;
             }
 
