@@ -26,6 +26,8 @@
         .date-input { font-size: 16px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
 
         .user-select-box { background-color: #fff; padding: 20px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        /* ★ ユーザー選択のレイアウトを少し綺麗にしました ★ */
         .user-checkbox-wrapper { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; margin-bottom: 20px; }
         .user-row { display: flex; align-items: center; gap: 15px; background-color: #f9f9f9; padding: 8px 15px; border: 1px solid #eee; border-radius: 5px; flex-wrap: wrap; }
         .user-row:hover { background-color: #e6f2ff; border-color: #2b8a3e; }
@@ -119,7 +121,6 @@
             object-fit: fill;
             z-index: 1;
         }
-        
         .dynamic-photo {
             position: absolute;
             top: 22.5%; 
@@ -130,7 +131,6 @@
             z-index: 2;
             border-radius: 3px;
         }
-        
         .dynamic-text-area {
             position: absolute;
             top: 53.5%; 
@@ -150,9 +150,6 @@
 
         .print-only { display: none; }
 
-        /* ==========================================
-           🖨️ 印刷時専用のスタイル
-           ========================================== */
         @media print {
             @page { size: A4 portrait; margin: 0; } 
             body { background-color: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -428,8 +425,10 @@
                 checkboxesArea.innerHTML = "";
                 document.getElementById("checkAll").checked = true;
                 
+                // ★ ユーザー一覧を作る時に、誕生日かどうかの判定をしてチェックボックスを作ります ★
                 Array.from(uniqueUsers).sort().forEach((userName) => {
                     let uData = window.globalUsersData[userName];
+                    // 終了日を基準に、前後7日間を誕生日期間として判定します
                     let bData = getBirthdayData(uData ? uData.birthday : null, endDate, sType === "ショートステイ", startDate, endDate);
 
                     let div = document.createElement("div");
@@ -440,10 +439,11 @@
                     userLbl.innerHTML = `<input type="checkbox" class="user-chk" value="${userName}" checked> ${userName} 様`;
                     div.appendChild(userLbl);
 
+                    // もし前後7日以内の誕生日なら、「カードも印刷する」チェックボックスを出します
                     if (bData) {
                         let cardLbl = document.createElement("label");
                         cardLbl.className = "card-checkbox-label";
-                        // 過ぎていたらチェックを外し、当日以内ならチェックを入れる
+                        // 誕生日より前、または当日なら自動でチェックを入れる。過ぎていたら二重渡し防止でチェックを外す。
                         let isChecked = (bData.diffDays <= 0) ? "checked" : "";
                         cardLbl.innerHTML = `<input type="checkbox" class="card-chk" value="${userName}" ${isChecked}> 🎁 誕生日カードも印刷`;
                         div.appendChild(cardLbl);
@@ -490,6 +490,7 @@
             }
             let selectedUserNames = Array.from(chks).map(chk => chk.value);
 
+            // ★ スタッフが「カードも印刷」にチェックを入れた人の名前を集めます ★
             let cardChks = document.querySelectorAll(".card-chk:checked");
             let printCardUsers = Array.from(cardChks).map(chk => chk.value);
 
@@ -533,6 +534,7 @@
 
                     if (sType === "ショートステイ") {
                         let shouldPrintCard = printCardUsers.includes(userName);
+                        // 1回印刷したら、二重に印刷されないようにリストから消します
                         if(shouldPrintCard) {
                             printCardUsers = printCardUsers.filter(u => u !== userName);
                         }
@@ -610,7 +612,7 @@
             }, 100);
         }
 
-        // ★ 当日と事後3日間のみお祝いする判定です ★
+        // ★ お誕生日期間の判定を「前後7日間」に拡張しました ★
         function getBirthdayData(birthdayStr, targetDateStr, isShortStay = false, startDateStr = null, endDateStr = null) {
             if (!birthdayStr) return null;
             const bParts = birthdayStr.split("-");
@@ -628,7 +630,8 @@
                     const bDate = new Date(y, bMonth - 1, bDay);
                     const age = y - bYear;
                     const diffDays = Math.round((targetDate - bDate) / (1000 * 60 * 60 * 24));
-                    if (diffDays >= 0 && diffDays <= 3) {
+                    // 7日前(-7) ～ 7日後(7) の間をお誕生日期間とします
+                    if (diffDays >= -7 && diffDays <= 7) {
                         return { isToday: (diffDays === 0), month: bMonth, day: bDay, age: age, diffDays: diffDays };
                     }
                 }
@@ -643,12 +646,19 @@
                 for (let y of [sYear, sYear - 1, sYear + 1]) {
                     const bDate = new Date(y, bMonth - 1, bDay);
                     const age = y - bYear;
+                    
                     if (bDate >= sDate && bDate <= eDate) {
                         return { isToday: true, month: bMonth, day: bDay, age: age, diffDays: 0 };
                     }
+                    
+                    const diffDaysFromStart = Math.round((sDate - bDate) / (1000 * 60 * 60 * 24));
                     const diffDaysFromEnd = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
-                    if (diffDaysFromEnd > 0 && diffDaysFromEnd <= 3) {
+                    
+                    if (diffDaysFromEnd > 0 && diffDaysFromEnd <= 7) {
                         return { isToday: false, month: bMonth, day: bDay, age: age, diffDays: diffDaysFromEnd };
+                    }
+                    if (diffDaysFromStart < 0 && diffDaysFromStart >= -7) {
+                        return { isToday: false, month: bMonth, day: bDay, age: age, diffDays: diffDaysFromStart };
                     }
                 }
                 return null;
@@ -685,13 +695,15 @@
             let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
             let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
 
-            // ★ 1枚目用の小さなバナー
+            // ★ 1枚目用の小さなバナー。状況に合わせてメッセージが変わります ★
             let uData = window.globalUsersData[userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, endDate, true, startDate, endDate);
             
             let birthdayBannerHtml = "";
             if (bData) {
-                if (bData.diffDays === 0) {
+                if (bData.diffDays < 0) {
+                    birthdayBannerHtml = `<div class="birthday-banner">🎂 もうすぐ ${bData.month}月${bData.day}日 ${bData.age}歳のお誕生日ですね！早めのお祝いです 🎂</div>`;
+                } else if (bData.diffDays === 0) {
                     birthdayBannerHtml = `<div class="birthday-banner">🎂 本日は ${bData.age}歳のお誕生日です！おめでとうございます！ 🎂</div>`;
                 } else {
                     birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日は ${bData.age}歳のお誕生日でしたね。おめでとうございます！ 🎂</div>`;
@@ -1029,7 +1041,9 @@
             
             let birthdayBannerHtml = "";
             if (bData) {
-                if (bData.diffDays === 0) {
+                if (bData.diffDays < 0) {
+                    birthdayBannerHtml = `<div class="birthday-banner">🎂 もうすぐ ${bData.month}月${bData.day}日 ${bData.age}歳のお誕生日ですね！早めのお祝いです 🎂</div>`;
+                } else if (bData.diffDays === 0) {
                     birthdayBannerHtml = `<div class="birthday-banner">🎂 本日は ${bData.age}歳のお誕生日です！おめでとうございます！ 🎂</div>`;
                 } else {
                     birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日は ${bData.age}歳のお誕生日でしたね。おめでとうございます！ 🎂</div>`;
