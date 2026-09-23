@@ -127,7 +127,6 @@
             z-index: 2;
             border-radius: 4px;
         }
-        /* 白い枠を無くし、鶴と亀の隙間に文字をスッキリ配置します */
         .dynamic-text-area {
             position: absolute;
             top: 53.5%; 
@@ -141,7 +140,6 @@
             justify-content: center;
             align-items: center;
         }
-        /* 文字が背景に埋もれないよう、白い影をつけて読みやすくしています */
         .dynamic-name { font-size: 24px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
         .dynamic-date { font-size: 22px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
         .dynamic-age { font-size: 26px; font-weight: bold; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
@@ -912,7 +910,7 @@
             container.appendChild(pageDiv);
             drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
 
-            // ★ 2枚目（文字が消された綺麗なお祝い背景画像版）の出力
+            // ★ 2枚目（豪華誕生日カード画像版）の出力
             if (bData) {
                 let todayImgUrl = await getCachedUrl(`images/${userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon;
@@ -926,8 +924,8 @@
                 cardPageDiv.className = "print-page page-break"; 
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-container">
-                        <!-- 文字の消えた新しい背景画像ファイル名に指定しています -->
-                        <img src="image_78fac2_2.jpg" class="bg-image-layer" alt="背景">
+                        <!-- ★ 画像名を image_78fac2_3.jpg に修正しました！ ★ -->
+                        <img src="image_78fac2_3.jpg" class="bg-image-layer" alt="背景">
                         
                         <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
                         
@@ -1081,7 +1079,7 @@
                 <table class="compact-table">
                     <tr>
                         <th width="12%">食事(主食)</th><td width="13%">${data.mealMain || '未入力'}</td>
-                        <th width="12%">食事(副食)</th><td width="13%">{data.mealSub || '未入力'}</td>
+                        <th width="12%">食事(副食)</th><td width="13%">${data.mealSub || '未入力'}</td>
                         <th width="10%">水分</th><td width="15%">${data.water || '未入力'}</td>
                         <th width="10%">口腔ケア</th><td width="15%">${data.oralCare || '未実施'}</td>
                     </tr>
@@ -1117,7 +1115,7 @@
             container.appendChild(pageDiv);
             drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
 
-            // ★ 2枚目（文字が消された綺麗なお祝い背景画像版）の出力
+            // ★ 2枚目（豪華誕生日カード画像版）の出力
             if (bData) {
                 let todayImgUrl = await getCachedUrl(`images/${data.userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon;
@@ -1131,8 +1129,8 @@
                 cardPageDiv.className = "print-page page-break"; 
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-container">
-                        <!-- 文字の消えた新しい背景画像ファイル名に指定しています -->
-                        <img src="image_78fac2_2.jpg" class="bg-image-layer" alt="背景">
+                        <!-- ★ 画像名を image_78fac2_3.jpg に修正しました！ ★ -->
+                        <img src="image_78fac2_3.jpg" class="bg-image-layer" alt="背景">
                         
                         <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
                         
