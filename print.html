@@ -26,9 +26,14 @@
         .date-input { font-size: 16px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
 
         .user-select-box { background-color: #fff; padding: 20px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .user-checkbox-wrapper { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; margin-bottom: 20px; }
-        .user-checkbox-label { cursor: pointer; font-size: 16px; padding: 6px 12px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9; display: flex; align-items: center; gap: 6px; }
-        .user-checkbox-label:hover { background-color: #e6f2ff; border-color: #2b8a3e; }
+        .user-checkbox-wrapper { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px; margin-bottom: 20px; }
+        @media (max-width: 800px) { .user-checkbox-wrapper { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 500px) { .user-checkbox-wrapper { grid-template-columns: 1fr; } }
+        
+        .user-row { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; background-color: #f9f9f9; padding: 12px 15px; border: 1px solid #eee; border-radius: 5px; }
+        .user-row:hover { background-color: #e6f2ff; border-color: #2b8a3e; }
+        .user-checkbox-label { cursor: pointer; font-size: 16px; margin: 0; display: flex; align-items: center; gap: 6px; font-weight: bold; }
+        .card-checkbox-label { cursor: pointer; font-size: 14px; color: #d6336c; font-weight: bold; margin: 0 0 0 5px; border-left: 3px solid #ccc; padding-left: 10px; display: flex; align-items: center; gap: 6px; }
 
         .btn-batch-print { background-color: #2b8a3e; font-size: 18px; padding: 12px 24px; width: 100%; margin-bottom: 10px; }
         .btn-batch-print:hover { background-color: #237032; }
@@ -99,7 +104,7 @@
         .media-print-box .media-label { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
 
         /* ==========================================
-           🎉 誕生日カード専用のスタイル
+           🎉 誕生日カード専用のスタイル（縦型・標準）
            ========================================== */
         .birthday-card-container {
             width: 100%;
@@ -117,19 +122,16 @@
             object-fit: fill;
             z-index: 1;
         }
-        
-        /* ★ 上の隙間を埋めるように写真を少し上にずらしました ★ */
         .dynamic-photo {
             position: absolute;
-            top: 21.4%;    /* 小さくすると上に移動します */
+            top: 21.4%; 
             left: 22.0%;
             width: 56.0%;
-            height: 27.5%; /* 高さを増やして上の隙間に届かせます */
+            height: 27.5%;
             object-fit: cover;
             z-index: 2;
             border-radius: 3px;
         }
-        
         .dynamic-text-area {
             position: absolute;
             top: 53.5%; 
@@ -146,6 +148,44 @@
         .dynamic-name { font-size: 24px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
         .dynamic-date { font-size: 22px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
         .dynamic-age { font-size: 26px; font-weight: bold; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
+
+        /* ==========================================
+           🎉 誕生日カード専用のスタイル（横型・巻物デザイン）
+           ========================================== */
+        .birthday-card-container-h {
+            width: 100%;
+            height: 148.5mm; 
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-top: 50mm; 
+        }
+        .dynamic-photo-h {
+            position: absolute;
+            top: 24%;    
+            left: 31%;   
+            width: 38%;  
+            height: 38%; 
+            object-fit: cover;
+            z-index: 2;
+            border-radius: 2px;
+        }
+        .dynamic-text-area-h {
+            position: absolute;
+            top: 67%;    
+            left: 31%;   
+            width: 38%;  
+            height: 20%; 
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease; 
+        }
+        .dynamic-name-h { font-size: 20px; font-weight: bold; margin-bottom: 4px; color: #2c2c2c; letter-spacing: 1px; }
+        .dynamic-date-h { font-size: 16px; font-weight: bold; margin-bottom: 4px; color: #2c2c2c; letter-spacing: 1px; }
+        .dynamic-age-h { font-size: 20px; font-weight: bold; color: #b91c1c; line-height: 1.3; text-align: center; }
 
         .print-only { display: none; }
 
@@ -186,7 +226,7 @@
                 print-color-adjust: exact;
             }
             
-            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-container {
+            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-container, .birthday-card-container-h {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
@@ -221,10 +261,8 @@
             .media-print-box img.photo { max-height: 125px !important; max-width: 175px !important; }
             .media-print-box img.qr { width: 90px !important; height: 90px !important; }
 
-            .birthday-card-container {
-                height: 297mm !important; 
-                box-shadow: none !important;
-            }
+            .birthday-card-container { height: 297mm !important; box-shadow: none !important; }
+            .birthday-card-container-h { height: 148.5mm !important; box-shadow: none !important; margin-top: 50mm !important; }
         }
     </style>
 </head>
@@ -259,6 +297,14 @@
             </div>
             
             <div class="filter-row" style="margin-top: 15px; border-top: 1px dashed #40c057; padding-top: 15px;">
+                <span class="filter-label">📇 誕生日カードの向き：</span>
+                <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged()">
+                    <option value="vertical" selected>縦型（標準デザイン）</option>
+                    <option value="horizontal">横型（巻物デザイン）</option>
+                </select>
+            </div>
+            
+            <div class="filter-row">
                 <span class="filter-label">🎨 誕生日カードの文字背景：</span>
                 <select id="selectCardBg" class="filter-select" onchange="onCardBgChanged()">
                     <option value="transparent" selected>透明（イラストをそのまま活かす）</option>
@@ -442,7 +488,6 @@
                     if (bData) {
                         let cardLbl = document.createElement("label");
                         cardLbl.className = "card-checkbox-label";
-                        // 過ぎていたらチェックを外し、当日以内ならチェックを入れる
                         let isChecked = (bData.diffDays <= 0) ? "checked" : "";
                         cardLbl.innerHTML = `<input type="checkbox" class="card-chk" value="${userName}" ${isChecked}> 🎁 誕生日カードも印刷`;
                         div.appendChild(cardLbl);
@@ -683,7 +728,6 @@
             let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
             let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
 
-            // ★ 1枚目用の小さなバナー
             let uData = window.globalUsersData[userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, null, true, startDate, endDate);
             
@@ -959,7 +1003,7 @@
             container.appendChild(pageDiv);
             drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
 
-            // ★ 2枚目（豪華誕生日カード画像版）の出力
+            // ★ 2枚目（誕生日カード）の出力
             if (bData && shouldPrintCard) {
                 let todayImgUrl = await getCachedUrl(`images/${userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon;
@@ -974,21 +1018,37 @@
                     ? "background-color: white; border-radius: 10px; padding: 10px;" 
                     : "background-color: transparent;";
 
+                let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
+
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
-                cardPageDiv.innerHTML = `
-                    <div class="birthday-card-container">
-                        <img src="bg_birthday.jpg" class="bg-image-layer" alt="背景">
-                        
-                        <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
-                        
-                        <div class="dynamic-text-area" style="${textAreaStyle}">
-                            <div class="dynamic-name">${userName} 様</div>
-                            <div class="dynamic-date">${displayDateText}</div>
-                            <div class="dynamic-age">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                
+                if (cardOrientationChoice === "vertical") {
+                    cardPageDiv.innerHTML = `
+                        <div class="birthday-card-container">
+                            <img src="bg_birthday.jpg" class="bg-image-layer" alt="背景">
+                            <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
+                            <div class="dynamic-text-area" style="${textAreaStyle}">
+                                <div class="dynamic-name">${userName} 様</div>
+                                <div class="dynamic-date">${displayDateText}</div>
+                                <div class="dynamic-age">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                } else {
+                    // ★ bg_birthday_h.jpg を読み込むようにしました ★
+                    cardPageDiv.innerHTML = `
+                        <div class="birthday-card-container-h">
+                            <img src="bg_birthday_h.jpg" class="bg-image-layer" alt="背景">
+                            <img src="${todayImgUrl}" class="dynamic-photo-h" alt="笑顔の写真">
+                            <div class="dynamic-text-area-h" style="${textAreaStyle}">
+                                <div class="dynamic-name-h">${userName} 様</div>
+                                <div class="dynamic-date-h">${displayDateText}</div>
+                                <div class="dynamic-age-h">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                            </div>
+                        </div>
+                    `;
+                }
                 container.appendChild(cardPageDiv);
             }
         }
@@ -1171,7 +1231,7 @@
             container.appendChild(pageDiv);
             drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
 
-            // ★ 2枚目（豪華誕生日カード画像版）の出力
+            // ★ 2枚目（誕生日カード）の出力
             if (bData && shouldPrintCard) {
                 let todayImgUrl = await getCachedUrl(`images/${data.userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon;
@@ -1186,21 +1246,37 @@
                     ? "background-color: white; border-radius: 10px; padding: 10px;" 
                     : "background-color: transparent;";
 
+                let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
+
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
-                cardPageDiv.innerHTML = `
-                    <div class="birthday-card-container">
-                        <img src="bg_birthday.jpg" class="bg-image-layer" alt="背景">
-                        
-                        <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
-                        
-                        <div class="dynamic-text-area" style="${textAreaStyle}">
-                            <div class="dynamic-name">${data.userName} 様</div>
-                            <div class="dynamic-date">${displayDateText}</div>
-                            <div class="dynamic-age">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                
+                if (cardOrientationChoice === "vertical") {
+                    cardPageDiv.innerHTML = `
+                        <div class="birthday-card-container">
+                            <img src="bg_birthday.jpg" class="bg-image-layer" alt="背景">
+                            <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
+                            <div class="dynamic-text-area" style="${textAreaStyle}">
+                                <div class="dynamic-name">${data.userName} 様</div>
+                                <div class="dynamic-date">${displayDateText}</div>
+                                <div class="dynamic-age">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                } else {
+                    // ★ bg_birthday_h.jpg を読み込むようにしました ★
+                    cardPageDiv.innerHTML = `
+                        <div class="birthday-card-container-h">
+                            <img src="bg_birthday_h.jpg" class="bg-image-layer" alt="背景">
+                            <img src="${todayImgUrl}" class="dynamic-photo-h" alt="笑顔の写真">
+                            <div class="dynamic-text-area-h" style="${textAreaStyle}">
+                                <div class="dynamic-name-h">${data.userName} 様</div>
+                                <div class="dynamic-date-h">${displayDateText}</div>
+                                <div class="dynamic-age-h">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                            </div>
+                        </div>
+                    `;
+                }
                 container.appendChild(cardPageDiv);
             }
         }
