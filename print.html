@@ -26,9 +26,11 @@
         .date-input { font-size: 16px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
 
         .user-select-box { background-color: #fff; padding: 20px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .user-checkbox-wrapper { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; margin-bottom: 20px; }
-        .user-checkbox-label { cursor: pointer; font-size: 16px; padding: 6px 12px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9; display: flex; align-items: center; gap: 6px; }
-        .user-checkbox-label:hover { background-color: #e6f2ff; border-color: #2b8a3e; }
+        .user-checkbox-wrapper { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; margin-bottom: 20px; }
+        .user-row { display: flex; align-items: center; gap: 15px; background-color: #f9f9f9; padding: 8px 15px; border: 1px solid #eee; border-radius: 5px; flex-wrap: wrap; }
+        .user-row:hover { background-color: #e6f2ff; border-color: #2b8a3e; }
+        .user-checkbox-label { cursor: pointer; font-size: 16px; margin: 0; display: flex; align-items: center; gap: 6px; font-weight: bold; }
+        .card-checkbox-label { cursor: pointer; font-size: 14px; color: #d6336c; font-weight: bold; margin: 0; border-left: 3px solid #ccc; padding-left: 15px; display: flex; align-items: center; gap: 6px; }
 
         .btn-batch-print { background-color: #2b8a3e; font-size: 18px; padding: 12px 24px; width: 100%; margin-bottom: 10px; }
         .btn-batch-print:hover { background-color: #237032; }
@@ -118,13 +120,12 @@
             z-index: 1;
         }
         
-        /* ★ 写真が白枠にぴったり収まるように微調整しました ★ */
         .dynamic-photo {
             position: absolute;
-            top: 22.5%;    /* 上からの位置（数字を増やすと下へ） */
-            left: 22.0%;   /* 左からの位置（数字を増やすと右へ） */
-            width: 56.0%;  /* 写真の横幅（小さくしてはみ出しを直す） */
-            height: 26.5%; /* 写真の高さ（小さくしてはみ出しを直す） */
+            top: 22.5%; 
+            left: 22.0%;
+            width: 56.0%;
+            height: 26.5%;
             object-fit: cover;
             z-index: 2;
             border-radius: 3px;
@@ -428,10 +429,27 @@
                 document.getElementById("checkAll").checked = true;
                 
                 Array.from(uniqueUsers).sort().forEach((userName) => {
-                    let lbl = document.createElement("label");
-                    lbl.className = "user-checkbox-label";
-                    lbl.innerHTML = `<input type="checkbox" class="user-chk" value="${userName}" checked> ${userName} 様`;
-                    checkboxesArea.appendChild(lbl);
+                    let uData = window.globalUsersData[userName];
+                    let bData = getBirthdayData(uData ? uData.birthday : null, endDate, sType === "ショートステイ", startDate, endDate);
+
+                    let div = document.createElement("div");
+                    div.className = "user-row";
+                    
+                    let userLbl = document.createElement("label");
+                    userLbl.className = "user-checkbox-label";
+                    userLbl.innerHTML = `<input type="checkbox" class="user-chk" value="${userName}" checked> ${userName} 様`;
+                    div.appendChild(userLbl);
+
+                    if (bData) {
+                        let cardLbl = document.createElement("label");
+                        cardLbl.className = "card-checkbox-label";
+                        // 過ぎていたらチェックを外し、当日以内ならチェックを入れる
+                        let isChecked = (bData.diffDays <= 0) ? "checked" : "";
+                        cardLbl.innerHTML = `<input type="checkbox" class="card-chk" value="${userName}" ${isChecked}> 🎁 誕生日カードも印刷`;
+                        div.appendChild(cardLbl);
+                    }
+                    
+                    checkboxesArea.appendChild(div);
                 });
 
                 document.getElementById("batchPrintBtn").style.display = "block";
@@ -472,6 +490,9 @@
             }
             let selectedUserNames = Array.from(chks).map(chk => chk.value);
 
+            let cardChks = document.querySelectorAll(".card-chk:checked");
+            let printCardUsers = Array.from(cardChks).map(chk => chk.value);
+
             let targetRecords = window.matchedRecordsGlobal.filter(record => selectedUserNames.includes(record.userName));
             
             let recordsByUser = {};
@@ -511,10 +532,18 @@
                     let userMonthRecords = monthlyDataByUser[userName] || userPeriodRecords;
 
                     if (sType === "ショートステイ") {
-                        sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, userPeriodRecords, userMonthRecords, chartIndex++, startDate, endDate));
+                        let shouldPrintCard = printCardUsers.includes(userName);
+                        if(shouldPrintCard) {
+                            printCardUsers = printCardUsers.filter(u => u !== userName);
+                        }
+                        sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, userPeriodRecords, userMonthRecords, chartIndex++, startDate, endDate, shouldPrintCard));
                     } else {
                         userPeriodRecords.forEach(data => {
-                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++));
+                            let shouldPrintCard = printCardUsers.includes(data.userName);
+                            if(shouldPrintCard) {
+                                printCardUsers = printCardUsers.filter(u => u !== data.userName);
+                            }
+                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, shouldPrintCard));
                         });
                     }
                 });
@@ -581,6 +610,7 @@
             }, 100);
         }
 
+        // ★ 当日と事後3日間のみお祝いする判定です ★
         function getBirthdayData(birthdayStr, targetDateStr, isShortStay = false, startDateStr = null, endDateStr = null) {
             if (!birthdayStr) return null;
             const bParts = birthdayStr.split("-");
@@ -598,8 +628,8 @@
                     const bDate = new Date(y, bMonth - 1, bDay);
                     const age = y - bYear;
                     const diffDays = Math.round((targetDate - bDate) / (1000 * 60 * 60 * 24));
-                    if (diffDays >= 0 && diffDays <= 7) {
-                        return { isToday: (diffDays === 0), month: bMonth, day: bDay, age: age };
+                    if (diffDays >= 0 && diffDays <= 3) {
+                        return { isToday: (diffDays === 0), month: bMonth, day: bDay, age: age, diffDays: diffDays };
                     }
                 }
                 return null;
@@ -614,18 +644,18 @@
                     const bDate = new Date(y, bMonth - 1, bDay);
                     const age = y - bYear;
                     if (bDate >= sDate && bDate <= eDate) {
-                        return { isToday: true, month: bMonth, day: bDay, age: age };
+                        return { isToday: true, month: bMonth, day: bDay, age: age, diffDays: 0 };
                     }
-                    const diffDays = Math.round((sDate - bDate) / (1000 * 60 * 60 * 24));
-                    if (diffDays > 0 && diffDays <= 7) {
-                        return { isToday: false, month: bMonth, day: bDay, age: age };
+                    const diffDaysFromEnd = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
+                    if (diffDaysFromEnd > 0 && diffDaysFromEnd <= 3) {
+                        return { isToday: false, month: bMonth, day: bDay, age: age, diffDays: diffDaysFromEnd };
                     }
                 }
                 return null;
             }
         }
 
-        async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate) {
+        async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate, shouldPrintCard) {
             let pageDiv = document.createElement("div");
             pageDiv.className = "print-page";
             let chartCanvasId = `chart_${index}`;
@@ -657,11 +687,15 @@
 
             // ★ 1枚目用の小さなバナー
             let uData = window.globalUsersData[userName];
-            let bData = getBirthdayData(uData ? uData.birthday : null, null, true, startDate, endDate);
+            let bData = getBirthdayData(uData ? uData.birthday : null, endDate, true, startDate, endDate);
             
             let birthdayBannerHtml = "";
             if (bData) {
-                birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日 ${bData.age}歳のお誕生日おめでとうございます！ 🎂</div>`;
+                if (bData.diffDays === 0) {
+                    birthdayBannerHtml = `<div class="birthday-banner">🎂 本日は ${bData.age}歳のお誕生日です！おめでとうございます！ 🎂</div>`;
+                } else {
+                    birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日は ${bData.age}歳のお誕生日でしたね。おめでとうございます！ 🎂</div>`;
+                }
             }
 
             let leftItems = [
@@ -840,7 +874,6 @@
             let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
             let familyMessageText = lastData.familyMessage ? lastData.familyMessage.replace(/\n/g, '<br>') : '';
 
-            // ★ 1枚目（連絡帳）の出力
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 <div class="print-header">
@@ -929,7 +962,7 @@
             drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
 
             // ★ 2枚目（豪華誕生日カード画像版）の出力
-            if (bData) {
+            if (bData && shouldPrintCard) {
                 let todayImgUrl = await getCachedUrl(`images/${userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon;
 
@@ -962,7 +995,7 @@
             }
         }
 
-        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index) {
+        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard) {
             let pageDiv = document.createElement("div");
             pageDiv.className = "print-page";
 
@@ -996,7 +1029,11 @@
             
             let birthdayBannerHtml = "";
             if (bData) {
-                birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日 ${bData.age}歳のお誕生日おめでとうございます！ 🎂</div>`;
+                if (bData.diffDays === 0) {
+                    birthdayBannerHtml = `<div class="birthday-banner">🎂 本日は ${bData.age}歳のお誕生日です！おめでとうございます！ 🎂</div>`;
+                } else {
+                    birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日は ${bData.age}歳のお誕生日でしたね。おめでとうございます！ 🎂</div>`;
+                }
             }
 
             let chartCanvasId = `chart_${index}`;
@@ -1072,7 +1109,6 @@
             let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
             let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
 
-            // ★ 1枚目（連絡帳）の出力
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 <div class="print-header">
@@ -1138,7 +1174,7 @@
             drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
 
             // ★ 2枚目（豪華誕生日カード画像版）の出力
-            if (bData) {
+            if (bData && shouldPrintCard) {
                 let todayImgUrl = await getCachedUrl(`images/${data.userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon;
 
