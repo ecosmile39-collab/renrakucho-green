@@ -104,7 +104,7 @@
         .media-print-box .media-label { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
 
         /* ==========================================
-           🎉 誕生日カード専用のスタイル（縦型・標準）
+           🎉 誕生日カード専用のスタイル（縦型・デザインA 標準）
            ========================================== */
         .birthday-card-container {
             width: 100%;
@@ -149,57 +149,51 @@
         .dynamic-age { font-size: 26px; font-weight: bold; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
 
         /* ==========================================
-           🎉 誕生日カード専用のスタイル（横型・巻物デザイン）
+           🎉 誕生日カード専用のスタイル（縦型・デザインB 新着）
            ========================================== */
-        .birthday-card-container-h {
+        .birthday-card-container-v2 {
             width: 100%;
-            height: 155mm; /* 高さを調整 */
+            height: 277mm; 
             position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            overflow: hidden; /* はみ出した余白を隠す設定 */
-            margin-top: 40mm; 
+            overflow: hidden;
         }
-        
-        /* ★ 1. 背景の余白をカットして幅いっぱいに広げる設定 ★ */
-        .bg-image-layer-h {
+        .bg-image-layer-v2 {
             position: absolute;
-            top: -5.5%;   /* 画像を少し上にはみ出させる */
-            left: -5.5%;  /* 画像を少し左にはみ出させる */
-            width: 111%;  /* 画像を111%に拡大して白い壁を画面外に追い出す */
-            height: 111%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             object-fit: fill;
             z-index: 1;
         }
-
-        /* ★ 2. 写真を枠内に収める設定（微調整用） ★ */
-        .dynamic-photo-h {
+        /* 新しい画像の金色の額縁に合わせた写真の位置（微調整用） */
+        .dynamic-photo-v2 {
             position: absolute;
-            top: 26.5%;     /* 枠の上辺（増やすと下へ） */
-            left: 36.0%;    /* 枠の左辺（増やすと右へ） */
-            width: 28.5%;   /* 枠の幅（減らすと細くなる） */
-            height: 35.0%;  /* 枠の高さ（減らすと短くなる） */
+            top: 27%;      /* 写真の上からの位置 */
+            left: 21%;     /* 写真の左からの位置 */
+            width: 58%;    /* 写真の幅 */
+            height: 39%;   /* 写真の高さ */
             object-fit: cover;
             z-index: 2;
-            border-radius: 2px;
+            border-radius: 3px;
         }
-
-        /* ★ 3. 文字を巻物内に収める設定（微調整用） ★ */
-        .dynamic-text-area-h {
+        /* 新しい画像の下部スペースに合わせた文字の位置（微調整用） */
+        .dynamic-text-area-v2 {
             position: absolute;
-            top: 66.5%;     /* 巻物の上辺（増やすと下へ） */
-            left: 36.0%;    /* 巻物の左辺 */
-            width: 28.5%;   /* 巻物の幅 */
-            height: 13.5%;  /* 巻物の高さ内に収める */
+            top: 70%;      /* 文字枠の上からの位置 */
+            left: 15%;     /* 文字枠の左からの位置 */
+            width: 70%;    /* 文字枠の幅 */
+            height: 25%;   /* 文字枠の高さ */
             z-index: 3;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
         }
-        /* 巻物に合わせて文字サイズを小さくしました */
-        .dynamic-name-h { font-size: 16px; font-weight: bold; margin-bottom: 2px; color: #2c2c2c; letter-spacing: 1px; text-shadow: 0 0 3px #fff; }
-        .dynamic-date-h { font-size: 13px; font-weight: bold; margin-bottom: 2px; color: #2c2c2c; letter-spacing: 1px; text-shadow: 0 0 3px #fff; }
-        .dynamic-age-h { font-size: 15px; font-weight: bold; color: #b91c1c; line-height: 1.2; text-align: center; text-shadow: 0 0 3px #fff; }
+        .dynamic-name-v2 { font-size: 24px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
+        .dynamic-date-v2 { font-size: 22px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
+        .dynamic-age-v2 { font-size: 26px; font-weight: bold; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
 
         .print-only { display: none; }
 
@@ -240,43 +234,43 @@
                 print-color-adjust: exact;
             }
             
-            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-container, .birthday-card-container-h {
+            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-container, .birthday-card-container-v2 {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
             
-            .print-header { margin-bottom: 4px !important; padding-bottom: 2px !important; border-bottom: 2px solid #333 !important; }
+            .print-header { margin-bottom: 4mm !important; padding-bottom: 2mm !important; border-bottom: 2px solid #333 !important; }
             .print-header h1 { font-size: 20px !important; margin: 0 !important; }
             .facility-name { font-size: 15px !important; font-weight: bold !important; }
-            .print-date { margin-bottom: 4px !important; font-size: 12px !important; font-weight: bold !important; }
+            .print-date { margin-bottom: 4mm !important; font-size: 12px !important; font-weight: bold !important; }
             h2 { font-size: 18px !important; margin: 0 !important; }
             
-            table.compact-table { margin-bottom: 6px !important; font-size: 13.5px !important; }
+            table.compact-table { margin-bottom: 6mm !important; font-size: 13.5px !important; }
             table.compact-table th, table.compact-table td { padding: 6px !important; border: 1px solid #333 !important; }
             
-            table.belongings-print-table { margin-bottom: 6px !important; font-size: 11px !important; }
+            table.belongings-print-table { margin-bottom: 6mm !important; font-size: 11px !important; }
             table.belongings-print-table th, table.belongings-print-table td { padding: 3px !important; border: 1px solid #333 !important; }
             
             .st-chart { display: none !important; }
             .admission-vitals-table { display: none !important; } 
             
-            .ds-chart { display: block !important; height: 120px !important; margin-bottom: 4px !important; }
+            .ds-chart { display: block !important; height: 120px !important; margin-bottom: 4mm !important; }
             .ds-chart canvas { display: none !important; }
             .ds-chart img.chart-print-image { display: block !important; width: 100% !important; height: 120px !important; object-fit: contain !important; }
 
-            .compact-avg { margin: 4px 0 !important; padding: 3px !important; font-size: 11.5px !important; font-weight: bold !important; border: 1px solid #daa520 !important; border-radius: 5px !important; background-color: #fffacd !important; }
+            .compact-avg { margin: 4mm 0 !important; padding: 3px !important; font-size: 11.5px !important; font-weight: bold !important; border: 1px solid #daa520 !important; border-radius: 5px !important; background-color: #fffacd !important; }
 
-            .text-box { min-height: 25px !important; margin-bottom: 4px !important; padding: 5px 6px !important; font-size: 12.5px !important; line-height: 1.3 !important; border: 1px solid #333 !important; border-radius: 3px !important; }
+            .text-box { min-height: 25px !important; margin-bottom: 4mm !important; padding: 5px 6px !important; font-size: 12.5px !important; line-height: 1.3 !important; border: 1px solid #333 !important; border-radius: 3px !important; }
             .family-box { min-height: 50px !important; }
 
-            .section-title { margin-top: 6px !important; margin-bottom: 2px !important; font-size: 13.5px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
-            .birthday-banner { margin-bottom: 4px !important; padding: 3px !important; font-size: 12.5px !important; }
+            .section-title { margin-top: 6mm !important; margin-bottom: 2mm !important; font-size: 13.5px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
+            .birthday-banner { margin-bottom: 4mm !important; padding: 3px !important; font-size: 12.5px !important; }
             
             .media-print-box img.photo { max-height: 125px !important; max-width: 175px !important; }
             .media-print-box img.qr { width: 90px !important; height: 90px !important; }
 
             .birthday-card-container { height: 297mm !important; box-shadow: none !important; }
-            .birthday-card-container-h { height: 155mm !important; box-shadow: none !important; margin-top: 40mm !important; overflow: hidden !important; }
+            .birthday-card-container-v2 { height: 297mm !important; box-shadow: none !important; }
         }
     </style>
 </head>
@@ -311,10 +305,10 @@
             </div>
             
             <div class="filter-row" style="margin-top: 15px; border-top: 1px dashed #40c057; padding-top: 15px;">
-                <span class="filter-label">📇 誕生日カードの向き：</span>
+                <span class="filter-label">📇 誕生日カードのデザイン：</span>
                 <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged()">
-                    <option value="vertical" selected>縦型（標準デザイン）</option>
-                    <option value="horizontal">横型（巻物デザイン）</option>
+                    <option value="vertical" selected>縦型（デザインA・標準）</option>
+                    <option value="vertical2">縦型（デザインB・新着）</option>
                 </select>
             </div>
             
@@ -1050,14 +1044,15 @@
                         </div>
                     `;
                 } else {
+                    // ★ 縦型（新着デザイン）を選択した場合の処理 ★
                     cardPageDiv.innerHTML = `
-                        <div class="birthday-card-container-h">
-                            <img src="bg_birthday_h.jpg" class="bg-image-layer-h" alt="背景">
-                            <img src="${todayImgUrl}" class="dynamic-photo-h" alt="笑顔の写真">
-                            <div class="dynamic-text-area-h" style="${textAreaStyle}">
-                                <div class="dynamic-name-h">${userName} 様</div>
-                                <div class="dynamic-date-h">${displayDateText}</div>
-                                <div class="dynamic-age-h">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                        <div class="birthday-card-container-v2">
+                            <img src="bg_birthday_v2.jpg" class="bg-image-layer-v2" alt="背景">
+                            <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
+                            <div class="dynamic-text-area-v2" style="${textAreaStyle}">
+                                <div class="dynamic-name-v2">${userName} 様</div>
+                                <div class="dynamic-date-v2">${displayDateText}</div>
+                                <div class="dynamic-age-v2">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
                             </div>
                         </div>
                     `;
@@ -1277,13 +1272,13 @@
                     `;
                 } else {
                     cardPageDiv.innerHTML = `
-                        <div class="birthday-card-container-h">
-                            <img src="bg_birthday_h.jpg" class="bg-image-layer-h" alt="背景">
-                            <img src="${todayImgUrl}" class="dynamic-photo-h" alt="笑顔の写真">
-                            <div class="dynamic-text-area-h" style="${textAreaStyle}">
-                                <div class="dynamic-name-h">${data.userName} 様</div>
-                                <div class="dynamic-date-h">${displayDateText}</div>
-                                <div class="dynamic-age-h">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                        <div class="birthday-card-container-v2">
+                            <img src="bg_birthday_v2.jpg" class="bg-image-layer-v2" alt="背景">
+                            <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
+                            <div class="dynamic-text-area-v2" style="${textAreaStyle}">
+                                <div class="dynamic-name-v2">${data.userName} 様</div>
+                                <div class="dynamic-date-v2">${displayDateText}</div>
+                                <div class="dynamic-age-v2">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
                             </div>
                         </div>
                     `;
