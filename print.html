@@ -111,16 +111,17 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 270mm; /* A4用紙に合わせた高さ */
+            height: 270mm; 
             box-sizing: border-box;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         .card-title {
-            font-size: 48px;
+            /* 日本語に変更したため、バランスよく収まるようサイズを調整しました */
+            font-size: 40px; 
             color: #d6336c;
             font-weight: bold;
             margin-bottom: 15px;
-            letter-spacing: 5px;
+            letter-spacing: 3px;
         }
         .card-subtitle {
             font-size: 32px;
@@ -192,10 +193,9 @@
                 box-sizing: border-box !important;
             }
 
-            /* ★ ここが2枚目に強制的に分ける魔法です */
             .page-break {
                 page-break-before: always !important;
-                padding: 10mm !important; /* 誕生日カード用の余白 */
+                padding: 10mm !important; 
             }
 
             .punch-mark {
@@ -247,6 +247,7 @@
                 height: 277mm !important; 
                 border-width: 10px !important;
             }
+            .card-title { font-size: 40px !important; }
         }
     </style>
 </head>
@@ -943,13 +944,14 @@
             if (bData) {
                 let faceUrl = await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon;
                 let todayImgUrl = await getCachedUrl(`images/${userName}/image_1.jpg`);
-                if (!todayImgUrl) todayImgUrl = faceUrl; // 当日の写真がなければ顔写真で代用
+                if (!todayImgUrl) todayImgUrl = faceUrl; 
 
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; // 強制的に次のページへ
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-wrapper">
-                        <div class="card-title">🎉 HAPPY BIRTHDAY 🎂</div>
+                        <!-- ここを日本語に変更！サイズも調整済みです -->
+                        <div class="card-title">🎉 お誕生日おめでとうございます！ 🎂</div>
                         <div class="card-subtitle">${userName} 様 祝 ${bData.age} 歳</div>
                         
                         <div class="card-photo-area">
@@ -964,7 +966,6 @@
                         </div>
                         
                         <div class="card-message">
-                            お誕生日おめでとうございます！<br>
                             これからも健やかで笑顔あふれる毎日をお過ごしいただけますよう、<br>
                             スタッフ一同、心よりお祈り申し上げます。<br><br>
                             <span style="font-size: 18px; color: #868e96;">${facilityName}</span>
@@ -1155,13 +1156,14 @@
             if (bData) {
                 let faceUrl = await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon;
                 let todayImgUrl = await getCachedUrl(`images/${data.userName}/image_1.jpg`);
-                if (!todayImgUrl) todayImgUrl = faceUrl; // 当日の写真がなければ顔写真で代用
+                if (!todayImgUrl) todayImgUrl = faceUrl; 
 
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; // 強制的に次のページへ
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-wrapper">
-                        <div class="card-title">🎉 HAPPY BIRTHDAY 🎂</div>
+                        <!-- ここを日本語に変更！サイズも調整済みです -->
+                        <div class="card-title">🎉 お誕生日おめでとうございます！ 🎂</div>
                         <div class="card-subtitle">${data.userName} 様 祝 ${bData.age} 歳</div>
                         
                         <div class="card-photo-area">
@@ -1176,7 +1178,6 @@
                         </div>
                         
                         <div class="card-message">
-                            お誕生日おめでとうございます！<br>
                             これからも健やかで笑顔あふれる毎日をお過ごしいただけますよう、<br>
                             スタッフ一同、心よりお祈り申し上げます。<br><br>
                             <span style="font-size: 18px; color: #868e96;">${facilityName}</span>
