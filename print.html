@@ -30,10 +30,12 @@
         @media (max-width: 800px) { .user-checkbox-wrapper { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 500px) { .user-checkbox-wrapper { grid-template-columns: 1fr; } }
         
-        .user-row { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; background-color: #f9f9f9; padding: 12px 15px; border: 1px solid #eee; border-radius: 5px; }
+        /* 入力枠がはみ出さないように幅を100%にする設定を追加 */
+        .user-row { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 8px; background-color: #f9f9f9; padding: 12px 15px; border: 1px solid #eee; border-radius: 5px; width: 100%; box-sizing: border-box; }
         .user-row:hover { background-color: #e6f2ff; border-color: #2b8a3e; }
         .user-checkbox-label { cursor: pointer; font-size: 16px; margin: 0; display: flex; align-items: center; gap: 6px; font-weight: bold; }
         .card-checkbox-label { cursor: pointer; font-size: 14px; color: #d6336c; font-weight: bold; margin: 0 0 0 5px; border-left: 3px solid #ccc; padding-left: 10px; display: flex; align-items: center; gap: 6px; }
+        .card-msg-input { width: 90%; margin-left: 15px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
 
         .btn-batch-print { background-color: #2b8a3e; font-size: 18px; padding: 12px 24px; width: 100%; margin-bottom: 10px; }
         .btn-batch-print:hover { background-color: #237032; }
@@ -106,89 +108,28 @@
         /* ==========================================
            🎉 誕生日カード専用のスタイル（縦型・デザインA 標準）
            ========================================== */
-        .birthday-card-container {
-            width: 100%;
-            height: 277mm; 
-            position: relative;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .bg-image-layer {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            object-fit: fill;
-            z-index: 1;
-        }
-        .dynamic-photo {
-            position: absolute;
-            top: 21.4%; left: 22.0%;
-            width: 56.0%; height: 27.5%;
-            object-fit: cover;
-            z-index: 2;
-            border-radius: 3px;
-        }
-        .dynamic-text-area {
-            position: absolute;
-            top: 53.5%; left: 15%;
-            width: 70%; height: 20%;
-            z-index: 3;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-        }
-        
-        /* ★ デザインAも白い縁取りを太くしました ★ */
+        .birthday-card-container { width: 100%; height: 277mm; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
+        .bg-image-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
+        .dynamic-photo { position: absolute; top: 21.4%; left: 22.0%; width: 56.0%; height: 27.5%; object-fit: cover; z-index: 2; border-radius: 3px; }
+        .dynamic-text-area { position: absolute; top: 51.5%; left: 10%; width: 80%; height: 25%; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .dynamic-name { font-size: 24px; font-weight: 900; margin-bottom: 6px; color: #111; letter-spacing: 2px; text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff, 0 0 8px #fff, 0 0 8px #fff; }
         .dynamic-date { font-size: 22px; font-weight: 900; margin-bottom: 6px; color: #111; letter-spacing: 2px; text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff, 0 0 8px #fff, 0 0 8px #fff; }
         .dynamic-age { font-size: 26px; font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff, 0 0 8px #fff, 0 0 8px #fff; }
+        .dynamic-staff-msg { font-size: 18px; font-weight: 900; margin-top: 10px; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff, 0 0 8px #fff, 0 0 8px #fff; }
 
         /* ==========================================
            🎉 誕生日カード専用のスタイル（縦型・デザインB 新着）
            ========================================== */
-        .birthday-card-container-v2 {
-            width: 100%;
-            height: 277mm; 
-            position: relative;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .bg-image-layer-v2 {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            object-fit: fill;
-            z-index: 1;
-        }
-        .dynamic-photo-v2 {
-            position: absolute;
-            top: 28.5%; left: 27.2%;
-            width: 45.6%; height: 34.0%;
-            object-fit: cover;
-            z-index: 2;
-            border-radius: 3px;
-        }
-        .dynamic-text-area-v2 {
-            position: absolute;
-            top: 64.0%; left: 15%;
-            width: 70%; height: 20%;
-            z-index: 3;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-        }
+        .birthday-card-container-v2 { width: 100%; height: 277mm; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
+        .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
+        .dynamic-photo-v2 { position: absolute; top: 28.5%; left: 27.2%; width: 45.6%; height: 34.0%; object-fit: cover; z-index: 2; border-radius: 3px; }
         
-        /* ★ デザインBの白い縁取りをさらに極太の3pxに変更し、文字をはっきりさせました ★ */
-        .dynamic-name-v2 { 
-            font-size: 28px; font-weight: 900; margin-bottom: 8px; color: #111; letter-spacing: 2px; 
-            text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; 
-        }
-        .dynamic-date-v2 { 
-            font-size: 24px; font-weight: 900; margin-bottom: 8px; color: #111; letter-spacing: 2px; 
-            text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; 
-        }
-        .dynamic-age-v2 { 
-            font-size: 30px; font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; 
-            text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; 
-        }
+        /* メッセージが入ってもはみ出さないように、エリアの高さを広げ、少し上にずらしました */
+        .dynamic-text-area-v2 { position: absolute; top: 63.5%; left: 10%; width: 80%; height: 25%; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .dynamic-name-v2 { font-size: 28px; font-weight: 900; margin-bottom: 8px; color: #111; letter-spacing: 2px; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        .dynamic-date-v2 { font-size: 24px; font-weight: 900; margin-bottom: 8px; color: #111; letter-spacing: 2px; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        .dynamic-age-v2 { font-size: 30px; font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        .dynamic-staff-msg-v2 { font-size: 20px; font-weight: 900; margin-top: 12px; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
 
         .print-only { display: none; }
 
@@ -494,6 +435,14 @@
                         let isChecked = (bData.diffDays <= 0) ? "checked" : "";
                         cardLbl.innerHTML = `<input type="checkbox" class="card-chk" value="${userName}" ${isChecked}> 🎁 誕生日カードも印刷`;
                         div.appendChild(cardLbl);
+                        
+                        // ★ 誕生日カードを印刷する人には、メッセージの入力枠を表示します ★
+                        let msgInput = document.createElement("input");
+                        msgInput.type = "text";
+                        msgInput.className = "card-msg-input";
+                        msgInput.id = "card_msg_" + userName; // その人の専用のID
+                        msgInput.placeholder = "カード用メッセージを入力(任意: いつも笑顔を…等)";
+                        div.appendChild(msgInput);
                     }
                     
                     checkboxesArea.appendChild(div);
@@ -539,6 +488,13 @@
 
             let cardChks = document.querySelectorAll(".card-chk:checked");
             let printCardUsers = Array.from(cardChks).map(chk => chk.value);
+            
+            // ★ 入力されたメッセージを全て集めます ★
+            let cardMessages = {};
+            printCardUsers.forEach(u => {
+                let inputEl = document.getElementById("card_msg_" + u);
+                cardMessages[u] = inputEl ? inputEl.value : "";
+            });
 
             let targetRecords = window.matchedRecordsGlobal.filter(record => selectedUserNames.includes(record.userName));
             
@@ -580,17 +536,21 @@
 
                     if (sType === "ショートステイ") {
                         let shouldPrintCard = printCardUsers.includes(userName);
+                        let staffMsg = shouldPrintCard ? cardMessages[userName] : "";
                         if(shouldPrintCard) {
                             printCardUsers = printCardUsers.filter(u => u !== userName);
                         }
-                        sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, userPeriodRecords, userMonthRecords, chartIndex++, startDate, endDate, shouldPrintCard));
+                        // ★ メッセージも渡すように変更 ★
+                        sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, userPeriodRecords, userMonthRecords, chartIndex++, startDate, endDate, shouldPrintCard, staffMsg));
                     } else {
                         userPeriodRecords.forEach(data => {
                             let shouldPrintCard = printCardUsers.includes(data.userName);
+                            let staffMsg = shouldPrintCard ? cardMessages[data.userName] : "";
                             if(shouldPrintCard) {
                                 printCardUsers = printCardUsers.filter(u => u !== data.userName);
                             }
-                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, shouldPrintCard));
+                            // ★ メッセージも渡すように変更 ★
+                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, shouldPrintCard, staffMsg));
                         });
                     }
                 });
@@ -701,7 +661,7 @@
             }
         }
 
-        async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate, shouldPrintCard) {
+        async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate, shouldPrintCard, cardMessage = "") {
             let pageDiv = document.createElement("div");
             pageDiv.className = "print-page";
             let chartCanvasId = `chart_${index}`;
@@ -1023,6 +983,10 @@
 
                 let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
 
+                // ★ 入力されたメッセージをHTMLに組み込みます ★
+                let staffMsgHtml = cardMessage ? `<div class="dynamic-staff-msg">${cardMessage}</div>` : "";
+                let staffMsgHtmlV2 = cardMessage ? `<div class="dynamic-staff-msg-v2">${cardMessage}</div>` : "";
+
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
@@ -1035,6 +999,7 @@
                                 <div class="dynamic-name">${userName} 様</div>
                                 <div class="dynamic-date">${displayDateText}</div>
                                 <div class="dynamic-age">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                                ${staffMsgHtml}
                             </div>
                         </div>
                     `;
@@ -1047,6 +1012,7 @@
                                 <div class="dynamic-name-v2">${userName} 様</div>
                                 <div class="dynamic-date-v2">${displayDateText}</div>
                                 <div class="dynamic-age-v2">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                                ${staffMsgHtmlV2}
                             </div>
                         </div>
                     `;
@@ -1055,7 +1021,7 @@
             }
         }
 
-        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard) {
+        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard, cardMessage = "") {
             let pageDiv = document.createElement("div");
             pageDiv.className = "print-page";
 
@@ -1249,6 +1215,10 @@
 
                 let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
 
+                // ★ 入力されたメッセージをHTMLに組み込みます ★
+                let staffMsgHtml = cardMessage ? `<div class="dynamic-staff-msg">${cardMessage}</div>` : "";
+                let staffMsgHtmlV2 = cardMessage ? `<div class="dynamic-staff-msg-v2">${cardMessage}</div>` : "";
+
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
@@ -1261,6 +1231,7 @@
                                 <div class="dynamic-name">${data.userName} 様</div>
                                 <div class="dynamic-date">${displayDateText}</div>
                                 <div class="dynamic-age">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                                ${staffMsgHtml}
                             </div>
                         </div>
                     `;
@@ -1273,6 +1244,7 @@
                                 <div class="dynamic-name-v2">${data.userName} 様</div>
                                 <div class="dynamic-date-v2">${displayDateText}</div>
                                 <div class="dynamic-age-v2">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                                ${staffMsgHtmlV2}
                             </div>
                         </div>
                     `;
