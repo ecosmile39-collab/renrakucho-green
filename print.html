@@ -794,7 +794,7 @@
             }
 
             let bpOut = '--';
-            if (lastData.stBpHighOut || lastData.stBpLowOut) {
+            if (lastData.stBpHighOut || lastData.stBpHighOut) {
                 let h = lastData.stBpHighOut ? lastData.stBpHighOut : '';
                 let l = lastData.stBpLowOut ? lastData.stBpLowOut : '';
                 bpOut = h + '/' + l;
@@ -924,8 +924,8 @@
                 cardPageDiv.className = "print-page page-break"; 
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-container">
-                        <!-- ★ 画像名を image_78fac2_3.jpg に修正しました！ ★ -->
-                        <img src="image_78fac2_3.jpg" class="bg-image-layer" alt="背景">
+                        <!-- ここを bg_birthday.jpg に変更しました！ -->
+                        <img src="bg_birthday.jpg" class="bg-image-layer" alt="背景">
                         
                         <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
                         
@@ -1129,8 +1129,8 @@
                 cardPageDiv.className = "print-page page-break"; 
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-container">
-                        <!-- ★ 画像名を image_78fac2_3.jpg に修正しました！ ★ -->
-                        <img src="image_78fac2_3.jpg" class="bg-image-layer" alt="背景">
+                        <!-- ここを bg_birthday.jpg に変更しました！ -->
+                        <img src="bg_birthday.jpg" class="bg-image-layer" alt="背景">
                         
                         <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
                         
