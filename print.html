@@ -118,16 +118,16 @@
             z-index: 1;
         }
         
-        /* ★ 写真が金色の枠に綺麗に収まるように微調整しました ★ */
+        /* ★ 写真が白枠にぴったり収まるように微調整しました ★ */
         .dynamic-photo {
             position: absolute;
-            top: 22.8%;    /* 少し下げて上の枠を見せる */
-            left: 21.5%;   /* 少し右に寄せて左の枠を見せる */
-            width: 57%;    /* 幅を少し減らして右にはみ出さないように */
-            height: 27.5%; /* 高さを減らして下にはみ出さないように */
+            top: 22.5%;    /* 上からの位置（数字を増やすと下へ） */
+            left: 22.0%;   /* 左からの位置（数字を増やすと右へ） */
+            width: 56.0%;  /* 写真の横幅（小さくしてはみ出しを直す） */
+            height: 26.5%; /* 写真の高さ（小さくしてはみ出しを直す） */
             object-fit: cover;
             z-index: 2;
-            border-radius: 5px; /* 枠の内側に自然に馴染むように角を少し丸くします */
+            border-radius: 3px;
         }
         
         .dynamic-text-area {
@@ -141,7 +141,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            transition: all 0.3s ease; /* 白枠への切り替えを滑らかにします */
+            transition: all 0.3s ease; 
         }
         .dynamic-name { font-size: 24px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
         .dynamic-date { font-size: 22px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
@@ -1173,4 +1173,3 @@
     </script>
 </body>
 </html>
-
