@@ -48,7 +48,7 @@
 
         .print-page { 
             background-color: white; 
-            padding: 10mm 10mm 10mm 20mm; 
+            padding: 10mm 15mm 10mm 20mm; 
             box-sizing: border-box; 
             margin-bottom: 30px; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
@@ -75,34 +75,34 @@
             border-bottom: 2px solid #333; 
             padding-bottom: 6px; 
         }
-        .print-header h1 { margin: 0; font-size: 22px; letter-spacing: 1px; text-align: right; }
+        .print-header h1 { margin: 0; font-size: 24px; letter-spacing: 1px; text-align: right; }
         .facility-name { font-size: 16px; font-weight: bold; color: #2b8a3e; }
         .print-date { text-align: right; font-size: 14px; margin-bottom: 10px; margin-top: 5px; font-weight: bold; color: #2b8a3e; }
         
-        .birthday-banner { background-color: #fff0f5; color: #d2691e; text-align: center; font-size: 14px; font-weight: bold; padding: 5px 10px; margin: 0 0 8px 0; border: 2px dashed #ffb6c1; border-radius: 6px; }
+        .birthday-banner { background-color: #fff0f5; color: #d2691e; text-align: center; font-size: 15px; font-weight: bold; padding: 6px 10px; margin: 0 0 10px 0; border: 2px dashed #ffb6c1; border-radius: 6px; }
         
-        table.compact-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13px; }
-        table.compact-table th, table.compact-table td { border: 1px solid #333; padding: 6px; text-align: center; }
+        table.compact-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 14px; }
+        table.compact-table th, table.compact-table td { border: 1px solid #333; padding: 8px; text-align: center; }
         table.compact-table th { background-color: #f9f9f9; font-weight: normal; }
         table.compact-table td { font-weight: bold; }
 
-        table.belongings-print-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; }
+        table.belongings-print-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 12px; }
         table.belongings-print-table th, table.belongings-print-table td { border: 1px solid #333; padding: 4px; text-align: center; }
         table.belongings-print-table th { background-color: #f0f0f0; }
         table.belongings-print-table td.item-name { text-align: left; padding-left: 6px; font-weight: normal; }
 
-        .compact-avg { text-align: center; font-size: 13px; color: #333; margin: 10px 0; font-weight: bold; background-color: #fffacd; border: 1px solid #daa520; padding: 8px; border-radius: 5px; }
+        .compact-avg { text-align: center; font-size: 14px; color: #333; margin: 10px 0; font-weight: bold; background-color: #fffacd; border: 1px solid #daa520; padding: 8px; border-radius: 5px; }
         
-        .chart-container { height: 160px; width: 100%; position: relative; display: block; margin-bottom: 10px; }
-        .section-title { font-weight: bold; font-size: 14px; margin-top: 12px; margin-bottom: 4px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
-        .text-box { border: 1px solid #333; padding: 8px; font-size: 13px; min-height: 40px; white-space: pre-wrap; margin-bottom: 8px; border-radius: 3px; line-height: 1.4; }
+        .chart-container { height: 160px; width: 100%; position: relative; display: block; margin-bottom: 15px; }
+        .section-title { font-weight: bold; font-size: 15px; margin-top: 15px; margin-bottom: 5px; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
+        .text-box { border: 1px solid #333; padding: 8px; font-size: 14px; min-height: 40px; white-space: pre-wrap; margin-bottom: 10px; border-radius: 3px; line-height: 1.4; }
         .family-box { min-height: 70px; }
         
-        .media-print-area { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; justify-content: flex-start; }
+        .media-print-area { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px; justify-content: flex-start; }
         .media-print-box { text-align: center; }
-        .media-print-box img.photo { max-height: 110px; max-width: 150px; object-fit: contain; border: 1px solid #ccc; padding: 2px; }
-        .media-print-box img.qr { width: 90px; height: 90px; border: 1px solid #ccc; padding: 2px; margin-bottom: 2px; }
-        .media-print-box .media-label { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
+        .media-print-box img.photo { max-height: 150px; max-width: 200px; object-fit: contain; border: 1px solid #ccc; padding: 2px; }
+        .media-print-box img.qr { width: 110px; height: 110px; border: 1px solid #ccc; padding: 2px; margin-bottom: 2px; }
+        .media-print-box .media-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; }
 
         /* ==========================================
            🎉 誕生日カード専用のスタイル（縦型・デザインA 標準）
@@ -111,8 +111,6 @@
         .bg-image-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
         .dynamic-photo { position: absolute; top: 21.4%; left: 21.4%; width: 57.2%; height: 27.5%; object-fit: cover; z-index: 2; border-radius: 3px; }
         .dynamic-text-area { position: absolute; top: 51.5%; left: 10%; width: 80%; height: 25%; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        
-        /* ★ デザインAの文字を少し大きくし、白縁（text-shadow）を極太の3pxに変更しました ★ */
         .dynamic-name { font-size: 26px; font-weight: 900; margin-bottom: 6px; color: #111; letter-spacing: 2px; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
         .dynamic-date { font-size: 22px; font-weight: 900; margin-bottom: 6px; color: #111; letter-spacing: 2px; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
         .dynamic-age { font-size: 28px; font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
@@ -133,7 +131,7 @@
         .print-only { display: none; }
 
         /* ==========================================
-           🖨️ 印刷時専用のスタイル
+           🖨️ 印刷時専用のスタイル（★全体のバランスを再調整しました★）
            ========================================== */
         @media print {
             @page { size: A4 portrait; margin: 0; } 
@@ -144,7 +142,7 @@
             .print-only { display: block !important; }
 
             .print-page { 
-                padding: 5mm 12mm 4mm 15mm !important; 
+                padding: 10mm 15mm 10mm 20mm !important; /* 余白を正常なサイズに戻しました */
                 box-shadow: none !important; 
                 width: 210mm !important; 
                 min-height: 297mm !important; 
@@ -174,35 +172,39 @@
                 break-inside: avoid !important;
             }
             
-            .print-header { margin-bottom: 2mm !important; padding-bottom: 1mm !important; border-bottom: 2px solid #333 !important; }
-            .print-header h1 { font-size: 18px !important; margin: 0 !important; }
-            .facility-name { font-size: 14px !important; font-weight: bold !important; }
-            .print-date { margin-bottom: 2mm !important; font-size: 11px !important; font-weight: bold !important; }
-            h2 { font-size: 16px !important; margin: 0 !important; }
+            .print-header { margin-bottom: 6mm !important; padding-bottom: 2mm !important; border-bottom: 2px solid #333 !important; }
+            .print-header h1 { font-size: 22px !important; margin: 0 !important; }
+            .facility-name { font-size: 16px !important; font-weight: bold !important; }
+            .print-date { margin-bottom: 4mm !important; font-size: 14px !important; font-weight: bold !important; }
+            h2 { font-size: 18px !important; margin: 0 !important; }
             
-            table.compact-table { margin-bottom: 4mm !important; font-size: 12px !important; }
-            table.compact-table th, table.compact-table td { padding: 4px !important; border: 1px solid #333 !important; }
+            table.compact-table { margin-bottom: 6mm !important; font-size: 13px !important; }
+            table.compact-table th, table.compact-table td { padding: 5px !important; border: 1px solid #333 !important; }
             
-            table.belongings-print-table { margin-bottom: 4mm !important; font-size: 10px !important; }
-            table.belongings-print-table th, table.belongings-print-table td { padding: 2px !important; border: 1px solid #333 !important; }
+            table.belongings-print-table { margin-bottom: 6mm !important; font-size: 11px !important; }
+            table.belongings-print-table th, table.belongings-print-table td { padding: 3px !important; border: 1px solid #333 !important; }
             
             .st-chart { display: none !important; }
             .admission-vitals-table { display: none !important; } 
             
-            .ds-chart { display: block !important; height: 110px !important; margin-bottom: 3mm !important; }
+            .ds-chart { display: block !important; height: 140px !important; margin-bottom: 5mm !important; }
             .ds-chart canvas { display: none !important; }
-            .ds-chart img.chart-print-image { display: block !important; width: 100% !important; height: 110px !important; object-fit: contain !important; }
+            .ds-chart img.chart-print-image { display: block !important; width: 100% !important; height: 140px !important; object-fit: contain !important; }
 
-            .compact-avg { margin: 3mm 0 !important; padding: 2px !important; font-size: 11px !important; font-weight: bold !important; border: 1px solid #daa520 !important; border-radius: 5px !important; background-color: #fffacd !important; }
+            .compact-avg { margin: 5mm 0 !important; padding: 4px !important; font-size: 13px !important; font-weight: bold !important; border: 1px solid #daa520 !important; border-radius: 5px !important; background-color: #fffacd !important; }
 
-            .text-box { min-height: 20px !important; margin-bottom: 3mm !important; padding: 4px 5px !important; font-size: 11.5px !important; line-height: 1.2 !important; border: 1px solid #333 !important; border-radius: 3px !important; }
-            .family-box { min-height: 40px !important; }
+            /* ★ テキストボックスの広さを拡大しました */
+            .text-box { min-height: 40px !important; margin-bottom: 5mm !important; padding: 6px 8px !important; font-size: 13px !important; line-height: 1.4 !important; border: 1px solid #333 !important; border-radius: 3px !important; }
+            /* ご家族用の枠はさらに広くしました */
+            .family-box { min-height: 80px !important; }
 
-            .section-title { margin-top: 4mm !important; margin-bottom: 1mm !important; font-size: 12.5px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
-            .birthday-banner { margin-bottom: 3mm !important; padding: 2px !important; font-size: 11.5px !important; }
+            .section-title { margin-top: 6mm !important; margin-bottom: 2mm !important; font-size: 14px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
+            .birthday-banner { margin-bottom: 5mm !important; padding: 4px !important; font-size: 13px !important; }
             
-            .media-print-box img.photo { max-height: 110px !important; max-width: 150px !important; }
-            .media-print-box img.qr { width: 80px !important; height: 80px !important; }
+            /* ★ 写真とQRコードを大きく表示するようにしました */
+            .media-print-box img.photo { max-height: 160px !important; max-width: 220px !important; }
+            .media-print-box img.qr { width: 110px !important; height: 110px !important; }
+            .media-print-box .media-label { font-size: 12px !important; margin-bottom: 4px !important;}
 
             .birthday-card-container { height: 297mm !important; box-shadow: none !important; }
             .birthday-card-container-v2 { height: 297mm !important; box-shadow: none !important; }
@@ -828,7 +830,7 @@
                     mediaPromises.push((async () => {
                         let url = await getCachedUrl(`videos/${userName}/${d.date}_video_${i}.mp4`);
                         if (url) {
-                            let qr = new QRious({ value: url, size: 150 });
+                            let qr = new QRious({ value: url, size: 180 });
                             return `<div class="media-print-box"><div class="media-label">🎥 ${md}</div><img src="${qr.toDataURL()}" class="qr"><br></div>`;
                         }
                         return "";
@@ -1072,7 +1074,7 @@
                 mediaPromises.push((async () => {
                     let url = await getCachedUrl(`videos/${data.userName}/${data.date}_video_${i}.mp4`);
                     if (url) {
-                        let qr = new QRious({ value: url, size: 150 });
+                        let qr = new QRious({ value: url, size: 180 });
                         return `<div class="media-print-box"><div class="media-label">🎥 動画 (QR読取)</div><img src="${qr.toDataURL()}" class="qr"><br></div>`;
                     }
                     return "";
