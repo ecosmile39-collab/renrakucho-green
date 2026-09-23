@@ -131,18 +131,33 @@
         .print-only { display: none; }
 
         /* ==========================================
-           🖨️ 印刷時専用のスタイル（★全体のバランスを再調整しました★）
+           🌟 誕生日カード「のみ」を印刷する場合の特別スタイル
+           用紙サイズに自動でフィットさせるための設定です。
+           ========================================== */
+        body.mode-card-only #printArea { width: 100%; max-width: 600px; margin: 0 auto; }
+        body.mode-card-only .print-page { padding: 0; min-height: auto; box-shadow: none; margin-bottom: 20px; background: transparent; }
+        body.mode-card-only .birthday-card-container,
+        body.mode-card-only .birthday-card-container-v2 {
+            height: auto;
+            aspect-ratio: 1 / 1.414; /* A4などの一般的な用紙比率を保つ */
+            width: 100%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        /* ==========================================
+           🖨️ 印刷時専用のスタイル
            ========================================== */
         @media print {
-            @page { size: A4 portrait; margin: 0; } 
+            /* ★ ブラウザ側で用紙サイズ（L版・B5など）を自由に選べるように制限を解除 ★ */
+            @page { margin: 0; } 
+            
             body { background-color: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none !important; }
-            #printArea { max-width: 100% !important; margin: 0 !important; width: 210mm !important; }
             
-            .print-only { display: block !important; }
-
-            .print-page { 
-                padding: 10mm 15mm 10mm 20mm !important; /* 余白を正常なサイズに戻しました */
+            /* ★ 通常モード（連絡帳あり）の印刷設定 ★ */
+            body:not(.mode-card-only) #printArea { max-width: 100% !important; margin: 0 !important; width: 210mm !important; }
+            body:not(.mode-card-only) .print-page { 
+                padding: 5mm 12mm 4mm 15mm !important; 
                 box-shadow: none !important; 
                 width: 210mm !important; 
                 min-height: 297mm !important; 
@@ -151,63 +166,58 @@
                 position: relative !important; 
                 box-sizing: border-box !important;
             }
-
-            .page-break {
-                page-break-before: always !important;
-                padding: 0 !important; 
+            body:not(.mode-card-only) .birthday-card-container,
+            body:not(.mode-card-only) .birthday-card-container-v2 { 
+                height: 297mm !important; box-shadow: none !important; 
             }
 
-            .punch-mark {
-                position: fixed !important; 
-                top: 148.5mm !important; 
-                transform: translateY(-50%) !important;
-                left: 4mm !important; 
-                color: #aaa !important; 
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+            /* ★ カードのみ印刷モードの設定（用紙にピッタリ合わせる） ★ */
+            body.mode-card-only #printArea { width: 100% !important; max-width: 100% !important; }
+            body.mode-card-only .print-page { 
+                padding: 0 !important; margin: 0 !important; width: 100% !important; height: 100vh !important; page-break-after: always !important; 
             }
-            
-            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-container, .birthday-card-container-v2 {
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
+            body.mode-card-only .birthday-card-container,
+            body.mode-card-only .birthday-card-container-v2 {
+                height: 100vh !important;
+                width: 100vw !important;
+                aspect-ratio: auto;
+                box-shadow: none !important;
             }
+
+            .print-only { display: block !important; }
+            .page-break { page-break-before: always !important; padding: 0 !important; }
+            .punch-mark { position: fixed !important; top: 148.5mm !important; transform: translateY(-50%) !important; left: 4mm !important; color: #aaa !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-container, .birthday-card-container-v2 { page-break-inside: avoid !important; break-inside: avoid !important; }
             
-            .print-header { margin-bottom: 6mm !important; padding-bottom: 2mm !important; border-bottom: 2px solid #333 !important; }
-            .print-header h1 { font-size: 22px !important; margin: 0 !important; }
-            .facility-name { font-size: 16px !important; font-weight: bold !important; }
-            .print-date { margin-bottom: 4mm !important; font-size: 14px !important; font-weight: bold !important; }
-            h2 { font-size: 18px !important; margin: 0 !important; }
+            .print-header { margin-bottom: 2mm !important; padding-bottom: 1mm !important; border-bottom: 2px solid #333 !important; }
+            .print-header h1 { font-size: 18px !important; margin: 0 !important; }
+            .facility-name { font-size: 14px !important; font-weight: bold !important; }
+            .print-date { margin-bottom: 2mm !important; font-size: 11px !important; font-weight: bold !important; }
+            h2 { font-size: 16px !important; margin: 0 !important; }
             
-            table.compact-table { margin-bottom: 6mm !important; font-size: 13px !important; }
-            table.compact-table th, table.compact-table td { padding: 5px !important; border: 1px solid #333 !important; }
+            table.compact-table { margin-bottom: 4mm !important; font-size: 12px !important; }
+            table.compact-table th, table.compact-table td { padding: 4px !important; border: 1px solid #333 !important; }
             
-            table.belongings-print-table { margin-bottom: 6mm !important; font-size: 11px !important; }
-            table.belongings-print-table th, table.belongings-print-table td { padding: 3px !important; border: 1px solid #333 !important; }
+            table.belongings-print-table { margin-bottom: 4mm !important; font-size: 10px !important; }
+            table.belongings-print-table th, table.belongings-print-table td { padding: 2px !important; border: 1px solid #333 !important; }
             
             .st-chart { display: none !important; }
             .admission-vitals-table { display: none !important; } 
             
-            .ds-chart { display: block !important; height: 140px !important; margin-bottom: 5mm !important; }
+            .ds-chart { display: block !important; height: 110px !important; margin-bottom: 3mm !important; }
             .ds-chart canvas { display: none !important; }
-            .ds-chart img.chart-print-image { display: block !important; width: 100% !important; height: 140px !important; object-fit: contain !important; }
+            .ds-chart img.chart-print-image { display: block !important; width: 100% !important; height: 110px !important; object-fit: contain !important; }
 
-            .compact-avg { margin: 5mm 0 !important; padding: 4px !important; font-size: 13px !important; font-weight: bold !important; border: 1px solid #daa520 !important; border-radius: 5px !important; background-color: #fffacd !important; }
+            .compact-avg { margin: 3mm 0 !important; padding: 2px !important; font-size: 11px !important; font-weight: bold !important; border: 1px solid #daa520 !important; border-radius: 5px !important; background-color: #fffacd !important; }
 
-            /* ★ テキストボックスの広さを拡大しました */
-            .text-box { min-height: 40px !important; margin-bottom: 5mm !important; padding: 6px 8px !important; font-size: 13px !important; line-height: 1.4 !important; border: 1px solid #333 !important; border-radius: 3px !important; }
-            /* ご家族用の枠はさらに広くしました */
-            .family-box { min-height: 80px !important; }
+            .text-box { min-height: 20px !important; margin-bottom: 3mm !important; padding: 4px 5px !important; font-size: 11.5px !important; line-height: 1.2 !important; border: 1px solid #333 !important; border-radius: 3px !important; }
+            .family-box { min-height: 40px !important; }
 
-            .section-title { margin-top: 6mm !important; margin-bottom: 2mm !important; font-size: 14px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
-            .birthday-banner { margin-bottom: 5mm !important; padding: 4px !important; font-size: 13px !important; }
+            .section-title { margin-top: 4mm !important; margin-bottom: 1mm !important; font-size: 12.5px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 2px !important; }
+            .birthday-banner { margin-bottom: 3mm !important; padding: 2px !important; font-size: 11.5px !important; }
             
-            /* ★ 写真とQRコードを大きく表示するようにしました */
-            .media-print-box img.photo { max-height: 160px !important; max-width: 220px !important; }
-            .media-print-box img.qr { width: 110px !important; height: 110px !important; }
-            .media-print-box .media-label { font-size: 12px !important; margin-bottom: 4px !important;}
-
-            .birthday-card-container { height: 297mm !important; box-shadow: none !important; }
-            .birthday-card-container-v2 { height: 297mm !important; box-shadow: none !important; }
+            .media-print-box img.photo { max-height: 110px !important; max-width: 150px !important; }
+            .media-print-box img.qr { width: 80px !important; height: 80px !important; }
         }
     </style>
 </head>
@@ -241,7 +251,17 @@
                 <input type="date" id="endDate" class="date-input" onchange="onDateChanged()">
             </div>
             
+            <!-- ★ 新機能：印刷する内容を選べるメニューを追加しました ★ -->
             <div class="filter-row" style="margin-top: 15px; border-top: 1px dashed #40c057; padding-top: 15px;">
+                <span class="filter-label">🖨️ 印刷する内容：</span>
+                <select id="selectPrintTarget" class="filter-select" onchange="onCardBgChanged()">
+                    <option value="both" selected>連絡帳 ＋ 誕生日カード（A4用紙）</option>
+                    <option value="report_only">連絡帳のみ（A4用紙）</option>
+                    <option value="card_only">誕生日カードのみ（L版やB5など用紙自由）</option>
+                </select>
+            </div>
+            
+            <div class="filter-row">
                 <span class="filter-label">📇 誕生日カードのデザイン：</span>
                 <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged()">
                     <option value="vertical" selected>縦型（デザインA・標準）</option>
@@ -478,6 +498,14 @@
             
             let btn = document.getElementById("batchPrintBtn");
             let printArea = document.getElementById("printArea");
+            
+            // ★ 新機能：「印刷する内容」の選択状態を取得し、bodyタグにクラスを付ける ★
+            let printTarget = document.getElementById("selectPrintTarget").value;
+            if (printTarget === "card_only") {
+                document.body.classList.add("mode-card-only");
+            } else {
+                document.body.classList.remove("mode-card-only");
+            }
 
             let chks = document.querySelectorAll(".user-chk:checked");
             if (chks.length === 0) {
@@ -539,7 +567,7 @@
                         if(shouldPrintCard) {
                             printCardUsers = printCardUsers.filter(u => u !== userName);
                         }
-                        sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, userPeriodRecords, userMonthRecords, chartIndex++, startDate, endDate, shouldPrintCard, staffMsg));
+                        sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, userPeriodRecords, userMonthRecords, chartIndex++, startDate, endDate, shouldPrintCard, staffMsg, printTarget));
                     } else {
                         userPeriodRecords.forEach(data => {
                             let shouldPrintCard = printCardUsers.includes(data.userName);
@@ -547,7 +575,7 @@
                             if(shouldPrintCard) {
                                 printCardUsers = printCardUsers.filter(u => u !== data.userName);
                             }
-                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, shouldPrintCard, staffMsg));
+                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, shouldPrintCard, staffMsg, printTarget));
                         });
                     }
                 });
@@ -658,313 +686,318 @@
             }
         }
 
-        async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate, shouldPrintCard, cardMessage = "") {
-            let pageDiv = document.createElement("div");
-            pageDiv.className = "print-page";
+        async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate, shouldPrintCard, cardMessage = "", printTarget = "both") {
             let chartCanvasId = `chart_${index}`;
-
-            let firstData = periodRecords[0] || {};
-            let lastData = periodRecords[periodRecords.length - 1] || {};
-
-            let tableRows = "";
-            let commentsHtml = "";
-            let dayActivityHtml = "";
-            let labels = [], temps = [], bpHighs = [], bpLows = [];
-
-            let sumTemp = 0, sumPulse = 0, sumBpHigh = 0, sumBpLow = 0, sumSpo2 = 0;
-            let cTemp = 0, cPulse = 0, cBpHigh = 0, cBpLow = 0, cSpo2 = 0;
-
-            monthRecords.forEach(d => {
-                let t = parseFloat(d.stTempIn || d.stTemp1 || d.temp1); if (!isNaN(t)) { sumTemp += t; cTemp++; }
-                let p = parseFloat(d.stPulseIn || d.stPulse || d.pulse); if (!isNaN(p)) { sumPulse += p; cPulse++; }
-                let bh = parseFloat(d.stBpHighIn || d.stBpHigh || d.bpHigh); if (!isNaN(bh)) { sumBpHigh += bh; cBpHigh++; }
-                let bl = parseFloat(d.stBpLowIn || d.stBpLow || d.bpLow); if (!isNaN(bl)) { sumBpLow += bl; cBpLow++; }
-                let s = parseFloat(d.stSpo2In || d.spo2); if (!isNaN(s)) { sumSpo2 += s; cSpo2++; }
-            });
-
-            let avgTempStr = cTemp > 0 ? (sumTemp / cTemp).toFixed(1) : "--";
-            let avgPulseStr = cPulse > 0 ? Math.round(sumPulse / cPulse) : "--";
-            let avgBpHighStr = cBpHigh > 0 ? Math.round(sumBpHigh / cBpHigh) : "--";
-            let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
-            let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
-
-            let uData = window.globalUsersData[userName];
-            let bData = getBirthdayData(uData ? uData.birthday : null, null, true, startDate, endDate);
+            let bData = getBirthdayData(window.globalUsersData[userName] ? window.globalUsersData[userName].birthday : null, null, true, startDate, endDate);
             
-            let birthdayBannerHtml = "";
-            if (bData) {
-                if (bData.diffDays === 0) {
-                    birthdayBannerHtml = `<div class="birthday-banner">🎂 本日は ${bData.age}歳のお誕生日です！おめでとうございます！ 🎂</div>`;
-                } else {
-                    birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日は ${bData.age}歳のお誕生日でしたね。おめでとうございます！ 🎂</div>`;
-                }
-            }
+            // ★ メニューの選択に合わせて描画するかどうかを決定します ★
+            let renderReport = (printTarget === "both" || printTarget === "report_only");
+            let renderCard = (printTarget === "both" || printTarget === "card_only") && shouldPrintCard;
 
-            let leftItems = [
-                { name: "上着", in: firstData.num_in_1, out: lastData.num_out_1 },
-                { name: "ズボン", in: firstData.num_in_2, out: lastData.num_out_2 },
-                { name: "肌着(上)", in: firstData.num_in_3, out: lastData.num_out_3 },
-                { name: "ズボン下", in: firstData.num_in_4, out: lastData.num_out_4 },
-                { name: "靴下", in: firstData.num_in_5, out: lastData.num_out_5 },
-                { name: "パジャマ(上)", in: firstData.num_in_6, out: lastData.num_out_6 },
-                { name: "パジャマ(下)", in: firstData.num_in_7, out: lastData.num_out_7 },
-                { name: "羽織り物", in: firstData.num_in_8, out: lastData.num_out_8 },
-                { name: "タオル", in: firstData.num_in_9, out: lastData.num_out_9 },
-                { name: "カバン", in: firstData.num_in_10, out: lastData.num_out_10 },
-                { name: "歯ブラシ・ケース", in: firstData.num_in_11, out: lastData.num_out_11 },
-                { name: "歯磨き粉", in: firstData.num_in_12, out: lastData.num_out_12 },
-                { name: "コップ・ふた", in: firstData.num_in_13, out: lastData.num_out_13 },
-                { name: "義歯(上・下)", in: firstData.num_in_14, out: lastData.num_out_14 },
-                { name: "入歯洗浄剤", in: firstData.num_in_15, out: lastData.num_out_15 },
-                { name: "義歯ケース", in: firstData.num_in_16, out: lastData.num_out_16 }
-            ];
+            if (renderReport) {
+                let pageDiv = document.createElement("div");
+                pageDiv.className = "print-page";
 
-            let rightItems = [
-                { name: "歩行器", in: firstData.num_in_17, out: lastData.num_out_17 },
-                { name: "ZIP・マスク", in: firstData.num_in_18, out: lastData.num_out_18 },
-                { name: "レッグウォーマー", in: firstData.num_in_19, out: lastData.num_out_19 },
-                { name: "BOXティッシュ", in: firstData.num_in_20, out: lastData.num_out_20 },
-                { name: "薬入れZIP", in: firstData.num_in_21, out: lastData.num_out_21 },
-                { name: "ZIP(小)", in: firstData.num_in_22, out: lastData.num_out_22 },
-                { name: "ZIP(中)", in: firstData.num_in_23, out: lastData.num_out_23 },
-                { name: "その他", in: firstData.num_in_free1, out: lastData.num_out_free1 },
-                { name: "その他", in: firstData.num_in_free2, out: lastData.num_out_free2 },
-                { name: "その他", in: firstData.num_in_free3, out: lastData.num_out_free3 },
-                { name: "その他", in: firstData.num_in_free4, out: lastData.num_out_free4 },
-                { name: "その他", in: firstData.num_in_free5, out: lastData.num_out_free5 },
-                { name: "その他", in: firstData.num_in_free6, out: lastData.num_out_free6 },
-                { name: "その他", in: firstData.num_in_free7, out: lastData.num_out_free7 },
-                { name: "その他", in: firstData.num_in_free8, out: lastData.num_out_free8 },
-                { name: "その他", in: firstData.num_in_free9, out: lastData.num_out_free9 }
-            ];
+                let firstData = periodRecords[0] || {};
+                let lastData = periodRecords[periodRecords.length - 1] || {};
 
-            let belongingsTableHtml = "";
-            let maxRows = Math.max(leftItems.length, rightItems.length);
-            for(let r=0; r<maxRows; r++) {
-                let l = leftItems[r] || { name: "", in: "", out: "" };
-                let rt = rightItems[r] || { name: "", in: "", out: "" };
-                
-                let lHtml = l.name ? `<td class="item-name">${l.name}</td><td>${l.in || ''}</td><td>${l.out || ''}</td>` : `<td colspan="3" style="border: none;"></td>`;
-                let rHtml = rt.name ? `<td class="item-name">${rt.name}</td><td>${rt.in || ''}</td><td>${rt.out || ''}</td>` : `<td colspan="3" style="border: none;"></td>`;
-                
-                belongingsTableHtml += `<tr>${lHtml}${rHtml}</tr>`;
-            }
+                let tableRows = "";
+                let commentsHtml = "";
+                let dayActivityHtml = "";
+                let labels = [], temps = [], bpHighs = [], bpLows = [];
 
-            periodRecords.forEach(d => {
-                let md = d.date.substring(5).replace('-', '/'); 
-                let tM = d.stTempIn || d.stTemp1 || d.temp1 || '--';
-                let p = d.stPulseIn || d.stPulse || d.pulse || '--';
-                
-                let bpHigh = d.stBpHighIn || d.stBpHigh || d.bpHigh ? (d.stBpHighIn || d.stBpHigh || d.bpHigh) : '';
-                let bpLow = d.stBpLowIn || d.stBpLow || d.bpLow ? (d.stBpLowIn || d.stBpLow || d.bpLow) : '';
-                let bp = (bpHigh || bpLow) ? bpHigh + '/' + bpLow : '--';
-                
-                let mB = d.stMealBreakfast || '--';
-                let mL = d.stMealLunch || d.mealMain || '--';
-                let mD = d.stMealDinner || '--';
-                let bath = d.stBath || d.bath || '--';
-                if(d.stBathReason || d.bathReason) bath += `<br><span style="font-size:10px;">(${d.stBathReason || d.bathReason})</span>`;
+                let sumTemp = 0, sumPulse = 0, sumBpHigh = 0, sumBpLow = 0, sumSpo2 = 0;
+                let cTemp = 0, cPulse = 0, cBpHigh = 0, cBpLow = 0, cSpo2 = 0;
 
-                let bStr = "--";
-                if (d.stBowel === "なし" || (!d.stBowel && d.bowel === "なし")) {
-                    bStr = "なし";
-                } else if (d.stBowel === "あり" || (!d.stBowel && d.bowel === "あり")) {
-                    let details = [];
-                    if (d.stBowel1) details.push(`1回目:${d.stBowel1}`);
-                    if (d.stBowel2) details.push(`2回目:${d.stBowel2}`);
-                    if (d.stBowel3) details.push(`3回目:${d.stBowel3}`);
-                    
-                    if (details.length === 0 && d.stBowelCondition) {
-                        details.push(`${d.stBowelCount || ""} ${d.stBowelCondition}`);
-                    }
+                monthRecords.forEach(d => {
+                    let t = parseFloat(d.stTempIn || d.stTemp1 || d.temp1); if (!isNaN(t)) { sumTemp += t; cTemp++; }
+                    let p = parseFloat(d.stPulseIn || d.stPulse || d.pulse); if (!isNaN(p)) { sumPulse += p; cPulse++; }
+                    let bh = parseFloat(d.stBpHighIn || d.stBpHigh || d.bpHigh); if (!isNaN(bh)) { sumBpHigh += bh; cBpHigh++; }
+                    let bl = parseFloat(d.stBpLowIn || d.stBpLow || d.bpLow); if (!isNaN(bl)) { sumBpLow += bl; cBpLow++; }
+                    let s = parseFloat(d.stSpo2In || d.spo2); if (!isNaN(s)) { sumSpo2 += s; cSpo2++; }
+                });
 
-                    if (details.length > 0) {
-                        bStr = `あり <span style="font-size:10px;">(${details.join(', ')})</span>`;
+                let avgTempStr = cTemp > 0 ? (sumTemp / cTemp).toFixed(1) : "--";
+                let avgPulseStr = cPulse > 0 ? Math.round(sumPulse / cPulse) : "--";
+                let avgBpHighStr = cBpHigh > 0 ? Math.round(sumBpHigh / cBpHigh) : "--";
+                let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
+                let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
+
+                let birthdayBannerHtml = "";
+                if (bData) {
+                    if (bData.diffDays === 0) {
+                        birthdayBannerHtml = `<div class="birthday-banner">🎂 本日は ${bData.age}歳のお誕生日です！おめでとうございます！ 🎂</div>`;
                     } else {
-                        bStr = "あり";
+                        birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日は ${bData.age}歳のお誕生日でしたね。おめでとうございます！ 🎂</div>`;
                     }
                 }
 
-                tableRows += `
-                <tr>
-                    <td>${md}</td>
-                    <td>${tM}℃</td>
-                    <td>${p}</td>
-                    <td>${bp}</td>
-                    <td>${mB} / ${mL} / ${mD}</td>
-                    <td>${bath}</td>
-                    <td>${bStr}</td>
-                </tr>
-                `;
+                let leftItems = [
+                    { name: "上着", in: firstData.num_in_1, out: lastData.num_out_1 },
+                    { name: "ズボン", in: firstData.num_in_2, out: lastData.num_out_2 },
+                    { name: "肌着(上)", in: firstData.num_in_3, out: lastData.num_out_3 },
+                    { name: "ズボン下", in: firstData.num_in_4, out: lastData.num_out_4 },
+                    { name: "靴下", in: firstData.num_in_5, out: lastData.num_out_5 },
+                    { name: "パジャマ(上)", in: firstData.num_in_6, out: lastData.num_out_6 },
+                    { name: "パジャマ(下)", in: firstData.num_in_7, out: lastData.num_out_7 },
+                    { name: "羽織り物", in: firstData.num_in_8, out: lastData.num_out_8 },
+                    { name: "タオル", in: firstData.num_in_9, out: lastData.num_out_9 },
+                    { name: "カバン", in: firstData.num_in_10, out: lastData.num_out_10 },
+                    { name: "歯ブラシ・ケース", in: firstData.num_in_11, out: lastData.num_out_11 },
+                    { name: "歯磨き粉", in: firstData.num_in_12, out: lastData.num_out_12 },
+                    { name: "コップ・ふた", in: firstData.num_in_13, out: lastData.num_out_13 },
+                    { name: "義歯(上・下)", in: firstData.num_in_14, out: lastData.num_out_14 },
+                    { name: "入歯洗浄剤", in: firstData.num_in_15, out: lastData.num_out_15 },
+                    { name: "義歯ケース", in: firstData.num_in_16, out: lastData.num_out_16 }
+                ];
 
-                if (d.message) {
-                    commentsHtml += `<div style="margin-bottom:6px;"><b>【${md}】</b> ${d.message.replace(/\n/g, '<br>')}</div>`;
-                }
-                
-                let act = "";
-                if(d.stNightState) act += `[夜間] ${d.stNightState}<br>`;
-                if(d.stDayActivity) act += `[日中] ${d.stDayActivity}`;
-                if(act) {
-                    dayActivityHtml += `<div style="margin-bottom:6px;"><b>【${md}】</b><br>${act}</div>`;
+                let rightItems = [
+                    { name: "歩行器", in: firstData.num_in_17, out: lastData.num_out_17 },
+                    { name: "ZIP・マスク", in: firstData.num_in_18, out: lastData.num_out_18 },
+                    { name: "レッグウォーマー", in: firstData.num_in_19, out: lastData.num_out_19 },
+                    { name: "BOXティッシュ", in: firstData.num_in_20, out: lastData.num_out_20 },
+                    { name: "薬入れZIP", in: firstData.num_in_21, out: lastData.num_out_21 },
+                    { name: "ZIP(小)", in: firstData.num_in_22, out: lastData.num_out_22 },
+                    { name: "ZIP(中)", in: firstData.num_in_23, out: lastData.num_out_23 },
+                    { name: "その他", in: firstData.num_in_free1, out: lastData.num_out_free1 },
+                    { name: "その他", in: firstData.num_in_free2, out: lastData.num_out_free2 },
+                    { name: "その他", in: firstData.num_in_free3, out: lastData.num_out_free3 },
+                    { name: "その他", in: firstData.num_in_free4, out: lastData.num_out_free4 },
+                    { name: "その他", in: firstData.num_in_free5, out: lastData.num_out_free5 },
+                    { name: "その他", in: firstData.num_in_free6, out: lastData.num_out_free6 },
+                    { name: "その他", in: firstData.num_in_free7, out: lastData.num_out_free7 },
+                    { name: "その他", in: firstData.num_in_free8, out: lastData.num_out_free8 },
+                    { name: "その他", in: firstData.num_in_free9, out: lastData.num_out_free9 }
+                ];
+
+                let belongingsTableHtml = "";
+                let maxRows = Math.max(leftItems.length, rightItems.length);
+                for(let r=0; r<maxRows; r++) {
+                    let l = leftItems[r] || { name: "", in: "", out: "" };
+                    let rt = rightItems[r] || { name: "", in: "", out: "" };
+                    
+                    let lHtml = l.name ? `<td class="item-name">${l.name}</td><td>${l.in || ''}</td><td>${l.out || ''}</td>` : `<td colspan="3" style="border: none;"></td>`;
+                    let rHtml = rt.name ? `<td class="item-name">${rt.name}</td><td>${rt.in || ''}</td><td>${rt.out || ''}</td>` : `<td colspan="3" style="border: none;"></td>`;
+                    
+                    belongingsTableHtml += `<tr>${lHtml}${rHtml}</tr>`;
                 }
 
-                labels.push(parseInt(d.date.substring(8, 10), 10) + "日");
-                let t = parseFloat(d.stTempIn || d.stTemp1 || d.temp1); temps.push(!isNaN(t) ? t : null);
-                let bh = parseFloat(d.stBpHighIn || d.stBpHigh || d.bpHigh); bpHighs.push(!isNaN(bh) ? bh : null);
-                let bl = parseFloat(d.stBpLowIn || d.stBpLow || d.bpLow); bpLows.push(!isNaN(bl) ? bl : null);
-            });
+                periodRecords.forEach(d => {
+                    let md = d.date.substring(5).replace('-', '/'); 
+                    let tM = d.stTempIn || d.stTemp1 || d.temp1 || '--';
+                    let p = d.stPulseIn || d.stPulse || d.pulse || '--';
+                    
+                    let bpHigh = d.stBpHighIn || d.stBpHigh || d.bpHigh ? (d.stBpHighIn || d.stBpHigh || d.bpHigh) : '';
+                    let bpLow = d.stBpLowIn || d.stBpLow || d.bpLow ? (d.stBpLowIn || d.stBpLow || d.bpLow) : '';
+                    let bp = (bpHigh || bpLow) ? bpHigh + '/' + bpLow : '--';
+                    
+                    let mB = d.stMealBreakfast || '--';
+                    let mL = d.stMealLunch || d.mealMain || '--';
+                    let mD = d.stMealDinner || '--';
+                    let bath = d.stBath || d.bath || '--';
+                    if(d.stBathReason || d.bathReason) bath += `<br><span style="font-size:10px;">(${d.stBathReason || d.bathReason})</span>`;
 
-            let mediaPromises = [];
-            periodRecords.forEach(d => {
-                let md = d.date.substring(5).replace('-', '/');
-                let iCount = d.imageCount || 0;
-                for (let i = 1; i <= iCount; i++) {
-                    mediaPromises.push((async () => {
-                        let url = await getCachedUrl(`images/${userName}/image_${i}.jpg`);
-                        if (url) return `<div class="media-print-box"><div class="media-label">📷 ${md}</div><img src="${url}" class="photo"></div>`;
-                        return "";
-                    })());
-                }
-                let vCount = d.videoCount || 0;
-                for (let i = 1; i <= vCount; i++) {
-                    mediaPromises.push((async () => {
-                        let url = await getCachedUrl(`videos/${userName}/${d.date}_video_${i}.mp4`);
-                        if (url) {
-                            let qr = new QRious({ value: url, size: 180 });
-                            return `<div class="media-print-box"><div class="media-label">🎥 ${md}</div><img src="${qr.toDataURL()}" class="qr"><br></div>`;
+                    let bStr = "--";
+                    if (d.stBowel === "なし" || (!d.stBowel && d.bowel === "なし")) {
+                        bStr = "なし";
+                    } else if (d.stBowel === "あり" || (!d.stBowel && d.bowel === "あり")) {
+                        let details = [];
+                        if (d.stBowel1) details.push(`1回目:${d.stBowel1}`);
+                        if (d.stBowel2) details.push(`2回目:${d.stBowel2}`);
+                        if (d.stBowel3) details.push(`3回目:${d.stBowel3}`);
+                        
+                        if (details.length === 0 && d.stBowelCondition) {
+                            details.push(`${d.stBowelCount || ""} ${d.stBowelCondition}`);
                         }
-                        return "";
-                    })());
+
+                        if (details.length > 0) {
+                            bStr = `あり <span style="font-size:10px;">(${details.join(', ')})</span>`;
+                        } else {
+                            bStr = "あり";
+                        }
+                    }
+
+                    tableRows += `
+                    <tr>
+                        <td>${md}</td>
+                        <td>${tM}℃</td>
+                        <td>${p}</td>
+                        <td>${bp}</td>
+                        <td>${mB} / ${mL} / ${mD}</td>
+                        <td>${bath}</td>
+                        <td>${bStr}</td>
+                    </tr>
+                    `;
+
+                    if (d.message) {
+                        commentsHtml += `<div style="margin-bottom:6px;"><b>【${md}】</b> ${d.message.replace(/\n/g, '<br>')}</div>`;
+                    }
+                    
+                    let act = "";
+                    if(d.stNightState) act += `[夜間] ${d.stNightState}<br>`;
+                    if(d.stDayActivity) act += `[日中] ${d.stDayActivity}`;
+                    if(act) {
+                        dayActivityHtml += `<div style="margin-bottom:6px;"><b>【${md}】</b><br>${act}</div>`;
+                    }
+
+                    labels.push(parseInt(d.date.substring(8, 10), 10) + "日");
+                    let t = parseFloat(d.stTempIn || d.stTemp1 || d.temp1); temps.push(!isNaN(t) ? t : null);
+                    let bh = parseFloat(d.stBpHighIn || d.stBpHigh || d.bpHigh); bpHighs.push(!isNaN(bh) ? bh : null);
+                    let bl = parseFloat(d.stBpLowIn || d.stBpLow || d.bpLow); bpLows.push(!isNaN(bl) ? bl : null);
+                });
+
+                let mediaPromises = [];
+                periodRecords.forEach(d => {
+                    let md = d.date.substring(5).replace('-', '/');
+                    let iCount = d.imageCount || 0;
+                    for (let i = 1; i <= iCount; i++) {
+                        mediaPromises.push((async () => {
+                            let url = await getCachedUrl(`images/${userName}/image_${i}.jpg`);
+                            if (url) return `<div class="media-print-box"><div class="media-label">📷 ${md}</div><img src="${url}" class="photo"></div>`;
+                            return "";
+                        })());
+                    }
+                    let vCount = d.videoCount || 0;
+                    for (let i = 1; i <= vCount; i++) {
+                        mediaPromises.push((async () => {
+                            let url = await getCachedUrl(`videos/${userName}/${d.date}_video_${i}.mp4`);
+                            if (url) {
+                                let qr = new QRious({ value: url, size: 150 });
+                                return `<div class="media-print-box"><div class="media-label">🎥 ${md}</div><img src="${qr.toDataURL()}" class="qr"><br></div>`;
+                            }
+                            return "";
+                        })());
+                    }
+                });
+                let mediaResults = await Promise.all(mediaPromises);
+                let mediaHtml = mediaResults.join("");
+
+                let bpIn = '--';
+                if (firstData.stBpHighIn || firstData.stBpLowIn) {
+                    let h = firstData.stBpHighIn ? firstData.stBpHighIn : '';
+                    let l = firstData.stBpLowIn ? firstData.stBpLowIn : '';
+                    bpIn = h + '/' + l;
                 }
-            });
-            let mediaResults = await Promise.all(mediaPromises);
-            let mediaHtml = mediaResults.join("");
 
-            let bpIn = '--';
-            if (firstData.stBpHighIn || firstData.stBpLowIn) {
-                let h = firstData.stBpHighIn ? firstData.stBpHighIn : '';
-                let l = firstData.stBpLowIn ? firstData.stBpLowIn : '';
-                bpIn = h + '/' + l;
-            }
+                let bpOut = '--';
+                if (lastData.stBpHighOut || lastData.stBpLowOut) {
+                    let h = lastData.stBpHighOut ? lastData.stBpHighOut : '';
+                    let l = lastData.stBpLowOut ? lastData.stBpLowOut : '';
+                    bpOut = h + '/' + l;
+                }
 
-            let bpOut = '--';
-            if (lastData.stBpHighOut || lastData.stBpLowOut) {
-                let h = lastData.stBpHighOut ? lastData.stBpHighOut : '';
-                let l = lastData.stBpLowOut ? lastData.stBpLowOut : '';
-                bpOut = h + '/' + l;
-            }
+                let mainMessage = "";
+                if (commentsHtml) {
+                    mainMessage = commentsHtml;
+                } else if (firstData.message) {
+                    mainMessage = firstData.message.replace(/\n/g, '<br>');
+                } else {
+                    mainMessage = "特になし";
+                }
 
-            let mainMessage = "";
-            if (commentsHtml) {
-                mainMessage = commentsHtml;
-            } else if (firstData.message) {
-                mainMessage = firstData.message.replace(/\n/g, '<br>');
-            } else {
-                mainMessage = "特になし";
-            }
+                let prPart = "";
+                if (lastData.facilityPR && lastData.facilityPR.trim() !== "") {
+                    let prText = lastData.facilityPR.trim().replace(/\n+/g, '<br>');
+                    prPart = `
+                        <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #999; color: #2b8a3e; font-size: 12px; line-height: 1.25;">
+                            <span style="font-weight: bold;">【${facilityName}からのお知らせ】</span> ${prText}
+                        </div>
+                    `;
+                }
 
-            let prPart = "";
-            if (lastData.facilityPR && lastData.facilityPR.trim() !== "") {
-                let prText = lastData.facilityPR.trim().replace(/\n+/g, '<br>');
-                prPart = `
-                    <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #999; color: #2b8a3e; font-size: 12px; line-height: 1.25;">
-                        <span style="font-weight: bold;">【${facilityName}からのお知らせ】</span> ${prText}
+                let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
+                let familyMessageText = lastData.familyMessage ? lastData.familyMessage.replace(/\n/g, '<br>') : '';
+
+                pageDiv.innerHTML = `
+                    <div class="punch-mark">▷</div>
+                    <div class="print-header">
+                        <div class="facility-name">${facilityName}</div>
+                        <h1>ショートステイ ご利用報告書</h1>
                     </div>
+
+                    ${birthdayBannerHtml}
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h2 style="font-size: 18px; margin: 0;">お名前： ${userName} 様</h2>
+                        <div class="print-date" style="margin: 0;">ご利用期間： ${startDate} ～ ${endDate}</div>
+                    </div>
+
+                    <table class="compact-table admission-vitals-table" style="margin-bottom: 8px;">
+                        <tr>
+                            <th width="12%">【入所時】</th>
+                            <th width="12%">体温</th><td width="10%">${firstData.stTempIn ? firstData.stTempIn + '℃' : '--'}</td>
+                            <th width="12%">脈拍</th><td width="10%">${firstData.stPulseIn ? firstData.stPulseIn + '回' : '--'}</td>
+                            <th width="12%">SpO2</th><td width="10%">${firstData.stSpo2In ? firstData.stSpo2In + '%' : '--'}</td>
+                            <th width="12%">血圧</th><td width="10%">${bpIn}</td>
+                        </tr>
+                        <tr>
+                            <th>【退所時】</th>
+                            <th>体温</th><td>${lastData.stTempOut ? lastData.stTempOut + '℃' : '--'}</td>
+                            <th>脈拍</th><td>${lastData.stPulseOut ? lastData.stPulseOut + '回' : '--'}</td>
+                            <th>SpO2</th><td>${lastData.stSpo2Out ? lastData.stSpo2Out + '%' : '--'}</td>
+                            <th>血圧</th><td>${bpOut}</td>
+                        </tr>
+                    </table>
+
+                    <div class="section-title" style="margin-top: 5px;">■ 持参品・持ち物チェック</div>
+                    <table class="belongings-print-table">
+                        <tr>
+                            <th width="26%">持参品</th><th width="12%">入所(数量)</th><th width="12%">退所(数量)</th>
+                            <th width="26%">持参品</th><th width="12%">入所(数量)</th><th width="12%">退所(数量)</th>
+                        </tr>
+                        ${belongingsTableHtml}
+                    </table>
+
+                    ${firstData.stBelongingMemo ? `<div style="font-size:12px; margin-bottom:8px;"><b>【持ち物メモ】</b> ${firstData.stBelongingMemo}</div>` : ''}
+
+                    <table class="compact-table" style="margin-bottom: 12px; font-size: 11px;">
+                        <tr>
+                            <th width="16%">最終入浴日</th><td width="17%">${firstData.lastBathDate || '--'}</td>
+                            <th width="16%">最終排便日</th><td width="17%">${firstData.lastBowelDate || '--'}</td>
+                            <th width="16%">内服薬残り</th><td width="18%">${firstData.medRemain || '--'} (Ns: ${firstData.nsSign || '--'})</td>
+                        </tr>
+                        <tr>
+                            <th>入所時確認者</th><td colspan="2">${firstData.checkStaffIn || '--'}</td>
+                            <th>退所時確認者</th><td colspan="2">${firstData.checkStaffOut || '--'}</td>
+                        </tr>
+                    </table>
+
+                    <div class="section-title">■ 期間中のバイタル・お食事・生活記録</div>
+                    <table class="compact-table">
+                        <tr>
+                            <th width="12%">日付</th><th width="15%">体温</th><th width="10%">脈拍</th><th width="15%">血圧</th><th width="24%">食事(朝/昼/夕)</th><th width="12%">入浴</th><th width="12%">排泄</th>
+                        </tr>
+                        ${tableRows}
+                    </table>
+
+                    <div class="compact-avg">
+                        📊 ご利用日数の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%
+                    </div>
+
+                    <div class="chart-container st-chart">
+                        <canvas id="${chartCanvasId}"></canvas>
+                        <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 130px; object-fit: contain;">
+                    </div>
+
+                    <div class="section-title">■ ご利用中の活動・夜間のご様子</div>
+                    <div class="text-box">${dayActivityHtml || '特になし'}</div>
+
+                    <div class="section-title">■ お客様への御連絡事項</div>
+                    ${finalMessageHtml}
+                    
+                    <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 10px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
+                    <div class="text-box family-box">${familyMessageText}</div>
+
+                    <div class="section-title">■ 施設でのご様子 (写真・動画)</div>
+                    <div class="media-print-area">${mediaHtml}</div>
                 `;
+
+                container.appendChild(pageDiv);
+                drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
             }
-
-            let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
-            let familyMessageText = lastData.familyMessage ? lastData.familyMessage.replace(/\n/g, '<br>') : '';
-
-            pageDiv.innerHTML = `
-                <div class="punch-mark">▷</div>
-                <div class="print-header">
-                    <div class="facility-name">${facilityName}</div>
-                    <h1>ショートステイ ご利用報告書</h1>
-                </div>
-
-                ${birthdayBannerHtml}
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h2 style="font-size: 18px; margin: 0;">お名前： ${userName} 様</h2>
-                    <div class="print-date" style="margin: 0;">ご利用期間： ${startDate} ～ ${endDate}</div>
-                </div>
-
-                <table class="compact-table admission-vitals-table" style="margin-bottom: 8px;">
-                    <tr>
-                        <th width="12%">【入所時】</th>
-                        <th width="12%">体温</th><td width="10%">${firstData.stTempIn ? firstData.stTempIn + '℃' : '--'}</td>
-                        <th width="12%">脈拍</th><td width="10%">${firstData.stPulseIn ? firstData.stPulseIn + '回' : '--'}</td>
-                        <th width="12%">SpO2</th><td width="10%">${firstData.stSpo2In ? firstData.stSpo2In + '%' : '--'}</td>
-                        <th width="12%">血圧</th><td width="10%">${bpIn}</td>
-                    </tr>
-                    <tr>
-                        <th>【退所時】</th>
-                        <th>体温</th><td>${lastData.stTempOut ? lastData.stTempOut + '℃' : '--'}</td>
-                        <th>脈拍</th><td>${lastData.stPulseOut ? lastData.stPulseOut + '回' : '--'}</td>
-                        <th>SpO2</th><td>${lastData.stSpo2Out ? lastData.stSpo2Out + '%' : '--'}</td>
-                        <th>血圧</th><td>${bpOut}</td>
-                    </tr>
-                </table>
-
-                <div class="section-title" style="margin-top: 5px;">■ 持参品・持ち物チェック</div>
-                <table class="belongings-print-table">
-                    <tr>
-                        <th width="26%">持参品</th><th width="12%">入所(数量)</th><th width="12%">退所(数量)</th>
-                        <th width="26%">持参品</th><th width="12%">入所(数量)</th><th width="12%">退所(数量)</th>
-                    </tr>
-                    ${belongingsTableHtml}
-                </table>
-
-                ${firstData.stBelongingMemo ? `<div style="font-size:12px; margin-bottom:8px;"><b>【持ち物メモ】</b> ${firstData.stBelongingMemo}</div>` : ''}
-
-                <table class="compact-table" style="margin-bottom: 12px; font-size: 11px;">
-                    <tr>
-                        <th width="16%">最終入浴日</th><td width="17%">${firstData.lastBathDate || '--'}</td>
-                        <th width="16%">最終排便日</th><td width="17%">${firstData.lastBowelDate || '--'}</td>
-                        <th width="16%">内服薬残り</th><td width="18%">${firstData.medRemain || '--'} (Ns: ${firstData.nsSign || '--'})</td>
-                    </tr>
-                    <tr>
-                        <th>入所時確認者</th><td colspan="2">${firstData.checkStaffIn || '--'}</td>
-                        <th>退所時確認者</th><td colspan="2">${firstData.checkStaffOut || '--'}</td>
-                    </tr>
-                </table>
-
-                <div class="section-title">■ 期間中のバイタル・お食事・生活記録</div>
-                <table class="compact-table">
-                    <tr>
-                        <th width="12%">日付</th><th width="15%">体温</th><th width="10%">脈拍</th><th width="15%">血圧</th><th width="24%">食事(朝/昼/夕)</th><th width="12%">入浴</th><th width="12%">排泄</th>
-                    </tr>
-                    ${tableRows}
-                </table>
-
-                <div class="compact-avg">
-                    📊 ご利用日数の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%
-                </div>
-
-                <div class="chart-container st-chart">
-                    <canvas id="${chartCanvasId}"></canvas>
-                    <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 130px; object-fit: contain;">
-                </div>
-
-                <div class="section-title">■ ご利用中の活動・夜間のご様子</div>
-                <div class="text-box">${dayActivityHtml || '特になし'}</div>
-
-                <div class="section-title">■ お客様への御連絡事項</div>
-                ${finalMessageHtml}
-                
-                <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 10px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
-                <div class="text-box family-box">${familyMessageText}</div>
-
-                <div class="section-title">■ 施設でのご様子 (写真・動画)</div>
-                <div class="media-print-area">${mediaHtml}</div>
-            `;
-
-            container.appendChild(pageDiv);
-            drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
 
             // ★ 2枚目（誕生日カード）の出力
-            if (bData && shouldPrintCard) {
+            if (renderCard && bData) {
                 let todayImgUrl = await getCachedUrl(`images/${userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon;
 
@@ -1017,185 +1050,189 @@
             }
         }
 
-        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard, cardMessage = "") {
-            let pageDiv = document.createElement("div");
-            pageDiv.className = "print-page";
-
-            let trainAct = "";
-            if (data.training) trainAct += "【機能訓練】\n" + data.training + "\n\n";
-            if (data.activity) trainAct += "【その他の活動】\n" + data.activity;
-
-            let cloned = [...monthRecords].sort((a, b) => a.date.localeCompare(b.date));
-            let sumTemp = 0, sumPulse = 0, sumBpHigh = 0, sumBpLow = 0, sumSpo2 = 0;
-            let cTemp = 0, cPulse = 0, cBpHigh = 0, cBpLow = 0, cSpo2 = 0;
-            let labels = [], temps = [], bpHighs = [], bpLows = [];
-
-            cloned.forEach(d => {
-                labels.push(parseInt(d.date.substring(8, 10), 10) + "日");
-                let t = parseFloat(d.temp1); if (!isNaN(t)) { sumTemp += t; cTemp++; temps.push(t); } else { temps.push(null); }
-                let p = parseFloat(d.pulse); if (!isNaN(p)) { sumPulse += p; cPulse++; }
-                let bh = parseFloat(d.bpHigh); if (!isNaN(bh)) { sumBpHigh += bh; cBpHigh++; bpHighs.push(bh); } else { bpHighs.push(null); }
-                let bl = parseFloat(d.bpLow); if (!isNaN(bl)) { sumBpLow += bl; cBpLow++; bpLows.push(bl); } else { bpLows.push(null); }
-                let s = parseFloat(d.spo2); if (!isNaN(s)) { sumSpo2 += s; cSpo2++; }
-            });
-
-            let avgTempStr = cTemp > 0 ? (sumTemp / cTemp).toFixed(1) : "--";
-            let avgPulseStr = cPulse > 0 ? Math.round(sumPulse / cPulse) : "--";
-            let avgBpHighStr = cBpHigh > 0 ? Math.round(sumBpHigh / cBpHigh) : "--";
-            let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
-            let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
-
+        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard, cardMessage = "", printTarget = "both") {
+            let chartCanvasId = `chart_${index}`;
             let uData = window.globalUsersData[data.userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, data.date, false);
-            
-            let birthdayBannerHtml = "";
-            if (bData) {
-                if (bData.diffDays === 0) {
-                    birthdayBannerHtml = `<div class="birthday-banner">🎂 本日は ${bData.age}歳のお誕生日です！おめでとうございます！ 🎂</div>`;
-                } else {
-                    birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日は ${bData.age}歳のお誕生日でしたね。おめでとうございます！ 🎂</div>`;
-                }
-            }
 
-            let chartCanvasId = `chart_${index}`;
+            let renderReport = (printTarget === "both" || printTarget === "report_only");
+            let renderCard = (printTarget === "both" || printTarget === "card_only") && shouldPrintCard;
 
-            let mediaPromises = [];
-            let iCount = data.imageCount || 0;
-            for (let i = 1; i <= iCount; i++) {
-                mediaPromises.push((async () => {
-                    let url = await getCachedUrl(`images/${data.userName}/image_${i}.jpg`);
-                    if (url) return `<div class="media-print-box"><div class="media-label">📷 本日の写真</div><img src="${url}" class="photo"></div>`;
-                    return "";
-                })());
-            }
+            if (renderReport) {
+                let pageDiv = document.createElement("div");
+                pageDiv.className = "print-page";
 
-            let vCount = data.videoCount || 0;
-            for (let i = 1; i <= vCount; i++) {
-                mediaPromises.push((async () => {
-                    let url = await getCachedUrl(`videos/${data.userName}/${data.date}_video_${i}.mp4`);
-                    if (url) {
-                        let qr = new QRious({ value: url, size: 180 });
-                        return `<div class="media-print-box"><div class="media-label">🎥 動画 (QR読取)</div><img src="${qr.toDataURL()}" class="qr"><br></div>`;
-                    }
-                    return "";
-                })());
-            }
+                let trainAct = "";
+                if (data.training) trainAct += "【機能訓練】\n" + data.training + "\n\n";
+                if (data.activity) trainAct += "【その他の活動】\n" + data.activity;
 
-            let mediaResults = await Promise.all(mediaPromises);
-            let mediaHtml = mediaResults.join("");
+                let cloned = [...monthRecords].sort((a, b) => a.date.localeCompare(b.date));
+                let sumTemp = 0, sumPulse = 0, sumBpHigh = 0, sumBpLow = 0, sumSpo2 = 0;
+                let cTemp = 0, cPulse = 0, cBpHigh = 0, cBpLow = 0, cSpo2 = 0;
+                let labels = [], temps = [], bpHighs = [], bpLows = [];
 
-            let excretionRow = "";
-            if (uData && uData.needExcretion) {
-                let bStr = "未入力";
-                if (data.bowel === "なし" || (!data.bowel && data.dsBowel === "なし")) {
-                    bStr = "なし";
-                } else if (data.bowel === "あり" || (!data.bowel && data.dsBowel === "あり")) {
-                    let details = [];
-                    if (data.bowel1) details.push(`1回目:${data.bowel1}`);
-                    if (data.bowel2) details.push(`2回目:${data.bowel2}`);
-                    if (data.bowel3) details.push(`3回目:${data.bowel3}`);
-                    
-                    if (details.length === 0 && data.bowelCondition) {
-                        details.push(`${data.bowelCount || "回数不明"} ／ ${data.bowelCondition || "状態不明"}`);
-                    }
+                cloned.forEach(d => {
+                    labels.push(parseInt(d.date.substring(8, 10), 10) + "日");
+                    let t = parseFloat(d.temp1); if (!isNaN(t)) { sumTemp += t; cTemp++; temps.push(t); } else { temps.push(null); }
+                    let p = parseFloat(d.pulse); if (!isNaN(p)) { sumPulse += p; cPulse++; }
+                    let bh = parseFloat(d.bpHigh); if (!isNaN(bh)) { sumBpHigh += bh; cBpHigh++; bpHighs.push(bh); } else { bpHighs.push(null); }
+                    let bl = parseFloat(d.bpLow); if (!isNaN(bl)) { sumBpLow += bl; cBpLow++; bpLows.push(bl); } else { bpLows.push(null); }
+                    let s = parseFloat(d.spo2); if (!isNaN(s)) { sumSpo2 += s; cSpo2++; }
+                });
 
-                    if (details.length > 0) {
-                        bStr = `あり （${details.join('、')}）`;
+                let avgTempStr = cTemp > 0 ? (sumTemp / cTemp).toFixed(1) : "--";
+                let avgPulseStr = cPulse > 0 ? Math.round(sumPulse / cPulse) : "--";
+                let avgBpHighStr = cBpHigh > 0 ? Math.round(sumBpHigh / cBpHigh) : "--";
+                let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
+                let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
+
+                let birthdayBannerHtml = "";
+                if (bData) {
+                    if (bData.diffDays === 0) {
+                        birthdayBannerHtml = `<div class="birthday-banner">🎂 本日は ${bData.age}歳のお誕生日です！おめでとうございます！ 🎂</div>`;
                     } else {
-                        bStr = "あり";
+                        birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日は ${bData.age}歳のお誕生日でしたね。おめでとうございます！ 🎂</div>`;
                     }
                 }
-                excretionRow = `<tr><th>排泄記録</th><td colspan="7">${bStr}</td></tr>`;
-            }
 
-            let bpStrDay = '--';
-            if (data.bpHigh || data.bpLow) {
-                let h = data.bpHigh ? data.bpHigh : '';
-                let l = data.bpLow ? data.bpLow : '';
-                bpStrDay = h + '/' + l;
-            }
+                let mediaPromises = [];
+                let iCount = data.imageCount || 0;
+                for (let i = 1; i <= iCount; i++) {
+                    mediaPromises.push((async () => {
+                        let url = await getCachedUrl(`images/${data.userName}/image_${i}.jpg`);
+                        if (url) return `<div class="media-print-box"><div class="media-label">📷 本日の写真</div><img src="${url}" class="photo"></div>`;
+                        return "";
+                    })());
+                }
 
-            let mainMessage = data.message ? data.message.replace(/\n/g, '<br>') : '特になし';
+                let vCount = data.videoCount || 0;
+                for (let i = 1; i <= vCount; i++) {
+                    mediaPromises.push((async () => {
+                        let url = await getCachedUrl(`videos/${data.userName}/${data.date}_video_${i}.mp4`);
+                        if (url) {
+                            let qr = new QRious({ value: url, size: 180 });
+                            return `<div class="media-print-box"><div class="media-label">🎥 動画 (QR読取)</div><img src="${qr.toDataURL()}" class="qr"><br></div>`;
+                        }
+                        return "";
+                    })());
+                }
 
-            let prPart = "";
-            if (data.facilityPR && data.facilityPR.trim() !== "") {
-                let prText = data.facilityPR.trim().replace(/\n+/g, '<br>');
-                prPart = `
-                    <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #999; color: #2b8a3e; font-size: 12px; line-height: 1.25;">
-                        <span style="font-weight: bold;">【${facilityName}からのお知らせ】</span> ${prText}
+                let mediaResults = await Promise.all(mediaPromises);
+                let mediaHtml = mediaResults.join("");
+
+                let excretionRow = "";
+                if (uData && uData.needExcretion) {
+                    let bStr = "未入力";
+                    if (data.bowel === "なし" || (!data.bowel && data.dsBowel === "なし")) {
+                        bStr = "なし";
+                    } else if (data.bowel === "あり" || (!data.bowel && data.dsBowel === "あり")) {
+                        let details = [];
+                        if (data.bowel1) details.push(`1回目:${data.bowel1}`);
+                        if (data.bowel2) details.push(`2回目:${data.bowel2}`);
+                        if (data.bowel3) details.push(`3回目:${data.bowel3}`);
+                        
+                        if (details.length === 0 && data.bowelCondition) {
+                            details.push(`${data.bowelCount || "回数不明"} ／ ${data.bowelCondition || "状態不明"}`);
+                        }
+
+                        if (details.length > 0) {
+                            bStr = `あり （${details.join('、')}）`;
+                        } else {
+                            bStr = "あり";
+                        }
+                    }
+                    excretionRow = `<tr><th>排泄記録</th><td colspan="7">${bStr}</td></tr>`;
+                }
+
+                let bpStrDay = '--';
+                if (data.bpHigh || data.bpLow) {
+                    let h = data.bpHigh ? data.bpHigh : '';
+                    let l = data.bpLow ? data.bpLow : '';
+                    bpStrDay = h + '/' + l;
+                }
+
+                let mainMessage = data.message ? data.message.replace(/\n/g, '<br>') : '特になし';
+
+                let prPart = "";
+                if (data.facilityPR && data.facilityPR.trim() !== "") {
+                    let prText = data.facilityPR.trim().replace(/\n+/g, '<br>');
+                    prPart = `
+                        <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #999; color: #2b8a3e; font-size: 12px; line-height: 1.25;">
+                            <span style="font-weight: bold;">【${facilityName}からのお知らせ】</span> ${prText}
+                        </div>
+                    `;
+                }
+                
+                let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
+                let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
+
+                pageDiv.innerHTML = `
+                    <div class="punch-mark">▷</div>
+                    <div class="print-header">
+                        <div class="facility-name">${facilityName}</div>
+                        <h1>本日の連絡帳</h1>
                     </div>
+
+                    ${birthdayBannerHtml}
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <h2 style="font-size: 19px; margin: 0;">お名前： ${data.userName} 様</h2>
+                        <div class="print-date" style="margin: 0;">📓 記録日： ${data.date}</div>
+                    </div>
+
+                    <table class="compact-table">
+                        <tr>
+                            <th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td>
+                            <th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td>
+                            <th width="16%">血圧</th><td width="18%">${bpStrDay}</td>
+                        </tr>
+                        <tr>
+                            <th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td>
+                            <th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td>
+                        </tr>
+                    </table>
+                    <table class="compact-table">
+                        <tr>
+                            <th width="12%">食事(主食)</th><td width="13%">${data.mealMain || '未入力'}</td>
+                            <th width="12%">食事(副食)</th><td width="13%">${data.mealSub || '未入力'}</td>
+                            <th width="10%">水分</th><td width="15%">${data.water || '未入力'}</td>
+                            <th width="10%">口腔ケア</th><td width="15%">${data.oralCare || '未実施'}</td>
+                        </tr>
+                        <tr>
+                            <th>入浴</th><td colspan="3">${data.bath || '未入力'} <span style="font-size:10px;">${data.bathReason ? '(' + data.bathReason + ')' : ''}</span></td>
+                            <th>服薬・処置</th><td colspan="3">${data.medication || 'なし'}</td>
+                        </tr>
+                        ${excretionRow}
+                    </table>
+                    
+                    <div class="compact-avg">
+                        📊 この1ヶ月の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%
+                    </div>
+                    
+                    <div class="chart-container ds-chart">
+                        <canvas id="${chartCanvasId}"></canvas>
+                        <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 120px; object-fit: contain;">
+                    </div>
+                    
+                    <div class="section-title">■ 機能訓練・活動の様子</div>
+                    <div class="text-box">${trainAct || '特になし'}</div>
+                    
+                    <div class="section-title">■ お客様への御連絡事項 <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
+                    ${finalMessageHtml}
+                    
+                    <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
+                    <div class="text-box family-box">${familyMessageText}</div>
+
+                    <div class="section-title">■ 本日のご様子 (写真・動画)</div>
+                    <div class="media-print-area">${mediaHtml}</div>
                 `;
+
+                container.appendChild(pageDiv);
+                drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
             }
-            
-            let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
-            let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
-
-            pageDiv.innerHTML = `
-                <div class="punch-mark">▷</div>
-                <div class="print-header">
-                    <div class="facility-name">${facilityName}</div>
-                    <h1>本日の連絡帳</h1>
-                </div>
-
-                ${birthdayBannerHtml}
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <h2 style="font-size: 19px; margin: 0;">お名前： ${data.userName} 様</h2>
-                    <div class="print-date" style="margin: 0;">📓 記録日： ${data.date}</div>
-                </div>
-
-                <table class="compact-table">
-                    <tr>
-                        <th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td>
-                        <th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td>
-                        <th width="16%">血圧</th><td width="18%">${bpStrDay}</td>
-                    </tr>
-                    <tr>
-                        <th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td>
-                        <th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td>
-                    </tr>
-                </table>
-                <table class="compact-table">
-                    <tr>
-                        <th width="12%">食事(主食)</th><td width="13%">${data.mealMain || '未入力'}</td>
-                        <th width="12%">食事(副食)</th><td width="13%">${data.mealSub || '未入力'}</td>
-                        <th width="10%">水分</th><td width="15%">${data.water || '未入力'}</td>
-                        <th width="10%">口腔ケア</th><td width="15%">${data.oralCare || '未実施'}</td>
-                    </tr>
-                    <tr>
-                        <th>入浴</th><td colspan="3">${data.bath || '未入力'} <span style="font-size:10px;">${data.bathReason ? '(' + data.bathReason + ')' : ''}</span></td>
-                        <th>服薬・処置</th><td colspan="3">${data.medication || 'なし'}</td>
-                    </tr>
-                    ${excretionRow}
-                </table>
-                
-                <div class="compact-avg">
-                    📊 この1ヶ月の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%
-                </div>
-                
-                <div class="chart-container ds-chart">
-                    <canvas id="${chartCanvasId}"></canvas>
-                    <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 120px; object-fit: contain;">
-                </div>
-                
-                <div class="section-title">■ 機能訓練・活動の様子</div>
-                <div class="text-box">${trainAct || '特になし'}</div>
-                
-                <div class="section-title">■ お客様への御連絡事項 <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
-                ${finalMessageHtml}
-                
-                <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
-                <div class="text-box family-box">${familyMessageText}</div>
-
-                <div class="section-title">■ 本日のご様子 (写真・動画)</div>
-                <div class="media-print-area">${mediaHtml}</div>
-            `;
-
-            container.appendChild(pageDiv);
-            drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
 
             // ★ 2枚目（誕生日カード）の出力
-            if (bData && shouldPrintCard) {
+            if (renderCard && bData) {
                 let todayImgUrl = await getCachedUrl(`images/${data.userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon;
 
