@@ -115,34 +115,26 @@
         }
         .bg-image-layer {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             object-fit: fill;
             z-index: 1;
         }
         .dynamic-photo {
             position: absolute;
-            top: 21.4%; 
-            left: 22.0%;
-            width: 56.0%;
-            height: 27.5%;
+            top: 21.4%; left: 22.0%;
+            width: 56.0%; height: 27.5%;
             object-fit: cover;
             z-index: 2;
             border-radius: 3px;
         }
         .dynamic-text-area {
             position: absolute;
-            top: 53.5%; 
-            left: 15%; 
-            width: 70%; 
-            height: 20%; 
+            top: 53.5%; left: 15%;
+            width: 70%; height: 20%;
             z-index: 3;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
         }
         .dynamic-name { font-size: 24px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
         .dynamic-date { font-size: 22px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
@@ -160,40 +152,32 @@
         }
         .bg-image-layer-v2 {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             object-fit: fill;
             z-index: 1;
         }
-        /* 新しい画像の金色の額縁に合わせた写真の位置（微調整用） */
+        /* ★ 新しい画像の金色の額縁に合わせて写真の位置を微調整しました ★ */
         .dynamic-photo-v2 {
             position: absolute;
-            top: 27%;      /* 写真の上からの位置 */
-            left: 21%;     /* 写真の左からの位置 */
-            width: 58%;    /* 写真の幅 */
-            height: 39%;   /* 写真の高さ */
+            top: 28.5%; left: 27.2%;
+            width: 45.6%; height: 34.0%;
             object-fit: cover;
             z-index: 2;
             border-radius: 3px;
         }
-        /* 新しい画像の下部スペースに合わせた文字の位置（微調整用） */
+        /* ★ 写真の下のスペースに文字を綺麗に配置するため、上にずらして大きくしました ★ */
         .dynamic-text-area-v2 {
             position: absolute;
-            top: 70%;      /* 文字枠の上からの位置 */
-            left: 15%;     /* 文字枠の左からの位置 */
-            width: 70%;    /* 文字枠の幅 */
-            height: 25%;   /* 文字枠の高さ */
+            top: 64.0%; left: 15%;
+            width: 70%; height: 20%;
             z-index: 3;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
         }
-        .dynamic-name-v2 { font-size: 24px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
-        .dynamic-date-v2 { font-size: 22px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
-        .dynamic-age-v2 { font-size: 26px; font-weight: bold; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
+        .dynamic-name-v2 { font-size: 28px; font-weight: bold; margin-bottom: 8px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 5px #fff, 0 0 5px #fff, 0 0 5px #fff; }
+        .dynamic-date-v2 { font-size: 24px; font-weight: bold; margin-bottom: 8px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 5px #fff, 0 0 5px #fff, 0 0 5px #fff; }
+        .dynamic-age-v2 { font-size: 30px; font-weight: bold; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 0 0 5px #fff, 0 0 5px #fff, 0 0 5px #fff; }
 
         .print-only { display: none; }
 
@@ -1044,7 +1028,6 @@
                         </div>
                     `;
                 } else {
-                    // ★ 縦型（新着デザイン）を選択した場合の処理 ★
                     cardPageDiv.innerHTML = `
                         <div class="birthday-card-container-v2">
                             <img src="bg_birthday_v2.jpg" class="bg-image-layer-v2" alt="背景">
