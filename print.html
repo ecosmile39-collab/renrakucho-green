@@ -116,17 +116,17 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         .card-title {
-            /* 日本語に変更したため、バランスよく収まるようサイズを調整しました */
-            font-size: 40px; 
+            font-size: 36px; 
             color: #d6336c;
             font-weight: bold;
             margin-bottom: 15px;
-            letter-spacing: 3px;
+            letter-spacing: 2px;
+            line-height: 1.5;
         }
         .card-subtitle {
             font-size: 32px;
             color: #333;
-            margin-bottom: 40px;
+            margin-bottom: 35px;
             font-weight: bold;
         }
         .card-photo-area {
@@ -247,7 +247,7 @@
                 height: 277mm !important; 
                 border-width: 10px !important;
             }
-            .card-title { font-size: 40px !important; }
+            .card-title { font-size: 36px !important; line-height: 1.5 !important; }
         }
     </style>
 </head>
@@ -589,7 +589,6 @@
             }, 100);
         }
 
-        // 当日または7日以内のお誕生日判定ロジック
         function getBirthdayData(birthdayStr, targetDateStr, isShortStay = false, startDateStr = null, endDateStr = null) {
             if (!birthdayStr) return null;
             const bParts = birthdayStr.split("-");
@@ -607,10 +606,8 @@
                     const bDate = new Date(y, bMonth - 1, bDay);
                     const age = y - bYear;
                     const diffDays = Math.round((targetDate - bDate) / (1000 * 60 * 60 * 24));
-                    if (diffDays === 0) {
-                        return { isToday: true, month: bMonth, day: bDay, age: age };
-                    } else if (diffDays > 0 && diffDays <= 7) {
-                        return { isToday: false, month: bMonth, day: bDay, age: age };
+                    if (diffDays >= 0 && diffDays <= 7) {
+                        return { isToday: (diffDays === 0), month: bMonth, day: bDay, age: age };
                     }
                 }
                 return null;
@@ -666,14 +663,13 @@
             let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
             let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
 
-            // ★ ショートステイの誕生日判定（1枚目用の小さなバナー）
+            // ★ 1枚目用の小さなバナー
             let uData = window.globalUsersData[userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, null, true, startDate, endDate);
             
             let birthdayBannerHtml = "";
             if (bData) {
-                let ageTxt = bData.isToday ? `期間中の ${bData.month}月${bData.day}日 は ${bData.age} 歳のお誕生日でした！` : `${bData.month}月${bData.day}日は ${bData.age} 歳のお誕生日でしたね。`;
-                birthdayBannerHtml = `<div class="birthday-banner">🎂 ${ageTxt}おめでとうございます！ 🎂</div>`;
+                birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日 ${bData.age}歳のお誕生日おめでとうございます！ 🎂</div>`;
             }
 
             let leftItems = [
@@ -946,13 +942,15 @@
                 let todayImgUrl = await getCachedUrl(`images/${userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = faceUrl; 
 
+                // ★ 当日・後日に関わらず共通のタイトル文章を表示する魔法 ★
+                let titleHtml = `🎉 ${bData.month}月${bData.day}日<br>${bData.age}歳のお誕生日<br>おめでとうございます！ 🎂`;
+
                 let cardPageDiv = document.createElement("div");
-                cardPageDiv.className = "print-page page-break"; // 強制的に次のページへ
+                cardPageDiv.className = "print-page page-break"; 
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-wrapper">
-                        <!-- ここを日本語に変更！サイズも調整済みです -->
-                        <div class="card-title">🎉 お誕生日おめでとうございます！ 🎂</div>
-                        <div class="card-subtitle">${userName} 様 祝 ${bData.age} 歳</div>
+                        <div class="card-title">${titleHtml}</div>
+                        <div class="card-subtitle">${userName} 様</div>
                         
                         <div class="card-photo-area">
                             <div class="card-photo-box">
@@ -1004,14 +1002,13 @@
             let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
             let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
 
-            // ★ デイサービスの誕生日判定（1枚目用の小さなバナー）
+            // ★ 1枚目用の小さなバナー
             let uData = window.globalUsersData[data.userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, data.date, false);
             
             let birthdayBannerHtml = "";
             if (bData) {
-                let ageTxt = bData.isToday ? `本日は ${bData.age} 歳のお誕生日です！` : `${bData.month}月${bData.day}日は ${bData.age} 歳のお誕生日でしたね。`;
-                birthdayBannerHtml = `<div class="birthday-banner">🎂 ${ageTxt}おめでとうございます！ 🎂</div>`;
+                birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日 ${bData.age}歳のお誕生日おめでとうございます！ 🎂</div>`;
             }
 
             let chartCanvasId = `chart_${index}`;
@@ -1158,13 +1155,15 @@
                 let todayImgUrl = await getCachedUrl(`images/${data.userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = faceUrl; 
 
+                // ★ 当日・後日に関わらず共通のタイトル文章を表示する魔法 ★
+                let titleHtml = `🎉 ${bData.month}月${bData.day}日<br>${bData.age}歳のお誕生日<br>おめでとうございます！ 🎂`;
+
                 let cardPageDiv = document.createElement("div");
-                cardPageDiv.className = "print-page page-break"; // 強制的に次のページへ
+                cardPageDiv.className = "print-page page-break"; 
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-wrapper">
-                        <!-- ここを日本語に変更！サイズも調整済みです -->
-                        <div class="card-title">🎉 お誕生日おめでとうございます！ 🎂</div>
-                        <div class="card-subtitle">${data.userName} 様 祝 ${bData.age} 歳</div>
+                        <div class="card-title">${titleHtml}</div>
+                        <div class="card-subtitle">${data.userName} 様</div>
                         
                         <div class="card-photo-area">
                             <div class="card-photo-box">
