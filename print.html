@@ -99,18 +99,24 @@
         .media-print-box .media-label { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
 
         /* ==========================================
-           🎉 誕生日カード専用のスタイル（画像ベース）
+           🎉 誕生日カード専用のスタイル
            ========================================== */
-        .birthday-card-image-bg {
+        .birthday-card-container {
             width: 100%;
             height: 277mm; 
-            background-image: url('image_78fac2.jpg');
-            background-size: 100% 100%;
-            background-repeat: no-repeat;
             position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
-        /* 白い枠内に写真をピッタリ重ねる設定 */
+        .bg-image-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            z-index: 1;
+        }
         .dynamic-photo {
             position: absolute;
             top: 22.5%; 
@@ -118,18 +124,17 @@
             width: 58%;
             height: 29.5%;
             object-fit: cover;
-            z-index: 10;
+            z-index: 2;
             border-radius: 4px;
         }
-        /* 元の文字を隠すためのブロック */
         .dynamic-text-area {
             position: absolute;
             top: 55%; 
             left: 20%;
             width: 60%;
             height: 23%;
-            background-color: #fdfaf5; /* 背景の和紙っぽい色に合わせました */
-            z-index: 10;
+            background-color: #fdfaf5; 
+            z-index: 3;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -142,9 +147,6 @@
 
         .print-only { display: none; }
 
-        /* ==========================================
-           🖨️ 印刷時専用のスタイル（印刷プレビュー時）
-           ========================================== */
         @media print {
             @page { size: A4 portrait; margin: 0; } 
             body { background-color: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -166,7 +168,7 @@
 
             .page-break {
                 page-break-before: always !important;
-                padding: 0 !important; /* 背景画像が全面に出るように余白を消す */
+                padding: 0 !important; 
             }
 
             .punch-mark {
@@ -179,7 +181,7 @@
                 print-color-adjust: exact;
             }
             
-            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-image-bg {
+            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-container {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
@@ -214,8 +216,8 @@
             .media-print-box img.photo { max-height: 125px !important; max-width: 175px !important; }
             .media-print-box img.qr { width: 90px !important; height: 90px !important; }
 
-            .birthday-card-image-bg {
-                height: 297mm !important; /* A4用紙ピッタリに調整 */
+            .birthday-card-container {
+                height: 297mm !important; 
                 box-shadow: none !important;
             }
         }
@@ -633,6 +635,7 @@
             let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
             let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
 
+            // ★ 1枚目用の小さなバナー
             let uData = window.globalUsersData[userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, null, true, startDate, endDate);
             
@@ -919,11 +922,12 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 cardPageDiv.innerHTML = `
-                    <div class="birthday-card-image-bg">
-                        <!-- ここに笑顔の写真を重ねます -->
+                    <div class="birthday-card-container">
+                        <!-- 絶対に印刷されるように <img> タグで背景を敷きます。ファイル名も修正しました -->
+                        <img src="image_78fac2.jpg" class="bg-image-layer" alt="背景">
+                        
                         <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
                         
-                        <!-- 画像に書かれた文字を覆い隠して、新しく文字を表示します -->
                         <div class="dynamic-text-area">
                             <div class="dynamic-name">${userName} 様</div>
                             <div class="dynamic-date">${displayDateText}</div>
@@ -1115,7 +1119,6 @@
                 let todayImgUrl = await getCachedUrl(`images/${data.userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon;
 
-                // 令和の計算
                 let currentYear = parseInt(data.date.substring(0,4));
                 let reiwaYear = currentYear - 2018;
                 let reiwaText = reiwaYear === 1 ? "元" : reiwaYear;
@@ -1124,11 +1127,12 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 cardPageDiv.innerHTML = `
-                    <div class="birthday-card-image-bg">
-                        <!-- ここに笑顔の写真を重ねます -->
+                    <div class="birthday-card-container">
+                        <!-- 絶対に印刷されるように <img> タグで背景を敷きます。ファイル名も修正しました -->
+                        <img src="image_78fac2.jpg" class="bg-image-layer" alt="背景">
+                        
                         <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
                         
-                        <!-- 画像に書かれた文字を覆い隠して、新しく文字を表示します -->
                         <div class="dynamic-text-area">
                             <div class="dynamic-name">${data.userName} 様</div>
                             <div class="dynamic-date">${displayDateText}</div>
