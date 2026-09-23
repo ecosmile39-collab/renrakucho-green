@@ -117,16 +117,19 @@
             object-fit: fill;
             z-index: 1;
         }
+        
+        /* ★ 写真が金色の枠に綺麗に収まるように微調整しました ★ */
         .dynamic-photo {
             position: absolute;
-            top: 22.5%; 
-            left: 21%;
-            width: 58%;
-            height: 29.5%;
+            top: 22.8%;    /* 少し下げて上の枠を見せる */
+            left: 21.5%;   /* 少し右に寄せて左の枠を見せる */
+            width: 57%;    /* 幅を少し減らして右にはみ出さないように */
+            height: 27.5%; /* 高さを減らして下にはみ出さないように */
             object-fit: cover;
             z-index: 2;
-            border-radius: 4px;
+            border-radius: 5px; /* 枠の内側に自然に馴染むように角を少し丸くします */
         }
+        
         .dynamic-text-area {
             position: absolute;
             top: 53.5%; 
@@ -138,6 +141,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            transition: all 0.3s ease; /* 白枠への切り替えを滑らかにします */
         }
         .dynamic-name { font-size: 24px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
         .dynamic-date { font-size: 22px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
@@ -254,7 +258,6 @@
                 <input type="date" id="endDate" class="date-input" onchange="onDateChanged()">
             </div>
             
-            <!-- ★ 新しく追加した「背景色を選ぶメニュー」です ★ -->
             <div class="filter-row" style="margin-top: 15px; border-top: 1px dashed #40c057; padding-top: 15px;">
                 <span class="filter-label">🎨 誕生日カードの文字背景：</span>
                 <select id="selectCardBg" class="filter-select" onchange="onCardBgChanged()">
@@ -445,9 +448,7 @@
             document.querySelectorAll(".user-chk").forEach(chk => chk.checked = isChecked);
         };
 
-        // ★ 背景色が変更されたら自動で画面を更新する仕組み ★
         window.onCardBgChanged = function() {
-            // もしすでに画面に連絡帳が表示されていたら、新しい色で更新します
             if (document.getElementById("batchPrintBtn").textContent === "🔄 表示を更新する") {
                 loadSelectedAndPrint();
             }
@@ -937,7 +938,6 @@
                 let reiwaText = reiwaYear === 1 ? "元" : reiwaYear;
                 let displayDateText = `令和${reiwaText}年 ${bData.month}月${bData.day}日`;
 
-                // ★ ドロップダウンメニューの選択を読み取ります ★
                 let cardBgChoice = document.getElementById("selectCardBg").value;
                 let textAreaStyle = cardBgChoice === "white" 
                     ? "background-color: white; border-radius: 10px; padding: 10px;" 
@@ -1147,7 +1147,6 @@
                 let reiwaText = reiwaYear === 1 ? "元" : reiwaYear;
                 let displayDateText = `令和${reiwaText}年 ${bData.month}月${bData.day}日`;
 
-                // ★ ドロップダウンメニューの選択を読み取ります ★
                 let cardBgChoice = document.getElementById("selectCardBg").value;
                 let textAreaStyle = cardBgChoice === "white" 
                     ? "background-color: white; border-radius: 10px; padding: 10px;" 
