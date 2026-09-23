@@ -136,9 +136,10 @@
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
         }
-        .dynamic-name { font-size: 24px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
-        .dynamic-date { font-size: 22px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
-        .dynamic-age { font-size: 26px; font-weight: bold; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
+        /* ★ デザインAの文字も太くはっきりさせました ★ */
+        .dynamic-name { font-size: 24px; font-weight: 900; margin-bottom: 6px; color: #111; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; -webkit-text-stroke: 1px #111; }
+        .dynamic-date { font-size: 22px; font-weight: 900; margin-bottom: 6px; color: #111; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; -webkit-text-stroke: 1px #111; }
+        .dynamic-age { font-size: 26px; font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; -webkit-text-stroke: 1px #b91c1c; }
 
         /* ==========================================
            🎉 誕生日カード専用のスタイル（縦型・デザインB 新着）
@@ -157,7 +158,6 @@
             object-fit: fill;
             z-index: 1;
         }
-        /* ★ 新しい画像の金色の額縁に合わせて写真の位置を微調整しました ★ */
         .dynamic-photo-v2 {
             position: absolute;
             top: 28.5%; left: 27.2%;
@@ -166,7 +166,6 @@
             z-index: 2;
             border-radius: 3px;
         }
-        /* ★ 写真の下のスペースに文字を綺麗に配置するため、上にずらして大きくしました ★ */
         .dynamic-text-area-v2 {
             position: absolute;
             top: 64.0%; left: 15%;
@@ -175,9 +174,10 @@
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
         }
-        .dynamic-name-v2 { font-size: 28px; font-weight: bold; margin-bottom: 8px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 5px #fff, 0 0 5px #fff, 0 0 5px #fff; }
-        .dynamic-date-v2 { font-size: 24px; font-weight: bold; margin-bottom: 8px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 5px #fff, 0 0 5px #fff, 0 0 5px #fff; }
-        .dynamic-age-v2 { font-size: 30px; font-weight: bold; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 0 0 5px #fff, 0 0 5px #fff, 0 0 5px #fff; }
+        /* ★ デザインBの文字に太さを追加（font-weight: 900 と -webkit-text-stroke を使用） ★ */
+        .dynamic-name-v2 { font-size: 28px; font-weight: 900; margin-bottom: 8px; color: #111; letter-spacing: 2px; text-shadow: 0 0 5px #fff, 0 0 5px #fff, 0 0 5px #fff; -webkit-text-stroke: 1px #111; }
+        .dynamic-date-v2 { font-size: 24px; font-weight: 900; margin-bottom: 8px; color: #111; letter-spacing: 2px; text-shadow: 0 0 5px #fff, 0 0 5px #fff, 0 0 5px #fff; -webkit-text-stroke: 1px #111; }
+        .dynamic-age-v2 { font-size: 30px; font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 0 0 5px #fff, 0 0 5px #fff, 0 0 5px #fff; -webkit-text-stroke: 1px #b91c1c; }
 
         .print-only { display: none; }
 
