@@ -110,11 +110,17 @@
         .birthday-card-container { width: 100%; height: 277mm; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
         .bg-image-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
         .dynamic-photo { position: absolute; top: 21.4%; left: 21.4%; width: 57.2%; height: 27.5%; object-fit: cover; z-index: 2; border-radius: 3px; }
-        .dynamic-text-area { position: absolute; top: 51.5%; left: 10%; width: 80%; height: 25%; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .dynamic-name { font-size: 26px; font-weight: 900; margin-bottom: 6px; color: #111; letter-spacing: 2px; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-date { font-size: 22px; font-weight: 900; margin-bottom: 6px; color: #111; letter-spacing: 2px; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-age { font-size: 28px; font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-staff-msg { font-size: 20px; font-weight: 900; margin-top: 10px; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        
+        /* ★ コンテナの幅を広げ、中央揃えにしました */
+        .dynamic-text-area { position: absolute; top: 51.5%; left: 0%; width: 100%; height: 25%; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        
+        /* ★ white-space: nowrap; を追加し、小さな用紙でも改行されないようにしました */
+        .dynamic-name { font-size: 26px; font-weight: 900; margin-bottom: 6px; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        .dynamic-date { font-size: 22px; font-weight: 900; margin-bottom: 6px; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        .dynamic-age { font-size: 28px; font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        
+        /* メッセージは長くなることがあるので、あえて折り返しを許可しています */
+        .dynamic-staff-msg { font-size: 20px; font-weight: 900; margin-top: 10px; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; width: 90%; word-break: break-word; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
 
         /* ==========================================
            🎉 誕生日カード専用のスタイル（縦型・デザインB 新着）
@@ -122,11 +128,17 @@
         .birthday-card-container-v2 { width: 100%; height: 277mm; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
         .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
         .dynamic-photo-v2 { position: absolute; top: 28.5%; left: 27.2%; width: 45.6%; height: 34.0%; object-fit: cover; z-index: 2; border-radius: 3px; }
-        .dynamic-text-area-v2 { position: absolute; top: 63.5%; left: 10%; width: 80%; height: 25%; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .dynamic-name-v2 { font-size: 28px; font-weight: 900; margin-bottom: 8px; color: #111; letter-spacing: 2px; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-date-v2 { font-size: 24px; font-weight: 900; margin-bottom: 8px; color: #111; letter-spacing: 2px; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-age-v2 { font-size: 30px; font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-staff-msg-v2 { font-size: 20px; font-weight: 900; margin-top: 12px; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        
+        /* ★ コンテナの幅を広げ、中央揃えにしました */
+        .dynamic-text-area-v2 { position: absolute; top: 63.5%; left: 0%; width: 100%; height: 25%; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        
+        /* ★ white-space: nowrap; を追加し、小さな用紙でも改行されないようにしました */
+        .dynamic-name-v2 { font-size: 28px; font-weight: 900; margin-bottom: 8px; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        .dynamic-date-v2 { font-size: 24px; font-weight: 900; margin-bottom: 8px; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        .dynamic-age-v2 { font-size: 30px; font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        
+        /* メッセージは長くなることがあるので、あえて折り返しを許可しています */
+        .dynamic-staff-msg-v2 { font-size: 20px; font-weight: 900; margin-top: 12px; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; width: 90%; word-break: break-word; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
 
         .print-only { display: none; }
 
@@ -148,13 +160,11 @@
            🖨️ 印刷時専用のスタイル
            ========================================== */
         @media print {
-            /* ★ ブラウザ側で用紙サイズ（L版・B5など）を自由に選べるように制限を解除 ★ */
             @page { margin: 0; } 
             
             body { background-color: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none !important; }
             
-            /* ★ 通常モード（連絡帳あり）の印刷設定 ★ */
             body:not(.mode-card-only) #printArea { max-width: 100% !important; margin: 0 !important; width: 210mm !important; }
             body:not(.mode-card-only) .print-page { 
                 padding: 5mm 12mm 4mm 15mm !important; 
@@ -171,7 +181,6 @@
                 height: 297mm !important; box-shadow: none !important; 
             }
 
-            /* ★ カードのみ印刷モードの設定（用紙にピッタリ合わせる） ★ */
             body.mode-card-only #printArea { width: 100% !important; max-width: 100% !important; }
             body.mode-card-only .print-page { 
                 padding: 0 !important; margin: 0 !important; width: 100% !important; height: 100vh !important; page-break-after: always !important; 
@@ -251,7 +260,6 @@
                 <input type="date" id="endDate" class="date-input" onchange="onDateChanged()">
             </div>
             
-            <!-- ★ 新機能：印刷する内容を選べるメニューを追加しました ★ -->
             <div class="filter-row" style="margin-top: 15px; border-top: 1px dashed #40c057; padding-top: 15px;">
                 <span class="filter-label">🖨️ 印刷する内容：</span>
                 <select id="selectPrintTarget" class="filter-select" onchange="onCardBgChanged()">
@@ -499,7 +507,6 @@
             let btn = document.getElementById("batchPrintBtn");
             let printArea = document.getElementById("printArea");
             
-            // ★ 新機能：「印刷する内容」の選択状態を取得し、bodyタグにクラスを付ける ★
             let printTarget = document.getElementById("selectPrintTarget").value;
             if (printTarget === "card_only") {
                 document.body.classList.add("mode-card-only");
@@ -690,7 +697,6 @@
             let chartCanvasId = `chart_${index}`;
             let bData = getBirthdayData(window.globalUsersData[userName] ? window.globalUsersData[userName].birthday : null, null, true, startDate, endDate);
             
-            // ★ メニューの選択に合わせて描画するかどうかを決定します ★
             let renderReport = (printTarget === "both" || printTarget === "report_only");
             let renderCard = (printTarget === "both" || printTarget === "card_only") && shouldPrintCard;
 
@@ -880,7 +886,7 @@
                 }
 
                 let bpOut = '--';
-                if (lastData.stBpHighOut || lastData.stBpLowOut) {
+                if (lastData.stBpHighOut || lastData.stBpHighOut) {
                     let h = lastData.stBpHighOut ? lastData.stBpHighOut : '';
                     let l = lastData.stBpLowOut ? lastData.stBpLowOut : '';
                     bpOut = h + '/' + l;
