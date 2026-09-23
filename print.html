@@ -99,75 +99,46 @@
         .media-print-box .media-label { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
 
         /* ==========================================
-           🎉 誕生日カード専用のスタイル（2枚目用）
+           🎉 誕生日カード専用のスタイル（画像ベース）
            ========================================== */
-        .birthday-card-wrapper {
-            background: linear-gradient(135deg, #fff0f6 0%, #ffe3e3 100%);
-            border: 12px double #faa2c1;
-            border-radius: 20px;
-            padding: 40px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 270mm; 
-            box-sizing: border-box;
+        .birthday-card-image-bg {
+            width: 100%;
+            height: 277mm; 
+            background-image: url('image_78fac2.jpg');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
-        .card-title {
-            font-size: 36px; 
-            color: #d6336c;
-            font-weight: bold;
-            margin-bottom: 15px;
-            letter-spacing: 2px;
-            line-height: 1.5;
+        /* 白い枠内に写真をピッタリ重ねる設定 */
+        .dynamic-photo {
+            position: absolute;
+            top: 22.5%; 
+            left: 21%;
+            width: 58%;
+            height: 29.5%;
+            object-fit: cover;
+            z-index: 10;
+            border-radius: 4px;
         }
-        .card-subtitle {
-            font-size: 32px;
-            color: #333;
-            margin-bottom: 35px;
-            font-weight: bold;
-        }
-        .card-photo-area {
-            display: flex;
-            gap: 40px;
-            justify-content: center;
-            margin-bottom: 40px;
-            width: 100%;
-        }
-        .card-photo-box {
+        /* 元の文字を隠すためのブロック */
+        .dynamic-text-area {
+            position: absolute;
+            top: 55%; 
+            left: 20%;
+            width: 60%;
+            height: 23%;
+            background-color: #fdfaf5; /* 背景の和紙っぽい色に合わせました */
+            z-index: 10;
             display: flex;
             flex-direction: column;
+            justify-content: center;
             align-items: center;
+            border-radius: 10px;
         }
-        .card-photo-box span {
-            font-size: 20px;
-            font-weight: bold;
-            color: #a61e4d;
-            margin-bottom: 15px;
-            background-color: #fff;
-            padding: 8px 25px;
-            border-radius: 25px;
-            border: 2px solid #faa2c1;
-        }
-        .card-photo-box img {
-            width: 300px;
-            height: 300px;
-            object-fit: cover;
-            border-radius: 20px;
-            border: 8px solid #fff;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-        }
-        .card-message {
-            font-size: 24px;
-            line-height: 1.8;
-            color: #495057;
-            font-weight: bold;
-            background-color: rgba(255, 255, 255, 0.7);
-            padding: 25px 50px;
-            border-radius: 15px;
-        }
+        .dynamic-name { font-size: 26px; font-weight: bold; margin-bottom: 8px; color: #333; letter-spacing: 2px; }
+        .dynamic-date { font-size: 24px; font-weight: bold; margin-bottom: 8px; color: #333; letter-spacing: 2px; }
+        .dynamic-age { font-size: 28px; font-weight: bold; color: #d9480f; line-height: 1.4; text-align: center; }
 
         .print-only { display: none; }
 
@@ -195,7 +166,7 @@
 
             .page-break {
                 page-break-before: always !important;
-                padding: 10mm !important; 
+                padding: 0 !important; /* 背景画像が全面に出るように余白を消す */
             }
 
             .punch-mark {
@@ -208,7 +179,7 @@
                 print-color-adjust: exact;
             }
             
-            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-wrapper {
+            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-image-bg {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
@@ -243,11 +214,10 @@
             .media-print-box img.photo { max-height: 125px !important; max-width: 175px !important; }
             .media-print-box img.qr { width: 90px !important; height: 90px !important; }
 
-            .birthday-card-wrapper {
-                height: 277mm !important; 
-                border-width: 10px !important;
+            .birthday-card-image-bg {
+                height: 297mm !important; /* A4用紙ピッタリに調整 */
+                box-shadow: none !important;
             }
-            .card-title { font-size: 36px !important; line-height: 1.5 !important; }
         }
     </style>
 </head>
@@ -663,7 +633,6 @@
             let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
             let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
 
-            // ★ 1枚目用の小さなバナー
             let uData = window.globalUsersData[userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, null, true, startDate, endDate);
             
@@ -848,7 +817,7 @@
             let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
             let familyMessageText = lastData.familyMessage ? lastData.familyMessage.replace(/\n/g, '<br>') : '';
 
-            // ★ 1枚目（連絡帳）の出力 ★
+            // ★ 1枚目（連絡帳）の出力
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 <div class="print-header">
@@ -936,37 +905,29 @@
             container.appendChild(pageDiv);
             drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
 
-            // ★ 2枚目（豪華誕生日カード）の出力 ★
+            // ★ 2枚目（豪華誕生日カード画像版）の出力
             if (bData) {
-                let faceUrl = await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon;
                 let todayImgUrl = await getCachedUrl(`images/${userName}/image_1.jpg`);
-                if (!todayImgUrl) todayImgUrl = faceUrl; 
+                if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon;
 
-                // ★ 当日・後日に関わらず共通のタイトル文章を表示する魔法 ★
-                let titleHtml = `🎉 ${bData.month}月${bData.day}日<br>${bData.age}歳のお誕生日<br>おめでとうございます！ 🎂`;
+                // 令和の計算
+                let currentYear = parseInt(startDate.substring(0,4));
+                let reiwaYear = currentYear - 2018;
+                let reiwaText = reiwaYear === 1 ? "元" : reiwaYear;
+                let displayDateText = `令和${reiwaText}年 ${bData.month}月${bData.day}日`;
 
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 cardPageDiv.innerHTML = `
-                    <div class="birthday-card-wrapper">
-                        <div class="card-title">${titleHtml}</div>
-                        <div class="card-subtitle">${userName} 様</div>
+                    <div class="birthday-card-image-bg">
+                        <!-- ここに笑顔の写真を重ねます -->
+                        <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
                         
-                        <div class="card-photo-area">
-                            <div class="card-photo-box">
-                                <span>いつもの素敵な笑顔</span>
-                                <img src="${faceUrl}" alt="顔写真">
-                            </div>
-                            <div class="card-photo-box">
-                                <span>本日のご様子</span>
-                                <img src="${todayImgUrl}" alt="本日の写真">
-                            </div>
-                        </div>
-                        
-                        <div class="card-message">
-                            これからも健やかで笑顔あふれる毎日をお過ごしいただけますよう、<br>
-                            スタッフ一同、心よりお祈り申し上げます。<br><br>
-                            <span style="font-size: 18px; color: #868e96;">${facilityName}</span>
+                        <!-- 画像に書かれた文字を覆い隠して、新しく文字を表示します -->
+                        <div class="dynamic-text-area">
+                            <div class="dynamic-name">${userName} 様</div>
+                            <div class="dynamic-date">${displayDateText}</div>
+                            <div class="dynamic-age">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
                         </div>
                     </div>
                 `;
@@ -1084,7 +1045,7 @@
             let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
             let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
 
-            // ★ 1枚目（連絡帳）の出力 ★
+            // ★ 1枚目（連絡帳）の出力
             pageDiv.innerHTML = `
                 <div class="punch-mark">▷</div>
                 <div class="print-header">
@@ -1149,37 +1110,29 @@
             container.appendChild(pageDiv);
             drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
 
-            // ★ 2枚目（豪華誕生日カード）の出力 ★
+            // ★ 2枚目（豪華誕生日カード画像版）の出力
             if (bData) {
-                let faceUrl = await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon;
                 let todayImgUrl = await getCachedUrl(`images/${data.userName}/image_1.jpg`);
-                if (!todayImgUrl) todayImgUrl = faceUrl; 
+                if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon;
 
-                // ★ 当日・後日に関わらず共通のタイトル文章を表示する魔法 ★
-                let titleHtml = `🎉 ${bData.month}月${bData.day}日<br>${bData.age}歳のお誕生日<br>おめでとうございます！ 🎂`;
+                // 令和の計算
+                let currentYear = parseInt(data.date.substring(0,4));
+                let reiwaYear = currentYear - 2018;
+                let reiwaText = reiwaYear === 1 ? "元" : reiwaYear;
+                let displayDateText = `令和${reiwaText}年 ${bData.month}月${bData.day}日`;
 
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 cardPageDiv.innerHTML = `
-                    <div class="birthday-card-wrapper">
-                        <div class="card-title">${titleHtml}</div>
-                        <div class="card-subtitle">${data.userName} 様</div>
+                    <div class="birthday-card-image-bg">
+                        <!-- ここに笑顔の写真を重ねます -->
+                        <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
                         
-                        <div class="card-photo-area">
-                            <div class="card-photo-box">
-                                <span>いつもの素敵な笑顔</span>
-                                <img src="${faceUrl}" alt="顔写真">
-                            </div>
-                            <div class="card-photo-box">
-                                <span>本日のご様子</span>
-                                <img src="${todayImgUrl}" alt="本日の写真">
-                            </div>
-                        </div>
-                        
-                        <div class="card-message">
-                            これからも健やかで笑顔あふれる毎日をお過ごしいただけますよう、<br>
-                            スタッフ一同、心よりお祈り申し上げます。<br><br>
-                            <span style="font-size: 18px; color: #868e96;">${facilityName}</span>
+                        <!-- 画像に書かれた文字を覆い隠して、新しく文字を表示します -->
+                        <div class="dynamic-text-area">
+                            <div class="dynamic-name">${data.userName} 様</div>
+                            <div class="dynamic-date">${displayDateText}</div>
+                            <div class="dynamic-age">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
                         </div>
                     </div>
                 `;
