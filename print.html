@@ -143,7 +143,6 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            transition: all 0.3s ease; 
         }
         .dynamic-name { font-size: 24px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
         .dynamic-date { font-size: 22px; font-weight: bold; margin-bottom: 6px; color: #2c2c2c; letter-spacing: 2px; text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 0 4px #fff; }
@@ -154,40 +153,53 @@
            ========================================== */
         .birthday-card-container-h {
             width: 100%;
-            height: 148.5mm; 
+            height: 155mm; /* 高さを調整 */
             position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            overflow: hidden;
-            margin-top: 50mm; 
+            overflow: hidden; /* はみ出した余白を隠す設定 */
+            margin-top: 40mm; 
         }
-        /* ★ 横型の写真位置を枠内に収まるよう微調整しました ★ */
+        
+        /* ★ 1. 背景の余白をカットして幅いっぱいに広げる設定 ★ */
+        .bg-image-layer-h {
+            position: absolute;
+            top: -5.5%;   /* 画像を少し上にはみ出させる */
+            left: -5.5%;  /* 画像を少し左にはみ出させる */
+            width: 111%;  /* 画像を111%に拡大して白い壁を画面外に追い出す */
+            height: 111%;
+            object-fit: fill;
+            z-index: 1;
+        }
+
+        /* ★ 2. 写真を枠内に収める設定（微調整用） ★ */
         .dynamic-photo-h {
             position: absolute;
-            top: 25.5%;    /* 上からの位置を少し下げました */
-            left: 31.7%;   /* 左からの位置を少し右にずらしました */
-            width: 36.5%;  /* 幅を少し小さくしました */
-            height: 36.5%; /* 高さを少し小さくしました */
+            top: 26.5%;     /* 枠の上辺（増やすと下へ） */
+            left: 36.0%;    /* 枠の左辺（増やすと右へ） */
+            width: 28.5%;   /* 枠の幅（減らすと細くなる） */
+            height: 35.0%;  /* 枠の高さ（減らすと短くなる） */
             object-fit: cover;
             z-index: 2;
             border-radius: 2px;
         }
-        /* ★ 横型の巻物文字位置を微調整しました ★ */
+
+        /* ★ 3. 文字を巻物内に収める設定（微調整用） ★ */
         .dynamic-text-area-h {
             position: absolute;
-            top: 67%;    
-            left: 31.7%;   
-            width: 36.5%;  
-            height: 17%; /* 高さを調整して巻物に収まるようにしました */
+            top: 66.5%;     /* 巻物の上辺（増やすと下へ） */
+            left: 36.0%;    /* 巻物の左辺 */
+            width: 28.5%;   /* 巻物の幅 */
+            height: 13.5%;  /* 巻物の高さ内に収める */
             z-index: 3;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            transition: all 0.3s ease; 
         }
-        .dynamic-name-h { font-size: 18px; font-weight: bold; margin-bottom: 4px; color: #2c2c2c; letter-spacing: 1px; }
-        .dynamic-date-h { font-size: 14px; font-weight: bold; margin-bottom: 4px; color: #2c2c2c; letter-spacing: 1px; }
-        .dynamic-age-h { font-size: 18px; font-weight: bold; color: #b91c1c; line-height: 1.3; text-align: center; }
+        /* 巻物に合わせて文字サイズを小さくしました */
+        .dynamic-name-h { font-size: 16px; font-weight: bold; margin-bottom: 2px; color: #2c2c2c; letter-spacing: 1px; text-shadow: 0 0 3px #fff; }
+        .dynamic-date-h { font-size: 13px; font-weight: bold; margin-bottom: 2px; color: #2c2c2c; letter-spacing: 1px; text-shadow: 0 0 3px #fff; }
+        .dynamic-age-h { font-size: 15px; font-weight: bold; color: #b91c1c; line-height: 1.2; text-align: center; text-shadow: 0 0 3px #fff; }
 
         .print-only { display: none; }
 
@@ -264,7 +276,7 @@
             .media-print-box img.qr { width: 90px !important; height: 90px !important; }
 
             .birthday-card-container { height: 297mm !important; box-shadow: none !important; }
-            .birthday-card-container-h { height: 148.5mm !important; box-shadow: none !important; margin-top: 50mm !important; }
+            .birthday-card-container-h { height: 155mm !important; box-shadow: none !important; margin-top: 40mm !important; overflow: hidden !important; }
         }
     </style>
 </head>
@@ -730,7 +742,6 @@
             let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
             let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
 
-            // ★ 1枚目用の小さなバナー
             let uData = window.globalUsersData[userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, null, true, startDate, endDate);
             
@@ -1041,7 +1052,7 @@
                 } else {
                     cardPageDiv.innerHTML = `
                         <div class="birthday-card-container-h">
-                            <img src="bg_birthday_h.jpg" class="bg-image-layer" alt="背景">
+                            <img src="bg_birthday_h.jpg" class="bg-image-layer-h" alt="背景">
                             <img src="${todayImgUrl}" class="dynamic-photo-h" alt="笑顔の写真">
                             <div class="dynamic-text-area-h" style="${textAreaStyle}">
                                 <div class="dynamic-name-h">${userName} 様</div>
@@ -1083,7 +1094,6 @@
             let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
             let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
 
-            // ★ 1枚目用の小さなバナー
             let uData = window.globalUsersData[data.userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, data.date, false);
             
@@ -1268,7 +1278,7 @@
                 } else {
                     cardPageDiv.innerHTML = `
                         <div class="birthday-card-container-h">
-                            <img src="bg_birthday_h.jpg" class="bg-image-layer" alt="背景">
+                            <img src="bg_birthday_h.jpg" class="bg-image-layer-h" alt="背景">
                             <img src="${todayImgUrl}" class="dynamic-photo-h" alt="笑顔の写真">
                             <div class="dynamic-text-area-h" style="${textAreaStyle}">
                                 <div class="dynamic-name-h">${data.userName} 様</div>
