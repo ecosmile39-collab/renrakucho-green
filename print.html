@@ -105,19 +105,28 @@
         .media-print-box .media-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; }
 
         /* ==========================================
-           🎉 誕生日カードの共通スタイル（魔法の自動縮小設定 cqw）
+           🎉 誕生日カードの共通スタイル（縦型専用にシンプル化！）
            ========================================== */
-        .birthday-card-container-v2 { width: 100%; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; container-type: inline-size; background-color: white; }
-        .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        .birthday-card-container-v2 { 
+            width: 100%; 
+            aspect-ratio: 1 / 1.414; /* 縦型の比率でガッチリ固定 */
+            position: relative; 
+            overflow: hidden; 
+            background-color: white; 
+            container-type: inline-size; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
         
-        /* ★ ご提案の「正方形＋フチぼかし」の魔法のコードです ★ */
+        .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
+        
+        /* ★ ご提案いただいた「正方形＆フチぼかし」の魔法のコードです ★ */
         .dynamic-photo-v2 { 
             position: absolute; 
             object-fit: cover; 
             z-index: 2; 
-            /* 常に綺麗な正方形を保ちます */
-            aspect-ratio: 1 / 1; 
-            /* 写真の4つのフチを背景になじむようにフワッと透明にぼかします */
+            aspect-ratio: 1 / 1; /* 常に正方形を保ちます */
+            border-radius: 10px; /* ぼかしが効かないブラウザのための予備設定 */
+            /* 写真の4つのフチを透明にグラデーションさせて背景になじませます */
             -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
                                 linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
             -webkit-mask-composite: source-in;
@@ -126,51 +135,42 @@
 
         .dynamic-text-area-v2 { position: absolute; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         
+        /* 小さい用紙でも文字が改行されない設定 */
         .dynamic-name-v2 { font-weight: 900; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
         .dynamic-date-v2 { font-weight: 900; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
         .dynamic-age-v2 { font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
         .dynamic-staff-msg-v2 { font-weight: 900; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; width: 90%; word-break: break-word; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
 
         /* ==========================================
-           🎉 すべての配置を「絶対ずれない％（cqw）」で固定
+           🎉 各デザイン個別の位置調整
            ========================================== */
 
-        /* 縦型の設定（A4縦の比率） */
-        .birthday-card-container-v2.layout-vertical {
-            aspect-ratio: 1 / 1.414;
-        }
-        /* 縦型は写真を中心やや上に、テキストを下部に配置 */
-        .layout-vertical .dynamic-photo-v2 { top: 25cqw; left: 25cqw; width: 50cqw; height: 50cqw; }
-        .layout-vertical .dynamic-text-area-v2 { top: 85cqw; left: 10cqw; width: 80cqw; height: 35cqw; }
-        
-        .layout-vertical .dynamic-name-v2 { font-size: 3.5cqw; margin-bottom: 1.0cqw; }
-        .layout-vertical .dynamic-date-v2 { font-size: 3.0cqw; margin-bottom: 1.0cqw; }
-        .layout-vertical .dynamic-age-v2 { font-size: 4.0cqw; }
-        .layout-vertical .dynamic-staff-msg-v2 { font-size: 2.8cqw; margin-top: 1.5cqw; }
+        /* 縦型1（鶴亀と松竹梅：bg_birthday.jpg） */
+        .layout-vertical1 .dynamic-photo-v2 { top: 32cqw; left: 25cqw; width: 50cqw; height: 50cqw; } /* 中央より少し上 */
+        .layout-vertical1 .dynamic-text-area-v2 { top: 90cqw; left: 10cqw; width: 80cqw; height: 35cqw; }
+        .layout-vertical1 .dynamic-name-v2 { font-size: 4.0cqw; margin-bottom: 1.0cqw; }
+        .layout-vertical1 .dynamic-date-v2 { font-size: 3.5cqw; margin-bottom: 1.0cqw; }
+        .layout-vertical1 .dynamic-age-v2 { font-size: 4.5cqw; }
+        .layout-vertical1 .dynamic-staff-msg-v2 { font-size: 3.0cqw; margin-top: 1.5cqw; }
 
-        /* 横型の設定（A4横の比率） */
-        .birthday-card-container-v2.layout-horizontal {
-            aspect-ratio: 1.414 / 1; 
-        }
-        /* ★ 横型は、写真をど真ん中に、テキストをその下に美しく配置します ★ */
-        .layout-horizontal .dynamic-photo-v2 { top: 10cqw; left: 35cqw; width: 30cqw; height: 30cqw; }
-        .layout-horizontal .dynamic-text-area-v2 { top: 43cqw; left: 15cqw; width: 70cqw; height: 20cqw; }
-        
-        .layout-horizontal .dynamic-name-v2 { font-size: 2.5cqw; margin-bottom: 0.5cqw; }
-        .layout-horizontal .dynamic-date-v2 { font-size: 2.2cqw; margin-bottom: 0.5cqw; }
-        .layout-horizontal .dynamic-age-v2 { font-size: 2.8cqw; }
-        .layout-horizontal .dynamic-staff-msg-v2 { font-size: 1.8cqw; margin-top: 0.8cqw; }
+        /* 縦型2（ピンクの花柄と巻物：bg_birthday_v2.jpg） */
+        .layout-vertical2 .dynamic-photo-v2 { top: 28cqw; left: 25cqw; width: 50cqw; height: 50cqw; } /* 中央より少し上 */
+        .layout-vertical2 .dynamic-text-area-v2 { top: 97cqw; left: 20cqw; width: 60cqw; height: 23cqw; } /* 巻物の中にピッタリ収まる位置 */
+        .layout-vertical2 .dynamic-name-v2 { font-size: 3.2cqw; margin-bottom: 0.5cqw; }
+        .layout-vertical2 .dynamic-date-v2 { font-size: 2.8cqw; margin-bottom: 0.5cqw; }
+        .layout-vertical2 .dynamic-age-v2 { font-size: 3.5cqw; }
+        .layout-vertical2 .dynamic-staff-msg-v2 { font-size: 2.2cqw; margin-top: 1.0cqw; }
 
         .print-only { display: none; }
 
         /* ==========================================
-           🌟 誕生日カード「のみ」を印刷する場合の特別スタイル
+           🌟 誕生日カード「のみ」を印刷する場合のプレビュースタイル
            ========================================== */
-        body.mode-card-only #printArea { width: 100%; max-width: 800px; margin: 0 auto; }
+        body.mode-card-only #printArea { width: 100%; max-width: 600px; margin: 0 auto; }
         body.mode-card-only .print-page { padding: 0; min-height: auto; box-shadow: none; margin-bottom: 20px; background: transparent; }
 
         /* ==========================================
-           🖨️ 印刷時専用のスタイル（もう巨大化や分割はしません）
+           🖨️ 印刷時専用のスタイル（もう巨大化や分割はしません！）
            ========================================== */
         @media print {
             @page { margin: 0; } 
@@ -178,7 +178,7 @@
             body { background-color: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none !important; }
             
-            /* 通常モード（連絡帳と一緒に印刷） */
+            /* 【通常モード】連絡帳と一緒にA4で印刷する場合 */
             body:not(.mode-card-only) #printArea { max-width: 100% !important; margin: 0 !important; width: 210mm !important; }
             body:not(.mode-card-only) .print-page { 
                 padding: 5mm 12mm 4mm 15mm !important; 
@@ -190,11 +190,8 @@
                 position: relative !important; 
                 box-sizing: border-box !important;
             }
-            body:not(.mode-card-only) .birthday-card-container-v2.layout-vertical { 
-                height: 288mm !important; box-shadow: none !important; 
-            }
-            body:not(.mode-card-only) .birthday-card-container-v2.layout-horizontal { 
-                height: auto !important; margin-top: 15mm !important; box-shadow: none !important; 
+            body:not(.mode-card-only) .birthday-card-container-v2 { 
+                width: 100% !important; height: auto !important; box-shadow: none !important; 
             }
 
             /* ★★★【カードのみモード】選んだ用紙にピタッと収まる最終防壁 ★★★ */
@@ -212,7 +209,8 @@
                 border: none !important; 
                 box-shadow: none !important;
                 page-break-inside: avoid !important;
-                page-break-after: always !important; /* 次のページに押し出させない */
+                page-break-after: avoid !important; /* 次のページに押し出させない */
+                page-break-before: avoid !important;
             }
             body.mode-card-only .birthday-card-container-v2 {
                 width: 100% !important; 
@@ -298,15 +296,12 @@
                 </select>
             </div>
             
+            <!-- ★ 縦型の2種類だけを選べるようにスッキリ整理しました ★ -->
             <div class="filter-row">
                 <span class="filter-label">📇 誕生日カードのデザイン：</span>
                 <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged()">
-                    <option value="vertical1" selected>縦型1（デザインA・標準）</option>
-                    <option value="vertical2">縦型2（デザインB・新着）</option>
-                    <option value="horizontal1">横型1（背景画像1）</option>
-                    <option value="horizontal2">横型2（背景画像2）</option>
-                    <option value="horizontal3">横型3（背景画像3）</option>
-                    <option value="horizontal4">横型4（背景画像4）</option>
+                    <option value="vertical1" selected>縦型1（鶴亀と松竹梅）</option>
+                    <option value="vertical2">縦型2（ピンクの花柄）</option>
                 </select>
             </div>
             
@@ -1056,21 +1051,16 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
+                // ★ ここで縦型1と縦型2の画像を切り替えます ★
                 let layoutClass = "";
                 let bgImageSrc = "";
                 
                 if (cardOrientationChoice === "vertical1") {
-                    layoutClass = "layout-vertical";
+                    layoutClass = "layout-vertical1";
                     bgImageSrc = "bg_birthday.jpg";
                 } else if (cardOrientationChoice === "vertical2") {
-                    layoutClass = "layout-vertical";
+                    layoutClass = "layout-vertical2";
                     bgImageSrc = "bg_birthday_v2.jpg";
-                } else {
-                    layoutClass = "layout-horizontal";
-                    if(cardOrientationChoice === "horizontal1") bgImageSrc = "bg_birthday_h_1.jpg";
-                    if(cardOrientationChoice === "horizontal2") bgImageSrc = "bg_birthday_h_2.jpg";
-                    if(cardOrientationChoice === "horizontal3") bgImageSrc = "bg_birthday_h_3.jpg";
-                    if(cardOrientationChoice === "horizontal4") bgImageSrc = "bg_birthday_h_4.jpg";
                 }
 
                 cardPageDiv.innerHTML = `
@@ -1227,7 +1217,7 @@
                         </tr>
                         <tr>
                             <th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td>
-                            <th>酸素飽र्मुsaturation</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td>
+                            <th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td>
                         </tr>
                     </table>
                     <table class="compact-table">
@@ -1291,21 +1281,16 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
+                // ★ ここで縦型1と縦型2の画像を切り替えます ★
                 let layoutClass = "";
                 let bgImageSrc = "";
                 
                 if (cardOrientationChoice === "vertical1") {
-                    layoutClass = "layout-vertical";
+                    layoutClass = "layout-vertical1";
                     bgImageSrc = "bg_birthday.jpg";
                 } else if (cardOrientationChoice === "vertical2") {
-                    layoutClass = "layout-vertical";
+                    layoutClass = "layout-vertical2";
                     bgImageSrc = "bg_birthday_v2.jpg";
-                } else {
-                    layoutClass = "layout-horizontal";
-                    if(cardOrientationChoice === "horizontal1") bgImageSrc = "bg_birthday_h_1.jpg";
-                    if(cardOrientationChoice === "horizontal2") bgImageSrc = "bg_birthday_h_2.jpg";
-                    if(cardOrientationChoice === "horizontal3") bgImageSrc = "bg_birthday_h_3.jpg";
-                    if(cardOrientationChoice === "horizontal4") bgImageSrc = "bg_birthday_h_4.jpg";
                 }
 
                 cardPageDiv.innerHTML = `
