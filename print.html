@@ -118,14 +118,15 @@
         
         .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
         
+        /* ★ 端の線を出さないよう、透明になる位置を少し内側（95%）に修正しました ★ */
         .dynamic-photo-v2 { 
             position: absolute; 
             object-fit: cover; 
             z-index: 2; 
             aspect-ratio: 1 / 1; 
             border-radius: 10px; 
-            -webkit-mask-image: radial-gradient(circle closest-side, black 65%, transparent 100%);
-            mask-image: radial-gradient(circle closest-side, black 65%, transparent 100%);
+            -webkit-mask-image: radial-gradient(circle closest-side, black 60%, transparent 95%);
+            mask-image: radial-gradient(circle closest-side, black 60%, transparent 95%);
         }
 
         .dynamic-text-area-v2 { position: absolute; z-index: 3; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; }
@@ -179,7 +180,7 @@
         .print-only { display: none; }
 
         /* ==========================================
-           🌟 誕生日カード「のみ」を印刷する場合のプレビュースタイル
+           🌟 誕生日カード「のみ」を印刷する場合の特別スタイル
            ========================================== */
         body.mode-card-only #printArea { width: 100%; max-width: 600px; margin: 0 auto; }
         body.mode-card-only .print-page { padding: 0; min-height: auto; box-shadow: none; margin-bottom: 20px; background: transparent; }
@@ -232,7 +233,7 @@
             }
             body.mode-card-only .birthday-card-container-v2 {
                 width: 100% !important; 
-                max-height: 98vh !important; 
+                max-height: 98vh !important;
                 margin: 0 auto !important; 
                 box-shadow: none !important;
             }
@@ -241,11 +242,12 @@
                 font-size: 2vw !important; 
             }
 
+            /* ★ 印刷時も端の線を出さないよう、95%に修正しました ★ */
             .dynamic-photo-v2 {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
-                -webkit-mask-image: radial-gradient(circle closest-side, black 65%, transparent 100%) !important;
-                mask-image: radial-gradient(circle closest-side, black 65%, transparent 100%) !important;
+                -webkit-mask-image: radial-gradient(circle closest-side, black 60%, transparent 95%) !important;
+                mask-image: radial-gradient(circle closest-side, black 60%, transparent 95%) !important;
             }
 
             .print-only { display: block !important; }
@@ -253,6 +255,7 @@
             .punch-mark { display: none !important; } 
             .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-container-v2 { page-break-inside: avoid !important; break-inside: avoid !important; }
             
+            /* 以下は連絡帳用のスタイル */
             .print-header { margin-bottom: 2mm !important; padding-bottom: 1mm !important; border-bottom: 2px solid #333 !important; }
             .print-header h1 { font-size: 18px !important; margin: 0 !important; }
             .facility-name { font-size: 14px !important; font-weight: bold !important; }
