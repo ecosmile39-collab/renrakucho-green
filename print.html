@@ -107,7 +107,6 @@
         /* ==========================================
            🎉 誕生日カードの共通スタイル（絶対一致コード）
            ========================================== */
-        /* ★ container-type: inline-size; で文字サイズを「カード自身の幅」に完全固定します ★ */
         .birthday-card-container-v2 { 
             width: 100%; 
             position: relative; 
@@ -140,7 +139,7 @@
         .dynamic-staff-msg-v2 { font-weight: 900; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; width: 95%; word-break: break-word; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
 
         /* ==========================================
-           🎉 各デザイン個別の位置調整（文字サイズは cqw で統一！）
+           🎉 各デザイン個別の位置調整（★文字を小さく美しく調整しました★）
            ========================================== */
 
         .birthday-card-container-v2.layout-vertical1,
@@ -151,21 +150,20 @@
         /* 縦型1（鶴亀と松竹梅） */
         .layout-vertical1 .dynamic-photo-v2 { top: 18%; left: 25%; width: 50%; }
         .layout-vertical1 .dynamic-text-area-v2 { top: 55%; left: 10%; width: 80%; height: 40%; }
-        
-        /* 文字サイズをコンテナの幅（cqw）に連動させます */
-        .layout-vertical1 .dynamic-name-v2 { font-size: 5.5cqw; margin-bottom: 2cqw; }
-        .layout-vertical1 .dynamic-date-v2 { font-size: 4.5cqw; margin-bottom: 2cqw; }
-        .layout-vertical1 .dynamic-age-v2 { font-size: 6.5cqw; margin-bottom: 2cqw; }
-        .layout-vertical1 .dynamic-staff-msg-v2 { font-size: 3.5cqw; margin-top: 3cqw; }
+        /* 文字サイズを一回り小さくしました */
+        .layout-vertical1 .dynamic-name-v2 { font-size: 4.5cqw; margin-bottom: 1.5cqw; }
+        .layout-vertical1 .dynamic-date-v2 { font-size: 4.0cqw; margin-bottom: 1.5cqw; }
+        .layout-vertical1 .dynamic-age-v2 { font-size: 5.5cqw; margin-bottom: 1.5cqw; }
+        .layout-vertical1 .dynamic-staff-msg-v2 { font-size: 3.0cqw; margin-top: 2.5cqw; }
 
         /* 縦型2（ピンクの花柄と巻物） */
         .layout-vertical2 .dynamic-photo-v2 { top: 16%; left: 25%; width: 50%; }
         .layout-vertical2 .dynamic-text-area-v2 { top: 58%; left: 22%; width: 56%; height: 23%; padding-top: 3cqw; box-sizing: border-box; }
-        
-        .layout-vertical2 .dynamic-name-v2 { font-size: 4.0cqw; margin-bottom: 1.5cqw; }
-        .layout-vertical2 .dynamic-date-v2 { font-size: 3.5cqw; margin-bottom: 1.5cqw; }
-        .layout-vertical2 .dynamic-age-v2 { font-size: 5.0cqw; margin-bottom: 1.5cqw; }
-        .layout-vertical2 .dynamic-staff-msg-v2 { font-size: 2.8cqw; margin-top: 2cqw; }
+        /* 巻物からはみ出さないように小さく調整しました */
+        .layout-vertical2 .dynamic-name-v2 { font-size: 3.5cqw; margin-bottom: 1.0cqw; }
+        .layout-vertical2 .dynamic-date-v2 { font-size: 3.0cqw; margin-bottom: 1.0cqw; }
+        .layout-vertical2 .dynamic-age-v2 { font-size: 4.5cqw; margin-bottom: 1.0cqw; }
+        .layout-vertical2 .dynamic-staff-msg-v2 { font-size: 2.5cqw; margin-top: 1.5cqw; }
 
         /* 横型の設定（A4横の比率） */
         .birthday-card-container-v2.layout-horizontal1,
@@ -173,23 +171,23 @@
             aspect-ratio: 1.414 / 1; 
         }
         
-        .layout-horizontal1 .dynamic-photo-v2,
+        /* 横型1（鶴亀と松竹梅） */
+        .layout-horizontal1 .dynamic-photo-v2 { top: 12%; left: 35%; width: 30%; }
+        /* 文字が写真にかぶらないよう少し下にずらしました */
+        .layout-horizontal1 .dynamic-text-area-v2 { top: 58%; left: 15%; width: 70%; height: 38%; }
+        .layout-horizontal1 .dynamic-name-v2 { font-size: 2.8cqw; margin-bottom: 0.8cqw; }
+        .layout-horizontal1 .dynamic-date-v2 { font-size: 2.4cqw; margin-bottom: 0.8cqw; }
+        .layout-horizontal1 .dynamic-age-v2 { font-size: 3.5cqw; margin-bottom: 0.8cqw; }
+        .layout-horizontal1 .dynamic-staff-msg-v2 { font-size: 1.8cqw; margin-top: 1.2cqw; }
+
+        /* 横型2（ピンクの花柄と巻物） */
         .layout-horizontal2 .dynamic-photo-v2 { top: 12%; left: 35%; width: 30%; }
-        
-        .layout-horizontal1 .dynamic-text-area-v2,
-        .layout-horizontal2 .dynamic-text-area-v2 { top: 56%; left: 15%; width: 70%; height: 40%; }
-        
-        .layout-horizontal1 .dynamic-name-v2,
-        .layout-horizontal2 .dynamic-name-v2 { font-size: 3.5cqw; margin-bottom: 1.0cqw; }
-        
-        .layout-horizontal1 .dynamic-date-v2,
-        .layout-horizontal2 .dynamic-date-v2 { font-size: 3.0cqw; margin-bottom: 1.0cqw; }
-        
-        .layout-horizontal1 .dynamic-age-v2,
-        .layout-horizontal2 .dynamic-age-v2 { font-size: 4.5cqw; margin-bottom: 1.0cqw; }
-        
-        .layout-horizontal1 .dynamic-staff-msg-v2,
-        .layout-horizontal2 .dynamic-staff-msg-v2 { font-size: 2.2cqw; margin-top: 1.5cqw; }
+        /* 巻物からはみ出さないよう細かく調整しました */
+        .layout-horizontal2 .dynamic-text-area-v2 { top: 59%; left: 26%; width: 48%; height: 30%; }
+        .layout-horizontal2 .dynamic-name-v2 { font-size: 2.2cqw; margin-bottom: 0.5cqw; }
+        .layout-horizontal2 .dynamic-date-v2 { font-size: 1.8cqw; margin-bottom: 0.5cqw; }
+        .layout-horizontal2 .dynamic-age-v2 { font-size: 2.6cqw; margin-bottom: 0.5cqw; }
+        .layout-horizontal2 .dynamic-staff-msg-v2 { font-size: 1.5cqw; margin-top: 0.8cqw; }
 
         .print-only { display: none; }
 
@@ -253,9 +251,6 @@
                 margin: 0 auto !important; 
                 box-shadow: none !important;
             }
-
-            /* ★ 印刷時も文字サイズは上の cqw がそのまま引き継がれます ★ */
-            /* 印刷専用の font-size 上書きを削除したため、確認画面と完全に同じ見た目になります */
 
             .print-only { display: block !important; }
             .page-break { page-break-before: always !important; padding: 0 !important; }
