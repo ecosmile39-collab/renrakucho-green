@@ -105,34 +105,60 @@
         .media-print-box .media-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; }
 
         /* ==========================================
-           🎉 誕生日カード専用のスタイル（縦型・デザインA 標準）
-           ========================================== */
-        /* ★ container-type: inline-size; を追加して、用紙サイズに応じた自動縮小を有効化 ★ */
-        .birthday-card-container { width: 100%; height: 277mm; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; container-type: inline-size; }
-        .bg-image-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
-        .dynamic-photo { position: absolute; top: 21.4%; left: 21.4%; width: 57.2%; height: 27.5%; object-fit: cover; z-index: 2; border-radius: 3px; }
-        
-        /* ★ 少し上に持ち上げて、下の文字に被らないようにしました (top: 49.5%) ★ */
-        .dynamic-text-area { position: absolute; top: 49.5%; left: 0%; width: 100%; height: 26%; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        
-        /* ★ cqw という単位を使うことで、用紙が小さくなると文字も隙間も自動で小さくなります ★ */
-        .dynamic-name { font-size: 26px; font-size: 3.5cqw; font-weight: 900; margin-bottom: 6px; margin-bottom: 1.0cqw; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-date { font-size: 22px; font-size: 3.0cqw; font-weight: 900; margin-bottom: 6px; margin-bottom: 1.0cqw; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-age { font-size: 28px; font-size: 4.0cqw; font-weight: 900; color: #b91c1c; line-height: 1.2; text-align: center; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-staff-msg { font-size: 20px; font-size: 2.8cqw; font-weight: 900; margin-top: 10px; margin-top: 1.5cqw; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; width: 90%; word-break: break-word; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-
-        /* ==========================================
-           🎉 誕生日カード専用のスタイル（縦型・デザインB 新着）
+           🎉 誕生日カードの共通スタイル（魔法の自動縮小設定 cqw）
            ========================================== */
         .birthday-card-container-v2 { width: 100%; height: 277mm; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; container-type: inline-size; }
         .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
-        .dynamic-photo-v2 { position: absolute; top: 28.5%; left: 27.2%; width: 45.6%; height: 34.0%; object-fit: cover; z-index: 2; border-radius: 3px; }
-        .dynamic-text-area-v2 { position: absolute; top: 63.5%; left: 0%; width: 100%; height: 25%; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .dynamic-photo-v2 { position: absolute; object-fit: cover; z-index: 2; border-radius: 3px; }
+        .dynamic-text-area-v2 { position: absolute; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         
-        .dynamic-name-v2 { font-size: 28px; font-size: 3.8cqw; font-weight: 900; margin-bottom: 8px; margin-bottom: 1.2cqw; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-date-v2 { font-size: 24px; font-size: 3.2cqw; font-weight: 900; margin-bottom: 8px; margin-bottom: 1.2cqw; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-age-v2 { font-size: 30px; font-size: 4.2cqw; font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
-        .dynamic-staff-msg-v2 { font-size: 20px; font-size: 2.8cqw; font-weight: 900; margin-top: 12px; margin-top: 1.5cqw; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; width: 90%; word-break: break-word; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        .dynamic-name-v2 { font-weight: 900; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        .dynamic-date-v2 { font-weight: 900; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        .dynamic-age-v2 { font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+        .dynamic-staff-msg-v2 { font-weight: 900; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; width: 90%; word-break: break-word; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
+
+        /* ==========================================
+           🎉 各デザイン個別の位置調整
+           ========================================== */
+
+        /* 縦型A（標準：bg_birthday.jpg） */
+        .layout-vertical1 .dynamic-photo-v2 { top: 21.4%; left: 21.4%; width: 57.2%; height: 27.5%; }
+        .layout-vertical1 .dynamic-text-area-v2 { top: 49.5%; left: 0%; width: 100%; height: 26%; }
+        .layout-vertical1 .dynamic-name-v2 { font-size: 3.5cqw; margin-bottom: 1.0cqw; }
+        .layout-vertical1 .dynamic-date-v2 { font-size: 3.0cqw; margin-bottom: 1.0cqw; }
+        .layout-vertical1 .dynamic-age-v2 { font-size: 4.0cqw; }
+        .layout-vertical1 .dynamic-staff-msg-v2 { font-size: 2.8cqw; margin-top: 1.5cqw; }
+
+        /* 縦型B（新着：bg_birthday_v2.jpg） */
+        .layout-vertical2 .dynamic-photo-v2 { top: 28.5%; left: 27.2%; width: 45.6%; height: 34.0%; }
+        .layout-vertical2 .dynamic-text-area-v2 { top: 63.5%; left: 0%; width: 100%; height: 25%; }
+        .layout-vertical2 .dynamic-name-v2 { font-size: 3.8cqw; margin-bottom: 1.2cqw; }
+        .layout-vertical2 .dynamic-date-v2 { font-size: 3.2cqw; margin-bottom: 1.2cqw; }
+        .layout-vertical2 .dynamic-age-v2 { font-size: 4.2cqw; }
+        .layout-vertical2 .dynamic-staff-msg-v2 { font-size: 2.8cqw; margin-top: 1.5cqw; }
+
+        /* ★ 横型共通のベース設定 ★ */
+        .layout-horizontal .bg-image-layer-v2 { top: -5.5%; left: -5.5%; width: 111%; height: 111%; } /* 背景の白い余白をカット */
+        .layout-horizontal .dynamic-name-v2 { font-size: 2.3cqw; margin-bottom: 0.5cqw; }
+        .layout-horizontal .dynamic-date-v2 { font-size: 2.0cqw; margin-bottom: 0.5cqw; }
+        .layout-horizontal .dynamic-age-v2 { font-size: 2.7cqw; }
+        .layout-horizontal .dynamic-staff-msg-v2 { font-size: 1.8cqw; margin-top: 0.8cqw; }
+
+        /* 横型1（bg_birthday_h_1.jpg） */
+        .layout-horizontal1 .dynamic-photo-v2 { top: 26.5%; left: 36.2%; width: 28.0%; height: 34.5%; }
+        .layout-horizontal1 .dynamic-text-area-v2 { top: 65.5%; left: 15%; width: 70%; height: 18%; }
+
+        /* 横型2（bg_birthday_h_2.jpg） */
+        .layout-horizontal2 .dynamic-photo-v2 { top: 26.5%; left: 36.2%; width: 28.0%; height: 34.5%; }
+        .layout-horizontal2 .dynamic-text-area-v2 { top: 65.5%; left: 15%; width: 70%; height: 18%; }
+
+        /* 横型3（bg_birthday_h_3.jpg） */
+        .layout-horizontal3 .dynamic-photo-v2 { top: 26.5%; left: 36.2%; width: 28.0%; height: 34.5%; }
+        .layout-horizontal3 .dynamic-text-area-v2 { top: 65.5%; left: 15%; width: 70%; height: 18%; }
+
+        /* 横型4（bg_birthday_h_4.jpg） */
+        .layout-horizontal4 .dynamic-photo-v2 { top: 26.5%; left: 36.2%; width: 28.0%; height: 34.5%; }
+        .layout-horizontal4 .dynamic-text-area-v2 { top: 65.5%; left: 15%; width: 70%; height: 18%; }
 
         .print-only { display: none; }
 
@@ -141,12 +167,13 @@
            ========================================== */
         body.mode-card-only #printArea { width: 100%; max-width: 600px; margin: 0 auto; }
         body.mode-card-only .print-page { padding: 0; min-height: auto; box-shadow: none; margin-bottom: 20px; background: transparent; }
-        body.mode-card-only .birthday-card-container,
-        body.mode-card-only .birthday-card-container-v2 {
-            height: auto;
-            aspect-ratio: 1 / 1.414; /* A4などの一般的な用紙比率を保つ */
-            width: 100%;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        
+        body.mode-card-only .birthday-card-container-v2.layout-vertical1,
+        body.mode-card-only .birthday-card-container-v2.layout-vertical2 {
+            height: auto; aspect-ratio: 1 / 1.414; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        body.mode-card-only .birthday-card-container-v2.layout-horizontal {
+            height: auto; aspect-ratio: 1.414 / 1; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
 
         /* ==========================================
@@ -169,27 +196,26 @@
                 position: relative !important; 
                 box-sizing: border-box !important;
             }
-            body:not(.mode-card-only) .birthday-card-container,
-            body:not(.mode-card-only) .birthday-card-container-v2 { 
+            body:not(.mode-card-only) .birthday-card-container-v2.layout-vertical1,
+            body:not(.mode-card-only) .birthday-card-container-v2.layout-vertical2 { 
                 height: 297mm !important; box-shadow: none !important; 
+            }
+            body:not(.mode-card-only) .birthday-card-container-v2.layout-horizontal { 
+                height: 195mm !important; margin-top: 25mm !important; box-shadow: none !important; 
             }
 
             body.mode-card-only #printArea { width: 100% !important; max-width: 100% !important; }
             body.mode-card-only .print-page { 
                 padding: 0 !important; margin: 0 !important; width: 100% !important; height: 100vh !important; page-break-after: always !important; 
             }
-            body.mode-card-only .birthday-card-container,
             body.mode-card-only .birthday-card-container-v2 {
-                height: 100vh !important;
-                width: 100vw !important;
-                aspect-ratio: auto;
-                box-shadow: none !important;
+                height: 100vh !important; width: 100vw !important; aspect-ratio: auto !important; box-shadow: none !important;
             }
 
             .print-only { display: block !important; }
             .page-break { page-break-before: always !important; padding: 0 !important; }
             .punch-mark { position: fixed !important; top: 148.5mm !important; transform: translateY(-50%) !important; left: 4mm !important; color: #aaa !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-container, .birthday-card-container-v2 { page-break-inside: avoid !important; break-inside: avoid !important; }
+            .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-container-v2 { page-break-inside: avoid !important; break-inside: avoid !important; }
             
             .print-header { margin-bottom: 2mm !important; padding-bottom: 1mm !important; border-bottom: 2px solid #333 !important; }
             .print-header h1 { font-size: 18px !important; margin: 0 !important; }
@@ -262,11 +288,16 @@
                 </select>
             </div>
             
+            <!-- ★ 縦2種・横4種の合計6種類から選べるようになりました ★ -->
             <div class="filter-row">
                 <span class="filter-label">📇 誕生日カードのデザイン：</span>
                 <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged()">
-                    <option value="vertical" selected>縦型（デザインA・標準）</option>
-                    <option value="vertical2">縦型（デザインB・新着）</option>
+                    <option value="vertical" selected>縦型1（デザインA・標準）</option>
+                    <option value="vertical2">縦型2（デザインB・新着）</option>
+                    <option value="horizontal1">横型1（デザイン1）</option>
+                    <option value="horizontal2">横型2（デザイン2）</option>
+                    <option value="horizontal3">横型3（デザイン3）</option>
+                    <option value="horizontal4">横型4（デザイン4）</option>
                 </select>
             </div>
             
@@ -1011,40 +1042,41 @@
                     : "background-color: transparent;";
 
                 let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
-
-                let staffMsgHtml = cardMessage ? `<div class="dynamic-staff-msg">${cardMessage}</div>` : "";
-                let staffMsgHtmlV2 = cardMessage ? `<div class="dynamic-staff-msg-v2">${cardMessage}</div>` : "";
+                let staffMsgHtml = cardMessage ? `<div class="dynamic-staff-msg-v2">${cardMessage}</div>` : "";
 
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
+                // ★ 選択されたデザインに応じてクラスと画像を切り替える ★
+                let layoutClass = "";
+                let bgImageSrc = "";
+                
                 if (cardOrientationChoice === "vertical") {
-                    cardPageDiv.innerHTML = `
-                        <div class="birthday-card-container">
-                            <img src="bg_birthday.jpg" class="bg-image-layer" alt="背景">
-                            <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
-                            <div class="dynamic-text-area" style="${textAreaStyle}">
-                                <div class="dynamic-name">${userName} 様</div>
-                                <div class="dynamic-date">${displayDateText}</div>
-                                <div class="dynamic-age">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
-                                ${staffMsgHtml}
-                            </div>
-                        </div>
-                    `;
+                    layoutClass = "layout-vertical1";
+                    bgImageSrc = "bg_birthday.jpg";
+                } else if (cardOrientationChoice === "vertical2") {
+                    layoutClass = "layout-vertical2";
+                    bgImageSrc = "bg_birthday_v2.jpg";
                 } else {
-                    cardPageDiv.innerHTML = `
-                        <div class="birthday-card-container-v2">
-                            <img src="bg_birthday_v2.jpg" class="bg-image-layer-v2" alt="背景">
-                            <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
-                            <div class="dynamic-text-area-v2" style="${textAreaStyle}">
-                                <div class="dynamic-name-v2">${userName} 様</div>
-                                <div class="dynamic-date-v2">${displayDateText}</div>
-                                <div class="dynamic-age-v2">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
-                                ${staffMsgHtmlV2}
-                            </div>
-                        </div>
-                    `;
+                    layoutClass = "layout-horizontal layout-" + cardOrientationChoice;
+                    if(cardOrientationChoice === "horizontal1") bgImageSrc = "bg_birthday_h_1.jpg";
+                    if(cardOrientationChoice === "horizontal2") bgImageSrc = "bg_birthday_h_2.jpg";
+                    if(cardOrientationChoice === "horizontal3") bgImageSrc = "bg_birthday_h_3.jpg";
+                    if(cardOrientationChoice === "horizontal4") bgImageSrc = "bg_birthday_h_4.jpg";
                 }
+
+                cardPageDiv.innerHTML = `
+                    <div class="birthday-card-container-v2 ${layoutClass}">
+                        <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
+                        <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
+                        <div class="dynamic-text-area-v2" style="${textAreaStyle}">
+                            <div class="dynamic-name-v2">${userName} 様</div>
+                            <div class="dynamic-date-v2">${displayDateText}</div>
+                            <div class="dynamic-age-v2">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                            ${staffMsgHtml}
+                        </div>
+                    </div>
+                `;
                 container.appendChild(cardPageDiv);
             }
         }
@@ -1246,40 +1278,41 @@
                     : "background-color: transparent;";
 
                 let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
-
-                let staffMsgHtml = cardMessage ? `<div class="dynamic-staff-msg">${cardMessage}</div>` : "";
-                let staffMsgHtmlV2 = cardMessage ? `<div class="dynamic-staff-msg-v2">${cardMessage}</div>` : "";
+                let staffMsgHtml = cardMessage ? `<div class="dynamic-staff-msg-v2">${cardMessage}</div>` : "";
 
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
+                // ★ 選択されたデザインに応じてクラスと画像を切り替える ★
+                let layoutClass = "";
+                let bgImageSrc = "";
+                
                 if (cardOrientationChoice === "vertical") {
-                    cardPageDiv.innerHTML = `
-                        <div class="birthday-card-container">
-                            <img src="bg_birthday.jpg" class="bg-image-layer" alt="背景">
-                            <img src="${todayImgUrl}" class="dynamic-photo" alt="笑顔の写真">
-                            <div class="dynamic-text-area" style="${textAreaStyle}">
-                                <div class="dynamic-name">${data.userName} 様</div>
-                                <div class="dynamic-date">${displayDateText}</div>
-                                <div class="dynamic-age">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
-                                ${staffMsgHtml}
-                            </div>
-                        </div>
-                    `;
+                    layoutClass = "layout-vertical1";
+                    bgImageSrc = "bg_birthday.jpg";
+                } else if (cardOrientationChoice === "vertical2") {
+                    layoutClass = "layout-vertical2";
+                    bgImageSrc = "bg_birthday_v2.jpg";
                 } else {
-                    cardPageDiv.innerHTML = `
-                        <div class="birthday-card-container-v2">
-                            <img src="bg_birthday_v2.jpg" class="bg-image-layer-v2" alt="背景">
-                            <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
-                            <div class="dynamic-text-area-v2" style="${textAreaStyle}">
-                                <div class="dynamic-name-v2">${data.userName} 様</div>
-                                <div class="dynamic-date-v2">${displayDateText}</div>
-                                <div class="dynamic-age-v2">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
-                                ${staffMsgHtmlV2}
-                            </div>
-                        </div>
-                    `;
+                    layoutClass = "layout-horizontal layout-" + cardOrientationChoice;
+                    if(cardOrientationChoice === "horizontal1") bgImageSrc = "bg_birthday_h_1.jpg";
+                    if(cardOrientationChoice === "horizontal2") bgImageSrc = "bg_birthday_h_2.jpg";
+                    if(cardOrientationChoice === "horizontal3") bgImageSrc = "bg_birthday_h_3.jpg";
+                    if(cardOrientationChoice === "horizontal4") bgImageSrc = "bg_birthday_h_4.jpg";
                 }
+
+                cardPageDiv.innerHTML = `
+                    <div class="birthday-card-container-v2 ${layoutClass}">
+                        <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
+                        <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
+                        <div class="dynamic-text-area-v2" style="${textAreaStyle}">
+                            <div class="dynamic-name-v2">${data.userName} 様</div>
+                            <div class="dynamic-date-v2">${displayDateText}</div>
+                            <div class="dynamic-age-v2">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
+                            ${staffMsgHtml}
+                        </div>
+                    </div>
+                `;
                 container.appendChild(cardPageDiv);
             }
         }
