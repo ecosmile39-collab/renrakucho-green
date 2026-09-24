@@ -118,7 +118,6 @@
         
         .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
         
-        /* ★ 端の線を出さないよう、透明になる位置を少し内側（95%）に修正しました ★ */
         .dynamic-photo-v2 { 
             position: absolute; 
             object-fit: cover; 
@@ -136,6 +135,28 @@
         .dynamic-age-v2 { font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
         .dynamic-staff-msg-v2 { font-weight: 900; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; width: 95%; word-break: break-word; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
 
+        /* ★ 新しく追加した「金色の祝長寿」用のスタイル ★ */
+        .dynamic-chouju-v2 {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-weight: 900;
+            z-index: 4;
+            letter-spacing: 0.3em;
+            color: #d4af37; /* 美しいゴールド色 */
+            /* 白い太フチと影をつけて、どんな背景でも読みやすくしています */
+            text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff, 2px 4px 6px rgba(0,0,0,0.4);
+            display: none; /* 縦型では表示しません */
+        }
+        /* 横型が選ばれたときだけ表示します */
+        .layout-horizontal1 .dynamic-chouju-v2,
+        .layout-horizontal2 .dynamic-chouju-v2 {
+            display: block;
+            top: 5%;
+            font-size: 6cqw;
+            padding-left: 0.3em; /* 文字のバランス調整 */
+        }
+
         /* ==========================================
            🎉 各デザイン個別の位置調整
            ========================================== */
@@ -144,6 +165,7 @@
             aspect-ratio: 1 / 1.414;
         }
 
+        /* 縦型1（鶴亀と松竹梅） - 変更なし */
         .layout-vertical1 .dynamic-photo-v2 { top: 18%; left: 25%; width: 50%; }
         .layout-vertical1 .dynamic-text-area-v2 { top: 55%; left: 10%; width: 80%; height: 40%; }
         .layout-vertical1 .dynamic-name-v2 { font-size: 5.5cqw; margin-bottom: 1.5cqw; }
@@ -151,6 +173,7 @@
         .layout-vertical1 .dynamic-age-v2 { font-size: 6.5cqw; margin-bottom: 1.5cqw; }
         .layout-vertical1 .dynamic-staff-msg-v2 { font-size: 3.5cqw; margin-top: 3cqw; }
 
+        /* 縦型2（ピンクの花柄と巻物） - 変更なし */
         .layout-vertical2 .dynamic-photo-v2 { top: 16%; left: 25%; width: 50%; }
         .layout-vertical2 .dynamic-text-area-v2 { top: 58%; left: 22%; width: 56%; height: 23%; padding-top: 3cqw; box-sizing: border-box; }
         .layout-vertical2 .dynamic-name-v2 { font-size: 4.0cqw; margin-bottom: 1.5cqw; }
@@ -158,19 +181,22 @@
         .layout-vertical2 .dynamic-age-v2 { font-size: 5.0cqw; margin-bottom: 1.5cqw; }
         .layout-vertical2 .dynamic-staff-msg-v2 { font-size: 2.8cqw; margin-top: 2cqw; }
 
+        /* 横型の設定（A4横の比率） */
         .birthday-card-container-v2.layout-horizontal1,
         .birthday-card-container-v2.layout-horizontal2 {
             aspect-ratio: 1.414 / 1; 
         }
         
-        .layout-horizontal1 .dynamic-photo-v2 { top: 16%; left: 35%; width: 30%; }
-        .layout-horizontal1 .dynamic-text-area-v2 { top: 58%; left: 15%; width: 70%; height: 38%; }
+        /* ★ 横型1（鶴亀と松竹梅） 写真を下げて少し小さくしました ★ */
+        .layout-horizontal1 .dynamic-photo-v2 { top: 23%; left: 37%; width: 26%; }
+        .layout-horizontal1 .dynamic-text-area-v2 { top: 61%; left: 15%; width: 70%; height: 35%; }
         .layout-horizontal1 .dynamic-name-v2 { font-size: 2.0cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal1 .dynamic-date-v2 { font-size: 1.8cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal1 .dynamic-age-v2 { font-size: 2.8cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal1 .dynamic-staff-msg-v2 { font-size: 1.4cqw; margin-top: 1.0cqw; }
 
-        .layout-horizontal2 .dynamic-photo-v2 { top: 16%; left: 35%; width: 30%; }
+        /* ★ 横型2（ピンクの花柄と巻物） 写真を下げて少し小さくしました ★ */
+        .layout-horizontal2 .dynamic-photo-v2 { top: 23%; left: 37%; width: 26%; }
         .layout-horizontal2 .dynamic-text-area-v2 { top: 64%; left: 26%; width: 48%; height: 26%; padding-top: 1cqw; box-sizing: border-box; }
         .layout-horizontal2 .dynamic-name-v2 { font-size: 1.6cqw; margin-bottom: 0.3cqw; }
         .layout-horizontal2 .dynamic-date-v2 { font-size: 1.4cqw; margin-bottom: 0.3cqw; }
@@ -233,7 +259,7 @@
             }
             body.mode-card-only .birthday-card-container-v2 {
                 width: 100% !important; 
-                max-height: 98vh !important;
+                max-height: 98vh !important; 
                 margin: 0 auto !important; 
                 box-shadow: none !important;
             }
@@ -242,7 +268,6 @@
                 font-size: 2vw !important; 
             }
 
-            /* ★ 印刷時も端の線を出さないよう、95%に修正しました ★ */
             .dynamic-photo-v2 {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
@@ -250,12 +275,17 @@
                 mask-image: radial-gradient(circle closest-side, black 60%, transparent 95%) !important;
             }
 
+            /* 印刷時も金色の文字を綺麗に出す設定 */
+            .dynamic-chouju-v2 {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
             .print-only { display: block !important; }
             .page-break { page-break-before: always !important; padding: 0 !important; }
             .punch-mark { display: none !important; } 
             .text-box, .family-box, table, tr, .section-title, .media-print-area, .chart-container, .birthday-card-container-v2 { page-break-inside: avoid !important; break-inside: avoid !important; }
             
-            /* 以下は連絡帳用のスタイル */
             .print-header { margin-bottom: 2mm !important; padding-bottom: 1mm !important; border-bottom: 2px solid #333 !important; }
             .print-header h1 { font-size: 18px !important; margin: 0 !important; }
             .facility-name { font-size: 14px !important; font-weight: bold !important; }
@@ -1083,6 +1113,7 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
+                // ★ 選択されたデザインに応じてクラスと画像を切り替える ★
                 let layoutClass = "";
                 let bgImageSrc = "";
                 
@@ -1100,9 +1131,11 @@
                     bgImageSrc = "bg_birthday_h_1.jpg"; 
                 }
 
+                // ★ HTMLの出力部分に、金色の「祝 長 寿」の文字（dynamic-chouju-v2）を追加しました ★
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-container-v2 ${layoutClass}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
+                        <div class="dynamic-chouju-v2">祝 長 寿</div>
                         <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
                         <div class="dynamic-text-area-v2" style="${textAreaStyle}">
                             <div class="dynamic-name-v2">${userName} 様</div>
@@ -1336,9 +1369,11 @@
                     bgImageSrc = "bg_birthday_h_1.jpg"; 
                 }
 
+                // ★ HTMLの出力部分に、金色の「祝 長 寿」の文字（dynamic-chouju-v2）を追加しました ★
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-container-v2 ${layoutClass}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
+                        <div class="dynamic-chouju-v2">祝 長 寿</div>
                         <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
                         <div class="dynamic-text-area-v2" style="${textAreaStyle}">
                             <div class="dynamic-name-v2">${data.userName} 様</div>
