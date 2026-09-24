@@ -107,13 +107,13 @@
         /* ==========================================
            🎉 誕生日カードの共通スタイル
            ========================================== */
+        /* カード全体を包む枠組み。ここで cqw を使えるように container-type を指定します */
         .birthday-card-container-v2 { 
             width: 100%; 
             position: relative; 
             overflow: hidden; 
             background-color: white; 
-            /* ★ ここで文字の基本サイズを「カードの横幅(vw)」に連動させます ★ */
-            font-size: 2vw; 
+            container-type: inline-size; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         
@@ -132,48 +132,58 @@
             mask-composite: intersect;
         }
 
+        /* ★ 文字がはみ出さないように、上詰めで表示します ★ */
         .dynamic-text-area-v2 { position: absolute; z-index: 3; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; }
         
+        /* 文字の装飾設定 */
         .dynamic-name-v2 { font-weight: 900; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
         .dynamic-date-v2 { font-weight: 900; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
         .dynamic-age-v2 { font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
         .dynamic-staff-msg-v2 { font-weight: 900; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; width: 90%; word-break: break-word; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
 
         /* ==========================================
-           🎉 各デザイン個別の位置調整
+           🎉 各デザイン個別の位置調整（文字サイズもcqwで統一！）
            ========================================== */
 
+        /* 縦型の比率維持（A4縦の比率） */
         .birthday-card-container-v2.layout-vertical1,
         .birthday-card-container-v2.layout-vertical2 {
             aspect-ratio: 1 / 1.414;
         }
 
-        /* 縦型1（鶴亀と松竹梅） */
+        /* 縦型1（鶴亀と松竹梅：bg_birthday.jpg） */
+        /* 写真を少し上に引き上げました */
         .layout-vertical1 .dynamic-photo-v2 { top: 18%; left: 25%; width: 50%; }
-        .layout-vertical1 .dynamic-text-area-v2 { top: 55%; left: 10%; width: 80%; height: 40%; }
-        .layout-vertical1 .dynamic-name-v2 { font-size: 1.8em; margin-bottom: 1.5%; }
-        .layout-vertical1 .dynamic-date-v2 { font-size: 1.5em; margin-bottom: 1.5%; }
-        .layout-vertical1 .dynamic-age-v2 { font-size: 2.1em; margin-bottom: 1.5%; }
-        .layout-vertical1 .dynamic-staff-msg-v2 { font-size: 1.3em; margin-top: 2%; }
+        /* 文字エリアを写真のすぐ下からスタートするように設定 */
+        .layout-vertical1 .dynamic-text-area-v2 { top: 52%; left: 10%; width: 80%; height: 46%; }
+        
+        /* ★ 印刷時にも小さくなりすぎないよう、font-sizeをcqwで再調整しました ★ */
+        .layout-vertical1 .dynamic-name-v2 { font-size: 5.0cqw; margin-bottom: 1.5cqw; }
+        .layout-vertical1 .dynamic-date-v2 { font-size: 4.5cqw; margin-bottom: 1.5cqw; }
+        .layout-vertical1 .dynamic-age-v2 { font-size: 6.0cqw; margin-bottom: 1.5cqw; }
+        .layout-vertical1 .dynamic-staff-msg-v2 { font-size: 3.5cqw; margin-top: 2.0cqw; }
 
-        /* 縦型2（ピンクの花柄と巻物） */
+        /* 縦型2（ピンクの花柄と巻物：bg_birthday_v2.jpg） */
         .layout-vertical2 .dynamic-photo-v2 { top: 16%; left: 25%; width: 50%; }
-        .layout-vertical2 .dynamic-text-area-v2 { top: 59%; left: 24%; width: 52%; height: 16%; padding-top: 2%; box-sizing: border-box; }
-        .layout-vertical2 .dynamic-name-v2 { font-size: 1.5em; margin-bottom: 1%; }
-        .layout-vertical2 .dynamic-date-v2 { font-size: 1.3em; margin-bottom: 1%; }
-        .layout-vertical2 .dynamic-age-v2 { font-size: 1.8em; }
-        .layout-vertical2 .dynamic-staff-msg-v2 { font-size: 1.1em; margin-top: 2%; }
+        /* 文字が巻物の中にピッタリ収まる位置 */
+        .layout-vertical2 .dynamic-text-area-v2 { top: 58%; left: 24%; width: 52%; height: 18%; padding-top: 2%; box-sizing: border-box; }
+        
+        /* 巻物の中なので、少し小さめのフォントサイズに調整しています */
+        .layout-vertical2 .dynamic-name-v2 { font-size: 3.5cqw; margin-bottom: 1.0cqw; }
+        .layout-vertical2 .dynamic-date-v2 { font-size: 3.0cqw; margin-bottom: 1.0cqw; }
+        .layout-vertical2 .dynamic-age-v2 { font-size: 4.0cqw; margin-bottom: 1.0cqw; }
+        .layout-vertical2 .dynamic-staff-msg-v2 { font-size: 2.5cqw; margin-top: 1.5cqw; }
 
         .print-only { display: none; }
 
         /* ==========================================
-           🌟 誕生日カード「のみ」を印刷する場合のプレビュースタイル
+           🌟 誕生日カード「のみ」を印刷する場合の特別スタイル
            ========================================== */
         body.mode-card-only #printArea { width: 100%; max-width: 600px; margin: 0 auto; }
         body.mode-card-only .print-page { padding: 0; min-height: auto; box-shadow: none; margin-bottom: 20px; background: transparent; }
 
         /* ==========================================
-           🖨️ 印刷時専用のスタイル（★表示のズレをなくす修正です★）
+           🖨️ 印刷時専用のスタイル
            ========================================== */
         @media print {
             @page { margin: 0; } 
@@ -193,8 +203,9 @@
                 position: relative !important; 
                 box-sizing: border-box !important;
             }
-            body:not(.mode-card-only) .birthday-card-container-v2 { 
-                width: 100% !important; height: auto !important; box-shadow: none !important; 
+            body:not(.mode-card-only) .birthday-card-container-v2.layout-vertical1,
+            body:not(.mode-card-only) .birthday-card-container-v2.layout-vertical2 { 
+                height: 288mm !important; box-shadow: none !important; 
             }
 
             /* ★★★【カードのみモード】選んだ用紙にピタッと収まる設定 ★★★ */
@@ -217,16 +228,14 @@
             }
             body.mode-card-only .birthday-card-container-v2 {
                 width: 100% !important; 
-                max-height: 98vh !important;
+                max-height: 98vh !important; /* 印刷用紙の縦幅を超えないように制限 */
                 margin: 0 auto !important; 
                 box-shadow: none !important;
             }
 
-            /* ★ 印刷時のフォントサイズ固定 ★ */
-            /* 画面表示と同じく「紙の横幅(vw)」を基準にすることで、印刷と確認画面の見た目を完全に一致させます */
-            .birthday-card-container-v2 { 
-                font-size: 2vw !important; 
-            }
+            /* ★ 印刷時の文字サイズ指定を削除しました！★ 
+               これにより、上で設定した cqw の比率が印刷時にもそのまま適用され、
+               確認画面と印刷画面で「完全に同じ見た目」になります。 */
 
             .print-only { display: block !important; }
             .page-break { page-break-before: always !important; padding: 0 !important; }
@@ -1059,6 +1068,7 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
+                // ★ 選択されたデザインに応じてクラスと画像を切り替える ★
                 let layoutClass = "";
                 let bgImageSrc = "";
                 
