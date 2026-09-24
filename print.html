@@ -118,6 +118,7 @@
         
         .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
         
+        /* 写真を正方形に保ち、周りをフワッとぼかす魔法の設定 */
         .dynamic-photo-v2 { 
             position: absolute; 
             object-fit: cover; 
@@ -176,9 +177,8 @@
         .layout-horizontal1 .dynamic-age-v2 { font-size: 2.8cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal1 .dynamic-staff-msg-v2 { font-size: 1.4cqw; margin-top: 1.0cqw; }
 
-        /* ★ 横型2（ピンクの花柄と巻物） 位置の修正箇所 ★ */
+        /* 横型2（ピンクの花柄と巻物） */
         .layout-horizontal2 .dynamic-photo-v2 { top: 16%; left: 35%; width: 30%; }
-        /* topを 60% から 64% に変更し、文字が上に飛び出さないように調整しました */
         .layout-horizontal2 .dynamic-text-area-v2 { top: 64%; left: 26%; width: 48%; height: 26%; padding-top: 1cqw; box-sizing: border-box; }
         .layout-horizontal2 .dynamic-name-v2 { font-size: 1.6cqw; margin-bottom: 0.3cqw; }
         .layout-horizontal2 .dynamic-date-v2 { font-size: 1.4cqw; margin-bottom: 0.3cqw; }
@@ -194,7 +194,7 @@
         body.mode-card-only .print-page { padding: 0; min-height: auto; box-shadow: none; margin-bottom: 20px; background: transparent; }
 
         /* ==========================================
-           🖨️ 印刷時専用のスタイル
+           🖨️ 印刷時専用のスタイル（★ぼかしを強制適用する魔法のコードを追加★）
            ========================================== */
         @media print {
             @page { margin: 0; } 
@@ -243,7 +243,7 @@
             }
             body.mode-card-only .birthday-card-container-v2 {
                 width: 100% !important; 
-                max-height: 98vh !important;
+                max-height: 98vh !important; /* 印刷用紙の縦幅を超えないように制限 */
                 margin: 0 auto !important; 
                 box-shadow: none !important;
             }
@@ -251,6 +251,16 @@
             /* 印刷時のフォントサイズ固定 */
             .birthday-card-container-v2 { 
                 font-size: 2vw !important; 
+            }
+
+            /* ★★★ 写真の「ぼかし」を印刷時にも強制する絶対設定 ★★★ */
+            .dynamic-photo-v2 {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%),
+                                    linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%) !important;
+                -webkit-mask-composite: source-in !important;
+                mask-composite: intersect !important;
             }
 
             .print-only { display: block !important; }
@@ -1333,10 +1343,10 @@
                     bgImageSrc = "bg_birthday_v2.jpg";
                 } else if (cardOrientationChoice === "horizontal1") {
                     layoutClass = "layout-horizontal1";
-                    bgImageSrc = "bg_birthday_h_2.jpg"; 
+                    bgImageSrc = "bg_birthday_h_2.jpg"; // 横型1は鶴亀（h_2.jpg）
                 } else if (cardOrientationChoice === "horizontal2") {
                     layoutClass = "layout-horizontal2";
-                    bgImageSrc = "bg_birthday_h_1.jpg"; 
+                    bgImageSrc = "bg_birthday_h_1.jpg"; // 横型2はピンクの花柄（h_1.jpg）
                 }
 
                 cardPageDiv.innerHTML = `
