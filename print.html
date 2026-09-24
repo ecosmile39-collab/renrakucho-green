@@ -111,9 +111,9 @@
         .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
         .dynamic-photo-v2 { position: absolute; object-fit: cover; z-index: 2; border-radius: 3px; }
         
-        /* ★ 額縁画像用のスタイルを追加 ★ */
+        /* 額縁画像用のスタイルを追加 */
         .frame-image { position: absolute; z-index: 2; box-shadow: 5px 5px 15px rgba(0,0,0,0.4); }
-        /* 額縁を使う場合は、写真のz-indexを上げて額縁の上に乗せます */
+        /* 額縁を使う場合は、写真のz-indexを上げて額縁の上に少し乗るようにします */
         .dynamic-photo-v2.with-frame { z-index: 3; }
 
         .dynamic-text-area-v2 { position: absolute; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
@@ -155,23 +155,17 @@
         .layout-horizontal .dynamic-staff-msg-v2 { font-size: 1.8cqw; margin-top: 0.8cqw; }
 
         /* ==========================================
-           🖼️ 新しい横型デザインと「額縁」の位置調整
+           🖼️ 新しい横型デザインと「額縁」の位置調整（★ここを大幅に修正しました★）
            ========================================== */
 
         /* 横型1（bg_birthday_h_1.jpg - ピンク花） */
-        /* 額縁の位置と大きさ */
         .layout-horizontal1 .frame-image { top: 22%; left: 35%; width: 30%; aspect-ratio: 1 / 1; }
-        /* 写真の位置と大きさ（額縁の内側に収まるように少し小さく設定） */
         .layout-horizontal1 .dynamic-photo-v2.with-frame { top: 24.5%; left: 36.8%; width: 26.5%; aspect-ratio: 1 / 1; } 
-        /* 文字を入れる巻物の位置 */
         .layout-horizontal1 .dynamic-text-area-v2 { top: 67%; left: 25%; width: 50%; height: 18%; }
 
         /* 横型2（bg_birthday_h_2.jpg - 鶴亀と松） */
-        /* 額縁の位置と大きさ */
         .layout-horizontal2 .frame-image { top: 24%; left: 35%; width: 30%; aspect-ratio: 1 / 1; }
-        /* 写真の位置と大きさ（額縁の内側に収まるように少し小さく設定） */
         .layout-horizontal2 .dynamic-photo-v2.with-frame { top: 26.5%; left: 36.8%; width: 26.5%; aspect-ratio: 1 / 1; } 
-        /* 文字を入れる下の枠の位置 */
         .layout-horizontal2 .dynamic-text-area-v2 { top: 69%; left: 28%; width: 44%; height: 16%; }
 
         .print-only { display: none; }
@@ -306,7 +300,6 @@
                 </select>
             </div>
             
-            <!-- ★ 横型デザインを2つに変更しました ★ -->
             <div class="filter-row">
                 <span class="filter-label">📇 誕生日カードのデザイン：</span>
                 <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged()">
@@ -1063,7 +1056,6 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
-                // ★ 選択されたデザインに応じてクラス名と画像を切り替える ★
                 let layoutClass = "";
                 let bgImageSrc = "";
                 let frameHtml = "";
@@ -1080,7 +1072,6 @@
                     if(cardOrientationChoice === "horizontal1") bgImageSrc = "bg_birthday_h_1.jpg";
                     if(cardOrientationChoice === "horizontal2") bgImageSrc = "bg_birthday_h_2.jpg";
                     
-                    // ★ 横型の場合は「金色の額縁」を追加し、写真のクラスを変更します ★
                     frameHtml = `<img src="frame_gold.jpg" class="frame-image" alt="額縁">`;
                     photoClass += " with-frame";
                 }
@@ -1304,7 +1295,6 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
-                // ★ 選択されたデザインに応じてクラス名と画像を切り替える ★
                 let layoutClass = "";
                 let bgImageSrc = "";
                 let frameHtml = "";
@@ -1321,7 +1311,6 @@
                     if(cardOrientationChoice === "horizontal1") bgImageSrc = "bg_birthday_h_1.jpg";
                     if(cardOrientationChoice === "horizontal2") bgImageSrc = "bg_birthday_h_2.jpg";
                     
-                    // ★ 横型の場合は「金色の額縁」を追加し、写真のクラスを変更します ★
                     frameHtml = `<img src="frame_gold.jpg" class="frame-image" alt="額縁">`;
                     photoClass += " with-frame";
                 }
