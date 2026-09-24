@@ -108,12 +108,12 @@
            🎉 誕生日カードの共通スタイル
            ========================================== */
         .birthday-card-container-v2 { width: 100%; height: 277mm; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; container-type: inline-size; }
-        .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
         .dynamic-photo-v2 { position: absolute; object-fit: cover; z-index: 2; border-radius: 3px; }
         
-        /* ★ 額縁画像用のスタイルを追加（巨大化防止のため、height:auto; と aspect-ratio:1/1; を強制します） ★ */
-        .frame-image { position: absolute; z-index: 2; box-shadow: 5px 5px 15px rgba(0,0,0,0.4); object-fit: fill; height: auto !important; }
-        .dynamic-photo-v2.with-frame { z-index: 3; height: auto !important; }
+        /* ★ 悪さをしていた height: auto を完全に削除し、スッキリさせました ★ */
+        .frame-image { position: absolute; z-index: 2; box-shadow: 5px 5px 15px rgba(0,0,0,0.4); object-fit: fill; }
+        .dynamic-photo-v2.with-frame { z-index: 3; object-fit: cover; }
 
         .dynamic-text-area-v2 { position: absolute; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         
@@ -126,7 +126,6 @@
            🎉 各デザイン個別の位置調整
            ========================================== */
 
-        /* 縦型の比率維持 */
         .birthday-card-container-v2.layout-vertical1,
         .birthday-card-container-v2.layout-vertical2 {
             aspect-ratio: 1 / 1.414;
@@ -148,7 +147,7 @@
         .layout-vertical2 .dynamic-age-v2 { font-size: 4.2cqw; }
         .layout-vertical2 .dynamic-staff-msg-v2 { font-size: 2.8cqw; margin-top: 1.5cqw; }
 
-        /* ★ 横型共通のベース設定 ★ */
+        /* 横型共通のベース設定 */
         .birthday-card-container-v2.layout-horizontal {
             aspect-ratio: 1.414 / 1; 
         }
@@ -158,21 +157,17 @@
         .layout-horizontal .dynamic-age-v2 { font-size: 2.7cqw; }
         .layout-horizontal .dynamic-staff-msg-v2 { font-size: 1.8cqw; margin-top: 0.8cqw; }
 
-        /* ==========================================
-           🖼️ 新しい横型デザインと「額縁」の位置調整
-           ★ 額縁が巨大化しないように aspect-ratio を強制指定しました ★
-           ========================================== */
+        /* ★ 横型の額縁と写真を「絶対に正方形」に保つ完璧な計算式 ★ */
 
         /* 横型1（bg_birthday_h_1.jpg - ピンク花） */
-        .layout-horizontal1 .frame-image { top: 22%; left: 35%; width: 30%; aspect-ratio: 1 / 1; }
-        .layout-horizontal1 .dynamic-photo-v2.with-frame { top: 24.1%; left: 36.5%; width: 27%; aspect-ratio: 1 / 1; } 
+        .layout-horizontal1 .frame-image { top: 22%; left: 35%; width: 30%; height: 42.4%; } /* 横幅30%の時、高さは必ず42.4%で正方形になります */
+        .layout-horizontal1 .dynamic-photo-v2.with-frame { top: 24.1%; left: 36.5%; width: 27%; height: 38.2%; } /* 横幅27%の時、高さは必ず38.2%で正方形になります */
         .layout-horizontal1 .dynamic-text-area-v2 { top: 67%; left: 20%; width: 60%; height: 20%; }
 
         /* 横型2（bg_birthday_h_2.jpg - 鶴亀と松） */
-        .layout-horizontal2 .frame-image { top: 24%; left: 35%; width: 30%; aspect-ratio: 1 / 1; }
-        .layout-horizontal2 .dynamic-photo-v2.with-frame { top: 26.1%; left: 36.5%; width: 27%; aspect-ratio: 1 / 1; } 
+        .layout-horizontal2 .frame-image { top: 24%; left: 35%; width: 30%; height: 42.4%; }
+        .layout-horizontal2 .dynamic-photo-v2.with-frame { top: 26.1%; left: 36.5%; width: 27%; height: 38.2%; } 
         .layout-horizontal2 .dynamic-text-area-v2 { top: 69%; left: 20%; width: 60%; height: 20%; }
-
 
         .print-only { display: none; }
 
@@ -191,7 +186,7 @@
         }
 
         /* ==========================================
-           🖨️ 印刷時専用のスタイル
+           🖨️ 印刷時専用のスタイル（★ ここを「鋼の絶対固定」に変更しました ★）
            ========================================== */
         @media print {
             @page { margin: 0; } 
@@ -199,6 +194,7 @@
             body { background-color: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none !important; }
             
+            /* 通常モード（連絡帳と一緒に印刷） */
             body:not(.mode-card-only) #printArea { max-width: 100% !important; margin: 0 !important; width: 210mm !important; }
             body:not(.mode-card-only) .print-page { 
                 padding: 5mm 12mm 4mm 15mm !important; 
@@ -212,24 +208,39 @@
             }
             body:not(.mode-card-only) .birthday-card-container-v2.layout-vertical1,
             body:not(.mode-card-only) .birthday-card-container-v2.layout-vertical2 { 
-                height: 297mm !important; box-shadow: none !important; 
+                height: 288mm !important; box-shadow: none !important; 
             }
             
-            /* ★ 通常モードで印刷するときは横型が大きすぎないように制限 ★ */
             body:not(.mode-card-only) .birthday-card-container-v2.layout-horizontal { 
-                height: auto !important; 
-                aspect-ratio: 1.414 / 1 !important; 
+                width: 100% !important; 
+                height: 129mm !important; /* 横型の比率を絶対値（mm）で固定 */
                 margin-top: 15mm !important; 
                 box-shadow: none !important; 
             }
 
-            /* ★ カードのみ印刷時の設定 ★ */
-            body.mode-card-only #printArea { width: 100% !important; max-width: 100% !important; }
+            /* ★ カードのみ印刷モード（用紙サイズを変えても絶対に崩れません） ★ */
+            body.mode-card-only #printArea { width: 100% !important; max-width: none !important; }
             body.mode-card-only .print-page { 
-                padding: 0 !important; margin: 0 !important; width: 100% !important; height: 100vh !important; page-break-after: always !important; 
+                padding: 0 !important; margin: 0 !important; width: 100% !important; height: auto !important; page-break-after: always !important; border: none !important;
             }
-            body.mode-card-only .birthday-card-container-v2 {
-                width: 100% !important; height: auto !important; box-shadow: none !important; margin: 0 auto !important;
+            
+            /* 縦型は A4 の比率でガッチリ固定 */
+            body.mode-card-only .birthday-card-container-v2.layout-vertical1,
+            body.mode-card-only .birthday-card-container-v2.layout-vertical2 {
+                width: 210mm !important; 
+                height: 297mm !important; 
+                margin: 0 auto !important;
+                box-shadow: none !important;
+                page-break-inside: avoid !important;
+            }
+
+            /* 横型も A4横 の比率でガッチリ固定 */
+            body.mode-card-only .birthday-card-container-v2.layout-horizontal {
+                width: 297mm !important; 
+                height: 210mm !important; 
+                margin: 0 auto !important;
+                box-shadow: none !important;
+                page-break-inside: avoid !important;
             }
 
             .print-only { display: block !important; }
@@ -1304,7 +1315,7 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
-                // ★ 選択されたデザインに応じてクラス名と画像を切り替える ★
+                // ★ 選択されたデザインに応じてクラスと画像を切り替える ★
                 let layoutClass = "";
                 let bgImageSrc = "";
                 let frameHtml = "";
