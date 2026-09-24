@@ -137,28 +137,32 @@
         .layout-vertical2 .dynamic-age-v2 { font-size: 4.2cqw; }
         .layout-vertical2 .dynamic-staff-msg-v2 { font-size: 2.8cqw; margin-top: 1.5cqw; }
 
-        /* ★ 横型共通のベース設定 ★ */
+        /* ★ 横型共通のベース設定（縦に潰れないように比率を維持） ★ */
+        .birthday-card-container-v2.layout-horizontal {
+            height: auto;
+            aspect-ratio: 1.414 / 1; /* 横型の比率（A4横など）を強制します */
+        }
         .layout-horizontal .bg-image-layer-v2 { top: -5.5%; left: -5.5%; width: 111%; height: 111%; } /* 背景の白い余白をカット */
         .layout-horizontal .dynamic-name-v2 { font-size: 2.3cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal .dynamic-date-v2 { font-size: 2.0cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal .dynamic-age-v2 { font-size: 2.7cqw; }
         .layout-horizontal .dynamic-staff-msg-v2 { font-size: 1.8cqw; margin-top: 0.8cqw; }
 
-        /* 横型1（bg_birthday_h_1.jpg） */
-        .layout-horizontal1 .dynamic-photo-v2 { top: 26.5%; left: 36.2%; width: 28.0%; height: 34.5%; }
-        .layout-horizontal1 .dynamic-text-area-v2 { top: 65.5%; left: 15%; width: 70%; height: 18%; }
+        /* ★ 横型1（bg_birthday_h_3.jpg - 鶴亀と松） ★ */
+        .layout-horizontal1 .dynamic-photo-v2 { top: 26.0%; left: 32.5%; width: 34.0%; height: 36.0%; }
+        .layout-horizontal1 .dynamic-text-area-v2 { top: 67.5%; left: 25%; width: 50%; height: 18%; }
 
-        /* 横型2（bg_birthday_h_2.jpg） */
-        .layout-horizontal2 .dynamic-photo-v2 { top: 26.5%; left: 36.2%; width: 28.0%; height: 34.5%; }
-        .layout-horizontal2 .dynamic-text-area-v2 { top: 65.5%; left: 15%; width: 70%; height: 18%; }
+        /* ★ 横型2（bg_birthday_h_pink.jpg - ピンク花） ★ */
+        .layout-horizontal2 .dynamic-photo-v2 { top: 32.5%; left: 36.5%; width: 27.5%; height: 26.5%; } 
+        .layout-horizontal2 .dynamic-text-area-v2 { top: 66.8%; left: 25%; width: 50%; height: 18%; }
 
-        /* 横型3（bg_birthday_h_3.jpg） */
-        .layout-horizontal3 .dynamic-photo-v2 { top: 26.5%; left: 36.2%; width: 28.0%; height: 34.5%; }
-        .layout-horizontal3 .dynamic-text-area-v2 { top: 65.5%; left: 15%; width: 70%; height: 18%; }
+        /* ★ 横型3（bg_birthday_h_tsuru1.jpg - 鶴亀・和柄四角枠） ★ */
+        .layout-horizontal3 .dynamic-photo-v2 { top: 32.5%; left: 36.0%; width: 28.5%; height: 26.5%; } 
+        .layout-horizontal3 .dynamic-text-area-v2 { top: 68.5%; left: 25%; width: 50%; height: 16%; }
 
-        /* 横型4（bg_birthday_h_4.jpg） */
-        .layout-horizontal4 .dynamic-photo-v2 { top: 26.5%; left: 36.2%; width: 28.0%; height: 34.5%; }
-        .layout-horizontal4 .dynamic-text-area-v2 { top: 65.5%; left: 15%; width: 70%; height: 18%; }
+        /* ★ 横型4（bg_birthday_h_tsuru2.jpg - 鶴亀・金枠） ★ */
+        .layout-horizontal4 .dynamic-photo-v2 { top: 32.0%; left: 35.8%; width: 29.0%; height: 27.0%; } 
+        .layout-horizontal4 .dynamic-text-area-v2 { top: 68.5%; left: 25%; width: 50%; height: 16%; }
 
         .print-only { display: none; }
 
@@ -200,8 +204,12 @@
             body:not(.mode-card-only) .birthday-card-container-v2.layout-vertical2 { 
                 height: 297mm !important; box-shadow: none !important; 
             }
+            
             body:not(.mode-card-only) .birthday-card-container-v2.layout-horizontal { 
-                height: 195mm !important; margin-top: 25mm !important; box-shadow: none !important; 
+                height: auto !important; 
+                aspect-ratio: 1.414 / 1 !important; 
+                margin-top: 15mm !important; 
+                box-shadow: none !important; 
             }
 
             body.mode-card-only #printArea { width: 100% !important; max-width: 100% !important; }
@@ -209,7 +217,7 @@
                 padding: 0 !important; margin: 0 !important; width: 100% !important; height: 100vh !important; page-break-after: always !important; 
             }
             body.mode-card-only .birthday-card-container-v2 {
-                height: 100vh !important; width: 100vw !important; aspect-ratio: auto !important; box-shadow: none !important;
+                height: 100vh !important; width: 100vw !important; aspect-ratio: auto !important; box-shadow: none !important; margin: auto !important;
             }
 
             .print-only { display: block !important; }
@@ -288,16 +296,15 @@
                 </select>
             </div>
             
-            <!-- ★ 縦2種・横4種の合計6種類から選べるようになりました ★ -->
             <div class="filter-row">
                 <span class="filter-label">📇 誕生日カードのデザイン：</span>
                 <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged()">
                     <option value="vertical" selected>縦型1（デザインA・標準）</option>
                     <option value="vertical2">縦型2（デザインB・新着）</option>
-                    <option value="horizontal1">横型1（デザイン1）</option>
-                    <option value="horizontal2">横型2（デザイン2）</option>
-                    <option value="horizontal3">横型3（デザイン3）</option>
-                    <option value="horizontal4">横型4（デザイン4）</option>
+                    <option value="horizontal1">横型1（鶴亀と松）</option>
+                    <option value="horizontal2">横型2（ピンクの花柄）</option>
+                    <option value="horizontal3">横型3（鶴亀・四角枠）</option>
+                    <option value="horizontal4">横型4（鶴亀・金枠）</option>
                 </select>
             </div>
             
