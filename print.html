@@ -110,6 +110,12 @@
         .birthday-card-container-v2 { width: 100%; height: 277mm; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; container-type: inline-size; }
         .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
         .dynamic-photo-v2 { position: absolute; object-fit: cover; z-index: 2; border-radius: 3px; }
+        
+        /* ★ 額縁画像用のスタイルを追加 ★ */
+        .frame-image { position: absolute; z-index: 2; box-shadow: 5px 5px 15px rgba(0,0,0,0.4); }
+        /* 額縁を使う場合は、写真のz-indexを上げて額縁の上に乗せます */
+        .dynamic-photo-v2.with-frame { z-index: 3; }
+
         .dynamic-text-area-v2 { position: absolute; z-index: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         
         .dynamic-name-v2 { font-weight: 900; color: #111; letter-spacing: 2px; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
@@ -140,29 +146,33 @@
         /* ★ 横型共通のベース設定（縦に潰れないように比率を維持） ★ */
         .birthday-card-container-v2.layout-horizontal {
             height: auto;
-            aspect-ratio: 1.414 / 1; /* 横型の比率（A4横など）を強制します */
+            aspect-ratio: 1.414 / 1; 
         }
-        .layout-horizontal .bg-image-layer-v2 { top: -5.5%; left: -5.5%; width: 111%; height: 111%; } /* 背景の白い余白をカット */
+        .layout-horizontal .bg-image-layer-v2 { top: 0%; left: 0%; width: 100%; height: 100%; } 
         .layout-horizontal .dynamic-name-v2 { font-size: 2.3cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal .dynamic-date-v2 { font-size: 2.0cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal .dynamic-age-v2 { font-size: 2.7cqw; }
         .layout-horizontal .dynamic-staff-msg-v2 { font-size: 1.8cqw; margin-top: 0.8cqw; }
 
-        /* ★ 横型1（bg_birthday_h_3.jpg - 鶴亀と松） ★ */
-        .layout-horizontal1 .dynamic-photo-v2 { top: 26.0%; left: 32.5%; width: 34.0%; height: 36.0%; }
-        .layout-horizontal1 .dynamic-text-area-v2 { top: 67.5%; left: 25%; width: 50%; height: 18%; }
+        /* ==========================================
+           🖼️ 新しい横型デザインと「額縁」の位置調整
+           ========================================== */
 
-        /* ★ 横型2（bg_birthday_h_pink.jpg - ピンク花） ★ */
-        .layout-horizontal2 .dynamic-photo-v2 { top: 32.5%; left: 36.5%; width: 27.5%; height: 26.5%; } 
-        .layout-horizontal2 .dynamic-text-area-v2 { top: 66.8%; left: 25%; width: 50%; height: 18%; }
+        /* 横型1（bg_birthday_h_1.jpg - ピンク花） */
+        /* 額縁の位置と大きさ */
+        .layout-horizontal1 .frame-image { top: 22%; left: 35%; width: 30%; aspect-ratio: 1 / 1; }
+        /* 写真の位置と大きさ（額縁の内側に収まるように少し小さく設定） */
+        .layout-horizontal1 .dynamic-photo-v2.with-frame { top: 24.5%; left: 36.8%; width: 26.5%; aspect-ratio: 1 / 1; } 
+        /* 文字を入れる巻物の位置 */
+        .layout-horizontal1 .dynamic-text-area-v2 { top: 67%; left: 25%; width: 50%; height: 18%; }
 
-        /* ★ 横型3（bg_birthday_h_tsuru1.jpg - 鶴亀・和柄四角枠） ★ */
-        .layout-horizontal3 .dynamic-photo-v2 { top: 32.5%; left: 36.0%; width: 28.5%; height: 26.5%; } 
-        .layout-horizontal3 .dynamic-text-area-v2 { top: 68.5%; left: 25%; width: 50%; height: 16%; }
-
-        /* ★ 横型4（bg_birthday_h_tsuru2.jpg - 鶴亀・金枠） ★ */
-        .layout-horizontal4 .dynamic-photo-v2 { top: 32.0%; left: 35.8%; width: 29.0%; height: 27.0%; } 
-        .layout-horizontal4 .dynamic-text-area-v2 { top: 68.5%; left: 25%; width: 50%; height: 16%; }
+        /* 横型2（bg_birthday_h_2.jpg - 鶴亀と松） */
+        /* 額縁の位置と大きさ */
+        .layout-horizontal2 .frame-image { top: 24%; left: 35%; width: 30%; aspect-ratio: 1 / 1; }
+        /* 写真の位置と大きさ（額縁の内側に収まるように少し小さく設定） */
+        .layout-horizontal2 .dynamic-photo-v2.with-frame { top: 26.5%; left: 36.8%; width: 26.5%; aspect-ratio: 1 / 1; } 
+        /* 文字を入れる下の枠の位置 */
+        .layout-horizontal2 .dynamic-text-area-v2 { top: 69%; left: 28%; width: 44%; height: 16%; }
 
         .print-only { display: none; }
 
@@ -296,15 +306,14 @@
                 </select>
             </div>
             
+            <!-- ★ 横型デザインを2つに変更しました ★ -->
             <div class="filter-row">
                 <span class="filter-label">📇 誕生日カードのデザイン：</span>
                 <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged()">
                     <option value="vertical" selected>縦型1（デザインA・標準）</option>
                     <option value="vertical2">縦型2（デザインB・新着）</option>
-                    <option value="horizontal1">横型1（鶴亀と松）</option>
-                    <option value="horizontal2">横型2（ピンクの花柄）</option>
-                    <option value="horizontal3">横型3（鶴亀・四角枠）</option>
-                    <option value="horizontal4">横型4（鶴亀・金枠）</option>
+                    <option value="horizontal1">横型1（ピンクの花柄）</option>
+                    <option value="horizontal2">横型2（鶴亀と松）</option>
                 </select>
             </div>
             
@@ -1054,9 +1063,11 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
-                // ★ 選択されたデザインに応じてクラスと画像を切り替える ★
+                // ★ 選択されたデザインに応じてクラス名と画像を切り替える ★
                 let layoutClass = "";
                 let bgImageSrc = "";
+                let frameHtml = "";
+                let photoClass = "dynamic-photo-v2";
                 
                 if (cardOrientationChoice === "vertical") {
                     layoutClass = "layout-vertical1";
@@ -1065,17 +1076,20 @@
                     layoutClass = "layout-vertical2";
                     bgImageSrc = "bg_birthday_v2.jpg";
                 } else {
-                    layoutClass = "layout-horizontal layout-" + cardOrientationChoice;
+                    layoutClass = "layout-horizontal " + cardOrientationChoice;
                     if(cardOrientationChoice === "horizontal1") bgImageSrc = "bg_birthday_h_1.jpg";
                     if(cardOrientationChoice === "horizontal2") bgImageSrc = "bg_birthday_h_2.jpg";
-                    if(cardOrientationChoice === "horizontal3") bgImageSrc = "bg_birthday_h_3.jpg";
-                    if(cardOrientationChoice === "horizontal4") bgImageSrc = "bg_birthday_h_4.jpg";
+                    
+                    // ★ 横型の場合は「金色の額縁」を追加し、写真のクラスを変更します ★
+                    frameHtml = `<img src="frame_gold.jpg" class="frame-image" alt="額縁">`;
+                    photoClass += " with-frame";
                 }
 
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-container-v2 ${layoutClass}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
-                        <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
+                        ${frameHtml}
+                        <img src="${todayImgUrl}" class="${photoClass}" alt="笑顔の写真">
                         <div class="dynamic-text-area-v2" style="${textAreaStyle}">
                             <div class="dynamic-name-v2">${userName} 様</div>
                             <div class="dynamic-date-v2">${displayDateText}</div>
@@ -1290,9 +1304,11 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
-                // ★ 選択されたデザインに応じてクラスと画像を切り替える ★
+                // ★ 選択されたデザインに応じてクラス名と画像を切り替える ★
                 let layoutClass = "";
                 let bgImageSrc = "";
+                let frameHtml = "";
+                let photoClass = "dynamic-photo-v2";
                 
                 if (cardOrientationChoice === "vertical") {
                     layoutClass = "layout-vertical1";
@@ -1301,17 +1317,20 @@
                     layoutClass = "layout-vertical2";
                     bgImageSrc = "bg_birthday_v2.jpg";
                 } else {
-                    layoutClass = "layout-horizontal layout-" + cardOrientationChoice;
+                    layoutClass = "layout-horizontal " + cardOrientationChoice;
                     if(cardOrientationChoice === "horizontal1") bgImageSrc = "bg_birthday_h_1.jpg";
                     if(cardOrientationChoice === "horizontal2") bgImageSrc = "bg_birthday_h_2.jpg";
-                    if(cardOrientationChoice === "horizontal3") bgImageSrc = "bg_birthday_h_3.jpg";
-                    if(cardOrientationChoice === "horizontal4") bgImageSrc = "bg_birthday_h_4.jpg";
+                    
+                    // ★ 横型の場合は「金色の額縁」を追加し、写真のクラスを変更します ★
+                    frameHtml = `<img src="frame_gold.jpg" class="frame-image" alt="額縁">`;
+                    photoClass += " with-frame";
                 }
 
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-container-v2 ${layoutClass}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
-                        <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
+                        ${frameHtml}
+                        <img src="${todayImgUrl}" class="${photoClass}" alt="笑顔の写真">
                         <div class="dynamic-text-area-v2" style="${textAreaStyle}">
                             <div class="dynamic-name-v2">${data.userName} 様</div>
                             <div class="dynamic-date-v2">${displayDateText}</div>
