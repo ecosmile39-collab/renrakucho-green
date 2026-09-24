@@ -176,9 +176,10 @@
         .layout-horizontal1 .dynamic-age-v2 { font-size: 2.8cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal1 .dynamic-staff-msg-v2 { font-size: 1.4cqw; margin-top: 1.0cqw; }
 
-        /* 横型2（ピンクの花柄と巻物） */
+        /* ★ 横型2（ピンクの花柄と巻物） 位置の修正箇所 ★ */
         .layout-horizontal2 .dynamic-photo-v2 { top: 16%; left: 35%; width: 30%; }
-        .layout-horizontal2 .dynamic-text-area-v2 { top: 60%; left: 26%; width: 48%; height: 30%; padding-top: 1cqw; box-sizing: border-box; }
+        /* topを 60% から 64% に変更し、文字が上に飛び出さないように調整しました */
+        .layout-horizontal2 .dynamic-text-area-v2 { top: 64%; left: 26%; width: 48%; height: 26%; padding-top: 1cqw; box-sizing: border-box; }
         .layout-horizontal2 .dynamic-name-v2 { font-size: 1.6cqw; margin-bottom: 0.3cqw; }
         .layout-horizontal2 .dynamic-date-v2 { font-size: 1.4cqw; margin-bottom: 0.3cqw; }
         .layout-horizontal2 .dynamic-age-v2 { font-size: 2.2cqw; margin-bottom: 0.3cqw; }
@@ -1085,7 +1086,6 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
-                // ★ 選択されたデザインに応じてクラスと画像を切り替える ★
                 let layoutClass = "";
                 let bgImageSrc = "";
                 
@@ -1097,10 +1097,10 @@
                     bgImageSrc = "bg_birthday_v2.jpg";
                 } else if (cardOrientationChoice === "horizontal1") {
                     layoutClass = "layout-horizontal1";
-                    bgImageSrc = "bg_birthday_h_2.jpg"; // 横型1は鶴亀（h_2.jpg）
+                    bgImageSrc = "bg_birthday_h_2.jpg"; 
                 } else if (cardOrientationChoice === "horizontal2") {
                     layoutClass = "layout-horizontal2";
-                    bgImageSrc = "bg_birthday_h_1.jpg"; // 横型2はピンクの花柄（h_1.jpg）
+                    bgImageSrc = "bg_birthday_h_1.jpg"; 
                 }
 
                 cardPageDiv.innerHTML = `
@@ -1333,10 +1333,10 @@
                     bgImageSrc = "bg_birthday_v2.jpg";
                 } else if (cardOrientationChoice === "horizontal1") {
                     layoutClass = "layout-horizontal1";
-                    bgImageSrc = "bg_birthday_h_2.jpg"; // 横型1は鶴亀（h_2.jpg）
+                    bgImageSrc = "bg_birthday_h_2.jpg"; 
                 } else if (cardOrientationChoice === "horizontal2") {
                     layoutClass = "layout-horizontal2";
-                    bgImageSrc = "bg_birthday_h_1.jpg"; // 横型2はピンクの花柄（h_1.jpg）
+                    bgImageSrc = "bg_birthday_h_1.jpg"; 
                 }
 
                 cardPageDiv.innerHTML = `
