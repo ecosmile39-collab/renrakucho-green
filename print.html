@@ -295,18 +295,24 @@
             /* カードのみ印刷では、用紙の印刷領域を通常レイアウトの基準にする */
             body.mode-card-only #printArea {
                 position: relative !important;
-                width: 100% !important;
-                height: 100% !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                min-width: 100vw !important;
+                min-height: 100vh !important;
             }
             body.mode-card-only .print-page {
                 position: relative !important;
-                width: 100% !important;
-                height: 100% !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                min-width: 100vw !important;
+                min-height: 100vh !important;
             }
             body.mode-card-only .birthday-card-container-v2 {
                 position: relative !important;
-                width: 100% !important;
-                height: 100% !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                min-width: 100vw !important;
+                min-height: 100vh !important;
             }
             .birthday-card-container-v2 { 
                 font-size: 2vw !important; 
