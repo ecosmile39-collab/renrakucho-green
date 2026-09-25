@@ -118,7 +118,6 @@
         
         .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
         
-        /* 写真を正方形に保ち、周りをフワッとぼかす設定 */
         .dynamic-photo-v2 { 
             position: absolute; 
             object-fit: cover; 
@@ -136,7 +135,7 @@
         .dynamic-age-v2 { font-weight: 900; color: #b91c1c; line-height: 1.4; text-align: center; white-space: nowrap; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
         .dynamic-staff-msg-v2 { font-weight: 900; color: #111; letter-spacing: 1px; text-align: center; line-height: 1.3; width: 95%; word-break: break-word; text-shadow: 3px 3px 0 #fff, -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 0 3px 0 #fff, 0 -3px 0 #fff, 3px 0 0 #fff, -3px 0 0 #fff, 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff; }
 
-        /* ★ 新しく追加した「金色の祝長寿」用のスタイル ★ */
+        /* 金色の祝長寿文字 */
         .dynamic-chouju-v2 {
             position: absolute;
             width: 100%;
@@ -144,31 +143,21 @@
             font-weight: 900;
             z-index: 4;
             letter-spacing: 0.3em;
-            color: #d4af37; /* 美しいゴールド色 */
+            color: #d4af37; 
             text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff, 2px 4px 6px rgba(0,0,0,0.4);
             display: none; 
-        }
-
-        /* 横型が選ばれたときだけ祝長寿を表示します */
-        .layout-horizontal1 .dynamic-chouju-v2,
-        .layout-horizontal2 .dynamic-chouju-v2 {
-            display: block;
-            /* ★ はみ出さないように、さらに少し下げて 13% にしました ★ */
-            top: 13%; 
-            font-size: 5cqw; /* さらに少し小さく上品に */
-            padding-left: 0.3em; 
         }
 
         /* ==========================================
            🎉 各デザイン個別の位置調整
            ========================================== */
-
+        
         .birthday-card-container-v2.layout-vertical1,
         .birthday-card-container-v2.layout-vertical2 {
             aspect-ratio: 1 / 1.414;
         }
 
-        /* 縦型1（鶴亀と松竹梅） */
+        /* 縦型1 */
         .layout-vertical1 .dynamic-photo-v2 { top: 18%; left: 25%; width: 50%; }
         .layout-vertical1 .dynamic-text-area-v2 { top: 55%; left: 10%; width: 80%; height: 40%; }
         .layout-vertical1 .dynamic-name-v2 { font-size: 5.5cqw; margin-bottom: 1.5cqw; }
@@ -176,7 +165,7 @@
         .layout-vertical1 .dynamic-age-v2 { font-size: 6.5cqw; margin-bottom: 1.5cqw; }
         .layout-vertical1 .dynamic-staff-msg-v2 { font-size: 3.5cqw; margin-top: 3cqw; }
 
-        /* 縦型2（ピンクの花柄と巻物） */
+        /* 縦型2 */
         .layout-vertical2 .dynamic-photo-v2 { top: 16%; left: 25%; width: 50%; }
         .layout-vertical2 .dynamic-text-area-v2 { top: 58%; left: 22%; width: 56%; height: 23%; padding-top: 3cqw; box-sizing: border-box; }
         .layout-vertical2 .dynamic-name-v2 { font-size: 4.0cqw; margin-bottom: 1.5cqw; }
@@ -184,22 +173,33 @@
         .layout-vertical2 .dynamic-age-v2 { font-size: 5.0cqw; margin-bottom: 1.5cqw; }
         .layout-vertical2 .dynamic-staff-msg-v2 { font-size: 2.8cqw; margin-top: 2cqw; }
 
-        /* 横型の設定（A4横の比率） */
+        /* 横型の設定 */
         .birthday-card-container-v2.layout-horizontal1,
         .birthday-card-container-v2.layout-horizontal2 {
             aspect-ratio: 1.414 / 1; 
         }
+
+        /* ★ 祝長寿の文字を安全な位置（上から16%）まで下げ、サイズも少し小さくしました ★ */
+        .layout-horizontal1 .dynamic-chouju-v2,
+        .layout-horizontal2 .dynamic-chouju-v2 {
+            display: block;
+            top: 16%; 
+            font-size: 4.5cqw;
+            padding-left: 0.3em; 
+        }
         
-        /* ★ 横型1（鶴亀と松竹梅） 祝長寿の文字を避けるため、写真をさらに下げました ★ */
-        .layout-horizontal1 .dynamic-photo-v2 { top: 25%; left: 37.5%; width: 25%; }
+        /* ★ 横型1（鶴亀と松竹梅） ★ */
+        /* 祝長寿の文字に合わせて、写真も少し下げました */
+        .layout-horizontal1 .dynamic-photo-v2 { top: 27%; left: 37.5%; width: 25%; }
         .layout-horizontal1 .dynamic-text-area-v2 { top: 62%; left: 15%; width: 70%; height: 35%; }
         .layout-horizontal1 .dynamic-name-v2 { font-size: 2.0cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal1 .dynamic-date-v2 { font-size: 1.8cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal1 .dynamic-age-v2 { font-size: 2.8cqw; margin-bottom: 0.5cqw; }
         .layout-horizontal1 .dynamic-staff-msg-v2 { font-size: 1.4cqw; margin-top: 1.0cqw; }
 
-        /* ★ 横型2（ピンクの花柄と巻物） 祝長寿の文字を避けるため、写真をさらに下げました ★ */
-        .layout-horizontal2 .dynamic-photo-v2 { top: 25%; left: 37.5%; width: 25%; }
+        /* ★ 横型2（ピンクの花柄と巻物） ★ */
+        /* 祝長寿の文字に合わせて、写真も少し下げました */
+        .layout-horizontal2 .dynamic-photo-v2 { top: 27%; left: 37.5%; width: 25%; }
         .layout-horizontal2 .dynamic-text-area-v2 { top: 66%; left: 26%; width: 48%; height: 26%; padding-top: 1cqw; box-sizing: border-box; }
         .layout-horizontal2 .dynamic-name-v2 { font-size: 1.6cqw; margin-bottom: 0.3cqw; }
         .layout-horizontal2 .dynamic-date-v2 { font-size: 1.4cqw; margin-bottom: 0.3cqw; }
@@ -215,17 +215,17 @@
         body.mode-card-only .print-page { padding: 0; min-height: auto; box-shadow: none; margin-bottom: 20px; background: transparent; }
 
         /* ==========================================
-           🖨️ 印刷時専用のスタイル（★余白なし・用紙ピッタリ機能の完全版★）
+           🖨️ 印刷時専用のスタイル（★余白完全排除の強制フルサイズ設定★）
            ========================================== */
         @media print {
             @page { 
-                margin: 0; 
+                margin: 0 !important; /* ブラウザに余白を1ミリも許さない絶対設定 */
                 size: auto; 
             } 
             
             html, body { 
-                width: 100%; 
-                height: 100%; 
+                width: 100% !important; 
+                height: 100% !important; 
                 margin: 0 !important; 
                 padding: 0 !important; 
                 background-color: white; 
@@ -234,6 +234,7 @@
             }
             .no-print { display: none !important; }
             
+            /* 通常モード（連絡帳と印刷） */
             body:not(.mode-card-only) #printArea { max-width: 100% !important; margin: 0 !important; width: 210mm !important; }
             body:not(.mode-card-only) .print-page { 
                 padding: 5mm 12mm 4mm 15mm !important; 
@@ -255,35 +256,32 @@
             }
 
             /* ★★★【カードのみモード】選んだ用紙にピタッと余白なしで収まる設定 ★★★ */
-            body.mode-card-only #printArea { 
-                width: 100% !important; 
+            body.mode-card-only #printArea,
+            body.mode-card-only .print-page,
+            body.mode-card-only .birthday-card-container-v2 {
+                /* position: absolute; でブラウザのレイアウト制限を強制突破し、用紙の四隅にピッタリ貼り付けます */
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
                 height: 100% !important;
-                max-width: none !important; 
-                margin: 0 !important; 
+                margin: 0 !important;
                 padding: 0 !important;
-            }
-            body.mode-card-only .print-page { 
-                width: 100% !important; 
-                height: 100% !important; /* 用紙いっぱいに広げます */
-                padding: 0 !important; 
-                margin: 0 !important; 
-                border: none !important; 
                 box-shadow: none !important;
-                display: block !important;
+                border: none !important;
+                max-width: none !important;
+                max-height: none !important;
+                aspect-ratio: auto !important; /* A4比率などの制限を外し、用紙の形に強制フィット */
+                box-sizing: border-box !important;
                 page-break-inside: avoid !important;
-                page-break-after: avoid !important; 
+                page-break-after: avoid !important;
                 page-break-before: avoid !important;
             }
-            body.mode-card-only .birthday-card-container-v2 {
-                width: 100vw !important; 
-                height: 100vh !important; /* 縦も横もブラウザ領域（用紙）全体を満たします */
-                max-width: 100vw !important;
-                max-height: 100vh !important; 
-                margin: 0 !important; 
-                padding: 0 !important;
-                box-shadow: none !important;
-                aspect-ratio: auto !important; /* 固定比率を解除し、選んだ用紙の比率に強制的に合わせます */
-                box-sizing: border-box !important;
+            
+            body.mode-card-only .bg-image-layer-v2 {
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: fill !important; /* 空白を作らず、用紙全体に背景を引き伸ばす */
             }
 
             .birthday-card-container-v2 { 
@@ -383,7 +381,7 @@
                 <span class="filter-label">📇 誕生日カードのデザイン：</span>
                 <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged()">
                     <option value="vertical1" selected>縦型1（鶴亀と松竹梅）</option>
-                    <option value="vertical2">縦型2（ピンクの花柄）</option>
+                    <option value="vertical2" selected>縦型2（ピンクの花柄）</option>
                     <option value="horizontal1">横型1（鶴亀と松竹梅）</option>
                     <option value="horizontal2">横型2（ピンクの花柄）</option>
                 </select>
@@ -1107,242 +1105,6 @@
                     <div class="text-box family-box">${familyMessageText}</div>
 
                     <div class="section-title">■ 施設でのご様子 (写真・動画)</div>
-                    <div class="media-print-area">${mediaHtml}</div>
-                `;
-
-                container.appendChild(pageDiv);
-                drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
-            }
-
-            // ★ 2枚目（誕生日カード）の出力
-            if (renderCard && bData) {
-                let todayImgUrl = await getCachedUrl(`images/${userName}/image_1.jpg`);
-                if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon;
-
-                let currentYear = parseInt(startDate.substring(0,4));
-                let reiwaYear = currentYear - 2018;
-                let reiwaText = reiwaYear === 1 ? "元" : reiwaYear;
-                let displayDateText = `令和${reiwaText}年 ${bData.month}月${bData.day}日`;
-
-                let cardBgChoice = document.getElementById("selectCardBg").value;
-                let textAreaStyle = cardBgChoice === "white" 
-                    ? "background-color: white; border-radius: 10px; padding: 10px;" 
-                    : "background-color: transparent;";
-
-                let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
-                let staffMsgHtml = cardMessage ? `<div class="dynamic-staff-msg-v2">${cardMessage}</div>` : "";
-
-                let cardPageDiv = document.createElement("div");
-                cardPageDiv.className = "print-page page-break"; 
-                
-                let layoutClass = "";
-                let bgImageSrc = "";
-                
-                if (cardOrientationChoice === "vertical1") {
-                    layoutClass = "layout-vertical1";
-                    bgImageSrc = "bg_birthday.jpg";
-                } else if (cardOrientationChoice === "vertical2") {
-                    layoutClass = "layout-vertical2";
-                    bgImageSrc = "bg_birthday_v2.jpg";
-                } else if (cardOrientationChoice === "horizontal1") {
-                    layoutClass = "layout-horizontal1";
-                    bgImageSrc = "bg_birthday_h_2.jpg"; 
-                } else if (cardOrientationChoice === "horizontal2") {
-                    layoutClass = "layout-horizontal2";
-                    bgImageSrc = "bg_birthday_h_1.jpg"; 
-                }
-
-                cardPageDiv.innerHTML = `
-                    <div class="birthday-card-container-v2 ${layoutClass}">
-                        <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
-                        <div class="dynamic-chouju-v2">祝 長 寿</div>
-                        <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
-                        <div class="dynamic-text-area-v2" style="${textAreaStyle}">
-                            <div class="dynamic-name-v2">${userName} 様</div>
-                            <div class="dynamic-date-v2">${displayDateText}</div>
-                            <div class="dynamic-age-v2">祝 ${bData.age}歳のお誕生日<br>おめでとうございます！</div>
-                            ${staffMsgHtml}
-                        </div>
-                    </div>
-                `;
-                container.appendChild(cardPageDiv);
-            }
-        }
-
-        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard, cardMessage = "", printTarget = "both") {
-            let chartCanvasId = `chart_${index}`;
-            let uData = window.globalUsersData[data.userName];
-            let bData = getBirthdayData(uData ? uData.birthday : null, data.date, false);
-
-            let renderReport = (printTarget === "both" || printTarget === "report_only");
-            let renderCard = (printTarget === "both" || printTarget === "card_only") && shouldPrintCard;
-
-            if (renderReport) {
-                let pageDiv = document.createElement("div");
-                pageDiv.className = "print-page";
-
-                let trainAct = "";
-                if (data.training) trainAct += "【機能訓練】\n" + data.training + "\n\n";
-                if (data.activity) trainAct += "【その他の活動】\n" + data.activity;
-
-                let cloned = [...monthRecords].sort((a, b) => a.date.localeCompare(b.date));
-                let sumTemp = 0, sumPulse = 0, sumBpHigh = 0, sumBpLow = 0, sumSpo2 = 0;
-                let cTemp = 0, cPulse = 0, cBpHigh = 0, cBpLow = 0, cSpo2 = 0;
-                let labels = [], temps = [], bpHighs = [], bpLows = [];
-
-                cloned.forEach(d => {
-                    labels.push(parseInt(d.date.substring(8, 10), 10) + "日");
-                    let t = parseFloat(d.temp1); if (!isNaN(t)) { sumTemp += t; cTemp++; temps.push(t); } else { temps.push(null); }
-                    let p = parseFloat(d.pulse); if (!isNaN(p)) { sumPulse += p; cPulse++; }
-                    let bh = parseFloat(d.bpHigh); if (!isNaN(bh)) { sumBpHigh += bh; cBpHigh++; bpHighs.push(bh); } else { bpHighs.push(null); }
-                    let bl = parseFloat(d.bpLow); if (!isNaN(bl)) { sumBpLow += bl; cBpLow++; bpLows.push(bl); } else { bpLows.push(null); }
-                    let s = parseFloat(d.spo2); if (!isNaN(s)) { sumSpo2 += s; cSpo2++; }
-                });
-
-                let avgTempStr = cTemp > 0 ? (sumTemp / cTemp).toFixed(1) : "--";
-                let avgPulseStr = cPulse > 0 ? Math.round(sumPulse / cPulse) : "--";
-                let avgBpHighStr = cBpHigh > 0 ? Math.round(sumBpHigh / cBpHigh) : "--";
-                let avgBpLowStr = cBpLow > 0 ? Math.round(sumBpLow / cBpLow) : "--";
-                let avgSpo2Str = cSpo2 > 0 ? Math.round(sumSpo2 / cSpo2) : "--";
-
-                let birthdayBannerHtml = "";
-                if (bData) {
-                    if (bData.diffDays === 0) {
-                        birthdayBannerHtml = `<div class="birthday-banner">🎂 本日は ${bData.age}歳のお誕生日です！おめでとうございます！ 🎂</div>`;
-                    } else {
-                        birthdayBannerHtml = `<div class="birthday-banner">🎂 ${bData.month}月${bData.day}日は ${bData.age}歳のお誕生日でしたね。おめでとうございます！ 🎂</div>`;
-                    }
-                }
-
-                let mediaPromises = [];
-                let iCount = data.imageCount || 0;
-                for (let i = 1; i <= iCount; i++) {
-                    mediaPromises.push((async () => {
-                        let url = await getCachedUrl(`images/${data.userName}/image_${i}.jpg`);
-                        if (url) return `<div class="media-print-box"><div class="media-label">📷 本日の写真</div><img src="${url}" class="photo"></div>`;
-                        return "";
-                    })());
-                }
-
-                let vCount = data.videoCount || 0;
-                for (let i = 1; i <= vCount; i++) {
-                    mediaPromises.push((async () => {
-                        let url = await getCachedUrl(`videos/${data.userName}/${data.date}_video_${i}.mp4`);
-                        if (url) {
-                            let qr = new QRious({ value: url, size: 180 });
-                            return `<div class="media-print-box"><div class="media-label">🎥 動画 (QR読取)</div><img src="${qr.toDataURL()}" class="qr"><br></div>`;
-                        }
-                        return "";
-                    })());
-                }
-
-                let mediaResults = await Promise.all(mediaPromises);
-                let mediaHtml = mediaResults.join("");
-
-                let excretionRow = "";
-                if (uData && uData.needExcretion) {
-                    let bStr = "未入力";
-                    if (data.bowel === "なし" || (!data.bowel && data.dsBowel === "なし")) {
-                        bStr = "なし";
-                    } else if (data.bowel === "あり" || (!data.bowel && data.dsBowel === "あり")) {
-                        let details = [];
-                        if (data.bowel1) details.push(`1回目:${data.bowel1}`);
-                        if (data.bowel2) details.push(`2回目:${data.bowel2}`);
-                        if (data.bowel3) details.push(`3回目:${data.bowel3}`);
-                        
-                        if (details.length === 0 && data.bowelCondition) {
-                            details.push(`${data.bowelCount || "回数不明"} ／ ${data.bowelCondition || "状態不明"}`);
-                        }
-
-                        if (details.length > 0) {
-                            bStr = `あり （${details.join('、')}）`;
-                        } else {
-                            bStr = "あり";
-                        }
-                    }
-                    excretionRow = `<tr><th>排泄記録</th><td colspan="7">${bStr}</td></tr>`;
-                }
-
-                let bpStrDay = '--';
-                if (data.bpHigh || data.bpLow) {
-                    let h = data.bpHigh ? data.bpHigh : '';
-                    let l = data.bpLow ? data.bpLow : '';
-                    bpStrDay = h + '/' + l;
-                }
-
-                let mainMessage = data.message ? data.message.replace(/\n/g, '<br>') : '特になし';
-
-                let prPart = "";
-                if (data.facilityPR && data.facilityPR.trim() !== "") {
-                    let prText = data.facilityPR.trim().replace(/\n+/g, '<br>');
-                    prPart = `
-                        <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #999; color: #2b8a3e; font-size: 12px; line-height: 1.25;">
-                            <span style="font-weight: bold;">【${facilityName}からのお知らせ】</span> ${prText}
-                        </div>
-                    `;
-                }
-                
-                let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
-                let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
-
-                pageDiv.innerHTML = `
-                    <div class="punch-mark">▷</div>
-                    <div class="print-header">
-                        <div class="facility-name">${facilityName}</div>
-                        <h1>本日の連絡帳</h1>
-                    </div>
-
-                    ${birthdayBannerHtml}
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <h2 style="font-size: 19px; margin: 0;">お名前： ${data.userName} 様</h2>
-                        <div class="print-date" style="margin: 0;">📓 記録日： ${data.date}</div>
-                    </div>
-
-                    <table class="compact-table">
-                        <tr>
-                            <th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td>
-                            <th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td>
-                            <th width="16%">血圧</th><td width="18%">${bpStrDay}</td>
-                        </tr>
-                        <tr>
-                            <th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td>
-                            <th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td>
-                        </tr>
-                    </table>
-                    <table class="compact-table">
-                        <tr>
-                            <th width="12%">食事(主食)</th><td width="13%">${data.mealMain || '未入力'}</td>
-                            <th width="12%">食事(副食)</th><td width="13%">${data.mealSub || '未入力'}</td>
-                            <th width="10%">水分</th><td width="15%">${data.water || '未入力'}</td>
-                            <th width="10%">口腔ケア</th><td width="15%">${data.oralCare || '未実施'}</td>
-                        </tr>
-                        <tr>
-                            <th>入浴</th><td colspan="3">${data.bath || '未入力'} <span style="font-size:10px;">${data.bathReason ? '(' + data.bathReason + ')' : ''}</span></td>
-                            <th>服薬・処置</th><td colspan="3">${data.medication || 'なし'}</td>
-                        </tr>
-                        ${excretionRow}
-                    </table>
-                    
-                    <div class="compact-avg">
-                        📊 この1ヶ月の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%
-                    </div>
-                    
-                    <div class="chart-container ds-chart">
-                        <canvas id="${chartCanvasId}"></canvas>
-                        <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 120px; object-fit: contain;">
-                    </div>
-                    
-                    <div class="section-title">■ 機能訓練・活動の様子</div>
-                    <div class="text-box">${trainAct || '特になし'}</div>
-                    
-                    <div class="section-title">■ お客様への御連絡事項 <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
-                    ${finalMessageHtml}
-                    
-                    <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
-                    <div class="text-box family-box">${familyMessageText}</div>
-
-                    <div class="section-title">■ 本日のご様子 (写真・動画)</div>
                     <div class="media-print-area">${mediaHtml}</div>
                 `;
 
