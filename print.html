@@ -116,7 +116,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         
-        .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: fill; z-index: 1; }
+        .bg-image-layer-v2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; }
         
         /* 写真を正方形に保ち、周りをフワッとぼかす設定 */
         .dynamic-photo-v2 { 
@@ -289,7 +289,7 @@
                 inset: 0 !important;
                 width: 100% !important;
                 height: 100% !important;
-                object-fit: fill !important; /* 空白を作らず、用紙全体に背景を引き伸ばす */
+                object-fit: contain !important;
             }
 
             /* カードのみ印刷では、用紙の印刷領域を通常レイアウトの基準にする */
