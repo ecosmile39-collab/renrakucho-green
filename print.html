@@ -291,6 +291,23 @@
                 height: 100% !important;
                 object-fit: fill !important; /* 空白を作らず、用紙全体に背景を引き伸ばす */
             }
+
+            /* カードのみ印刷では、用紙の印刷領域を通常レイアウトの基準にする */
+            body.mode-card-only #printArea {
+                position: relative !important;
+                width: 100% !important;
+                height: 100% !important;
+            }
+            body.mode-card-only .print-page {
+                position: relative !important;
+                width: 100% !important;
+                height: 100% !important;
+            }
+            body.mode-card-only .birthday-card-container-v2 {
+                position: relative !important;
+                width: 100% !important;
+                height: 100% !important;
+            }
             .birthday-card-container-v2 { 
                 font-size: 2vw !important; 
             }
