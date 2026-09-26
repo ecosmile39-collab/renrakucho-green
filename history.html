@@ -179,6 +179,12 @@
             document.querySelectorAll(".user-chk").forEach(chk => chk.checked = isChecked);
         };
 
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>'"]/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[char]));
+        }
+
         window.showResults = function() {
             let resultArea = document.getElementById("resultArea");
             resultArea.innerHTML = "";
@@ -211,7 +217,7 @@
                     html += `<table class="history-table">
                         <tr>
                             <th width="12%">日付</th><th width="10%">体温</th><th width="10%">脈拍</th>
-                            <th width="13%">血圧</th><th width="15%">食事(主/副)</th><th width="20%">入浴</th><th width="20%">排泄</th>
+                            <th width="13%">血圧</th><th width="15%">食事(主/副)</th><th width="10%">入浴</th><th width="10%">排泄</th><th width="20%">担当・介護日誌</th>
                         </tr>`;
                     
                     userRecords.forEach(d => {
@@ -228,6 +234,7 @@
                         html += `<tr>
                             <td>${d.date.substring(5).replace('-','/')}</td>
                             <td>${t}℃</td><td>${p}</td><td>${bp}</td><td>${meal}</td><td>${bath}</td><td>${bStr}</td>
+                            <td style="text-align: left; white-space: pre-wrap;">${escapeHtml(d.careStaff || '--')}<br>${escapeHtml(d.careJournal || '記録なし')}</td>
                         </tr>`;
                     });
                     html += `</table>`;
@@ -235,7 +242,7 @@
                     html += `<table class="history-table">
                         <tr>
                             <th width="12%">日付</th><th width="10%">体温</th><th width="10%">脈拍</th>
-                            <th width="13%">血圧</th><th width="25%">食事(朝/昼/夕)</th><th width="15%">入浴</th><th width="15%">排泄</th>
+                            <th width="13%">血圧</th><th width="25%">食事(朝/昼/夕)</th><th width="10%">入浴</th><th width="10%">排泄</th><th width="20%">担当・介護日誌</th>
                         </tr>`;
                     
                     userRecords.forEach(d => {
@@ -252,6 +259,7 @@
                         html += `<tr>
                             <td>${d.date.substring(5).replace('-','/')}</td>
                             <td>${t}℃</td><td>${p}</td><td>${bp}</td><td>${meal}</td><td>${bath}</td><td>${bStr}</td>
+                            <td style="text-align: left; white-space: pre-wrap;">${escapeHtml(d.careStaff || '--')}<br>${escapeHtml(d.careJournal || '記録なし')}</td>
                         </tr>`;
                     });
                     html += `</table>`;
