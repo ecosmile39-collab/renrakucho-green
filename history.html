@@ -72,6 +72,12 @@
             <button class="btn-show" onclick="showResults()">📄 選んだ人のまとめを画面に表示する</button>
         </div>
 
+        <div class="user-select-box" id="staffSelectBox" style="display: none;">
+            <div style="font-weight: bold; color: #2b8a3e; margin-bottom: 10px;">👤 担当スタッフ別の介護日誌</div>
+            <select id="selectCareStaff" class="filter-select"></select>
+            <button class="btn-show" onclick="showStaffResults()">📋 担当者別に介護日誌を表示する</button>
+        </div>
+
         <div id="resultArea" class="result-area"></div>
     </div>
 
@@ -115,6 +121,7 @@
 
         window.clearResults = function() {
             document.getElementById("userSelectBox").style.display = "none";
+            document.getElementById("staffSelectBox").style.display = "none";
             document.getElementById("resultArea").innerHTML = "";
             window.matchedRecordsGlobal = [];
         };
@@ -168,6 +175,11 @@
                     lbl.innerHTML = `<input type="checkbox" class="user-chk" value="${userName}" checked> ${userName} 様`;
                     checkboxesArea.appendChild(lbl);
                 });
+
+                let staffSelect = document.getElementById("selectCareStaff");
+                let uniqueStaff = Array.from(new Set(window.matchedRecordsGlobal.map(record => record.careStaff || "未入力"))).sort();
+                staffSelect.innerHTML = uniqueStaff.map(staff => `<option value="${escapeHtml(staff)}">${escapeHtml(staff)}</option>`).join("");
+                document.getElementById("staffSelectBox").style.display = "block";
 
             } catch (error) {
                 checkboxesArea.innerHTML = "検索エラー: " + error.message;
@@ -268,6 +280,32 @@
                 card.innerHTML = html;
                 resultArea.appendChild(card);
             });
+        };
+
+        window.showStaffResults = function() {
+            let staffName = document.getElementById("selectCareStaff").value;
+            let records = window.matchedRecordsGlobal
+                .filter(record => (record.careStaff || "未入力") === staffName)
+                .sort((a, b) => a.date.localeCompare(b.date) || a.userName.localeCompare(b.userName));
+            let resultArea = document.getElementById("resultArea");
+
+            if (records.length === 0) {
+                resultArea.innerHTML = `<div class="empty-msg">${escapeHtml(staffName)} の介護日誌はありません。</div>`;
+                return;
+            }
+
+            let html = `<div class="user-card"><h3>👤 担当：${escapeHtml(staffName)}（${records.length}件）</h3>`;
+            html += `<table class="history-table">
+                <tr><th width="15%">利用日</th><th width="20%">利用者</th><th>介護日誌</th></tr>`;
+            records.forEach(record => {
+                html += `<tr>
+                    <td>${escapeHtml(record.date || '--')}</td>
+                    <td>${escapeHtml(record.userName || '--')} 様</td>
+                    <td style="text-align: left; white-space: pre-wrap;">${escapeHtml(record.careJournal || '記録なし')}</td>
+                </tr>`;
+            });
+            html += `</table></div>`;
+            resultArea.innerHTML = html;
         };
     </script>
 </body>
