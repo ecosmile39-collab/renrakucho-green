@@ -70,12 +70,14 @@
             </label>
             <div class="user-checkbox-wrapper" id="userCheckboxes"></div>
             <button class="btn-show" onclick="showResults()">📄 選んだ人のまとめを画面に表示する</button>
+            <button class="btn-show" id="printUserResultsBtn" onclick="printUserResults()" style="display: none; background-color: #e65100;">🖨️ 選んだ人のまとめを印刷する</button>
         </div>
 
         <div class="user-select-box" id="staffSelectBox" style="display: none;">
             <div style="font-weight: bold; color: #2b8a3e; margin-bottom: 10px;">👤 担当スタッフ別の介護日誌</div>
             <select id="selectCareStaff" class="filter-select"></select>
             <button class="btn-show" onclick="showStaffResults()">📋 担当者別に介護日誌を表示する</button>
+            <button class="btn-show" id="printStaffResultsBtn" onclick="printStaffResults()" style="display: none; background-color: #e65100;">🖨️ 担当者別の介護日誌を印刷する</button>
         </div>
 
         <div id="resultArea" class="result-area"></div>
@@ -103,6 +105,7 @@
         const db = getFirestore(app);
 
         window.matchedRecordsGlobal = [];
+        let currentHistoryView = "";
 
         window.onload = function() {
             let facilityId = localStorage.getItem("currentFacilityId");
@@ -122,8 +125,11 @@
         window.clearResults = function() {
             document.getElementById("userSelectBox").style.display = "none";
             document.getElementById("staffSelectBox").style.display = "none";
+            document.getElementById("printUserResultsBtn").style.display = "none";
+            document.getElementById("printStaffResultsBtn").style.display = "none";
             document.getElementById("resultArea").innerHTML = "";
             window.matchedRecordsGlobal = [];
+            currentHistoryView = "";
         };
 
         window.searchData = async function() {
@@ -180,6 +186,8 @@
                 let uniqueStaff = Array.from(new Set(window.matchedRecordsGlobal.map(record => record.careStaff || "未入力"))).sort();
                 staffSelect.innerHTML = uniqueStaff.map(staff => `<option value="${escapeHtml(staff)}">${escapeHtml(staff)}</option>`).join("");
                 document.getElementById("staffSelectBox").style.display = "block";
+                document.getElementById("printUserResultsBtn").style.display = "none";
+                document.getElementById("printStaffResultsBtn").style.display = "none";
 
             } catch (error) {
                 checkboxesArea.innerHTML = "検索エラー: " + error.message;
@@ -200,6 +208,9 @@
         window.showResults = function() {
             let resultArea = document.getElementById("resultArea");
             resultArea.innerHTML = "";
+            currentHistoryView = "user";
+            document.getElementById("printUserResultsBtn").style.display = "block";
+            document.getElementById("printStaffResultsBtn").style.display = "none";
             let sType = document.getElementById("selectServiceType").value;
 
             let chks = document.querySelectorAll(".user-chk:checked");
@@ -288,6 +299,9 @@
                 .filter(record => (record.careStaff || "未入力") === staffName)
                 .sort((a, b) => a.date.localeCompare(b.date) || a.userName.localeCompare(b.userName));
             let resultArea = document.getElementById("resultArea");
+            currentHistoryView = "staff";
+            document.getElementById("printUserResultsBtn").style.display = "none";
+            document.getElementById("printStaffResultsBtn").style.display = "block";
 
             if (records.length === 0) {
                 resultArea.innerHTML = `<div class="empty-msg">${escapeHtml(staffName)} の介護日誌はありません。</div>`;
@@ -306,6 +320,40 @@
             });
             html += `</table></div>`;
             resultArea.innerHTML = html;
+        };
+
+        function printHistoryResults(expectedView, title) {
+            if (currentHistoryView !== expectedView || !document.getElementById("resultArea").innerHTML.trim()) {
+                alert("先に表示ボタンを押して一覧を表示してください。");
+                return;
+            }
+
+            let printWindow = window.open("", "_blank");
+            if (!printWindow) {
+                alert("印刷画面を開けませんでした。ポップアップを許可してください。");
+                return;
+            }
+
+            printWindow.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${title}</title><style>
+                body { font-family: sans-serif; color: #333; margin: 20px; }
+                h1 { font-size: 22px; border-bottom: 2px solid #333; padding-bottom: 8px; }
+                h3 { margin: 18px 0 8px; }
+                table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                th, td { border: 1px solid #333; padding: 6px; text-align: center; }
+                th { background: #f0f0f0; }
+                @media print { @page { margin: 10mm; } }
+            </style></head><body><h1>${title}</h1>${document.getElementById("resultArea").innerHTML}</body></html>`);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.onload = () => printWindow.print();
+        }
+
+        window.printUserResults = function() {
+            printHistoryResults("user", "利用者別 過去データ一覧");
+        };
+
+        window.printStaffResults = function() {
+            printHistoryResults("staff", "担当者別 介護日誌一覧");
         };
     </script>
 </body>
