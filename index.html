@@ -214,6 +214,14 @@
         <label>日付</label>
         <input type="date" id="date" onchange="onDateChanged()">
 
+        <div style="margin-top: 15px; padding: 15px; background-color: #fff9db; border: 1px solid #ffd43b; border-radius: 8px;">
+            <h3 style="margin-top: 0; color: #8d6e00;">介護日誌</h3>
+            <label>担当スタッフ</label>
+            <input type="text" id="careStaff" placeholder="例：山田">
+            <label>本日の介護日誌</label>
+            <textarea id="careJournal" rows="5" placeholder="利用中の様子、介助内容、変化、申し送り事項などを入力してください"></textarea>
+        </div>
+
         <datalist id="mealList"><option value="100%"></option><option value="75%"></option><option value="50%"></option><option value="25%"></option><option value="0%"></option></datalist>
         <datalist id="waterList"><option value="0ml"></option><option value="150ml"></option><option value="300ml"></option><option value="500ml"></option><option value="800ml"></option><option value="1000ml"></option><option value="1200ml"></option><option value="1500ml以上"></option></datalist>
         <datalist id="oralCareList"><option value="未実施"></option><option value="歯ブラシ"></option><option value="うがいのみ"></option><option value="スポンジブラシ"></option><option value="義歯洗浄"></option><option value="毎食後実施"></option></datalist>
@@ -1148,6 +1156,8 @@
                 if(document.getElementById("stNightState")) document.getElementById("stNightState").value = d.stNightState || "";
                 if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = d.stDayActivity || "";
 
+                document.getElementById("careStaff").value = d.careStaff || "";
+                document.getElementById("careJournal").value = d.careJournal || "";
                 document.getElementById("message").value = d.message || "";
                 if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = d.familyMessage || "";
                 
@@ -1277,6 +1287,8 @@
                         if(document.getElementById("stNightState")) document.getElementById("stNightState").value = data.stNightState || "";
                         if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = data.stDayActivity || data.activity || "";
 
+                        document.getElementById("careStaff").value = data.careStaff || "";
+                        document.getElementById("careJournal").value = data.careJournal || "";
                         document.getElementById("message").value = data.message || "";
                         if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = data.familyMessage || "";
                         
@@ -1469,6 +1481,8 @@
 
             let data = {
                 facilityId: facilityId, userName: userName, date: date, serviceType: sType,
+                careStaff: document.getElementById("careStaff").value,
+                careJournal: document.getElementById("careJournal").value,
                 message: document.getElementById("message").value,
                 familyMessage: document.getElementById("familyMessage").value,
                 facilityPR: document.getElementById("facilityPR") ? document.getElementById("facilityPR").value : "",
@@ -1786,6 +1800,8 @@
             if(document.getElementById("stBowel2")) document.getElementById("stBowel2").value = "";
             if(document.getElementById("stBowel3")) document.getElementById("stBowel3").value = "";
 
+            document.getElementById("careStaff").value = "";
+            document.getElementById("careJournal").value = "";
             document.getElementById("message").value = "";
             if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = "";
             
