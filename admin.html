@@ -113,6 +113,7 @@
                 let isLocked = facility.status === "locked";
                 return `<div class="facility">
                     <div><div class="facility-name">${escapeHtml(facility.facilityName || facility.id)}</div>
+                    <div style="margin-top: 6px; color: #1971c2; font-size: 14px; font-weight: bold;">🔑 パスワード：${escapeHtml(facility.password || "未設定")}</div>
                     <span class="status ${isLocked ? "locked" : "active"}">${isLocked ? "🔴 利用停止中" : "🟢 利用中"}</span></div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                         <button class="${isLocked ? "unlock" : "lock"}" onclick="toggleFacility('${encodeURIComponent(facility.id)}', ${isLocked})">${isLocked ? "🔓 解除する" : "🔒 ロックする"}</button>
