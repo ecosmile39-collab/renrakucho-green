@@ -61,6 +61,7 @@
             </select>
             <input type="month" id="targetMonth" class="month-input">
             <button class="btn-search" onclick="searchData()">この月のデータを探す</button>
+            <button class="btn-show" id="auditResultsBtn" onclick="showAuditResults()" style="display: none; background-color: #7950f2;">📚 月別監査保存用一覧を表示</button>
         </div>
 
         <div class="user-select-box" id="userSelectBox" style="display: none;">
@@ -78,6 +79,12 @@
             <select id="selectCareStaff" class="filter-select"></select>
             <button class="btn-show" onclick="showStaffResults()">📋 担当者別に介護日誌を表示する</button>
             <button class="btn-show" id="printStaffResultsBtn" onclick="printStaffResults()" style="display: none; background-color: #e65100;">🖨️ 担当者別の介護日誌を印刷する</button>
+        </div>
+
+        <div class="user-select-box" id="auditSelectBox" style="display: none;">
+            <div style="font-weight: bold; color: #7950f2; margin-bottom: 10px;">📚 月別監査保存用一覧</div>
+            <p style="margin: 0; color: #495057;">指定した月の利用記録と介護日誌を、自治体提出・監査保管用にまとめて表示します。</p>
+            <button class="btn-show" id="printAuditResultsBtn" onclick="printAuditResults()" style="background-color: #5f3dc4;">🖨️ 月別監査保存用一覧を印刷・PDF保存</button>
         </div>
 
         <div id="resultArea" class="result-area"></div>
@@ -125,6 +132,8 @@
         window.clearResults = function() {
             document.getElementById("userSelectBox").style.display = "none";
             document.getElementById("staffSelectBox").style.display = "none";
+            document.getElementById("auditSelectBox").style.display = "none";
+            document.getElementById("auditResultsBtn").style.display = "none";
             document.getElementById("printUserResultsBtn").style.display = "none";
             document.getElementById("printStaffResultsBtn").style.display = "none";
             document.getElementById("resultArea").innerHTML = "";
@@ -186,6 +195,7 @@
                 let uniqueStaff = Array.from(new Set(window.matchedRecordsGlobal.map(record => record.careStaff || "未入力"))).sort();
                 staffSelect.innerHTML = uniqueStaff.map(staff => `<option value="${escapeHtml(staff)}">${escapeHtml(staff)}</option>`).join("");
                 document.getElementById("staffSelectBox").style.display = "block";
+                document.getElementById("auditResultsBtn").style.display = "block";
                 document.getElementById("printUserResultsBtn").style.display = "none";
                 document.getElementById("printStaffResultsBtn").style.display = "none";
 
@@ -322,6 +332,43 @@
             resultArea.innerHTML = html;
         };
 
+        window.showAuditResults = function() {
+            let records = [...window.matchedRecordsGlobal].sort((a, b) => a.date.localeCompare(b.date) || a.userName.localeCompare(b.userName));
+            let resultArea = document.getElementById("resultArea");
+            if (records.length === 0) {
+                alert("表示する記録がありません。");
+                return;
+            }
+
+            currentHistoryView = "audit";
+            document.getElementById("printUserResultsBtn").style.display = "none";
+            document.getElementById("printStaffResultsBtn").style.display = "none";
+            document.getElementById("auditSelectBox").style.display = "block";
+
+            let targetMonth = document.getElementById("targetMonth").value;
+            let serviceType = document.getElementById("selectServiceType").value;
+            let html = `<div class="user-card"><h3>📚 月別監査保存用一覧：${escapeHtml(targetMonth)}／${escapeHtml(serviceType)}</h3>`;
+            html += `<table class="history-table" style="font-size: 12px;"><tr>
+                <th>利用日</th><th>利用者</th><th>担当スタッフ</th><th>重要フラグ</th><th>介護日誌</th><th>申し送り内容</th>
+            </tr>`;
+            records.forEach(record => {
+                let flags = [];
+                if (record.handoverRequired) flags.push("要申し送り");
+                if (record.medicalVisit) flags.push("受診対応あり");
+                if (record.conditionChange) flags.push("体調変化");
+                html += `<tr>
+                    <td>${escapeHtml(record.date || "--")}</td>
+                    <td>${escapeHtml(record.userName || "--")} 様</td>
+                    <td>${escapeHtml(record.careStaff || "未入力")}</td>
+                    <td style="color: #c92a2a; font-weight: bold;">${escapeHtml(flags.join("・") || "-")}</td>
+                    <td style="text-align: left; white-space: pre-wrap;">${escapeHtml(record.careJournal || "記録なし")}</td>
+                    <td style="text-align: left; white-space: pre-wrap;">${escapeHtml(record.handoverNote || "-")}</td>
+                </tr>`;
+            });
+            html += `</table></div>`;
+            resultArea.innerHTML = html;
+        };
+
         function printHistoryResults(expectedView, title) {
             if (currentHistoryView !== expectedView || !document.getElementById("resultArea").innerHTML.trim()) {
                 alert("先に表示ボタンを押して一覧を表示してください。");
@@ -341,7 +388,7 @@
                 table { width: 100%; border-collapse: collapse; font-size: 12px; }
                 th, td { border: 1px solid #333; padding: 6px; text-align: center; }
                 th { background: #f0f0f0; }
-                @media print { @page { margin: 10mm; } }
+                @media print { @page { size: landscape; margin: 10mm; } }
             </style></head><body><h1>${title}</h1>${document.getElementById("resultArea").innerHTML}</body></html>`);
             printWindow.document.close();
             printWindow.focus();
@@ -354,6 +401,10 @@
 
         window.printStaffResults = function() {
             printHistoryResults("staff", "担当者別 介護日誌一覧");
+        };
+
+        window.printAuditResults = function() {
+            printHistoryResults("audit", "月別監査保存用一覧");
         };
     </script>
 </body>
