@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理者専用 コントロールパネル</title>
+    <style>
+        body { font-family: sans-serif; background: #f1f3f5; margin: 0; color: #222; }
+        .panel { max-width: 760px; margin: 24px auto; padding: 28px 38px; background: white; border: 1px solid #dee2e6; border-radius: 10px; box-shadow: 0 3px 12px rgba(0,0,0,0.08); box-sizing: border-box; }
+        h1 { color: #d9480f; font-size: 28px; border-bottom: 2px solid #e8590c; padding-bottom: 12px; margin: 0 0 18px; }
+        h2 { font-size: 19px; margin: 22px 0 12px; }
+        .description { line-height: 1.6; color: #495057; }
+        .auth-box { padding: 16px; background: #fff4e6; border: 1px solid #ffa94d; border-radius: 8px; }
+        input { width: 100%; box-sizing: border-box; padding: 11px; border: 1px solid #adb5bd; border-radius: 5px; font-size: 16px; margin: 8px 0; }
+        button { border: 0; border-radius: 5px; padding: 11px 16px; color: white; font-weight: bold; font-size: 15px; cursor: pointer; }
+        button:disabled { opacity: 0.55; cursor: not-allowed; }
+        .primary { background: #e8590c; width: 100%; }
+        .lock { background: #fa5252; }
+        .delete { background: #c92a2a; }
+        .unlock { background: #2f9e44; }
+        .facility { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 0; border-bottom: 1px solid #e9ecef; }
+        .facility-name { font-size: 18px; font-weight: bold; }
+        .status { display: inline-block; margin-top: 7px; padding: 4px 10px; border-radius: 14px; font-size: 13px; font-weight: bold; }
+        .active { color: #087f23; background: #d3f9d8; border: 1px solid #2f9e44; }
+        .locked { color: #c92a2a; background: #ffe3e3; border: 1px solid #fa5252; }
+        .muted { color: #868e96; font-size: 13px; }
+        .error { color: #c92a2a; font-weight: bold; margin: 10px 0 0; }
+        .hidden { display: none; }
+        @media (max-width: 600px) { .panel { margin: 0; min-height: 100vh; border-radius: 0; padding: 22px 18px; } .facility { align-items: flex-start; flex-direction: column; } button.lock, button.unlock { width: 100%; } }
+    </style>
+</head>
+<body>
+    <main class="panel">
+        <h1>👑 管理者専用 コントロールパネル</h1>
+        <p class="description">施設の利用状態を確認し、必要な場合のみロック・解除を行えます。</p>
+
+        <section id="authSection" class="auth-box">
+            <strong>管理者認証</strong>
+            <input type="password" id="adminKey" placeholder="管理者キーを入力">
+            <button class="primary" onclick="authenticateAdmin()">管理者として認証する</button>
+            <p id="authError" class="error"></p>
+        </section>
+
+        <section id="facilitySection" class="hidden">
+            <h2>施設一覧</h2>
+            <p id="loadingMessage" class="muted">施設一覧を読み込んでいます...</p>
+            <div id="facilityList"></div>
+            <p id="facilityError" class="error"></p>
+        </section>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
+            authDomain: "renrakucho-app-6b157.firebaseapp.com",
+            projectId: "renrakucho-app-6b157",
+            storageBucket: "renrakucho-app-6b157.firebasestorage.app",
+            messagingSenderId: "63418706991",
+            appId: "1:63418706991:web:43085ce485d2a3d6302ada"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        const ADMIN_CONTROL_KEY = "ecosma2026-admin";
+        let facilities = [];
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+        }
+
+        window.authenticateAdmin = async function() {
+            let key = document.getElementById("adminKey").value;
+            let error = document.getElementById("authError");
+            error.textContent = "";
+            if (key !== ADMIN_CONTROL_KEY) {
+                error.textContent = "管理者キーが違います。";
+                return;
+            }
+            document.getElementById("authSection").classList.add("hidden");
+            document.getElementById("facilitySection").classList.remove("hidden");
+            await loadFacilities();
+        };
+
+        async function loadFacilities() {
+            let list = document.getElementById("facilityList");
+            let loading = document.getElementById("loadingMessage");
+            let error = document.getElementById("facilityError");
+            try {
+                let snapshot = await getDocs(collection(db, "facilities"));
+                facilities = [];
+                snapshot.forEach(docSnap => facilities.push({ id: docSnap.id, ...docSnap.data() }));
+                facilities.sort((a, b) => a.id.localeCompare(b.id));
+                loading.style.display = "none";
+                renderFacilities();
+            } catch (e) {
+                loading.style.display = "none";
+                error.textContent = "施設一覧を取得できませんでした: " + e.message;
+            }
+        }
+
+        function renderFacilities() {
+            let list = document.getElementById("facilityList");
+            if (facilities.length === 0) {
+                list.innerHTML = '<p class="muted">登録施設はありません。</p>';
+                return;
+            }
+            list.innerHTML = facilities.map(facility => {
+                let isLocked = facility.status === "locked";
+                return `<div class="facility">
+                    <div><div class="facility-name">${escapeHtml(facility.facilityName || facility.id)}</div>
+                    <span class="status ${isLocked ? "locked" : "active"}">${isLocked ? "🔴 利用停止中" : "🟢 利用中"}</span></div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+                        <button class="${isLocked ? "unlock" : "lock"}" onclick="toggleFacility('${encodeURIComponent(facility.id)}', ${isLocked})">${isLocked ? "🔓 解除する" : "🔒 ロックする"}</button>
+                        <button class="delete" onclick="deleteFacility('${encodeURIComponent(facility.id)}')">🗑️ 登録施設を削除</button>
+                    </div>
+                </div>`;
+            }).join("");
+        }
+
+        window.toggleFacility = async function(encodedId, currentlyLocked) {
+            let facilityId = decodeURIComponent(encodedId);
+            let action = currentlyLocked ? "利用停止を解除" : "利用停止";
+            if (!confirm(`${facilityId} を${action}しますか？`)) return;
+            try {
+                await updateDoc(doc(db, "facilities", facilityId), { status: currentlyLocked ? "active" : "locked" });
+                let facility = facilities.find(item => item.id === facilityId);
+                if (facility) facility.status = currentlyLocked ? "active" : "locked";
+                renderFacilities();
+            } catch (e) {
+                document.getElementById("facilityError").textContent = "状態変更に失敗しました: " + e.message;
+            }
+        };
+
+        async function deleteFolderContents(folderPath) {
+            try {
+                let folderRef = ref(storage, folderPath);
+                let result = await listAll(folderRef);
+                await Promise.all(result.items.map(itemRef => deleteObject(itemRef)));
+                await Promise.all(result.prefixes.map(prefixRef => deleteFolderContents(prefixRef.fullPath)));
+            } catch (error) {
+                console.warn("Storage削除を継続できませんでした:", folderPath, error);
+            }
+        }
+
+        window.deleteFacility = async function(encodedId) {
+            let facilityId = decodeURIComponent(encodedId);
+            let facility = facilities.find(item => item.id === facilityId);
+            let facilityName = facility ? (facility.facilityName || facilityId) : facilityId;
+            if (!confirm(`${facilityName} の登録と関連データを削除しますか？`)) return;
+            if (!confirm("最終確認です。利用者名簿、連絡帳記録、写真・動画も元に戻せません。削除しますか？")) return;
+
+            try {
+                let usersRef = collection(db, "facilities", facilityId, "users");
+                let usersSnapshot = await getDocs(usersRef);
+                let userNames = [];
+                usersSnapshot.forEach(userDoc => userNames.push(userDoc.id));
+
+                await Promise.all(userNames.flatMap(userName => [
+                    deleteFolderContents(`images/${userName}`),
+                    deleteFolderContents(`videos/${userName}`),
+                    deleteFolderContents(`faces/${userName}`)
+                ]));
+
+                let recordsSnapshot = await getDocs(collection(db, "facilities", facilityId, "daily_records"));
+                await Promise.all(recordsSnapshot.docs.map(recordDoc => deleteDoc(recordDoc.ref)));
+                await Promise.all(usersSnapshot.docs.map(userDoc => deleteDoc(userDoc.ref)));
+                await deleteDoc(doc(db, "facilities", facilityId));
+
+                facilities = facilities.filter(item => item.id !== facilityId);
+                renderFacilities();
+                document.getElementById("facilityError").textContent = "";
+                alert(`${facilityName} を削除しました。`);
+            } catch (error) {
+                document.getElementById("facilityError").textContent = "施設の削除に失敗しました: " + error.message;
+            }
+        };
+    </script>
+</body>
+</html>
