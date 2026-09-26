@@ -37,6 +37,7 @@
         <section id="authSection" class="auth-box">
             <strong>管理者認証</strong>
             <input type="password" id="adminKey" placeholder="管理者キーを入力">
+            <label style="display: block; margin-top: 6px; font-size: 13px; cursor: pointer;"><input type="checkbox" id="showAdminKey" style="width: auto; margin-right: 6px;"> 管理者キーを表示する</label>
             <button class="primary" onclick="authenticateAdmin()">管理者として認証する</button>
             <p id="authError" class="error"></p>
         </section>
@@ -68,6 +69,10 @@
         const storage = getStorage(app);
         const ADMIN_CONTROL_KEY = "ecosma2026-admin";
         let facilities = [];
+
+        document.getElementById("showAdminKey").addEventListener("change", function() {
+            document.getElementById("adminKey").type = this.checked ? "text" : "password";
+        });
 
         function escapeHtml(value) {
             return String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
