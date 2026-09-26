@@ -133,7 +133,8 @@
 
         <div id="importantHandoverDashboard" style="display: none; margin: 15px 0; padding: 15px; background-color: #fff4e6; border: 2px solid #f08c00; border-radius: 8px;">
             <h3 style="margin: 0 0 10px; color: #c92a2a;">🚨 前日の重要申し送り一覧（朝礼確認用）</h3>
-            <div id="importantHandoverList"></div>
+            <div id="importantHandoverList" class="handover-list"></div>
+            <button type="button" onclick="printImportantHandover()" style="margin-top: 10px; padding: 10px 16px; background-color: #e65100; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">🖨️ 前日の重要申し送り一覧を印刷する</button>
         </div>
 
         <!-- ★ テスト用サポート機能に、画像選択ボタンを追加しました ★ -->
@@ -739,6 +740,31 @@
                 console.error("重要申し送りの取得に失敗しました:", error);
             }
         }
+
+        window.printImportantHandover = function() {
+            let dashboard = document.getElementById("importantHandoverDashboard");
+            let list = document.getElementById("importantHandoverList");
+            if (dashboard.style.display === "none" || !list.innerHTML.trim()) {
+                alert("印刷する重要申し送りがありません。");
+                return;
+            }
+
+            let printWindow = window.open("", "_blank");
+            if (!printWindow) {
+                alert("印刷画面を開けませんでした。ポップアップを許可してください。");
+                return;
+            }
+
+            printWindow.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>前日の重要申し送り一覧</title><style>
+                body { font-family: sans-serif; color: #222; margin: 20mm; }
+                h1 { color: #c92a2a; border-bottom: 2px solid #2b8a3e; padding-bottom: 8px; }
+                .handover-list > div { margin: 10px 0; padding: 12px; border: 1px solid #ddd; border-left: 6px solid #e03131; page-break-inside: avoid; }
+                @media print { @page { margin: 15mm; } }
+            </style></head><body><h1>前日の重要申し送り一覧（朝礼確認用）</h1>${list.innerHTML}</body></html>`);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.onload = () => printWindow.print();
+        };
 
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
