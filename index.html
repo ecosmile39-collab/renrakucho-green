@@ -131,6 +131,11 @@
             </select>
         </div>
 
+        <div id="importantHandoverDashboard" style="display: none; margin: 15px 0; padding: 15px; background-color: #fff4e6; border: 2px solid #f08c00; border-radius: 8px;">
+            <h3 style="margin: 0 0 10px; color: #c92a2a;">🚨 本日の重要申し送り一覧</h3>
+            <div id="importantHandoverList"></div>
+        </div>
+
         <!-- ★ テスト用サポート機能に、画像選択ボタンを追加しました ★ -->
         <div class="test-mode-section" style="margin-bottom: 25px; background-color: #e8f5e9; padding: 15px; border-radius: 8px; border: 2px dashed #4caf50; text-align: center;">
             <h4 style="color: #2e7d32; margin-top: 0; margin-bottom: 8px;">🧪 テスト用サポート機能</h4>
@@ -220,6 +225,13 @@
             <input type="text" id="careStaff" placeholder="例：山田">
             <label>本日の介護日誌</label>
             <textarea id="careJournal" rows="5" placeholder="利用中の様子、介助内容、変化、申し送り事項などを入力してください"></textarea>
+            <div style="margin-top: 12px; padding: 10px; background-color: #fff4e6; border: 1px dashed #f08c00; border-radius: 6px;">
+                <strong style="color: #c92a2a;">重要申し送りフラグ</strong>
+                <label style="display: block; margin-top: 8px;"><input type="checkbox" id="handoverRequired" style="width: auto;"> 要申し送り</label>
+                <label style="display: block;"><input type="checkbox" id="medicalVisit" style="width: auto;"> 受診対応あり</label>
+                <label style="display: block;"><input type="checkbox" id="conditionChange" style="width: auto;"> 体調変化</label>
+                <textarea id="handoverNote" rows="3" placeholder="申し送り内容（本日の重要事項）"></textarea>
+            </div>
         </div>
 
         <datalist id="mealList"><option value="100%"></option><option value="75%"></option><option value="50%"></option><option value="25%"></option><option value="0%"></option></datalist>
@@ -677,6 +689,48 @@
 
         const defaultIcon = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23aaaaaa'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>";
 
+        function escapeDashboardText(value) {
+            return String(value || '').replace(/[&<>'"]/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[char]));
+        }
+
+        async function loadImportantHandoverDashboard(facilityId, targetDate) {
+            let dashboard = document.getElementById("importantHandoverDashboard");
+            let list = document.getElementById("importantHandoverList");
+            try {
+                let recordsRef = collection(db, "facilities", facilityId, "daily_records");
+                let snapshot = await getDocs(query(recordsRef, where("date", "==", targetDate)));
+                let importantRecords = [];
+                snapshot.forEach(docSnap => {
+                    let data = docSnap.data();
+                    if (data.handoverRequired || data.medicalVisit || data.conditionChange) importantRecords.push(data);
+                });
+
+                if (importantRecords.length === 0) {
+                    dashboard.style.display = "none";
+                    list.innerHTML = "";
+                    return;
+                }
+
+                list.innerHTML = importantRecords.map(data => {
+                    let flags = [];
+                    if (data.handoverRequired) flags.push("要申し送り");
+                    if (data.medicalVisit) flags.push("受診対応あり");
+                    if (data.conditionChange) flags.push("体調変化");
+                    return `<div style="margin: 8px 0; padding: 10px; background: white; border-left: 5px solid #e03131; border-radius: 4px;">
+                        <strong>${escapeDashboardText(data.userName)} 様</strong>
+                        <span style="color: #c92a2a; font-weight: bold; margin-left: 8px;">${flags.join("・")}</span>
+                        <div style="margin-top: 5px; white-space: pre-wrap;">${escapeDashboardText(data.handoverNote || "申し送り内容の記入はありません")}</div>
+                        <small>担当：${escapeDashboardText(data.careStaff || "未入力")} ／ ${escapeDashboardText(data.serviceType || "")}</small>
+                    </div>`;
+                }).join("");
+                dashboard.style.display = "block";
+            } catch (error) {
+                console.error("重要申し送りの取得に失敗しました:", error);
+            }
+        }
+
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; } 
@@ -693,6 +747,7 @@
             let month = String(today.getMonth() + 1).padStart(2, '0');
             let day = String(today.getDate()).padStart(2, '0');
             document.getElementById("date").value = `${year}-${month}-${day}`;
+            await loadImportantHandoverDashboard(facilityId, `${year}-${month}-${day}`);
             
             let savedServiceType = localStorage.getItem('currentServiceType');
             if (savedServiceType) {
@@ -1158,6 +1213,10 @@
 
                 document.getElementById("careStaff").value = d.careStaff || "";
                 document.getElementById("careJournal").value = d.careJournal || "";
+                document.getElementById("handoverRequired").checked = !!d.handoverRequired;
+                document.getElementById("medicalVisit").checked = !!d.medicalVisit;
+                document.getElementById("conditionChange").checked = !!d.conditionChange;
+                document.getElementById("handoverNote").value = d.handoverNote || "";
                 document.getElementById("message").value = d.message || "";
                 if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = d.familyMessage || "";
                 
@@ -1289,6 +1348,10 @@
 
                         document.getElementById("careStaff").value = data.careStaff || "";
                         document.getElementById("careJournal").value = data.careJournal || "";
+                        document.getElementById("handoverRequired").checked = !!data.handoverRequired;
+                        document.getElementById("medicalVisit").checked = !!data.medicalVisit;
+                        document.getElementById("conditionChange").checked = !!data.conditionChange;
+                        document.getElementById("handoverNote").value = data.handoverNote || "";
                         document.getElementById("message").value = data.message || "";
                         if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = data.familyMessage || "";
                         
@@ -1483,6 +1546,10 @@
                 facilityId: facilityId, userName: userName, date: date, serviceType: sType,
                 careStaff: document.getElementById("careStaff").value,
                 careJournal: document.getElementById("careJournal").value,
+                handoverRequired: document.getElementById("handoverRequired").checked,
+                medicalVisit: document.getElementById("medicalVisit").checked,
+                conditionChange: document.getElementById("conditionChange").checked,
+                handoverNote: document.getElementById("handoverNote").value,
                 message: document.getElementById("message").value,
                 familyMessage: document.getElementById("familyMessage").value,
                 facilityPR: document.getElementById("facilityPR") ? document.getElementById("facilityPR").value : "",
@@ -1646,6 +1713,7 @@
                 }
 
                 await setDoc(docRef, saveObj);
+                await loadImportantHandoverDashboard(recordData.facilityId, date);
 
                 batchDataList = batchDataList.filter(d => d.userName !== userName);
                 updatePendingListUI();
@@ -1712,6 +1780,8 @@
                 });
 
                 await Promise.all(uploadPromises);
+                let dashboardDate = document.getElementById("date").value;
+                await loadImportantHandoverDashboard(localStorage.getItem("currentFacilityId"), dashboardDate);
                 document.getElementById("loadingOverlay").style.display = "none";
                 showToast("🎉 大成功！全員分のデータが正常に送信されました！", 5000);
                 batchDataList = [];
@@ -1802,6 +1872,10 @@
 
             document.getElementById("careStaff").value = "";
             document.getElementById("careJournal").value = "";
+            document.getElementById("handoverRequired").checked = false;
+            document.getElementById("medicalVisit").checked = false;
+            document.getElementById("conditionChange").checked = false;
+            document.getElementById("handoverNote").value = "";
             document.getElementById("message").value = "";
             if(document.getElementById("familyMessage")) document.getElementById("familyMessage").value = "";
             
