@@ -132,7 +132,7 @@
         </div>
 
         <div id="importantHandoverDashboard" style="display: none; margin: 15px 0; padding: 15px; background-color: #fff4e6; border: 2px solid #f08c00; border-radius: 8px;">
-            <h3 style="margin: 0 0 10px; color: #c92a2a;">🚨 本日の重要申し送り一覧</h3>
+            <h3 style="margin: 0 0 10px; color: #c92a2a;">🚨 前日の重要申し送り一覧（朝礼確認用）</h3>
             <div id="importantHandoverList"></div>
         </div>
 
@@ -695,6 +695,15 @@
             }[char]));
         }
 
+        function getPreviousDateString(dateString) {
+            let date = new Date(`${dateString}T00:00:00`);
+            date.setDate(date.getDate() - 1);
+            let year = date.getFullYear();
+            let month = String(date.getMonth() + 1).padStart(2, '0');
+            let day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         async function loadImportantHandoverDashboard(facilityId, targetDate) {
             let dashboard = document.getElementById("importantHandoverDashboard");
             let list = document.getElementById("importantHandoverList");
@@ -713,7 +722,7 @@
                     return;
                 }
 
-                list.innerHTML = importantRecords.map(data => {
+                list.innerHTML = `<div style="margin-bottom: 8px; color: #7f1d1d; font-size: 13px;">対象日：${escapeDashboardText(targetDate)}</div>` + importantRecords.map(data => {
                     let flags = [];
                     if (data.handoverRequired) flags.push("要申し送り");
                     if (data.medicalVisit) flags.push("受診対応あり");
@@ -747,7 +756,7 @@
             let month = String(today.getMonth() + 1).padStart(2, '0');
             let day = String(today.getDate()).padStart(2, '0');
             document.getElementById("date").value = `${year}-${month}-${day}`;
-            await loadImportantHandoverDashboard(facilityId, `${year}-${month}-${day}`);
+            await loadImportantHandoverDashboard(facilityId, getPreviousDateString(`${year}-${month}-${day}`));
             
             let savedServiceType = localStorage.getItem('currentServiceType');
             if (savedServiceType) {
@@ -1713,7 +1722,7 @@
                 }
 
                 await setDoc(docRef, saveObj);
-                await loadImportantHandoverDashboard(recordData.facilityId, date);
+                await loadImportantHandoverDashboard(recordData.facilityId, getPreviousDateString(date));
 
                 batchDataList = batchDataList.filter(d => d.userName !== userName);
                 updatePendingListUI();
@@ -1780,7 +1789,7 @@
                 });
 
                 await Promise.all(uploadPromises);
-                let dashboardDate = document.getElementById("date").value;
+                let dashboardDate = getPreviousDateString(document.getElementById("date").value);
                 await loadImportantHandoverDashboard(localStorage.getItem("currentFacilityId"), dashboardDate);
                 document.getElementById("loadingOverlay").style.display = "none";
                 showToast("🎉 大成功！全員分のデータが正常に送信されました！", 5000);
