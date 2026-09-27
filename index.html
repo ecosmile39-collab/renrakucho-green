@@ -165,6 +165,9 @@
                 <select id="userName" onchange="onUserSelected()" style="font-size: 17px; font-weight: bold; border: 2px solid #2b8a3e;">
                     <option value="">選択してください</option>
                 </select>
+                <label style="display: block; margin-top: 8px; font-size: 13px; cursor: pointer;">
+                    <input type="checkbox" id="showInactiveUsers" onchange="loadUserNames(localStorage.getItem('currentFacilityId'))" style="width: auto; margin-right: 5px;"> 利用終了者も表示する
+                </label>
             </div>
             <div style="display: flex; flex-direction: column; align-items: center; width: 115px; flex-shrink: 0;">
                 <img id="userFace" src="" alt="顔写真">
@@ -178,8 +181,8 @@
             <button type="button" onclick="openEditUserModal()" style="flex: 1; padding: 9px; background-color: #1c7ed6; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">
                 ✏️ 登録情報の変更
             </button>
-            <button type="button" onclick="deleteSelectedUser()" style="flex: 1; padding: 9px; background-color: #e03131; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">
-                🗑️ この方を名簿から削除
+            <button type="button" id="toggleUserStatusBtn" onclick="toggleSelectedUserStatus()" style="flex: 1; padding: 9px; background-color: #e03131; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">
+                ⏹️ 利用終了にする
             </button>
         </div>
 
@@ -912,10 +915,11 @@
                     window.globalUsersData[name] = data; 
                     
                     let userServices = data.services || (data.serviceType ? [data.serviceType] : ["デイサービス"]);
-                    if (userServices.includes(currentService)) {
+                    let showInactive = document.getElementById("showInactiveUsers").checked;
+                    if (userServices.includes(currentService) && (data.active !== false || showInactive)) {
                         let option = document.createElement("option");
                         option.value = name;
-                        option.textContent = name;
+                        option.textContent = data.active === false ? `${name}（利用終了）` : name;
                         select.appendChild(option);
                         if(data.photoNg === true) globalNgUsers.push(name);
                     }
@@ -1007,6 +1011,10 @@
             
             let userData = window.globalUsersData[userName];
             let ageDisplay = document.getElementById("ageDisplay");
+            let statusButton = document.getElementById("toggleUserStatusBtn");
+            let isActive = !userData || userData.active !== false;
+            statusButton.textContent = isActive ? "⏹️ 利用終了にする" : "✅ 利用を再開する";
+            statusButton.style.backgroundColor = isActive ? "#e03131" : "#2b8a3e";
             
             if (userData && userData.birthday) {
                 let birthY = parseInt(userData.birthday.substring(0, 4));
@@ -1110,34 +1118,31 @@
             }
         };
 
-        window.deleteSelectedUser = async function() {
+        window.toggleSelectedUserStatus = async function() {
             let userName = document.getElementById("userName").value;
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!userName || !facilityId) return;
 
-            let isConfirm = confirm(`⚠️【名簿からの削除確認】\n「${userName} 様」を名簿から削除しますか？\n\n※過去の連絡帳データや写真は金庫の中に残ります。\n※入力画面の選択肢から名前が外れます。`);
+            let isActive = !window.globalUsersData[userName] || window.globalUsersData[userName].active !== false;
+            let actionText = isActive ? "利用終了" : "利用再開";
+            let detailText = isActive
+                ? "通常の利用者選択肢から非表示になります。過去の記録・写真・名簿情報は削除されません。"
+                : "利用者選択肢に再び表示されます。過去の記録も引き続き確認できます。";
+            let isConfirm = confirm(`「${userName} 様」を${actionText}にしますか？\n\n${detailText}`);
             if (!isConfirm) return;
 
-            showToast(`⏳ ${userName} 様を名簿から削除しています...`);
+            showToast(`⏳ ${userName} 様の利用状態を更新しています...`);
 
             try {
                 let userRef = doc(db, "facilities", facilityId, "users", userName);
-                await deleteDoc(userRef);
-
-                let keysToRemove = [];
-                for (let i = 0; i < localStorage.length; i++) {
-                    let key = localStorage.key(i);
-                    if (key && key.includes(`_${userName}`)) { keysToRemove.push(key); }
-                }
-                keysToRemove.forEach(k => localStorage.removeItem(k));
-
-                document.getElementById("userName").value = "";
+                await setDoc(userRef, { active: !isActive }, { merge: true });
                 await loadUserNames(facilityId);
+                document.getElementById("userName").value = "";
                 onUserSelected();
-                showToast(`🗑️ ${userName} 様を名簿から削除しました。`, 4000);
+                showToast(`✅ ${userName} 様を${actionText}にしました。`, 4000);
 
             } catch (err) {
-                alert("削除エラー: " + err.message);
+                alert("利用状態の更新に失敗しました: " + err.message);
             }
         };
 
