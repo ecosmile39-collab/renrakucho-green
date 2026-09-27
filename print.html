@@ -210,6 +210,9 @@
 
         /* 横型2（ピンクの花柄と巻物） */
         .layout-horizontal2 .dynamic-photo-v2 { top: 27%; left: 35%; width: 30%; }
+        .layout-horizontal2.card-two-photos .dynamic-photo-primary-v2 { top: 32%; left: 27%; width: 23%; }
+        .layout-horizontal2.card-two-photos .dynamic-photo-secondary-v2 { display: block; top: 32%; left: 50%; width: 23%; }
+        .layout-horizontal2 .dynamic-photo-secondary-v2 { display: none; }
         .layout-horizontal2 .dynamic-text-area-v2 { top: 66%; left: 26%; width: 48%; height: 26%; padding-top: 1cqw; box-sizing: border-box; }
         .layout-horizontal2 .dynamic-name-v2 { font-size: 1.6cqw; margin-bottom: 0.3cqw; }
         .layout-horizontal2 .dynamic-date-v2 { font-size: 1.4cqw; margin-bottom: 0.3cqw; }
@@ -410,7 +413,7 @@
             
             <div class="filter-row">
                 <span class="filter-label">📇 誕生日カードのデザイン：</span>
-                <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged()">
+                <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged(); updateCardPhotoCountVisibility()">
                     <option value="vertical1" selected>縦型1（鶴亀と松竹梅）</option>
                     <option value="vertical2">縦型2（ピンクの花柄）</option>
                     <option value="horizontal1">横型1（鶴亀と松竹梅）</option>
@@ -589,7 +592,8 @@
                 
                 Array.from(uniqueUsers).sort().forEach((userName) => {
                     let uData = window.globalUsersData[userName];
-                    let bData = getBirthdayData(uData ? uData.birthday : null, endDate, sType === "ショートステイ", startDate, endDate);
+                    let isCardOnly = document.getElementById("selectPrintTarget").value === "card_only";
+                    let bData = getBirthdayData(uData ? uData.birthday : null, endDate, sType === "ショートステイ", startDate, endDate, isCardOnly);
 
                     let div = document.createElement("div");
                     div.className = "user-row";
@@ -790,7 +794,7 @@
             }, 100);
         }
 
-        function getBirthdayData(birthdayStr, targetDateStr, isShortStay = false, startDateStr = null, endDateStr = null) {
+        function getBirthdayData(birthdayStr, targetDateStr, isShortStay = false, startDateStr = null, endDateStr = null, allowAnyDate = false) {
             if (!birthdayStr) return null;
             const bParts = birthdayStr.split("-");
             if (bParts.length < 3) return null;
@@ -811,6 +815,10 @@
                         return { isToday: (diffDays === 0), month: bMonth, day: bDay, age: age, diffDays: diffDays };
                     }
                 }
+                if (allowAnyDate) {
+                    const birthdayPassed = (parseInt(tParts[1], 10) > bMonth) || (parseInt(tParts[1], 10) === bMonth && parseInt(tParts[2], 10) >= bDay);
+                    return { isToday: false, month: bMonth, day: bDay, age: tYear - bYear - (birthdayPassed ? 0 : 1), diffDays: 0 };
+                }
                 return null;
             } else {
                 const sParts = startDateStr.split("-");
@@ -830,13 +838,18 @@
                         return { isToday: false, month: bMonth, day: bDay, age: age, diffDays: diffDaysFromEnd };
                     }
                 }
+                if (allowAnyDate) {
+                    const targetYear = parseInt(eParts[0], 10);
+                    const birthdayPassed = (parseInt(eParts[1], 10) > bMonth) || (parseInt(eParts[1], 10) === bMonth && parseInt(eParts[2], 10) >= bDay);
+                    return { isToday: false, month: bMonth, day: bDay, age: targetYear - bYear - (birthdayPassed ? 0 : 1), diffDays: 0 };
+                }
                 return null;
             }
         }
 
         async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate, shouldPrintCard, cardMessage = "", printTarget = "both") {
             let chartCanvasId = `chart_${index}`;
-            let bData = getBirthdayData(window.globalUsersData[userName] ? window.globalUsersData[userName].birthday : null, null, true, startDate, endDate);
+            let bData = getBirthdayData(window.globalUsersData[userName] ? window.globalUsersData[userName].birthday : null, null, true, startDate, endDate, printTarget === "card_only");
             
             let renderReport = (printTarget === "both" || printTarget === "report_only");
             let renderCard = (printTarget === "both" || printTarget === "card_only") && shouldPrintCard;
@@ -1201,7 +1214,7 @@
         async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard, cardMessage = "", printTarget = "both") {
             let chartCanvasId = `chart_${index}`;
             let uData = window.globalUsersData[data.userName];
-            let bData = getBirthdayData(uData ? uData.birthday : null, data.date, false);
+            let bData = getBirthdayData(uData ? uData.birthday : null, data.date, false, null, null, printTarget === "card_only");
 
             let renderReport = (printTarget === "both" || printTarget === "report_only");
             let renderCard = (printTarget === "both" || printTarget === "card_only") && shouldPrintCard;
