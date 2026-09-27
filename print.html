@@ -420,6 +420,14 @@
                     <option value="horizontal2">横型2（ピンクの花柄）</option>
                 </select>
             </div>
+
+            <div class="filter-row" id="cardPhotoCountRow" style="display: none;">
+                <span class="filter-label">📷 横型2の写真枚数：</span>
+                <select id="cardPhotoCount" class="filter-select" onchange="onCardBgChanged()">
+                    <option value="1" selected>1枚</option>
+                    <option value="2">2枚（左右に表示）</option>
+                </select>
+            </div>
             
             <div class="filter-row">
                 <span class="filter-label">🎨 誕生日カードの文字背景：</span>
@@ -505,6 +513,7 @@
             if (savedServiceType) {
                 document.getElementById("selectServiceType").value = savedServiceType;
             }
+            updateCardPhotoCountVisibility();
             
             await loadUserNames(facilityId);
             onServiceTypeChanged();
@@ -635,6 +644,11 @@
             document.querySelectorAll(".user-chk").forEach(chk => chk.checked = isChecked);
         };
 
+        window.updateCardPhotoCountVisibility = function() {
+            let isHorizontal2 = document.getElementById("selectCardOrientation").value === "horizontal2";
+            document.getElementById("cardPhotoCountRow").style.display = isHorizontal2 ? "flex" : "none";
+        };
+
         window.onCardBgChanged = function() {
             if (document.getElementById("batchPrintBtn").textContent === "🔄 表示を更新する") {
                 loadSelectedAndPrint();
@@ -668,6 +682,9 @@
 
             let cardChks = document.querySelectorAll(".card-chk:checked");
             let printCardUsers = Array.from(cardChks).map(chk => chk.value);
+            let cardPhotoCount = document.getElementById("selectCardOrientation").value === "horizontal2"
+                ? Number(document.getElementById("cardPhotoCount").value)
+                : 1;
             
             let cardMessages = {};
             printCardUsers.forEach(u => {
@@ -719,7 +736,7 @@
                         if(shouldPrintCard) {
                             printCardUsers = printCardUsers.filter(u => u !== userName);
                         }
-                        sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, userPeriodRecords, userMonthRecords, chartIndex++, startDate, endDate, shouldPrintCard, staffMsg, printTarget));
+                        sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, userPeriodRecords, userMonthRecords, chartIndex++, startDate, endDate, shouldPrintCard, staffMsg, printTarget, cardPhotoCount));
                     } else {
                         userPeriodRecords.forEach(data => {
                             let shouldPrintCard = printCardUsers.includes(data.userName);
@@ -727,7 +744,7 @@
                             if(shouldPrintCard) {
                                 printCardUsers = printCardUsers.filter(u => u !== data.userName);
                             }
-                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, shouldPrintCard, staffMsg, printTarget));
+                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, shouldPrintCard, staffMsg, printTarget, cardPhotoCount));
                         });
                     }
                 });
@@ -847,7 +864,7 @@
             }
         }
 
-        async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate, shouldPrintCard, cardMessage = "", printTarget = "both") {
+        async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate, shouldPrintCard, cardMessage = "", printTarget = "both", cardPhotoCount = 1) {
             let chartCanvasId = `chart_${index}`;
             let bData = getBirthdayData(window.globalUsersData[userName] ? window.globalUsersData[userName].birthday : null, null, true, startDate, endDate, printTarget === "card_only");
             
@@ -1158,8 +1175,12 @@
 
             // ★ 2枚目（誕生日カード）の出力
             if (renderCard && bData) {
+                let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
                 let todayImgUrl = await getCachedUrl(`images/${userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon;
+                let secondImgUrl = cardOrientationChoice === "horizontal2" && cardPhotoCount === 2
+                    ? await getCachedUrl(`images/${userName}/image_2.jpg`) || await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon
+                    : "";
 
                 let currentYear = parseInt(startDate.substring(0,4));
                 let reiwaYear = currentYear - 2018;
@@ -1171,7 +1192,6 @@
                     ? "background-color: white; border-radius: 10px; padding: 10px;" 
                     : "background-color: transparent;";
 
-                let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
                 let staffMsgHtml = cardMessage ? `<div class="dynamic-staff-msg-v2">${cardMessage}</div>` : "";
 
                 let cardPageDiv = document.createElement("div");
@@ -1195,10 +1215,11 @@
                 }
 
                 cardPageDiv.innerHTML = `
-                    <div class="birthday-card-container-v2 ${layoutClass}">
+                    <div class="birthday-card-container-v2 ${layoutClass}${secondImgUrl ? " card-two-photos" : ""}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
                         <div class="dynamic-chouju-v2">祝 長 寿</div>
-                        <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
+                        <img src="${todayImgUrl}" class="dynamic-photo-v2 dynamic-photo-primary-v2" alt="利用者の写真1">
+                        ${secondImgUrl ? `<img src="${secondImgUrl}" class="dynamic-photo-v2 dynamic-photo-secondary-v2" alt="利用者の写真2">` : ""}
                         <div class="dynamic-text-area-v2" style="${textAreaStyle}">
                             <div class="dynamic-name-v2">${userName} 様</div>
                             <div class="dynamic-date-v2">${displayDateText}</div>
@@ -1211,7 +1232,7 @@
             }
         }
 
-        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard, cardMessage = "", printTarget = "both") {
+        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard, cardMessage = "", printTarget = "both", cardPhotoCount = 1) {
             let chartCanvasId = `chart_${index}`;
             let uData = window.globalUsersData[data.userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, data.date, false, null, null, printTarget === "card_only");
@@ -1394,8 +1415,12 @@
 
             // ★ 2枚目（誕生日カード）の出力
             if (renderCard && bData) {
+                let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
                 let todayImgUrl = await getCachedUrl(`images/${data.userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon;
+                let secondImgUrl = cardOrientationChoice === "horizontal2" && cardPhotoCount === 2
+                    ? await getCachedUrl(`images/${data.userName}/image_2.jpg`) || await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon
+                    : "";
 
                 let currentYear = parseInt(data.date.substring(0,4));
                 let reiwaYear = currentYear - 2018;
@@ -1407,7 +1432,6 @@
                     ? "background-color: white; border-radius: 10px; padding: 10px;" 
                     : "background-color: transparent;";
 
-                let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
                 let staffMsgHtml = cardMessage ? `<div class="dynamic-staff-msg-v2">${cardMessage}</div>` : "";
 
                 let cardPageDiv = document.createElement("div");
@@ -1432,10 +1456,11 @@
                 }
 
                 cardPageDiv.innerHTML = `
-                    <div class="birthday-card-container-v2 ${layoutClass}">
+                    <div class="birthday-card-container-v2 ${layoutClass}${secondImgUrl ? " card-two-photos" : ""}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
                         <div class="dynamic-chouju-v2">祝 長 寿</div>
-                        <img src="${todayImgUrl}" class="dynamic-photo-v2" alt="笑顔の写真">
+                        <img src="${todayImgUrl}" class="dynamic-photo-v2 dynamic-photo-primary-v2" alt="利用者の写真1">
+                        ${secondImgUrl ? `<img src="${secondImgUrl}" class="dynamic-photo-v2 dynamic-photo-secondary-v2" alt="利用者の写真2">` : ""}
                         <div class="dynamic-text-area-v2" style="${textAreaStyle}">
                             <div class="dynamic-name-v2">${data.userName} 様</div>
                             <div class="dynamic-date-v2">${displayDateText}</div>
