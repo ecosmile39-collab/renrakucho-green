@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>施設名変更 - 連絡帳アプリ</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f8ff; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .box { width: 100%; max-width: 460px; padding: 32px; background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,.1); box-sizing: border-box; }
+        h1 { color: #2b8a3e; font-size: 24px; text-align: center; margin: 0 0 12px; }
+        p { color: #495057; line-height: 1.6; }
+        label { display: block; margin-top: 16px; font-weight: bold; }
+        input { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 6px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        button { width: 100%; padding: 13px; margin-top: 20px; border: 0; border-radius: 5px; color: white; background: #2b8a3e; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .message { display: none; font-weight: bold; }
+        .error { color: #c92a2a; }
+        .success { color: #2b8a3e; }
+        a { display: block; margin-top: 18px; text-align: center; color: #4682b4; font-weight: bold; }
+        .fixed-id { padding: 10px; border-radius: 5px; background: #f1f3f5; font-family: monospace; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <main class="box">
+        <h1>施設名を変更する</h1>
+        <p>施設名だけを変更します。施設IDは変わらないため、利用者・記録・写真・動画はそのまま引き継がれます。</p>
+        <p>施設ID：<span id="facilityId" class="fixed-id"></span></p>
+        <label for="currentPassword">現在のパスワード</label>
+        <input id="currentPassword" type="password" autocomplete="current-password">
+        <label for="newFacilityName">新しい施設名</label>
+        <input id="newFacilityName" type="text" autocomplete="organization" placeholder="新しい施設名">
+        <button type="button" onclick="renameFacility()">施設名を変更する</button>
+        <p id="message" class="message"></p>
+        <a href="index.html">入力画面へ戻る</a>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, doc, getDoc, getDocs, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
+            authDomain: "renrakucho-app-6b157.firebaseapp.com",
+            projectId: "renrakucho-app-6b157",
+            storageBucket: "renrakucho-app-6b157.firebasestorage.app",
+            messagingSenderId: "63418706991",
+            appId: "1:63418706991:web:43085ce485d2a3d6302ada"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const facilityId = localStorage.getItem("currentFacilityId");
+
+        document.getElementById("facilityId").textContent = facilityId || "ログインが必要です";
+        if (!facilityId) window.location.replace("login.html");
+
+        function showMessage(text, type) {
+            const message = document.getElementById("message");
+            message.textContent = text;
+            message.className = `message ${type}`;
+            message.style.display = "block";
+        }
+
+        window.renameFacility = async function() {
+            const currentPassword = document.getElementById("currentPassword").value;
+            const newFacilityName = document.getElementById("newFacilityName").value.trim();
+            if (!currentPassword || !newFacilityName) {
+                showMessage("現在のパスワードと新しい施設名を入力してください。", "error");
+                return;
+            }
+
+            try {
+                const facilityRef = doc(db, "facilities", facilityId);
+                const facilitySnapshot = await getDoc(facilityRef);
+                if (!facilitySnapshot.exists()) {
+                    showMessage("施設情報が見つかりません。管理者にお問い合わせください。", "error");
+                    return;
+                }
+                const facility = facilitySnapshot.data();
+                if (facility.password !== currentPassword) {
+                    showMessage("現在のパスワードが違います。", "error");
+                    return;
+                }
+
+                const nameMatches = await getDocs(query(collection(db, "facilities"), where("facilityName", "==", newFacilityName)));
+                if (nameMatches.docs.some(match => match.id !== facilityId)) {
+                    showMessage("その施設名はすでに使われています。別の名前を入力してください。", "error");
+                    return;
+                }
+
+                await updateDoc(facilityRef, { facilityName: newFacilityName });
+                localStorage.setItem("currentFacilityName", newFacilityName);
+                document.getElementById("currentPassword").value = "";
+                showMessage("施設名を変更しました。施設IDと保存データは変わりません。", "success");
+            } catch (error) {
+                showMessage("変更できませんでした。通信環境を確認してください。エラーコード：" + (error.code || "不明"), "error");
+            }
+        };
+    </script>
+</body>
+</html>

@@ -61,7 +61,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, getDoc, getDocs, addDoc, query, where, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -113,28 +113,40 @@
                 return;
             }
 
-            const docRef = doc(db, "facilities", name);
-
             try {
-                const docSnap = await getDoc(docRef);
+                let facilitySnapshot = await getDocs(query(collection(db, "facilities"), where("facilityName", "==", name)));
+                let facilityDoc = facilitySnapshot.docs[0] || null;
 
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if (data.password !== pass) {
-                        errorMsg.textContent = "パスワードが違います。";
-                        errorMsg.style.display = "block";
-                        return;
+                if (!facilityDoc) {
+                    let legacyDoc = await getDoc(doc(db, "facilities", name));
+                    if (legacyDoc.exists() && (!legacyDoc.data().facilityName || legacyDoc.data().facilityName === name)) {
+                        facilityDoc = legacyDoc;
                     }
-                    if (data.status === "locked") {
-                        errorMsg.textContent = "システムが利用停止中です。管理者にお問い合わせください。";
-                        errorMsg.style.display = "block";
-                        return;
-                    }
-                    loginSuccess(name);
-                } else {
+                }
+
+                if (!facilityDoc) {
                     errorMsg.textContent = "この施設名は登録されていません。はじめての方は下の「新規登録」からお進みください。";
                     errorMsg.style.display = "block";
+                    return;
                 }
+
+                const data = facilityDoc.data();
+                if (facilitySnapshot.size > 1) {
+                    errorMsg.textContent = "同じ施設名が複数登録されています。管理者にお問い合わせください。";
+                    errorMsg.style.display = "block";
+                    return;
+                }
+                if (data.password !== pass) {
+                    errorMsg.textContent = "パスワードが違います。";
+                    errorMsg.style.display = "block";
+                    return;
+                }
+                if (data.status === "locked") {
+                    errorMsg.textContent = "システムが利用停止中です。管理者にお問い合わせください。";
+                    errorMsg.style.display = "block";
+                    return;
+                }
+                loginSuccess(facilityDoc.id, data.facilityName || facilityDoc.id);
             } catch (error) {
                 errorMsg.textContent = "通信エラーが発生しました。インターネット環境を確認してください。";
                 errorMsg.style.display = "block";
@@ -172,20 +184,16 @@
                 return;
             }
 
-            const docRef = doc(db, "facilities", newName);
-
             try {
-                const docSnap = await getDoc(docRef);
-
-                // 3. 施設名の重複チェック
-                if (docSnap.exists()) {
+                let matchingFacilities = await getDocs(query(collection(db, "facilities"), where("facilityName", "==", newName)));
+                let legacyFacility = await getDoc(doc(db, "facilities", newName));
+                if (!matchingFacilities.empty || legacyFacility.exists()) {
                     errorMsg.textContent = "その施設名はすでに使われています。別の名前にしてください。";
                     errorMsg.style.display = "block";
                     return;
                 }
 
-                // 4. メールアドレスや電話番号も一緒に金庫へ保存！
-                await setDoc(docRef, {
+                let facilityRef = await addDoc(collection(db, "facilities"), {
                     facilityName: newName,
                     password: newPass,
                     email: email,
@@ -195,7 +203,7 @@
                 });
                 
                 alert("🎉 施設の登録が完了しました！\nさっそくシステムをご利用いただけます。");
-                loginSuccess(newName);
+                loginSuccess(facilityRef.id, newName);
 
             } catch (error) {
                 errorMsg.textContent = "通信エラーが発生しました。もう一度お試しください。";
@@ -203,8 +211,8 @@
             }
         };
 
-        function loginSuccess(facilityName) {
-            localStorage.setItem("currentFacilityId", facilityName);
+        function loginSuccess(facilityId, facilityName) {
+            localStorage.setItem("currentFacilityId", facilityId);
             localStorage.setItem("currentFacilityName", facilityName);
             localStorage.setItem("isStaffAuthenticated", "true"); 
             window.location.href = "index.html"; 
