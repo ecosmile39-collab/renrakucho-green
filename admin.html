@@ -43,6 +43,21 @@
         </section>
 
         <section id="facilitySection" class="hidden">
+            <div style="margin-top: 20px; padding: 16px; border: 2px dashed #40a94d; background: #eaf7eb; border-radius: 8px;">
+                <h2 style="margin-top: 0; color: #237032;">➕ 新規施設の登録（アカウント発行）</h2>
+                <p>納品する施設の表示名と初期パスワードを登録します。施設IDは自動発行され、施設名を変更しても変わりません。</p>
+                <div style="display: flex; align-items: end; gap: 12px; flex-wrap: wrap;">
+                    <label style="flex: 1; min-width: 200px; margin: 0;">施設名
+                        <input type="text" id="newFacilityName" placeholder="例：さくらデイサービス" style="margin-top: 6px;">
+                    </label>
+                    <label style="flex: 1; min-width: 180px; margin: 0;">初期パスワード
+                        <input type="password" id="newFacilityPassword" placeholder="6文字以上" style="margin-top: 6px;">
+                    </label>
+                    <button type="button" id="registerFacilityBtn" onclick="registerFacility()" style="background: #4caf50; min-width: 120px;">登録する</button>
+                </div>
+                <p id="registerFacilityMessage" class="error"></p>
+            </div>
+
             <div style="margin-top: 20px; padding: 16px; border: 2px solid #c92a2a; background: #fff5f5; border-radius: 8px;">
                 <h2 style="margin-top: 0; color: #c92a2a;">⚠️ テスト用：全施設データを初期化</h2>
                 <p>すべての施設アカウント、利用者名簿、連絡帳・介護日誌、Storage内の写真・動画を削除します。対象件数を先に表示し、プロジェクトIDの入力後に実行します。</p>
@@ -59,7 +74,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-        import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -95,6 +110,50 @@
             document.getElementById("authSection").classList.add("hidden");
             document.getElementById("facilitySection").classList.remove("hidden");
             await loadFacilities();
+        };
+
+        window.registerFacility = async function() {
+            let name = document.getElementById("newFacilityName").value.trim();
+            let password = document.getElementById("newFacilityPassword").value;
+            let message = document.getElementById("registerFacilityMessage");
+            let button = document.getElementById("registerFacilityBtn");
+            message.textContent = "";
+
+            if (!name || !password) {
+                message.textContent = "施設名と初期パスワードを入力してください。";
+                return;
+            }
+            if (password.length < 6) {
+                message.textContent = "初期パスワードは6文字以上にしてください。";
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                let existingNames = await getDocs(query(collection(db, "facilities"), where("facilityName", "==", name)));
+                let legacyDoc = await getDoc(doc(db, "facilities", name));
+                if (!existingNames.empty || legacyDoc.exists()) {
+                    message.textContent = "その施設名はすでに登録されています。別の名前を指定してください。";
+                    return;
+                }
+
+                await addDoc(collection(db, "facilities"), {
+                    facilityName: name,
+                    password,
+                    status: "active",
+                    createdAt: new Date().toISOString()
+                });
+                document.getElementById("newFacilityName").value = "";
+                document.getElementById("newFacilityPassword").value = "";
+                message.style.color = "#237032";
+                message.textContent = `${name} を登録しました。施設一覧に追加しました。`;
+                await loadFacilities();
+            } catch (error) {
+                message.style.color = "#c92a2a";
+                message.textContent = "登録に失敗しました: " + error.message;
+            } finally {
+                button.disabled = false;
+            }
         };
 
         async function loadFacilities() {
