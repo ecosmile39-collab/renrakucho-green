@@ -691,6 +691,23 @@
             });
         }
 
+        async function saveLatestPhotos(userName, imageFiles) {
+            if (imageFiles.length === 0) return;
+
+            await Promise.all(imageFiles.map(async (file, index) => {
+                let imageRef = ref(storage, `images/${userName}/image_${index + 1}.jpg`);
+                let compressedBlob = await compressImage(file);
+                await uploadBytes(imageRef, compressedBlob);
+            }));
+
+            let folderResult = await listAll(ref(storage, `images/${userName}`));
+            let oldPhotoRefs = folderResult.items.filter(itemRef => {
+                let match = itemRef.name.match(/^image_(\d+)\.jpg$/);
+                return match && Number(match[1]) > imageFiles.length;
+            });
+            await Promise.all(oldPhotoRefs.map(itemRef => deleteObject(itemRef)));
+        }
+
         const defaultIcon = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23aaaaaa'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>";
 
         function escapeDashboardText(value) {
@@ -1511,12 +1528,7 @@
             try {
                 let iCount = 0; let vCount = 0;
                 if (imageFiles.length > 0) {
-                    let uploadPromises = imageFiles.map(async (file, idx) => {
-                        let imageRef = ref(storage, `images/${userName}/image_${idx+1}.jpg`);
-                        let compressedBlob = await compressImage(file);
-                        await uploadBytes(imageRef, compressedBlob);
-                    });
-                    await Promise.all(uploadPromises); 
+                    await saveLatestPhotos(userName, imageFiles);
                     iCount = imageFiles.length;
                 }
                 if (videoFiles.length > 0) {
@@ -1737,12 +1749,7 @@
                 delete saveObj.imageFiles; delete saveObj.videoFiles;
 
                 if (recordData.imageFiles && recordData.imageFiles.length > 0) {
-                    let imgPromises = recordData.imageFiles.map(async (iFile, idx) => {
-                        let imageRef = ref(storage, `images/${userName}/image_${idx+1}.jpg`);
-                        let compressedBlob = await compressImage(iFile);
-                        await uploadBytes(imageRef, compressedBlob);
-                    });
-                    await Promise.all(imgPromises);
+                    await saveLatestPhotos(userName, recordData.imageFiles);
                 }
                 if (recordData.videoFiles && recordData.videoFiles.length > 0) {
                     let vidPromises = recordData.videoFiles.map(async (vFile, idx) => {
@@ -1801,12 +1808,7 @@
                     delete saveObj.imageFiles; delete saveObj.videoFiles;
 
                     if (data.imageFiles && data.imageFiles.length > 0) {
-                        let imgPromises = data.imageFiles.map(async (iFile, idx) => {
-                            let imageRef = ref(storage, `images/${data.userName}/image_${idx+1}.jpg`);
-                            let compressedBlob = await compressImage(iFile);
-                            await uploadBytes(imageRef, compressedBlob);
-                        });
-                        await Promise.all(imgPromises);
+                        await saveLatestPhotos(data.userName, data.imageFiles);
                     }
                     if (data.videoFiles && data.videoFiles.length > 0) {
                         let vidPromises = data.videoFiles.map(async (vFile, idx) => {
