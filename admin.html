@@ -169,9 +169,9 @@
                 usersSnapshot.forEach(userDoc => userNames.push(userDoc.id));
 
                 await Promise.all(userNames.flatMap(userName => [
-                    deleteFolderContents(`images/${userName}`),
-                    deleteFolderContents(`videos/${userName}`),
-                    deleteFolderContents(`faces/${userName}`)
+                    deleteFolderContents(`images/${facilityId}/${userName}`),
+                    deleteFolderContents(`videos/${facilityId}/${userName}`),
+                    deleteFolderContents(`faces/${facilityId}/${userName}`)
                 ]));
 
                 let recordsSnapshot = await getDocs(collection(db, "facilities", facilityId, "daily_records"));

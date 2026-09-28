@@ -691,16 +691,16 @@
             });
         }
 
-        async function saveLatestPhotos(userName, imageFiles) {
+        async function saveLatestPhotos(facilityId, userName, imageFiles) {
             if (imageFiles.length === 0) return;
 
             await Promise.all(imageFiles.map(async (file, index) => {
-                let imageRef = ref(storage, `images/${userName}/image_${index + 1}.jpg`);
+                let imageRef = ref(storage, `images/${facilityId}/${userName}/image_${index + 1}.jpg`);
                 let compressedBlob = await compressImage(file);
                 await uploadBytes(imageRef, compressedBlob);
             }));
 
-            let folderResult = await listAll(ref(storage, `images/${userName}`));
+            let folderResult = await listAll(ref(storage, `images/${facilityId}/${userName}`));
             let oldPhotoRefs = folderResult.items.filter(itemRef => {
                 let match = itemRef.name.match(/^image_(\d+)\.jpg$/);
                 return match && Number(match[1]) > imageFiles.length;
@@ -985,10 +985,11 @@
                 await setDoc(userRef, saveData, { merge: true });
 
                 if (newFaceBlob) {
-                    let faceRef = ref(storage, `faces/${newName}/face.jpg`);
+                    let facePath = `faces/${facilityId}/${newName}/face.jpg`;
+                    let faceRef = ref(storage, facePath);
                     await uploadBytes(faceRef, newFaceBlob);
                     let url = await getDownloadURL(faceRef);
-                    mediaUrlCache.set(`faces/${newName}/face.jpg`, url);
+                    mediaUrlCache.set(facePath, url);
                 }
 
                 alert(`🎉 ${newName} 様を名簿に登録しました！`);
@@ -1433,7 +1434,8 @@
             faceImg.style.display = "block";
             faceImg.src = defaultIcon; 
             
-            let path = `faces/${userName}/face.jpg`;
+            let facilityId = localStorage.getItem("currentFacilityId");
+            let path = `faces/${facilityId}/${userName}/face.jpg`;
             if (mediaUrlCache.has(path)) {
                 faceImg.src = mediaUrlCache.get(path);
                 return;
@@ -1451,12 +1453,14 @@
             let file = event.target.files[0];
             if (file) {
                 showToast("⏳ 顔写真を登録しています...");
-                let faceRef = ref(storage, `faces/${userName}/face.jpg`); 
+                let facilityId = localStorage.getItem("currentFacilityId");
+                let facePath = `faces/${facilityId}/${userName}/face.jpg`;
+                let faceRef = ref(storage, facePath);
                 try {
                     let compressedBlob = await compressImage(file);
                     await uploadBytes(faceRef, compressedBlob);
                     let url = await getDownloadURL(faceRef);
-                    mediaUrlCache.set(`faces/${userName}/face.jpg`, url); 
+                    mediaUrlCache.set(facePath, url);
                     document.getElementById("userFace").src = url;
                     showToast(`✅ ${userName} 様の顔写真を更新しました！`);
                 } catch (error) { alert("エラー: " + error.message); }
@@ -1528,12 +1532,12 @@
             try {
                 let iCount = 0; let vCount = 0;
                 if (imageFiles.length > 0) {
-                    await saveLatestPhotos(userName, imageFiles);
+                    await saveLatestPhotos(facilityId, userName, imageFiles);
                     iCount = imageFiles.length;
                 }
                 if (videoFiles.length > 0) {
                     let uploadPromises = videoFiles.map(async (file, idx) => {
-                        let videoRef = ref(storage, `videos/${userName}/${date}_video_${idx+1}.mp4`);
+                        let videoRef = ref(storage, `videos/${facilityId}/${userName}/${date}_video_${idx+1}.mp4`);
                         await uploadBytes(videoRef, file);
                     });
                     await Promise.all(uploadPromises);
@@ -1749,11 +1753,11 @@
                 delete saveObj.imageFiles; delete saveObj.videoFiles;
 
                 if (recordData.imageFiles && recordData.imageFiles.length > 0) {
-                    await saveLatestPhotos(userName, recordData.imageFiles);
+                    await saveLatestPhotos(recordData.facilityId, userName, recordData.imageFiles);
                 }
                 if (recordData.videoFiles && recordData.videoFiles.length > 0) {
                     let vidPromises = recordData.videoFiles.map(async (vFile, idx) => {
-                        let videoRef = ref(storage, `videos/${userName}/${date}_video_${idx+1}.mp4`);
+                        let videoRef = ref(storage, `videos/${recordData.facilityId}/${userName}/${date}_video_${idx+1}.mp4`);
                         await uploadBytes(videoRef, vFile);
                     });
                     await Promise.all(vidPromises);
@@ -1808,11 +1812,11 @@
                     delete saveObj.imageFiles; delete saveObj.videoFiles;
 
                     if (data.imageFiles && data.imageFiles.length > 0) {
-                        await saveLatestPhotos(data.userName, data.imageFiles);
+                        await saveLatestPhotos(data.facilityId, data.userName, data.imageFiles);
                     }
                     if (data.videoFiles && data.videoFiles.length > 0) {
                         let vidPromises = data.videoFiles.map(async (vFile, idx) => {
-                            let videoRef = ref(storage, `videos/${data.userName}/${data.date}_video_${idx+1}.mp4`);
+                            let videoRef = ref(storage, `videos/${data.facilityId}/${data.userName}/${data.date}_video_${idx+1}.mp4`);
                             await uploadBytes(videoRef, vFile);
                         });
                         await Promise.all(vidPromises);
@@ -2056,7 +2060,7 @@
                     } else {
                         faceBlob = await makeDummyImage(p.name, "#2b8a3e");
                     }
-                    await uploadBytes(ref(storage, `faces/${p.name}/face.jpg`), faceBlob);
+                    await uploadBytes(ref(storage, `faces/${facilityId}/${p.name}/face.jpg`), faceBlob);
 
                     // 風景・活動写真をアップロード（選んでいればその写真を、なければ文字画像を）
                     let actBlob;
@@ -2065,7 +2069,7 @@
                     } else {
                         actBlob = await makeDummyImage(`${p.name} 様\n本日のご様子`, "#4682b4");
                     }
-                    await uploadBytes(ref(storage, `images/${p.name}/image_1.jpg`), actBlob);
+                    await uploadBytes(ref(storage, `images/${facilityId}/${p.name}/image_1.jpg`), actBlob);
 
                     let dayPromises = [];
                     for (let dOffset = 0; dOffset < 10; dOffset++) {
@@ -2175,9 +2179,9 @@
                 }
 
                 for (let userName of userNames) {
-                    await deleteFolderContents(`images/${userName}`);
-                    await deleteFolderContents(`videos/${userName}`);
-                    await deleteFolderContents(`faces/${userName}`);
+                    await deleteFolderContents(`images/${facilityId}/${userName}`);
+                    await deleteFolderContents(`videos/${facilityId}/${userName}`);
+                    await deleteFolderContents(`faces/${facilityId}/${userName}`);
                 }
 
                 let recordsSnap = await getDocs(collection(db, "facilities", facilityId, "daily_records"));

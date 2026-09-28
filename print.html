@@ -483,6 +483,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const storage = getStorage(app);
+        const facilityId = localStorage.getItem("currentFacilityId");
 
         let chartInstances = [];
         window.globalUsersData = {};
@@ -1029,7 +1030,7 @@
                     let iCount = d.imageCount || 0;
                     for (let i = 1; i <= iCount; i++) {
                         mediaPromises.push((async () => {
-                            let url = await getCachedUrl(`images/${userName}/image_${i}.jpg`);
+                            let url = await getCachedUrl(`images/${facilityId}/${userName}/image_${i}.jpg`);
                             if (url) return `<div class="media-print-box"><div class="media-label">📷 ${md}</div><img src="${url}" class="photo"></div>`;
                             return "";
                         })());
@@ -1037,7 +1038,7 @@
                     let vCount = d.videoCount || 0;
                     for (let i = 1; i <= vCount; i++) {
                         mediaPromises.push((async () => {
-                            let url = await getCachedUrl(`videos/${userName}/${d.date}_video_${i}.mp4`);
+                            let url = await getCachedUrl(`videos/${facilityId}/${userName}/${d.date}_video_${i}.mp4`);
                             if (url) {
                                 let qr = new QRious({ value: url, size: 150 });
                                 return `<div class="media-print-box"><div class="media-label">🎥 ${md}</div><img src="${qr.toDataURL()}" class="qr"><br></div>`;
@@ -1176,10 +1177,10 @@
             // ★ 2枚目（誕生日カード）の出力
             if (renderCard && bData) {
                 let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
-                let todayImgUrl = await getCachedUrl(`images/${userName}/image_1.jpg`);
-                if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon;
+                let todayImgUrl = await getCachedUrl(`images/${facilityId}/${userName}/image_1.jpg`);
+                if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${facilityId}/${userName}/face.jpg`) || defaultIcon;
                 let secondImgUrl = cardOrientationChoice === "horizontal2" && cardPhotoCount === 2
-                    ? await getCachedUrl(`images/${userName}/image_2.jpg`) || await getCachedUrl(`faces/${userName}/face.jpg`) || defaultIcon
+                    ? await getCachedUrl(`images/${facilityId}/${userName}/image_2.jpg`) || await getCachedUrl(`faces/${facilityId}/${userName}/face.jpg`) || defaultIcon
                     : "";
 
                 let currentYear = parseInt(startDate.substring(0,4));
@@ -1281,7 +1282,7 @@
                 let iCount = data.imageCount || 0;
                 for (let i = 1; i <= iCount; i++) {
                     mediaPromises.push((async () => {
-                        let url = await getCachedUrl(`images/${data.userName}/image_${i}.jpg`);
+                        let url = await getCachedUrl(`images/${facilityId}/${data.userName}/image_${i}.jpg`);
                         if (url) return `<div class="media-print-box"><div class="media-label">📷 本日の写真</div><img src="${url}" class="photo"></div>`;
                         return "";
                     })());
@@ -1290,7 +1291,7 @@
                 let vCount = data.videoCount || 0;
                 for (let i = 1; i <= vCount; i++) {
                     mediaPromises.push((async () => {
-                        let url = await getCachedUrl(`videos/${data.userName}/${data.date}_video_${i}.mp4`);
+                        let url = await getCachedUrl(`videos/${facilityId}/${data.userName}/${data.date}_video_${i}.mp4`);
                         if (url) {
                             let qr = new QRious({ value: url, size: 180 });
                             return `<div class="media-print-box"><div class="media-label">🎥 動画 (QR読取)</div><img src="${qr.toDataURL()}" class="qr"><br></div>`;
@@ -1416,10 +1417,10 @@
             // ★ 2枚目（誕生日カード）の出力
             if (renderCard && bData) {
                 let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
-                let todayImgUrl = await getCachedUrl(`images/${data.userName}/image_1.jpg`);
-                if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon;
+                let todayImgUrl = await getCachedUrl(`images/${facilityId}/${data.userName}/image_1.jpg`);
+                if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${facilityId}/${data.userName}/face.jpg`) || defaultIcon;
                 let secondImgUrl = cardOrientationChoice === "horizontal2" && cardPhotoCount === 2
-                    ? await getCachedUrl(`images/${data.userName}/image_2.jpg`) || await getCachedUrl(`faces/${data.userName}/face.jpg`) || defaultIcon
+                    ? await getCachedUrl(`images/${facilityId}/${data.userName}/image_2.jpg`) || await getCachedUrl(`faces/${facilityId}/${data.userName}/face.jpg`) || defaultIcon
                     : "";
 
                 let currentYear = parseInt(data.date.substring(0,4));
