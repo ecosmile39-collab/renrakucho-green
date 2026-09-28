@@ -612,7 +612,7 @@
             <button type="button" class="pre-upload-btn" onclick="preUploadMedia()">📤 選んだ写真・動画を【今すぐ】金庫に預ける</button>
             
             <div id="preUploadedBadge"></div>
-            <button type="button" id="cancelPreUploadBtn" class="cancel-upload-btn" onclick="clearPreUploadedMedia()">🗑️ お預かりした写真・動画を取り消す</button>
+            <button type="button" id="cancelPreUploadBtn" class="cancel-upload-btn" onclick="clearPreUploadedMedia()">🗑️ 当日分の写真・動画をStorageから削除</button>
         </div>
         <div id="previewArea"></div>
         
@@ -635,7 +635,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, getMetadata, deleteObject, listAll } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -692,13 +692,16 @@
             });
         }
 
-        async function saveLatestPhotos(facilityId, userName, imageFiles) {
+        async function saveLatestPhotos(facilityId, userName, imageFiles, uploadDate) {
             if (imageFiles.length === 0) return;
 
             await Promise.all(imageFiles.map(async (file, index) => {
                 let imageRef = ref(storage, `images/${facilityId}/${userName}/image_${index + 1}.jpg`);
                 let compressedBlob = await compressImage(file);
-                await uploadBytes(imageRef, compressedBlob);
+                await uploadBytes(imageRef, compressedBlob, {
+                    contentType: "image/jpeg",
+                    customMetadata: { uploadedForDate: uploadDate }
+                });
             }));
 
             let folderResult = await listAll(ref(storage, `images/${facilityId}/${userName}`));
@@ -1533,7 +1536,7 @@
             try {
                 let iCount = 0; let vCount = 0;
                 if (imageFiles.length > 0) {
-                    await saveLatestPhotos(facilityId, userName, imageFiles);
+                    await saveLatestPhotos(facilityId, userName, imageFiles, date);
                     iCount = imageFiles.length;
                 }
                 if (videoFiles.length > 0) {
@@ -1577,15 +1580,45 @@
             let sType = document.getElementById("serviceType").value;
             if (!userName || !date || !facilityId) return;
 
-            if (!confirm(`⚠️ 確認\n${userName} 様について、現在お預かりしている写真・動画の記録をすべて取り消しますか？`)) return;
+            if (!confirm(`⚠️ 確認\n${userName} 様の ${date} の写真・動画をStorageから削除します。\nこの日にアップロードされた写真と動画は復元できません。続けますか？`)) return;
 
             try {
+                let imageFolder = await listAll(ref(storage, `images/${facilityId}/${userName}`));
+                let datedImageRefs = [];
+                let untaggedImageRefs = [];
+                for (let imageRef of imageFolder.items) {
+                    if (!/^image_\d+\.jpg$/i.test(imageRef.name)) continue;
+                    try {
+                        let metadata = await getMetadata(imageRef);
+                        if (metadata.customMetadata && metadata.customMetadata.uploadedForDate === date) {
+                            datedImageRefs.push(imageRef);
+                        } else if (!metadata.customMetadata || !metadata.customMetadata.uploadedForDate) {
+                            untaggedImageRefs.push(imageRef);
+                        }
+                    } catch (metadataError) {
+                        console.warn("写真の日付情報を確認できませんでした:", imageRef.fullPath, metadataError);
+                    }
+                }
+
+                let videoFolder = await listAll(ref(storage, `videos/${facilityId}/${userName}`));
+                let datedVideoRefs = videoFolder.items.filter(videoRef => videoRef.name.startsWith(`${date}_video_`));
+                await Promise.all([
+                    ...datedImageRefs.map(imageRef => deleteObject(imageRef)),
+                    ...datedVideoRefs.map(videoRef => deleteObject(videoRef))
+                ]);
+
                 let docRef = doc(db, "facilities", facilityId, "daily_records", `${date}_${sType}_${userName}`);
-                await setDoc(docRef, { hasImage: false, imageCount: 0, videoCount: 0 }, { merge: true });
-                window.currentImageCount = 0; window.currentVideoCount = 0;
-                document.getElementById("preUploadedBadge").style.display = "none";
-                document.getElementById("cancelPreUploadBtn").style.display = "none";
-                showToast(`✅ ${userName} 様のお預かり記録を取り消しました。`);
+                let imageCount = untaggedImageRefs.length > 0 ? window.currentImageCount : 0;
+                await setDoc(docRef, { hasImage: imageCount > 0, imageCount, hasVideo: false, videoCount: 0 }, { merge: true });
+                window.currentImageCount = imageCount;
+                window.currentVideoCount = 0;
+                if (imageCount === 0) {
+                    document.getElementById("preUploadedBadge").style.display = "none";
+                    document.getElementById("cancelPreUploadBtn").style.display = "none";
+                } else {
+                    document.getElementById("preUploadedBadge").innerHTML = "⚠️ 動画は削除しましたが、日付情報のない旧形式の写真は安全のため残しています。管理者による確認が必要です。";
+                }
+                showToast(`✅ ${userName} 様の ${date} 分の写真・動画をStorageから削除しました。`);
             } catch (error) { alert("エラー: " + error.message); }
         };
 
@@ -1754,7 +1787,7 @@
                 delete saveObj.imageFiles; delete saveObj.videoFiles;
 
                 if (recordData.imageFiles && recordData.imageFiles.length > 0) {
-                    await saveLatestPhotos(recordData.facilityId, userName, recordData.imageFiles);
+                    await saveLatestPhotos(recordData.facilityId, userName, recordData.imageFiles, date);
                 }
                 if (recordData.videoFiles && recordData.videoFiles.length > 0) {
                     let vidPromises = recordData.videoFiles.map(async (vFile, idx) => {
@@ -1813,7 +1846,7 @@
                     delete saveObj.imageFiles; delete saveObj.videoFiles;
 
                     if (data.imageFiles && data.imageFiles.length > 0) {
-                        await saveLatestPhotos(data.facilityId, data.userName, data.imageFiles);
+                        await saveLatestPhotos(data.facilityId, data.userName, data.imageFiles, data.date);
                     }
                     if (data.videoFiles && data.videoFiles.length > 0) {
                         let vidPromises = data.videoFiles.map(async (vFile, idx) => {
@@ -2070,7 +2103,10 @@
                     } else {
                         actBlob = await makeDummyImage(`${p.name} 様\n本日のご様子`, "#4682b4");
                     }
-                    await uploadBytes(ref(storage, `images/${facilityId}/${p.name}/image_1.jpg`), actBlob);
+                    await uploadBytes(ref(storage, `images/${facilityId}/${p.name}/image_1.jpg`), actBlob, {
+                        contentType: "image/jpeg",
+                        customMetadata: { uploadedForDate: date }
+                    });
 
                     let dayPromises = [];
                     for (let dOffset = 0; dOffset < 10; dOffset++) {
@@ -2156,36 +2192,65 @@
         window.deleteAllData = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) return;
-
-            if (!confirm("⚠️ 警告 ⚠️\n今ログインしている施設の「連絡帳の記録」「写真・動画」「名簿」をすべて削除します。\n本当によろしいですか？")) return;
-            if (!confirm("最終確認です。\n削除したデータは二度と戻りません。\n本当に削除して初期状態に戻しますか？")) return;
-
-            document.getElementById("loadingOverlay").style.display = "flex";
-            document.getElementById("loadingText").innerHTML = "施設のデータを安全に削除しています...<br>画面を閉じずにお待ちください";
-
+            let facilityName = localStorage.getItem("currentFacilityName") || facilityId;
             try {
                 let usersSnap = await getDocs(collection(db, "facilities", facilityId, "users"));
                 let userNames = [];
                 usersSnap.forEach(docSnap => { userNames.push(docSnap.id); });
 
-                async function deleteFolderContents(folderPath) {
-                    try {
-                        let folderRef = ref(storage, folderPath);
-                        let res = await listAll(folderRef);
-                        let promises = [];
-                        res.items.forEach((itemRef) => promises.push(deleteObject(itemRef)));
-                        for (let prefixRef of res.prefixes) { await deleteFolderContents(prefixRef.fullPath); }
-                        await Promise.all(promises);
-                    } catch (e) {}
-                }
-
-                for (let userName of userNames) {
-                    await deleteFolderContents(`images/${facilityId}/${userName}`);
-                    await deleteFolderContents(`videos/${facilityId}/${userName}`);
-                    await deleteFolderContents(`faces/${facilityId}/${userName}`);
+                let allFacilitiesSnap = await getDocs(collection(db, "facilities"));
+                let otherFacilityUserNames = new Set();
+                for (let otherFacility of allFacilitiesSnap.docs) {
+                    if (otherFacility.id === facilityId) continue;
+                    let otherUsersSnap = await getDocs(collection(db, "facilities", otherFacility.id, "users"));
+                    otherUsersSnap.forEach(userDoc => otherFacilityUserNames.add(userDoc.id));
                 }
 
                 let recordsSnap = await getDocs(collection(db, "facilities", facilityId, "daily_records"));
+                let scopedStorageFiles = [];
+                let legacyStorageFiles = [];
+                let ambiguousLegacyFiles = [];
+
+                async function listFolderFiles(folderPath) {
+                    let result = await listAll(ref(storage, folderPath));
+                    let files = [...result.items];
+                    for (let prefixRef of result.prefixes) files.push(...await listFolderFiles(prefixRef.fullPath));
+                    return files;
+                }
+
+                let scopedLists = await Promise.all([
+                    listFolderFiles(`images/${facilityId}`),
+                    listFolderFiles(`videos/${facilityId}`),
+                    listFolderFiles(`faces/${facilityId}`)
+                ]);
+                scopedStorageFiles.push(...scopedLists.flat());
+
+                for (let userName of userNames) {
+                    let legacyLists = await Promise.all([
+                        listFolderFiles(`images/${userName}`),
+                        listFolderFiles(`videos/${userName}`),
+                        listFolderFiles(`faces/${userName}`)
+                    ]);
+                    if (otherFacilityUserNames.has(userName)) ambiguousLegacyFiles.push(...legacyLists.flat());
+                    else legacyStorageFiles.push(...legacyLists.flat());
+                }
+
+                let preview = `削除対象を確認してください。\n\n施設：${facilityName}\n利用者名簿：${usersSnap.size}件\n連絡帳・介護日誌：${recordsSnap.size}件\n施設ID付き写真・動画・顔写真：${scopedStorageFiles.length}ファイル\n旧保存先（現行名簿から施設を照合できたもの）：${legacyStorageFiles.length}ファイル\n旧保存先（他施設と共有の可能性があるため対象外）：${ambiguousLegacyFiles.length}ファイル\n\n旧保存先には、過去に名簿から削除された利用者など所属先を特定できないファイルが残っている場合があります。この件数は旧ファイル全体や孤立ファイルを保証するものではありません。\nStorageのSoft Delete・世代管理設定はこの画面では確認できません。Firebase Consoleで確認してください。\n\nテスト用データを削除して初期状態に戻しますか？`;
+                if (ambiguousLegacyFiles.length > 0) {
+                    alert(`${preview}\n\n旧保存先に他施設と共有の可能性があるファイルがあります。誤削除防止のため処理を中止しました。旧ファイルを確認してから再実行してください。`);
+                    return;
+                }
+                if (!confirm(preview)) return;
+                if (prompt(`最終確認：施設名「${facilityName}」を入力してください。`) !== facilityName) return;
+
+                document.getElementById("loadingOverlay").style.display = "flex";
+                document.getElementById("loadingText").innerHTML = "Storageの写真・動画を削除しています...<br>画面を閉じずにお待ちください";
+                let storageDeleteResults = await Promise.allSettled([...scopedStorageFiles, ...legacyStorageFiles].map(fileRef => deleteObject(fileRef)));
+                let failedStorageDeletes = storageDeleteResults.filter(result => result.status === "rejected");
+                if (failedStorageDeletes.length > 0) {
+                    throw new Error(`${failedStorageDeletes.length}個のStorageファイルを削除できませんでした。Firestoreデータは削除していません。`);
+                }
+
                 let deletePromises = [];
                 recordsSnap.forEach(docSnap => deletePromises.push(deleteDoc(docSnap.ref)));
                 await Promise.all(deletePromises);
@@ -2202,7 +2267,7 @@
                 keysToRemove.forEach(k => localStorage.removeItem(k));
 
                 document.getElementById("loadingOverlay").style.display = "none";
-                alert("大成功！この施設のデータだけを安全に削除し、初期状態に戻しました。");
+                alert(`削除完了：利用者${usersSnap.size}件、記録${recordsSnap.size}件、Storageファイル${scopedStorageFiles.length + legacyStorageFiles.length}件を削除しました。\nSoft Delete等の設定によっては、物理的な完全消去や容量反映に時間がかかる場合があります。`);
                 window.location.reload();
 
             } catch (error) {
