@@ -43,17 +43,13 @@
             <div class="description">
                 ダウンロード時にお渡しした<b>「秘密の合言葉」</b>、お好きな施設名・パスワード、および<b>緊急時のサポート連絡先</b>を入力してください。
             </div>
-            
             <input type="text" id="secretKey" placeholder="🔑 秘密の合言葉">
             <input type="text" id="regFacilityName" placeholder="📛 好きな施設名（ログインIDになります）">
             <input type="password" id="regPassword" placeholder="🔐 好きなパスワード">
-            
             <input type="email" id="regEmail" placeholder="✉️ 連絡先メールアドレス（必須・緊急時連絡用）">
             <input type="tel" id="regPhone" placeholder="📞 ご連絡先お電話番号（任意）">
-            
             <button class="btn-register" onclick="handleRegister()">合言葉でシステムに登録する</button>
             <p id="registerError" class="error">エラーメッセージ</p>
-            
             <a onclick="toggleForm('login')" class="link">⬅️ 登録済みの方（ログイン）に戻る</a>
         </div>
 
@@ -73,7 +69,6 @@
         };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-
         const SECRET_KEY = "ecosma2026";
 
         let adminClickCount = 0;
@@ -116,26 +111,21 @@
             try {
                 let facilitySnapshot = await getDocs(query(collection(db, "facilities"), where("facilityName", "==", name)));
                 let facilityDoc = facilitySnapshot.docs[0] || null;
-
                 if (!facilityDoc) {
                     let legacyDoc = await getDoc(doc(db, "facilities", name));
-                    if (legacyDoc.exists() && (!legacyDoc.data().facilityName || legacyDoc.data().facilityName === name)) {
-                        facilityDoc = legacyDoc;
-                    }
+                    if (legacyDoc.exists() && (!legacyDoc.data().facilityName || legacyDoc.data().facilityName === name)) facilityDoc = legacyDoc;
                 }
-
                 if (!facilityDoc) {
                     errorMsg.textContent = "この施設名は登録されていません。はじめての方は下の「新規登録」からお進みください。";
                     errorMsg.style.display = "block";
                     return;
                 }
-
-                const data = facilityDoc.data();
                 if (facilitySnapshot.size > 1) {
                     errorMsg.textContent = "同じ施設名が複数登録されています。管理者にお問い合わせください。";
                     errorMsg.style.display = "block";
                     return;
                 }
+                const data = facilityDoc.data();
                 if (data.password !== pass) {
                     errorMsg.textContent = "パスワードが違います。";
                     errorMsg.style.display = "block";
@@ -153,7 +143,6 @@
             }
         };
 
-        // 合言葉でシステムに登録する処理
         window.handleRegister = async function() {
             const secretInput = document.getElementById("secretKey").value.trim();
             const newName = document.getElementById("regFacilityName").value.trim();
@@ -162,49 +151,39 @@
             const phone = document.getElementById("regPhone").value.trim();
             const errorMsg = document.getElementById("registerError");
             errorMsg.style.display = "none";
-
-            // 1. 入力モレのチェック（メールアドレスも必須にします）
             if (!secretInput || !newName || !newPass || !email) {
                 errorMsg.textContent = "合言葉、施設名、パスワード、メールアドレスは必須です。";
                 errorMsg.style.display = "block";
                 return;
             }
-
-            // 簡単なメールアドレス形式チェック
             if (!email.includes("@")) {
                 errorMsg.textContent = "正しいメールアドレスを入力してください。";
                 errorMsg.style.display = "block";
                 return;
             }
-
-            // 2. 合言葉のチェック
             if (secretInput !== SECRET_KEY) {
                 errorMsg.textContent = "秘密の合言葉が間違っています。";
                 errorMsg.style.display = "block";
                 return;
             }
-
             try {
                 let matchingFacilities = await getDocs(query(collection(db, "facilities"), where("facilityName", "==", newName)));
                 let legacyFacility = await getDoc(doc(db, "facilities", newName));
                 if (!matchingFacilities.empty || legacyFacility.exists()) {
-                    errorMsg.textContent = "その施設名はすでに使われています。別の名前にしてください。";
+                    errorMsg.textContent = "この施設名は既に使用されています。別の施設名に変更してから、もう一度「合言葉でシステムに登録する」を押してください。";
                     errorMsg.style.display = "block";
                     return;
                 }
-
                 let facilityRef = await addDoc(collection(db, "facilities"), {
                     facilityName: newName,
                     password: newPass,
-                    email: email,
+                    email,
                     phone: phone || "未登録",
                     status: "active",
                     createdAt: new Date().toISOString()
                 });
-                
-                alert("🎉 施設の登録が完了しました！\nさっそくシステムをご利用いただけます。");
+                alert("施設の登録が完了しました。");
                 loginSuccess(facilityRef.id, newName);
-
             } catch (error) {
                 errorMsg.textContent = "通信エラーが発生しました。もう一度お試しください。";
                 errorMsg.style.display = "block";

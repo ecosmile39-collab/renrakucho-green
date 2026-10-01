@@ -136,7 +136,6 @@
                     message.textContent = "その施設名はすでに登録されています。別の名前を指定してください。";
                     return;
                 }
-
                 await addDoc(collection(db, "facilities"), {
                     facilityName: name,
                     password,
@@ -194,10 +193,8 @@
         window.previewAndDeleteAllProjectData = async function() {
             let button = document.getElementById("resetAllDataBtn");
             let status = document.getElementById("projectResetStatus");
-            if (!confirm("全施設のテストデータを削除する画面を開きます。施設アカウントも削除され、各施設はログインできなくなります。続けますか？")) return;
-
             button.disabled = true;
-            status.textContent = "FirestoreとStorageの削除対象を数えています...";
+            status.textContent = "削除対象をサーバー側で集計しています...";
             try {
                 let facilitiesSnapshot = await getDocs(collection(db, "facilities"));
                 let userDocs = [];
@@ -210,9 +207,8 @@
                     userDocs.push(...usersSnapshot.docs);
                     recordDocs.push(...recordsSnapshot.docs);
                 }
-
                 let storageFiles = await listAllStorageFiles(ref(storage));
-                let preview = `削除対象の集計結果：\n\nFirebaseプロジェクト：${firebaseConfig.projectId}\n施設アカウント：${facilitiesSnapshot.size}件\n利用者名簿：${userDocs.length}件\n連絡帳・介護日誌：${recordDocs.length}件\nStorage内の全ファイル（旧・新保存先を含む）：${storageFiles.length}件\n\nこの操作は全施設に影響し、元に戻せません。Soft Delete・世代管理が有効な場合は、Storageの物理削除や容量反映が遅れることがあります。\n\nこの件数で最終確認へ進みますか？`;
+                let preview = `削除対象の集計結果：\n\nFirebaseプロジェクト：${firebaseConfig.projectId}\n施設アカウント：${facilitiesSnapshot.size}件\n利用者名簿：${userDocs.length}件\n連絡帳・介護日誌：${recordDocs.length}件\nStorage内の全ファイル：${storageFiles.length}件\n\n全施設に影響し、元に戻せません。Storageの保持設定によっては物理消去や容量反映が遅れることがあります。\n\nこの件数で最終確認へ進みますか？`;
                 if (!confirm(preview)) {
                     status.textContent = "削除はキャンセルされました。データは変更していません。";
                     return;
@@ -224,8 +220,7 @@
 
                 status.textContent = "Storageの全ファイルを削除しています...画面を閉じないでください。";
                 await deleteInBatches(storageFiles, fileRef => deleteObject(fileRef));
-
-                status.textContent = "Firestoreの記録と利用者を削除しています...";
+                status.textContent = "Firestoreの記録を削除しています...";
                 await deleteInBatches(recordDocs, recordDoc => deleteDoc(recordDoc.ref));
                 await deleteInBatches(userDocs, userDoc => deleteDoc(userDoc.ref));
                 await deleteInBatches(facilitiesSnapshot.docs, facilityDoc => deleteDoc(facilityDoc.ref));
@@ -234,7 +229,7 @@
                 renderFacilities();
                 document.getElementById("loadingMessage").style.display = "none";
                 status.textContent = "";
-                alert(`削除完了：施設${facilitiesSnapshot.size}件、利用者${userDocs.length}件、記録${recordDocs.length}件、Storageファイル${storageFiles.length}件を削除しました。\nSoft Delete等の保持設定により、物理消去や容量反映に時間がかかる場合があります。`);
+                alert(`削除完了：施設${facilitiesSnapshot.size}件、利用者${userDocs.length}件、記録${recordDocs.length}件、Storageファイル${storageFiles.length}件を削除しました。`);
             } catch (error) {
                 status.textContent = "削除を完了できませんでした: " + error.message;
             } finally {
@@ -278,67 +273,24 @@
             }
         };
 
-        async function listFolderFiles(folderPath) {
-            let result = await listAll(ref(storage, folderPath));
-            let files = [...result.items];
-            for (let prefixRef of result.prefixes) {
-                files.push(...await listFolderFiles(prefixRef.fullPath));
-            }
-            return files;
-        }
-
         window.deleteFacility = async function(encodedId) {
             let facilityId = decodeURIComponent(encodedId);
             let facility = facilities.find(item => item.id === facilityId);
             let facilityName = facility ? (facility.facilityName || facilityId) : facilityId;
             try {
-                let usersRef = collection(db, "facilities", facilityId, "users");
-                let usersSnapshot = await getDocs(usersRef);
-                let userNames = [];
-                usersSnapshot.forEach(userDoc => userNames.push(userDoc.id));
-
+                let usersSnapshot = await getDocs(collection(db, "facilities", facilityId, "users"));
                 let recordsSnapshot = await getDocs(collection(db, "facilities", facilityId, "daily_records"));
-                let allFacilitiesSnapshot = await getDocs(collection(db, "facilities"));
-                let otherFacilityUserNames = new Set();
-                for (let otherFacility of allFacilitiesSnapshot.docs) {
-                    if (otherFacility.id === facilityId) continue;
-                    let otherUsers = await getDocs(collection(db, "facilities", otherFacility.id, "users"));
-                    otherUsers.forEach(userDoc => otherFacilityUserNames.add(userDoc.id));
-                }
-
-                let scopedFileRefs = [];
-                let legacyFileRefs = [];
-                let ambiguousLegacyFiles = [];
-                let scopedFiles = await Promise.all([
+                let scopedLists = await Promise.all([
                     listFolderFiles(`images/${facilityId}`),
                     listFolderFiles(`videos/${facilityId}`),
                     listFolderFiles(`faces/${facilityId}`)
                 ]);
-                scopedFileRefs.push(...scopedFiles.flat());
-                for (let userName of userNames) {
-                    let legacyFiles = await Promise.all([
-                        listFolderFiles(`images/${userName}`),
-                        listFolderFiles(`videos/${userName}`),
-                        listFolderFiles(`faces/${userName}`)
-                    ]);
-                    if (otherFacilityUserNames.has(userName)) ambiguousLegacyFiles.push(...legacyFiles.flat());
-                    else legacyFileRefs.push(...legacyFiles.flat());
-                }
-
-                let preview = `削除対象を確認してください。\n\n施設：${facilityName}\n利用者名簿：${usersSnapshot.size}件\n連絡帳・介護日誌：${recordsSnapshot.size}件\n施設ID付き写真・動画・顔写真：${scopedFileRefs.length}ファイル\n旧保存先（現行名簿から施設を照合できたもの）：${legacyFileRefs.length}ファイル\n旧保存先（他施設と共有の可能性があるため対象外）：${ambiguousLegacyFiles.length}ファイル\n\n旧保存先には、過去に名簿から削除された利用者など所属先を特定できないファイルが残っている場合があります。この件数は旧ファイル全体や孤立ファイルを保証するものではありません。\nStorageのSoft Delete・世代管理設定はこの画面では確認できません。完全消去や容量反映が遅れる場合があります。Firebase Consoleで設定を確認してください。\n\nこの施設と関連データを削除します。続けますか？`;
-                if (ambiguousLegacyFiles.length > 0) {
-                    alert(`${preview}\n\n旧保存先に他施設と共有の可能性があるファイルがあります。誤削除防止のため削除を中止しました。旧ファイルを確認・整理してから再実行してください。`);
-                    return;
-                }
+                let scopedFiles = scopedLists.flat();
+                let preview = `削除対象を確認してください。\n\n施設：${facilityName}\n利用者名簿：${usersSnapshot.size}件\n連絡帳・介護日誌：${recordsSnapshot.size}件\n施設ID付きメディア：${scopedFiles.length}ファイル\n\n施設情報と関連データを削除します。Soft Delete設定によっては物理削除が遅れる場合があります。続けますか？`;
                 if (!confirm(preview)) return;
                 if (prompt(`最終確認：施設名「${facilityName}」を入力してください。`) !== facilityName) return;
-
-                let storageDeleteResults = await Promise.allSettled([...scopedFileRefs, ...legacyFileRefs].map(fileRef => deleteObject(fileRef)));
-                let failedStorageDeletes = storageDeleteResults.filter(result => result.status === "rejected");
-                if (failedStorageDeletes.length > 0) {
-                    throw new Error(`${failedStorageDeletes.length}個のStorageファイルを削除できませんでした。Firestoreの施設情報は削除していません。`);
-                }
-
+                let storageResults = await Promise.allSettled(scopedFiles.map(fileRef => deleteObject(fileRef)));
+                if (storageResults.some(result => result.status === "rejected")) throw new Error("Storage内の一部ファイルを削除できませんでした。Firestoreデータは残しています。");
                 await Promise.all(recordsSnapshot.docs.map(recordDoc => deleteDoc(recordDoc.ref)));
                 await Promise.all(usersSnapshot.docs.map(userDoc => deleteDoc(userDoc.ref)));
                 await deleteDoc(doc(db, "facilities", facilityId));

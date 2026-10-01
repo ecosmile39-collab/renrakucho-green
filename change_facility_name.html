@@ -74,24 +74,25 @@
                     showMessage("施設情報が見つかりません。管理者にお問い合わせください。", "error");
                     return;
                 }
-                const facility = facilitySnapshot.data();
-                if (facility.password !== currentPassword) {
+                if (facilitySnapshot.data().password !== currentPassword) {
                     showMessage("現在のパスワードが違います。", "error");
                     return;
                 }
-
                 const nameMatches = await getDocs(query(collection(db, "facilities"), where("facilityName", "==", newFacilityName)));
                 if (nameMatches.docs.some(match => match.id !== facilityId)) {
                     showMessage("その施設名はすでに使われています。別の名前を入力してください。", "error");
                     return;
                 }
-
                 await updateDoc(facilityRef, { facilityName: newFacilityName });
                 localStorage.setItem("currentFacilityName", newFacilityName);
                 document.getElementById("currentPassword").value = "";
                 showMessage("施設名を変更しました。施設IDと保存データは変わりません。", "success");
             } catch (error) {
-                showMessage("変更できませんでした。通信環境を確認してください。エラーコード：" + (error.code || "不明"), "error");
+                if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
+                    showMessage("現在のパスワードが違います。", "error");
+                } else {
+                    showMessage("変更できませんでした。エラーコード：" + (error.code || "不明"), "error");
+                }
             }
         };
     </script>
