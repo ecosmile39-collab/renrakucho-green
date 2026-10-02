@@ -134,7 +134,7 @@
         
         <div style="text-align: right; margin-bottom: 15px;">
             <a id="unsubscribeActionLink" href="unsubscribe.html" style="display: none; margin-right: 12px; color: #c92a2a; font-weight: bold;">🗑️ システムを退会する</a>
-            <a href="change_facility_name.html" style="margin-right: 12px; color: #2b8a3e; font-weight: bold;">🏢 施設名変更</a>
+            <a id="changeFacilityNameActionLink" href="change_facility_name.html" style="display: none; margin-right: 12px; color: #2b8a3e; font-weight: bold;">🏢 施設名変更</a>
             <a href="print.html" style="margin-right: 12px; color: #2b8a3e; font-weight: bold;">➡ 印刷画面へ</a>
             <a href="history.html" style="color: #2b8a3e; font-weight: bold;">➡ 過去データ一覧へ</a>
         </div>
@@ -260,7 +260,7 @@
         <datalist id="oralCareList"><option value="未実施"></option><option value="歯ブラシ"></option><option value="うがいのみ"></option><option value="スポンジブラシ"></option><option value="義歯洗浄"></option><option value="毎食後実施"></option></datalist>
 
         <div id="dayServiceSection">
-            <h3>バイタル（デイサービス）</h3>
+            <h3 id="dayVitalsTitle" style="cursor: pointer; user-select: none;">バイタル（デイサービス）</h3>
             <div class="flex-box">
                 <div>
                     <label>体温(来所時) ℃ <span id="temp1Alert" style="color: red; font-size: 18px; margin-left: 5px;"></span></label>
@@ -383,7 +383,7 @@
 
         <div id="shortStaySection" style="display: none;">
             
-            <h3 style="color: #2b8a3e; border-color: #2b8a3e;">バイタル（入所時・退所時）</h3>
+            <h3 id="shortStayVitalsTitle" style="color: #2b8a3e; border-color: #2b8a3e; cursor: pointer; user-select: none;">バイタル（入所時・退所時）</h3>
             
             <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ced4da;">
                 <h4 style="margin: 0 0 10px 0; color: #2b8a3e;">【入所時】</h4>
@@ -870,6 +870,21 @@
                     window.showToast("🔑 パスワード変更リンクを表示しました", 3000);
                     passwordChangeClickCount = 0;
                 }
+            });
+
+            let facilityNameClickCount = 0;
+            let facilityNameClickTimer = null;
+            ["dayVitalsTitle", "shortStayVitalsTitle"].forEach(titleId => {
+                document.getElementById(titleId).addEventListener("click", function() {
+                    facilityNameClickCount++;
+                    clearTimeout(facilityNameClickTimer);
+                    facilityNameClickTimer = setTimeout(() => { facilityNameClickCount = 0; }, 6000);
+                    if (facilityNameClickCount === 5) {
+                        document.getElementById("changeFacilityNameActionLink").style.display = "inline";
+                        window.showToast("🏢 施設名変更リンクを表示しました", 3000);
+                        facilityNameClickCount = 0;
+                    }
+                });
             });
             
             const listInputs = document.querySelectorAll('input[list]');
