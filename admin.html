@@ -293,10 +293,16 @@
             list.innerHTML = cancellationRecords.map(record => {
                 let statusText = record.status === "completed" ? "退会完了" : record.status === "processing" ? "処理中" : "削除未完了";
                 let statusColor = record.status === "completed" ? "#087f23" : record.status === "processing" ? "#b26a00" : "#c92a2a";
+                let requestedAt = record.requestedAt ? new Intl.DateTimeFormat("ja-JP", {
+                    timeZone: "Asia/Tokyo",
+                    year: "numeric", month: "2-digit", day: "2-digit",
+                    hour: "2-digit", minute: "2-digit", second: "2-digit",
+                    hourCycle: "h23"
+                }).format(new Date(record.requestedAt)) : "日時不明";
                 return `<div style="padding: 12px; margin: 8px 0; border: 1px solid #dee2e6; border-left: 4px solid ${statusColor}; border-radius: 5px;">
                     <strong>${escapeHtml(record.facilityName || record.facilityId || record.id)}</strong>
                     <span style="margin-left: 8px; color: ${statusColor}; font-weight: bold;">${statusText}</span>
-                    <div class="muted">申請：${escapeHtml(record.requestedAt || "日時不明")} ／ 利用者：${Number(record.usersCount) || 0}件 ／ 記録：${Number(record.recordsCount) || 0}件 ／ Storage：${Number(record.storageFilesCount) || 0}ファイル</div>
+                    <div class="muted">申請（日本時間）：${escapeHtml(requestedAt)} ／ 利用者：${Number(record.usersCount) || 0}件 ／ 記録：${Number(record.recordsCount) || 0}件 ／ Storage：${Number(record.storageFilesCount) || 0}ファイル</div>
                     ${record.errorMessage ? `<div class="error">${escapeHtml(record.errorMessage)}</div>` : ""}
                 </div>`;
             }).join("");
