@@ -240,7 +240,8 @@
         <input type="date" id="date" onchange="onDateChanged()">
 
         <div style="margin-top: 15px; padding: 15px; background-color: #fff9db; border: 1px solid #ffd43b; border-radius: 8px;">
-            <h3 style="margin-top: 0; color: #8d6e00;">介護日誌</h3>
+            <h3 id="careJournalTitle" style="margin-top: 0; color: #8d6e00; cursor: pointer; user-select: none;">介護日誌</h3>
+            <a id="changePasswordActionLink" href="change_password.html" style="display: none; margin: 0 0 12px; color: #4682b4; font-weight: bold;">🔑 パスワード変更画面を開く</a>
             <label>担当スタッフ</label>
             <input type="text" id="careStaff" placeholder="例：山田">
             <label>本日の介護日誌</label>
@@ -855,6 +856,19 @@
                     document.getElementById("unsubscribeActionLink").style.display = "inline";
                     window.showToast("🗑️ 退会手続きへのリンクを表示しました", 3000);
                     unsubscribeClickCount = 0;
+                }
+            });
+
+            let passwordChangeClickCount = 0;
+            let passwordChangeClickTimer = null;
+            document.getElementById("careJournalTitle").addEventListener("click", function() {
+                passwordChangeClickCount++;
+                clearTimeout(passwordChangeClickTimer);
+                passwordChangeClickTimer = setTimeout(() => { passwordChangeClickCount = 0; }, 3000);
+                if (passwordChangeClickCount === 5) {
+                    document.getElementById("changePasswordActionLink").style.display = "inline-block";
+                    window.showToast("🔑 パスワード変更リンクを表示しました", 3000);
+                    passwordChangeClickCount = 0;
                 }
             });
             
