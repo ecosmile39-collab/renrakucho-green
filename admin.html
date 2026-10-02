@@ -68,7 +68,10 @@
             <p id="loadingMessage" class="muted">施設一覧を読み込んでいます...</p>
             <div id="facilityList"></div>
             <p id="facilityError" class="error"></p>
-            <h2>退会履歴</h2>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                <h2 style="margin-bottom: 12px;">退会履歴</h2>
+                <button type="button" onclick="refreshAdminLists()" style="background: #4682b4;">履歴を更新</button>
+            </div>
             <p class="muted">退会処理の状態と削除対象件数を表示します。パスワードや介護記録本文は保存しません。</p>
             <div id="cancellationList"></div>
         </section>
@@ -181,6 +184,12 @@
                 error.textContent = "施設一覧を取得できませんでした: " + e.message;
             }
         }
+
+        window.refreshAdminLists = async function() {
+            document.getElementById("loadingMessage").style.display = "block";
+            document.getElementById("loadingMessage").textContent = "施設一覧と退会履歴を更新しています...";
+            await loadFacilities();
+        };
 
         async function listAllStorageFiles(folderRef) {
             let result = await listAll(folderRef);
