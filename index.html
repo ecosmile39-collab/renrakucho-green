@@ -864,7 +864,7 @@
             document.getElementById("careJournalTitle").addEventListener("click", function() {
                 passwordChangeClickCount++;
                 clearTimeout(passwordChangeClickTimer);
-                passwordChangeClickTimer = setTimeout(() => { passwordChangeClickCount = 0; }, 3000);
+                passwordChangeClickTimer = setTimeout(() => { passwordChangeClickCount = 0; }, 6000);
                 if (passwordChangeClickCount === 5) {
                     document.getElementById("changePasswordActionLink").style.display = "inline-block";
                     window.showToast("🔑 パスワード変更リンクを表示しました", 3000);
