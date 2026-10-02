@@ -27,7 +27,7 @@
     <div class="login-box">
         
         <div id="loginFormArea">
-            <h2>施設ログイン</h2>
+            <h2 id="loginTitle" style="cursor: pointer; user-select: none;">施設ログイン</h2>
             <input type="text" id="loginFacilityName" placeholder="施設名（例：さくらデイサービス）">
             <input type="password" id="loginPassword" placeholder="パスワード">
             <button onclick="handleLogin()">ログインする</button>
@@ -35,6 +35,7 @@
             
             <a onclick="toggleForm('register')" class="link">🌱 はじめて利用する方（新規登録）はこちら</a>
             <a href="change_password.html" class="link" style="font-size: 13px; margin-top: 15px; color: #888;">🔑 パスワードを変更する場合</a>
+            <a id="unsubscribeLink" href="unsubscribe.html" class="link" style="display: none; font-size: 13px; margin-top: 15px; color: #c92a2a;">🗑️ 施設を退会する（施設データ削除）</a>
         </div>
 
         <div id="registerFormArea" style="display: none;">
@@ -69,6 +70,18 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const SECRET_KEY = "ecosma2026";
+
+        let unsubscribeClickCount = 0;
+        let unsubscribeClickTimer = null;
+        document.getElementById("loginTitle").addEventListener("click", function() {
+            unsubscribeClickCount++;
+            clearTimeout(unsubscribeClickTimer);
+            unsubscribeClickTimer = setTimeout(() => { unsubscribeClickCount = 0; }, 2500);
+            if (unsubscribeClickCount >= 3) {
+                document.getElementById("unsubscribeLink").style.display = "block";
+                unsubscribeClickCount = 0;
+            }
+        });
 
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
