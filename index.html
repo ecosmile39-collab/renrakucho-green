@@ -115,6 +115,19 @@
         </div>
     </div>
 
+    <div id="facilityDeletePasswordModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 10002; justify-content: center; align-items: center; padding: 16px; box-sizing: border-box;">
+        <div style="width: 100%; max-width: 420px; background: white; padding: 22px; border-radius: 8px; box-sizing: border-box;">
+            <h3 style="margin-top: 0; color: #c92a2a;">退会のパスワード確認</h3>
+            <p id="facilityDeletePasswordPrompt">現在の施設ログインパスワードを入力してください。</p>
+            <input type="password" id="facilityDeletePasswordInput" autocomplete="current-password" placeholder="施設ログインパスワード">
+            <p id="facilityDeletePasswordError" style="display: none; color: #c92a2a; font-weight: bold;"></p>
+            <div style="display: flex; gap: 10px; margin-top: 16px;">
+                <button type="button" onclick="cancelFacilityDeletePassword()" style="flex: 1; background: #868e96;">キャンセル</button>
+                <button type="button" onclick="confirmFacilityDeletePassword()" style="flex: 1; background: #c92a2a;">確認する</button>
+            </div>
+        </div>
+    </div>
+
     <div class="form-box" id="mainForm" style="display: none;">
         
         <h2 id="secretTitle" style="user-select: none; cursor: pointer; margin-top: 0; color: #2b8a3e;">🌿 <span id="displayFacilityName">施設名読込中...</span> 連絡帳</h2>
@@ -154,9 +167,9 @@
             <button type="button" id="btnGenerateDummy" style="background-color: #4caf50; color: white; border: none; padding: 12px 20px; border-radius: 5px; font-size: 16px; font-weight: bold; width: 100%; cursor: pointer; margin-bottom: 15px;" onclick="generateDummyData()">
                 🪄 選んだ写真を使って10人×10日分のテストデータを作成する
             </button>
-            <p style="font-size: 12px; color: #555; text-align: left; margin-bottom: 10px;">⚠️ すべてのデータを消去したい場合は、以下のボタンを押してください。</p>
+            <p style="font-size: 12px; color: #555; text-align: left; margin-bottom: 10px;">⚠️ 退会時に、この施設のアカウント・名簿・記録・写真・動画を削除します。実行には現在の施設パスワードが必要です。</p>
             <button type="button" style="background-color: #e03131; color: white; border: none; padding: 12px 20px; border-radius: 5px; font-size: 16px; font-weight: bold; width: 100%; cursor: pointer;" onclick="deleteAllData()">
-                🗑️ すべてのデータを完全に削除する
+                🗑️ 施設を退会し、全データを削除する
             </button>
         </div>
 
@@ -2208,11 +2221,51 @@
             }
         };
 
+        let facilityDeletePasswordResolver = null;
+
+        function requestFacilityDeletePassword(facilityName) {
+            return new Promise(resolve => {
+                facilityDeletePasswordResolver = resolve;
+                document.getElementById("facilityDeletePasswordPrompt").textContent = `${facilityName} の現在の施設ログインパスワードを入力してください。`;
+                document.getElementById("facilityDeletePasswordInput").value = "";
+                document.getElementById("facilityDeletePasswordError").style.display = "none";
+                document.getElementById("facilityDeletePasswordModal").style.display = "flex";
+                document.getElementById("facilityDeletePasswordInput").focus();
+            });
+        }
+
+        window.confirmFacilityDeletePassword = function() {
+            let passwordInput = document.getElementById("facilityDeletePasswordInput");
+            if (!passwordInput.value) {
+                let error = document.getElementById("facilityDeletePasswordError");
+                error.textContent = "パスワードを入力してください。";
+                error.style.display = "block";
+                return;
+            }
+            document.getElementById("facilityDeletePasswordModal").style.display = "none";
+            if (facilityDeletePasswordResolver) facilityDeletePasswordResolver(passwordInput.value);
+            facilityDeletePasswordResolver = null;
+        };
+
+        window.cancelFacilityDeletePassword = function() {
+            document.getElementById("facilityDeletePasswordModal").style.display = "none";
+            if (facilityDeletePasswordResolver) facilityDeletePasswordResolver(null);
+            facilityDeletePasswordResolver = null;
+        };
+
         window.deleteAllData = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) return;
             let facilityName = localStorage.getItem("currentFacilityName") || facilityId;
             try {
+                let deletionPassword = await requestFacilityDeletePassword(facilityName);
+                if (deletionPassword === null) return;
+                let facilitySnapshot = await getDoc(doc(db, "facilities", facilityId));
+                if (!facilitySnapshot.exists() || facilitySnapshot.data().password !== deletionPassword) {
+                    alert("パスワードが一致しません。削除していません。");
+                    return;
+                }
+
                 let usersSnap = await getDocs(collection(db, "facilities", facilityId, "users"));
                 let userNames = [];
                 usersSnap.forEach(docSnap => { userNames.push(docSnap.id); });
@@ -2277,6 +2330,7 @@
                 let userDeletePromises = [];
                 usersSnap.forEach(docSnap => userDeletePromises.push(deleteDoc(docSnap.ref)));
                 await Promise.all(userDeletePromises);
+                await deleteDoc(doc(db, "facilities", facilityId));
 
                 let keysToRemove = [];
                 for (let i = 0; i < localStorage.length; i++) {
@@ -2285,9 +2339,13 @@
                 }
                 keysToRemove.forEach(k => localStorage.removeItem(k));
 
+                localStorage.removeItem("currentFacilityId");
+                localStorage.removeItem("currentFacilityName");
+                localStorage.removeItem("isStaffAuthenticated");
+                localStorage.removeItem("currentServiceType");
                 document.getElementById("loadingOverlay").style.display = "none";
                 alert(`削除完了：利用者${usersSnap.size}件、記録${recordsSnap.size}件、Storageファイル${scopedStorageFiles.length + legacyStorageFiles.length}件を削除しました。\nSoft Delete等の設定によっては、物理的な完全消去や容量反映に時間がかかる場合があります。`);
-                window.location.reload();
+                window.location.replace("login.html");
 
             } catch (error) {
                 document.getElementById("loadingOverlay").style.display = "none";

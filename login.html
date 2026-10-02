@@ -71,6 +71,27 @@
         const db = getFirestore(app);
         const SECRET_KEY = "ecosma2026";
 
+        window.onload = async function() {
+            let facilityId = localStorage.getItem("currentFacilityId");
+            if (!facilityId || localStorage.getItem("isStaffAuthenticated") !== "true") return;
+
+            try {
+                let facilitySnapshot = await getDoc(doc(db, "facilities", facilityId));
+                if (facilitySnapshot.exists() && facilitySnapshot.data().status !== "locked") {
+                    let facilityName = facilitySnapshot.data().facilityName || facilityId;
+                    localStorage.setItem("currentFacilityName", facilityName);
+                    window.location.replace("index.html");
+                    return;
+                }
+            } catch (error) {
+                console.warn("保存済み施設ログインを確認できませんでした:", error);
+            }
+
+            localStorage.removeItem("currentFacilityId");
+            localStorage.removeItem("currentFacilityName");
+            localStorage.removeItem("isStaffAuthenticated");
+        };
+
         let adminClickCount = 0;
         let adminClickTimer = null;
         document.getElementById("loginTitle").addEventListener("click", function() {
