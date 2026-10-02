@@ -42,7 +42,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, doc, getDoc, getDocs, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, getDoc, getDocs, query, where, deleteDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
         const firebaseConfig = {
@@ -170,13 +170,26 @@
             let button = document.getElementById("deleteButton");
             button.disabled = true;
             setStatus("Storageファイルを削除しています。画面を閉じないでください。", "success");
+            const cancellationRef = doc(db, "facilityCancellations", verifiedFacilityId);
+            let cancellationStarted = false;
             try {
+                await setDoc(cancellationRef, {
+                    facilityId: verifiedFacilityId,
+                    facilityName: verifiedFacilityName,
+                    status: "processing",
+                    requestedAt: new Date().toISOString(),
+                    usersCount: userDocsToDelete.length,
+                    recordsCount: recordDocsToDelete.length,
+                    storageFilesCount: filesToDelete.length
+                });
+                cancellationStarted = true;
                 let results = await Promise.allSettled(filesToDelete.map(fileRef => deleteObject(fileRef)));
                 let failures = results.filter(result => result.status === "rejected");
                 if (failures.length) throw new Error(`${failures.length}個のStorageファイルを削除できませんでした。Firestoreの記録は残しています。`);
                 await Promise.all(recordDocsToDelete.map(recordDoc => deleteDoc(recordDoc.ref)));
                 await Promise.all(userDocsToDelete.map(userDoc => deleteDoc(userDoc.ref)));
                 await deleteDoc(doc(db, "facilities", verifiedFacilityId));
+                await updateDoc(cancellationRef, { status: "completed", completedAt: new Date().toISOString() });
 
                 if (localStorage.getItem("currentFacilityId") === verifiedFacilityId) {
                     localStorage.removeItem("currentFacilityId");
@@ -188,6 +201,9 @@
                 document.getElementById("facilityPassword").value = "";
                 verifiedFacilityId = null;
             } catch (error) {
+                if (cancellationStarted) {
+                    await updateDoc(cancellationRef, { status: "failed", errorMessage: error.message || "削除エラー", updatedAt: new Date().toISOString() }).catch(() => {});
+                }
                 setStatus("退会処理を完了できませんでした: " + (error.message || "不明なエラー"), "error");
             } finally {
                 button.disabled = false;

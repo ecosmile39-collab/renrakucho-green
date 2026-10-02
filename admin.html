@@ -68,6 +68,9 @@
             <p id="loadingMessage" class="muted">施設一覧を読み込んでいます...</p>
             <div id="facilityList"></div>
             <p id="facilityError" class="error"></p>
+            <h2>退会履歴</h2>
+            <p class="muted">退会処理の状態と削除対象件数を表示します。パスワードや介護記録本文は保存しません。</p>
+            <div id="cancellationList"></div>
         </section>
     </main>
 
@@ -90,6 +93,7 @@
         const storage = getStorage(app);
         const ADMIN_CONTROL_KEY = "ecosma2026-admin";
         let facilities = [];
+        let cancellationRecords = [];
 
         document.getElementById("showAdminKey").addEventListener("change", function() {
             document.getElementById("adminKey").type = this.checked ? "text" : "password";
@@ -160,12 +164,18 @@
             let loading = document.getElementById("loadingMessage");
             let error = document.getElementById("facilityError");
             try {
-                let snapshot = await getDocs(collection(db, "facilities"));
+                let [snapshot, cancellationsSnapshot] = await Promise.all([
+                    getDocs(collection(db, "facilities")),
+                    getDocs(collection(db, "facilityCancellations"))
+                ]);
                 facilities = [];
                 snapshot.forEach(docSnap => facilities.push({ id: docSnap.id, ...docSnap.data() }));
                 facilities.sort((a, b) => a.id.localeCompare(b.id));
+                cancellationRecords = cancellationsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+                cancellationRecords.sort((a, b) => String(b.requestedAt || "").localeCompare(String(a.requestedAt || "")));
                 loading.style.display = "none";
                 renderFacilities();
+                renderCancellationRecords();
             } catch (e) {
                 loading.style.display = "none";
                 error.textContent = "施設一覧を取得できませんでした: " + e.message;
@@ -196,7 +206,10 @@
             button.disabled = true;
             status.textContent = "削除対象をサーバー側で集計しています...";
             try {
-                let facilitiesSnapshot = await getDocs(collection(db, "facilities"));
+                let [facilitiesSnapshot, cancellationSnapshot] = await Promise.all([
+                    getDocs(collection(db, "facilities")),
+                    getDocs(collection(db, "facilityCancellations"))
+                ]);
                 let userDocs = [];
                 let recordDocs = [];
                 for (let facilityDoc of facilitiesSnapshot.docs) {
@@ -208,7 +221,7 @@
                     recordDocs.push(...recordsSnapshot.docs);
                 }
                 let storageFiles = await listAllStorageFiles(ref(storage));
-                let preview = `削除対象の集計結果：\n\nFirebaseプロジェクト：${firebaseConfig.projectId}\n施設アカウント：${facilitiesSnapshot.size}件\n利用者名簿：${userDocs.length}件\n連絡帳・介護日誌：${recordDocs.length}件\nStorage内の全ファイル：${storageFiles.length}件\n\n全施設に影響し、元に戻せません。Storageの保持設定によっては物理消去や容量反映が遅れることがあります。\n\nこの件数で最終確認へ進みますか？`;
+                let preview = `削除対象の集計結果：\n\nFirebaseプロジェクト：${firebaseConfig.projectId}\n施設アカウント：${facilitiesSnapshot.size}件\n利用者名簿：${userDocs.length}件\n連絡帳・介護日誌：${recordDocs.length}件\n退会履歴：${cancellationSnapshot.size}件\nStorage内の全ファイル：${storageFiles.length}件\n\n全施設に影響し、元に戻せません。Storageの保持設定によっては物理消去や容量反映が遅れることがあります。\n\nこの件数で最終確認へ進みますか？`;
                 if (!confirm(preview)) {
                     status.textContent = "削除はキャンセルされました。データは変更していません。";
                     return;
@@ -224,12 +237,15 @@
                 await deleteInBatches(recordDocs, recordDoc => deleteDoc(recordDoc.ref));
                 await deleteInBatches(userDocs, userDoc => deleteDoc(userDoc.ref));
                 await deleteInBatches(facilitiesSnapshot.docs, facilityDoc => deleteDoc(facilityDoc.ref));
+                await deleteInBatches(cancellationSnapshot.docs, cancellationDoc => deleteDoc(cancellationDoc.ref));
 
                 facilities = [];
+                cancellationRecords = [];
                 renderFacilities();
+                renderCancellationRecords();
                 document.getElementById("loadingMessage").style.display = "none";
                 status.textContent = "";
-                alert(`削除完了：施設${facilitiesSnapshot.size}件、利用者${userDocs.length}件、記録${recordDocs.length}件、Storageファイル${storageFiles.length}件を削除しました。`);
+                alert(`削除完了：施設${facilitiesSnapshot.size}件、利用者${userDocs.length}件、記録${recordDocs.length}件、退会履歴${cancellationSnapshot.size}件、Storageファイル${storageFiles.length}件を削除しました。`);
             } catch (error) {
                 status.textContent = "削除を完了できませんでした: " + error.message;
             } finally {
@@ -255,6 +271,24 @@
                         <button class="${isLocked ? "unlock" : "lock"}" onclick="toggleFacility('${encodeURIComponent(facility.id)}', ${isLocked})">${isLocked ? "🔓 解除する" : "🔒 ロックする"}</button>
                         <button class="delete" onclick="deleteFacility('${encodeURIComponent(facility.id)}')">🗑️ 登録施設を削除</button>
                     </div>
+                </div>`;
+            }).join("");
+        }
+
+        function renderCancellationRecords() {
+            let list = document.getElementById("cancellationList");
+            if (!cancellationRecords.length) {
+                list.innerHTML = '<p class="muted">退会履歴はありません。</p>';
+                return;
+            }
+            list.innerHTML = cancellationRecords.map(record => {
+                let statusText = record.status === "completed" ? "退会完了" : record.status === "processing" ? "処理中" : "削除未完了";
+                let statusColor = record.status === "completed" ? "#087f23" : record.status === "processing" ? "#b26a00" : "#c92a2a";
+                return `<div style="padding: 12px; margin: 8px 0; border: 1px solid #dee2e6; border-left: 4px solid ${statusColor}; border-radius: 5px;">
+                    <strong>${escapeHtml(record.facilityName || record.facilityId || record.id)}</strong>
+                    <span style="margin-left: 8px; color: ${statusColor}; font-weight: bold;">${statusText}</span>
+                    <div class="muted">申請：${escapeHtml(record.requestedAt || "日時不明")} ／ 利用者：${Number(record.usersCount) || 0}件 ／ 記録：${Number(record.recordsCount) || 0}件 ／ Storage：${Number(record.storageFilesCount) || 0}ファイル</div>
+                    ${record.errorMessage ? `<div class="error">${escapeHtml(record.errorMessage)}</div>` : ""}
                 </div>`;
             }).join("");
         }
