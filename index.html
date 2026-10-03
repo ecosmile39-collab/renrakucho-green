@@ -246,7 +246,7 @@
         <input type="date" id="date" onchange="onDateChanged()">
 
         <div style="margin-top: 15px; padding: 15px; background-color: #fff9db; border: 1px solid #ffd43b; border-radius: 8px;">
-            <h3 id="careJournalTitle" style="margin-top: 0; color: #8d6e00; cursor: pointer; user-select: none;">介護日誌</h3>
+            <h3 id="careJournalTitle" style="margin-top: 0; color: #8d6e00;">介護日誌</h3>
             <a id="changePasswordActionLink" href="change_password.html" style="display: none; margin: 0 0 12px; color: #4682b4; font-weight: bold;">🔑 パスワード変更画面を開く</a>
             <label>担当スタッフ</label>
             <input type="text" id="careStaff" placeholder="例：山田">
@@ -266,7 +266,7 @@
         <datalist id="oralCareList"><option value="未実施"></option><option value="歯ブラシ"></option><option value="うがいのみ"></option><option value="スポンジブラシ"></option><option value="義歯洗浄"></option><option value="毎食後実施"></option></datalist>
 
         <div id="dayServiceSection">
-            <h3 id="dayVitalsTitle" style="cursor: pointer; user-select: none;">バイタル（デイサービス）</h3>
+            <h3 id="dayVitalsTitle">バイタル（デイサービス）</h3>
             <div class="flex-box">
                 <div>
                     <label>体温(来所時) ℃ <span id="temp1Alert" style="color: red; font-size: 18px; margin-left: 5px;"></span></label>
@@ -389,7 +389,7 @@
 
         <div id="shortStaySection" style="display: none;">
             
-            <h3 id="shortStayVitalsTitle" style="color: #2b8a3e; border-color: #2b8a3e; cursor: pointer; user-select: none;">バイタル（入所時・退所時）</h3>
+            <h3 id="shortStayVitalsTitle" style="color: #2b8a3e; border-color: #2b8a3e;">バイタル（入所時・退所時）</h3>
             
             <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ced4da;">
                 <h4 style="margin: 0 0 10px 0; color: #2b8a3e;">【入所時】</h4>
@@ -1011,37 +1011,11 @@
                 unsubscribeClickTimer = setTimeout(() => { unsubscribeClickCount = 0; }, 3000);
                 if (unsubscribeClickCount === 5) {
                     document.getElementById("unsubscribeActionLink").style.display = "inline";
-                    window.showToast("🗑️ 退会手続きへのリンクを表示しました", 3000);
+                    document.getElementById("changePasswordActionLink").style.display = "inline-block";
+                    document.getElementById("changeFacilityNameActionLink").style.display = "inline";
+                    window.showToast("🔓 管理用リンクを表示しました", 3000);
                     unsubscribeClickCount = 0;
                 }
-            });
-
-            let passwordChangeClickCount = 0;
-            let passwordChangeClickTimer = null;
-            document.getElementById("careJournalTitle").addEventListener("click", function() {
-                passwordChangeClickCount++;
-                clearTimeout(passwordChangeClickTimer);
-                passwordChangeClickTimer = setTimeout(() => { passwordChangeClickCount = 0; }, 6000);
-                if (passwordChangeClickCount === 5) {
-                    document.getElementById("changePasswordActionLink").style.display = "inline-block";
-                    window.showToast("🔑 パスワード変更リンクを表示しました", 3000);
-                    passwordChangeClickCount = 0;
-                }
-            });
-
-            let facilityNameClickCount = 0;
-            let facilityNameClickTimer = null;
-            ["dayVitalsTitle", "shortStayVitalsTitle"].forEach(titleId => {
-                document.getElementById(titleId).addEventListener("click", function() {
-                    facilityNameClickCount++;
-                    clearTimeout(facilityNameClickTimer);
-                    facilityNameClickTimer = setTimeout(() => { facilityNameClickCount = 0; }, 6000);
-                    if (facilityNameClickCount === 5) {
-                        document.getElementById("changeFacilityNameActionLink").style.display = "inline";
-                        window.showToast("🏢 施設名変更リンクを表示しました", 3000);
-                        facilityNameClickCount = 0;
-                    }
-                });
             });
             
             const listInputs = document.querySelectorAll('input[list]');
