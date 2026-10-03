@@ -773,22 +773,32 @@
                 const suffix = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
                 const inputName = `input_${suffix}.video`;
                 const outputName = `output_${suffix}.mp4`;
+                let latestFfmpegLog = "";
+                const logListener = ({ message }) => { latestFfmpegLog = message; };
+                ffmpeg.on("log", logListener);
                 try {
                     const { fetchFile } = await import("https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js");
                     await ffmpeg.writeFile(inputName, await fetchFile(file));
-                    await ffmpeg.exec([
+                    const exitCode = await ffmpeg.exec([
                         "-i", inputName,
                         "-vf", "scale=854:480:force_original_aspect_ratio=decrease:force_divisible_by=2",
                         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "27",
                         "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k",
                         "-movflags", "+faststart", outputName
                     ]);
+                    if (exitCode !== 0) {
+                        throw new Error(`FFmpeg終了コード ${exitCode}: ${latestFfmpegLog || "対応していない動画形式の可能性があります。"}`);
+                    }
                     const outputData = await ffmpeg.readFile(outputName);
+                    if (!(outputData instanceof Uint8Array) || outputData.length === 0) {
+                        throw new Error("圧縮後の動画データが空です。");
+                    }
                     return new File([outputData], file.name.replace(/\.[^.]+$/, "") + "_480p.mp4", {
                         type: "video/mp4",
                         lastModified: Date.now()
                     });
                 } finally {
+                    ffmpeg.off("log", logListener);
                     await ffmpeg.deleteFile(inputName).catch(() => {});
                     await ffmpeg.deleteFile(outputName).catch(() => {});
                 }
@@ -1726,7 +1736,8 @@
                 showToast(`✅ 大成功！${userName} 様の写真・動画をお預かりしました！`, 5000);
             } catch (error) {
                 document.getElementById("loadingOverlay").style.display = "none";
-                showToast(`❌ アップロードエラー: ${error.message}`, 6000);
+                let errorMessage = error && error.message ? error.message : String(error || "原因不明のエラー");
+                showToast(`❌ アップロードエラー: ${errorMessage}`, 10000);
             }
         };
 
