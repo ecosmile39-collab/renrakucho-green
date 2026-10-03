@@ -112,6 +112,7 @@
         let facilities = [];
         let cancellationRecords = [];
         let currentInvoiceHistory = [];
+        let currentInvoiceFacilityId = "";
 
         document.getElementById("showAdminKey").addEventListener("change", function() {
             document.getElementById("adminKey").type = this.checked ? "text" : "password";
@@ -318,6 +319,7 @@
             const message = document.getElementById("invoiceHistoryMessage");
             const list = document.getElementById("invoiceHistoryList");
             document.getElementById("invoiceHistoryTitle").textContent = `${facility.facilityName || facilityId} の請求書履歴`;
+            currentInvoiceFacilityId = facilityId;
             panel.classList.remove("hidden");
             message.textContent = "履歴を読み込んでいます...";
             list.innerHTML = "";
@@ -342,15 +344,19 @@
                         <th style="padding: 8px; border: 1px solid #ced4da; text-align: left;">送信先</th>
                         <th style="padding: 8px; border: 1px solid #ced4da; text-align: right;">税込金額</th>
                         <th style="padding: 8px; border: 1px solid #ced4da;">区分</th>
+                        <th style="padding: 8px; border: 1px solid #ced4da;">入金状況</th>
                         <th style="padding: 8px; border: 1px solid #ced4da;"></th>
                     </tr></thead><tbody>${currentInvoiceHistory.map((record, index) => {
                         const issueDate = record.issueDate || "日付不明";
+                        const paymentTrackable = record.test !== true && record.status === "sent";
+                        const paymentLabel = !paymentTrackable ? "対象外" : record.paymentStatus === "paid" ? "入金済" : "未入金";
                         return `<tr>
                             <td style="padding: 8px; border: 1px solid #ced4da;">${escapeHtml(record.invoiceNumber)}</td>
                             <td style="padding: 8px; border: 1px solid #ced4da;">${escapeHtml(issueDate)}<br>${escapeHtml(record.billingMonth)}</td>
                             <td style="padding: 8px; border: 1px solid #ced4da;">${escapeHtml(record.recipient)}</td>
                             <td style="padding: 8px; border: 1px solid #ced4da; text-align: right;">${(Number(record.total) || 0).toLocaleString("ja-JP")}円</td>
                             <td style="padding: 8px; border: 1px solid #ced4da;">${record.test ? "テスト" : "発行"}</td>
+                            <td style="padding: 8px; border: 1px solid #ced4da; white-space: nowrap;"><label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: ${paymentTrackable ? "pointer" : "default"};"><input type="checkbox" data-invoice-payment-index="${index}" ${record.paymentStatus === "paid" ? "checked" : ""} ${paymentTrackable ? "" : "disabled"} style="width: auto; margin: 0;"><span>${paymentLabel}</span></label></td>
                             <td style="padding: 8px; border: 1px solid #ced4da;">${record.invoiceHtml ? `<button type="button" data-invoice-history-index="${index}" style="background: #1971c2;">請求書を表示</button>` : ""}</td>
                         </tr>`;
                     }).join("")}</tbody></table></div>`;
@@ -358,8 +364,34 @@
                 list.querySelectorAll("[data-invoice-history-index]").forEach(button => {
                     button.addEventListener("click", () => window.openInvoiceHistoryEntry(Number(button.dataset.invoiceHistoryIndex)));
                 });
+                list.querySelectorAll("[data-invoice-payment-index]").forEach(checkbox => {
+                    checkbox.addEventListener("change", () => window.updateInvoicePaymentStatus(Number(checkbox.dataset.invoicePaymentIndex), checkbox));
+                });
             } catch (error) {
                 message.textContent = "履歴を読み込めませんでした: " + (error.message || error);
+            }
+        };
+
+        window.updateInvoicePaymentStatus = async function(index, checkbox) {
+            const invoice = currentInvoiceHistory[index];
+            if (!invoice || invoice.test || invoice.status !== "sent") return;
+
+            const previousStatus = invoice.paymentStatus === "paid";
+            const isPaid = checkbox.checked;
+            const statusLabel = checkbox.parentElement.querySelector("span");
+            checkbox.disabled = true;
+            try {
+                await updateDoc(doc(db, "facilities", currentInvoiceFacilityId, "invoiceHistory", invoice.id), {
+                    paymentStatus: isPaid ? "paid" : "unpaid",
+                    paymentUpdatedAt: new Date().toISOString()
+                });
+                invoice.paymentStatus = isPaid ? "paid" : "unpaid";
+                statusLabel.textContent = isPaid ? "入金済" : "未入金";
+            } catch (error) {
+                checkbox.checked = previousStatus;
+                alert("入金状況を保存できませんでした: " + (error.message || error));
+            } finally {
+                checkbox.disabled = false;
             }
         };
 
