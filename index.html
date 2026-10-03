@@ -621,6 +621,7 @@
             
             <label>🎥 その場で動画を撮影する</label>
             <input type="file" id="videoCameraInput" accept="video/*" capture="environment" onclick="checkPrivacy(event)" onchange="previewMedia(event)">
+            <p style="font-size: 12px; color: #555; margin-top: -6px;">動画は端末内で480pに圧縮してから保存します（初回のみ変換プログラム約31MBを読み込みます）。</p>
             
             <label>📁 アルバムから写真・動画を選ぶ（複数回選んでも蓄積されます）</label>
             <input type="file" id="mediaFileMultiple" accept="image/*,video/*" multiple onchange="previewMedia(event)">
@@ -676,6 +677,9 @@
         window.currentVideoCount = 0; 
         let accumulatedFiles = [];
         let newFaceBlob = null; 
+        let ffmpegInstance = null;
+        let ffmpegLoadingPromise = null;
+        let videoCompressionQueue = Promise.resolve();
 
         window.showToast = function(message, duration = 3000) {
             let toast = document.getElementById("toast");
@@ -706,6 +710,75 @@
                 };
                 reader.onerror = error => reject(error);
             });
+        }
+
+        async function getVideoCompressor() {
+            if (ffmpegInstance) return ffmpegInstance;
+            if (!ffmpegLoadingPromise) {
+                ffmpegLoadingPromise = (async () => {
+                    const [{ FFmpeg }, { toBlobURL }] = await Promise.all([
+                        import("https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js"),
+                        import("https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js")
+                    ]);
+                    const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+                    const ffmpeg = new FFmpeg();
+                    await ffmpeg.load({
+                        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+                        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm")
+                    });
+                    ffmpegInstance = ffmpeg;
+                    return ffmpeg;
+                })().catch(error => {
+                    ffmpegLoadingPromise = null;
+                    throw error;
+                });
+            }
+            return ffmpegLoadingPromise;
+        }
+
+        async function compressVideoFile(file, index, total) {
+            const runCompression = async () => {
+                if (file.size > 250 * 1024 * 1024) {
+                    throw new Error(`${file.name} は250MBを超えているため、スマートフォン内で圧縮できません。短く撮影するか、画質を下げてください。`);
+                }
+                document.getElementById("loadingOverlay").style.display = "flex";
+                document.getElementById("loadingText").textContent = `動画を端末内で480pに圧縮中です... (${index}/${total})`;
+                const ffmpeg = await getVideoCompressor();
+                const suffix = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                const inputName = `input_${suffix}.video`;
+                const outputName = `output_${suffix}.mp4`;
+                try {
+                    const { fetchFile } = await import("https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js");
+                    await ffmpeg.writeFile(inputName, await fetchFile(file));
+                    await ffmpeg.exec([
+                        "-i", inputName,
+                        "-vf", "scale=854:480:force_original_aspect_ratio=decrease:force_divisible_by=2",
+                        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "27",
+                        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k",
+                        "-movflags", "+faststart", outputName
+                    ]);
+                    const outputData = await ffmpeg.readFile(outputName);
+                    return new File([outputData], file.name.replace(/\.[^.]+$/, "") + "_480p.mp4", {
+                        type: "video/mp4",
+                        lastModified: Date.now()
+                    });
+                } finally {
+                    await ffmpeg.deleteFile(inputName).catch(() => {});
+                    await ffmpeg.deleteFile(outputName).catch(() => {});
+                }
+            };
+
+            const queuedCompression = videoCompressionQueue.then(runCompression, runCompression);
+            videoCompressionQueue = queuedCompression.catch(() => {});
+            return queuedCompression;
+        }
+
+        async function compressVideoFiles(files) {
+            const compressedFiles = [];
+            for (let index = 0; index < files.length; index++) {
+                compressedFiles.push(await compressVideoFile(files[index], index + 1, files.length));
+            }
+            return compressedFiles;
         }
 
         async function saveLatestPhotos(facilityId, userName, imageFiles, uploadDate) {
@@ -1585,24 +1658,22 @@
             }
 
             let currentFormData = getFormData();
-
-            accumulatedFiles = [];
-            document.getElementById("previewArea").innerHTML = "";
             showToast(`⏳ ${userName} 様の写真・動画を金庫へ預けています...`, 4000);
             
             try {
+                let compressedVideoFiles = videoFiles.length ? await compressVideoFiles(videoFiles) : [];
                 let iCount = 0; let vCount = 0;
                 if (imageFiles.length > 0) {
                     await saveLatestPhotos(facilityId, userName, imageFiles, date);
                     iCount = imageFiles.length;
                 }
-                if (videoFiles.length > 0) {
-                    let uploadPromises = videoFiles.map(async (file, idx) => {
+                if (compressedVideoFiles.length > 0) {
+                    let uploadPromises = compressedVideoFiles.map(async (file, idx) => {
                         let videoRef = ref(storage, `videos/${facilityId}/${userName}/${date}_video_${idx+1}.mp4`);
                         await uploadBytes(videoRef, file);
                     });
                     await Promise.all(uploadPromises);
-                    vCount = videoFiles.length;
+                    vCount = compressedVideoFiles.length;
                 }
 
                 let docRef = doc(db, "facilities", facilityId, "daily_records", `${date}_${sType}_${userName}`);
@@ -1616,6 +1687,8 @@
 
                 window.currentImageCount = iCount;
                 window.currentVideoCount = vCount;
+                accumulatedFiles = [];
+                document.getElementById("previewArea").innerHTML = "";
                 let badge = document.getElementById("preUploadedBadge");
                 let cancelBtn = document.getElementById("cancelPreUploadBtn");
                 badge.style.display = "block"; cancelBtn.style.display = "block"; 
@@ -1626,6 +1699,7 @@
 
                 showToast(`✅ 大成功！${userName} 様の写真・動画をお預かりしました！`, 5000);
             } catch (error) {
+                document.getElementById("loadingOverlay").style.display = "none";
                 showToast(`❌ アップロードエラー: ${error.message}`, 6000);
             }
         };
@@ -1842,12 +1916,17 @@
                 let docRef = doc(db, "facilities", recordData.facilityId, "daily_records", `${date}_${sType}_${userName}`);
                 let saveObj = { ...recordData };
                 delete saveObj.imageFiles; delete saveObj.videoFiles;
+                let compressedVideoFiles = recordData.videoFiles.length ? await compressVideoFiles(recordData.videoFiles) : [];
+                if (compressedVideoFiles.length) {
+                    saveObj.videoCount = compressedVideoFiles.length;
+                    saveObj.hasVideo = true;
+                }
 
                 if (recordData.imageFiles && recordData.imageFiles.length > 0) {
                     await saveLatestPhotos(recordData.facilityId, userName, recordData.imageFiles, date);
                 }
-                if (recordData.videoFiles && recordData.videoFiles.length > 0) {
-                    let vidPromises = recordData.videoFiles.map(async (vFile, idx) => {
+                if (compressedVideoFiles.length > 0) {
+                    let vidPromises = compressedVideoFiles.map(async (vFile, idx) => {
                         let videoRef = ref(storage, `videos/${recordData.facilityId}/${userName}/${date}_video_${idx+1}.mp4`);
                         await uploadBytes(videoRef, vFile);
                     });
@@ -1919,12 +1998,19 @@
                     let docRef = doc(db, "facilities", data.facilityId, "daily_records", `${data.date}_${data.serviceType}_${data.userName}`);
                     let saveObj = { ...data };
                     delete saveObj.imageFiles; delete saveObj.videoFiles;
+                    let compressedVideoFiles = data.videoFiles && data.videoFiles.length
+                        ? await compressVideoFiles(data.videoFiles)
+                        : [];
+                    if (compressedVideoFiles.length) {
+                        saveObj.videoCount = compressedVideoFiles.length;
+                        saveObj.hasVideo = true;
+                    }
 
                     if (data.imageFiles && data.imageFiles.length > 0) {
                         await saveLatestPhotos(data.facilityId, data.userName, data.imageFiles, data.date);
                     }
-                    if (data.videoFiles && data.videoFiles.length > 0) {
-                        let vidPromises = data.videoFiles.map(async (vFile, idx) => {
+                    if (compressedVideoFiles.length > 0) {
+                        let vidPromises = compressedVideoFiles.map(async (vFile, idx) => {
                             let videoRef = ref(storage, `videos/${data.facilityId}/${data.userName}/${data.date}_video_${idx+1}.mp4`);
                             await uploadBytes(videoRef, vFile);
                         });
