@@ -147,6 +147,12 @@
             </select>
         </div>
 
+        <div class="pending-area" id="pendingArea" style="display: none;">
+            <div><b>【送信待ちのお客様】</b></div>
+            <div class="pending-list" id="pendingList"></div>
+            <button class="batch-send-btn" onclick="sendBatchData()">📤 上記のお客様のデータをまとめて送信する</button>
+        </div>
+
         <div id="importantHandoverDashboard" style="display: none; margin: 15px 0; padding: 15px; background-color: #fff4e6; border: 2px solid #f08c00; border-radius: 8px;">
             <h3 style="margin: 0 0 10px; color: #c92a2a;">🚨 前日の重要申し送り一覧（朝礼確認用）</h3>
             <div id="importantHandoverList" class="handover-list"></div>
@@ -629,6 +635,8 @@
             
             <label>📁 アルバムから写真・動画を選ぶ（複数回選んでも蓄積されます）</label>
             <input type="file" id="mediaFileMultiple" accept="image/*,video/*" multiple onchange="previewMedia(event)">
+
+            <p style="font-size: 13px; color: #495057; margin: 0 0 8px;">「今すぐ預ける」は任意です。押さなくても、下の送信ボタンで記録と一緒に写真・動画を保存できます。</p>
             
             <button type="button" class="pre-upload-btn" onclick="preUploadMedia()">📤 選んだ写真・動画を【今すぐ】金庫に預ける</button>
             
@@ -640,12 +648,6 @@
         <div class="btn-group-bottom">
             <button class="temp-save-btn" onclick="saveToBatch()">📥 この方のデータを一時保存し、次の方を入力する（上に戻る）</button>
             <button class="single-send-btn" onclick="sendSingleData()">📤 この方だけのデータを今すぐ送信して完了する（一人用）</button>
-        </div>
-
-        <div class="pending-area" id="pendingArea" style="display: none;">
-            <div><b>【送信待ちのお客様】</b></div>
-            <div class="pending-list" id="pendingList"></div>
-            <button class="batch-send-btn" onclick="sendBatchData()">📤 上記のお客様のデータをまとめて送信する</button>
         </div>
     </div>
 
