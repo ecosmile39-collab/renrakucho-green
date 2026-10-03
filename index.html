@@ -690,6 +690,13 @@
             setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, duration);
         }
 
+        function getErrorMessage(error, fallback = "原因不明のエラー") {
+            if (!error) return fallback;
+            if (typeof error === "string") return error;
+            if (error.message) return error.message;
+            return String(error);
+        }
+
         async function compressImage(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -722,7 +729,8 @@
                         import("https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js"),
                         import("https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js")
                     ]);
-                    const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+                    const coreEsmBaseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
+                    const coreUmdBaseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
                     const packageBaseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm";
                     const [workerResponse, constResponse, errorsResponse] = await Promise.all([
                         fetch(`${packageBaseURL}/worker.js`),
@@ -743,12 +751,30 @@
                     ffmpegClassWorkerURL = URL.createObjectURL(new Blob([localWorkerSource], { type: "text/javascript" }));
                     ffmpegDependencyUrls = [constURL, errorsURL];
                     const ffmpeg = new FFmpeg();
-                    await ffmpeg.load({
-                        classWorkerURL: ffmpegClassWorkerURL,
-                        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-                        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm")
-                    });
+
+                    // Module worker environments can fail with UMD core import.
+                    // Prefer ESM core first, then fall back to UMD.
+                    let loadError = null;
+                    try {
+                        await ffmpeg.load({
+                            classWorkerURL: ffmpegClassWorkerURL,
+                            coreURL: await toBlobURL(`${coreEsmBaseURL}/ffmpeg-core.js`, "text/javascript"),
+                            wasmURL: await toBlobURL(`${coreEsmBaseURL}/ffmpeg-core.wasm`, "application/wasm"),
+                            workerURL: await toBlobURL(`${coreEsmBaseURL}/ffmpeg-core.worker.js`, "text/javascript")
+                        });
+                    } catch (firstError) {
+                        loadError = firstError;
+                        await ffmpeg.load({
+                            classWorkerURL: ffmpegClassWorkerURL,
+                            coreURL: await toBlobURL(`${coreUmdBaseURL}/ffmpeg-core.js`, "text/javascript"),
+                            wasmURL: await toBlobURL(`${coreUmdBaseURL}/ffmpeg-core.wasm`, "application/wasm")
+                        });
+                    }
+
                     ffmpegInstance = ffmpeg;
+                    if (loadError) {
+                        console.warn("FFmpeg ESM読み込みに失敗したためUMDで読み込みました:", loadError);
+                    }
                     return ffmpeg;
                 })().catch(error => {
                     ffmpegLoadingPromise = null;
@@ -756,6 +782,10 @@
                     ffmpegDependencyUrls.forEach(url => URL.revokeObjectURL(url));
                     ffmpegClassWorkerURL = null;
                     ffmpegDependencyUrls = [];
+                    const detail = getErrorMessage(error);
+                    if (/failed to import ffmpeg-core\.js/i.test(detail)) {
+                        throw new Error("動画圧縮エンジンの読み込みに失敗しました。通信環境を確認し、再読み込み後に再試行してください。");
+                    }
                     throw error;
                 });
             }
@@ -797,6 +827,8 @@
                         type: "video/mp4",
                         lastModified: Date.now()
                     });
+                } catch (error) {
+                    throw new Error(getErrorMessage(error, `${file.name} の圧縮に失敗しました。`));
                 } finally {
                     ffmpeg.off("log", logListener);
                     await ffmpeg.deleteFile(inputName).catch(() => {});
@@ -1736,7 +1768,7 @@
                 showToast(`✅ 大成功！${userName} 様の写真・動画をお預かりしました！`, 5000);
             } catch (error) {
                 document.getElementById("loadingOverlay").style.display = "none";
-                let errorMessage = error && error.message ? error.message : String(error || "原因不明のエラー");
+                let errorMessage = getErrorMessage(error);
                 showToast(`❌ アップロードエラー: ${errorMessage}`, 10000);
             }
         };
@@ -1986,7 +2018,7 @@
 
             } catch (error) {
                 document.getElementById("loadingOverlay").style.display = "none";
-                showToast("❌ 送信エラー: " + error.message, 6000);
+                showToast("❌ 送信エラー: " + getErrorMessage(error), 8000);
             }
         };
 
@@ -2067,7 +2099,7 @@
                 window.scrollTo({top: 0, behavior: 'smooth'});
             } catch (error) {
                 document.getElementById("loadingOverlay").style.display = "none";
-                showToast("❌ 送信エラー: " + error.message, 6000);
+                showToast("❌ 送信エラー: " + getErrorMessage(error), 8000);
             }
         };
 
