@@ -1767,9 +1767,10 @@
 
                 showToast(`✅ 大成功！${userName} 様の写真・動画をお預かりしました！`, 5000);
             } catch (error) {
-                document.getElementById("loadingOverlay").style.display = "none";
                 let errorMessage = getErrorMessage(error);
                 showToast(`❌ アップロードエラー: ${errorMessage}`, 10000);
+            } finally {
+                document.getElementById("loadingOverlay").style.display = "none";
             }
         };
 
