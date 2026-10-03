@@ -621,7 +621,11 @@
             
             <label>🎥 その場で動画を撮影する</label>
             <input type="file" id="videoCameraInput" accept="video/*" capture="environment" onclick="checkPrivacy(event)" onchange="previewMedia(event)">
-            <p style="font-size: 12px; color: #555; margin-top: -6px;">動画は端末内で480pに圧縮してから保存します（初回のみ変換プログラム約31MBを読み込みます）。</p>
+            <label style="display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 14px; cursor: pointer;">
+                <input type="checkbox" id="autoCompressVideos" style="width: auto; margin: 0;" checked>
+                動画を端末内で480pに自動圧縮して保存する
+            </label>
+            <p style="font-size: 12px; color: #555; margin-top: 4px;">チェックを外すと圧縮せず元動画を保存します（通信量・保存容量が増えます）。初回の圧縮時は変換プログラム約31MBを読み込みます。</p>
             
             <label>📁 アルバムから写真・動画を選ぶ（複数回選んでも蓄積されます）</label>
             <input type="file" id="mediaFileMultiple" accept="image/*,video/*" multiple onchange="previewMedia(event)">
@@ -682,6 +686,11 @@
         let ffmpegClassWorkerURL = null;
         let ffmpegDependencyUrls = [];
         let videoCompressionQueue = Promise.resolve();
+        const autoCompressVideosCheckbox = document.getElementById("autoCompressVideos");
+        autoCompressVideosCheckbox.checked = localStorage.getItem("autoCompressVideos") !== "false";
+        autoCompressVideosCheckbox.addEventListener("change", () => {
+            localStorage.setItem("autoCompressVideos", String(autoCompressVideosCheckbox.checked));
+        });
 
         window.showToast = function(message, duration = 3000) {
             let toast = document.getElementById("toast");
@@ -847,6 +856,11 @@
                 compressedFiles.push(await compressVideoFile(files[index], index + 1, files.length));
             }
             return compressedFiles;
+        }
+
+        async function prepareVideoFiles(files) {
+            if (!files.length) return [];
+            return autoCompressVideosCheckbox.checked ? compressVideoFiles(files) : files;
         }
 
         async function saveLatestPhotos(facilityId, userName, imageFiles, uploadDate) {
@@ -1729,19 +1743,19 @@
             showToast(`⏳ ${userName} 様の写真・動画を金庫へ預けています...`, 4000);
             
             try {
-                let compressedVideoFiles = videoFiles.length ? await compressVideoFiles(videoFiles) : [];
+                let uploadVideoFiles = await prepareVideoFiles(videoFiles);
                 let iCount = 0; let vCount = 0;
                 if (imageFiles.length > 0) {
                     await saveLatestPhotos(facilityId, userName, imageFiles, date);
                     iCount = imageFiles.length;
                 }
-                if (compressedVideoFiles.length > 0) {
-                    let uploadPromises = compressedVideoFiles.map(async (file, idx) => {
+                if (uploadVideoFiles.length > 0) {
+                    let uploadPromises = uploadVideoFiles.map(async (file, idx) => {
                         let videoRef = ref(storage, `videos/${facilityId}/${userName}/${date}_video_${idx+1}.mp4`);
-                        await uploadBytes(videoRef, file);
+                        await uploadBytes(videoRef, file, { contentType: file.type || "video/mp4" });
                     });
                     await Promise.all(uploadPromises);
-                    vCount = compressedVideoFiles.length;
+                    vCount = uploadVideoFiles.length;
                 }
 
                 let docRef = doc(db, "facilities", facilityId, "daily_records", `${date}_${sType}_${userName}`);
@@ -1986,19 +2000,19 @@
                 let docRef = doc(db, "facilities", recordData.facilityId, "daily_records", `${date}_${sType}_${userName}`);
                 let saveObj = { ...recordData };
                 delete saveObj.imageFiles; delete saveObj.videoFiles;
-                let compressedVideoFiles = recordData.videoFiles.length ? await compressVideoFiles(recordData.videoFiles) : [];
-                if (compressedVideoFiles.length) {
-                    saveObj.videoCount = compressedVideoFiles.length;
+                let uploadVideoFiles = await prepareVideoFiles(recordData.videoFiles);
+                if (uploadVideoFiles.length) {
+                    saveObj.videoCount = uploadVideoFiles.length;
                     saveObj.hasVideo = true;
                 }
 
                 if (recordData.imageFiles && recordData.imageFiles.length > 0) {
                     await saveLatestPhotos(recordData.facilityId, userName, recordData.imageFiles, date);
                 }
-                if (compressedVideoFiles.length > 0) {
-                    let vidPromises = compressedVideoFiles.map(async (vFile, idx) => {
+                if (uploadVideoFiles.length > 0) {
+                    let vidPromises = uploadVideoFiles.map(async (vFile, idx) => {
                         let videoRef = ref(storage, `videos/${recordData.facilityId}/${userName}/${date}_video_${idx+1}.mp4`);
-                        await uploadBytes(videoRef, vFile);
+                        await uploadBytes(videoRef, vFile, { contentType: vFile.type || "video/mp4" });
                     });
                     await Promise.all(vidPromises);
                 }
@@ -2068,21 +2082,19 @@
                     let docRef = doc(db, "facilities", data.facilityId, "daily_records", `${data.date}_${data.serviceType}_${data.userName}`);
                     let saveObj = { ...data };
                     delete saveObj.imageFiles; delete saveObj.videoFiles;
-                    let compressedVideoFiles = data.videoFiles && data.videoFiles.length
-                        ? await compressVideoFiles(data.videoFiles)
-                        : [];
-                    if (compressedVideoFiles.length) {
-                        saveObj.videoCount = compressedVideoFiles.length;
+                    let uploadVideoFiles = await prepareVideoFiles(data.videoFiles || []);
+                    if (uploadVideoFiles.length) {
+                        saveObj.videoCount = uploadVideoFiles.length;
                         saveObj.hasVideo = true;
                     }
 
                     if (data.imageFiles && data.imageFiles.length > 0) {
                         await saveLatestPhotos(data.facilityId, data.userName, data.imageFiles, data.date);
                     }
-                    if (compressedVideoFiles.length > 0) {
-                        let vidPromises = compressedVideoFiles.map(async (vFile, idx) => {
+                    if (uploadVideoFiles.length > 0) {
+                        let vidPromises = uploadVideoFiles.map(async (vFile, idx) => {
                             let videoRef = ref(storage, `videos/${data.facilityId}/${data.userName}/${data.date}_video_${idx+1}.mp4`);
-                            await uploadBytes(videoRef, vFile);
+                            await uploadBytes(videoRef, vFile, { contentType: vFile.type || "video/mp4" });
                         });
                         await Promise.all(vidPromises);
                     }
