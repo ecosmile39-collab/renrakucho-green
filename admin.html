@@ -81,6 +81,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -94,6 +95,8 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const storage = getStorage(app);
+        const functions = getFunctions(app);
+        const sendTestInvoiceEmail = httpsCallable(functions, "sendTestInvoiceEmail");
         const ADMIN_CONTROL_KEY = "ecosma2026-admin";
         let facilities = [];
         let cancellationRecords = [];
@@ -285,6 +288,24 @@
             }).join("");
         }
 
+        window.sendTestInvoiceFromPreview = async function(facilityId, button) {
+            const adminKey = prompt("Firebase Secretに設定した請求書送信キーを入力してください。");
+            if (!adminKey) return;
+            if (!confirm(`テスト請求書を ${facilityId} の施設情報で作成し、ecosmile39@gmail.com へ送信します。実請求ではありません。送信しますか？`)) return;
+
+            button.disabled = true;
+            button.textContent = "送信中...";
+            try {
+                const result = await sendTestInvoiceEmail({ facilityId, adminKey });
+                alert(`テストメールを送信しました。\n宛先：${result.data.recipient}\n請求書番号：${result.data.invoiceNumber}`);
+            } catch (error) {
+                alert("テストメールを送信できませんでした: " + (error.message || error));
+            } finally {
+                button.disabled = false;
+                button.textContent = "📧 テスト請求書メールを送信";
+            }
+        };
+
         window.previewTestInvoice = function(encodedId) {
             let facilityId = decodeURIComponent(encodedId);
             let facility = facilities.find(item => item.id === facilityId);
@@ -320,11 +341,11 @@ body{font-family:sans-serif;color:#222;max-width:800px;margin:32px auto;padding:
 h1{text-align:center;margin:32px 0}.total{font-size:20px;font-weight:bold;margin:24px 0}
 table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #adb5bd;padding:10px;text-align:left}th{background:#f1f3f5}
 .notice{margin-top:24px;padding:12px;background:#fff4e6;border:1px solid #ffa94d}
-.print{display:block;margin:24px auto;padding:12px 22px;background:#1971c2;color:white;border:0;border-radius:4px;font-weight:bold;font-size:16px}
-@media print{body{margin:0;padding:12mm}.print{display:none}}
+.actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:24px auto}.actions button{padding:12px 22px;color:white;border:0;border-radius:4px;font-weight:bold;font-size:16px}.send{background:#2f9e44}.print{background:#1971c2}
+@media print{body{margin:0;padding:12mm}.send{display:none}}
 </style></head><body>
-<div class="test">テスト請求書（このプレビューからメール送信・請求は行われません）</div>
-<div class="top"><div><div class="recipient">${escapeInvoiceText(facility.facilityName || facilityId)} 御中</div><div>送付先：${escapeInvoiceText(facility.email || "未登録")}</div></div>
+<div class="test">テスト請求書（実請求ではありません）</div>
+<div class="top"><div><div class="recipient">${escapeInvoiceText(facility.facilityName || facilityId)} 御中</div><div>施設登録メール：${escapeInvoiceText(facility.email || "未登録")}<br>テスト送信先：ecosmile39@gmail.com</div></div>
 <div>請求書番号：${escapeInvoiceText(invoiceNumber)}<br>発行日：${escapeInvoiceText(formatDate(issueDate))}<br>お支払期限：${escapeInvoiceText(formatDate(dueDate))}</div></div>
 <h1>請求書</h1><div>下記のとおりご請求申し上げます。</div>
 <div class="total">ご請求金額（税込）　5,500円</div>
@@ -335,10 +356,11 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
 </tbody></table>
 <table><tbody><tr><th>発行元</th><td>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：ecosmile39@gmail.com<br>適格請求書発行事業者登録番号：なし</td></tr>
 <tr><th>お振込先</th><td>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</td></tr></tbody></table>
-<div class="notice">テスト用のプレビューです。メール送信・実請求は行われません。</div>
-<button class="print" type="button" onclick="window.print()">印刷 / PDFとして保存</button>
+<div class="notice">テスト送信ボタンは上記の固定宛先に請求内容をメールします。施設への実請求メールではありません。</div>
+<div class="actions"><button class="send" type="button" onclick="window.sendInvoiceTest(this)">📧 テスト請求書メールを送信</button><button class="print" type="button" onclick="window.print()">印刷 / PDFとして保存</button></div>
 </body></html>`);
             printWindow.document.close();
+            printWindow.sendInvoiceTest = button => window.sendTestInvoiceFromPreview(facility.id, button);
         };
 
         function renderCancellationRecords() {
