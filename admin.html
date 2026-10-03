@@ -498,9 +498,9 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                 let usersSnapshot = await getDocs(collection(db, "facilities", facilityId, "users"));
                 let recordsSnapshot = await getDocs(collection(db, "facilities", facilityId, "daily_records"));
                 let scopedLists = await Promise.all([
-                    listFolderFiles(`images/${facilityId}`),
-                    listFolderFiles(`videos/${facilityId}`),
-                    listFolderFiles(`faces/${facilityId}`)
+                    listAllStorageFiles(ref(storage, `images/${facilityId}`)),
+                    listAllStorageFiles(ref(storage, `videos/${facilityId}`)),
+                    listAllStorageFiles(ref(storage, `faces/${facilityId}`))
                 ]);
                 let scopedFiles = scopedLists.flat();
                 let preview = `削除対象を確認してください。\n\n施設：${facilityName}\n利用者名簿：${usersSnapshot.size}件\n連絡帳・介護日誌：${recordsSnapshot.size}件\n施設ID付きメディア：${scopedFiles.length}ファイル\n\n施設情報と関連データを削除します。Soft Delete設定によっては物理削除が遅れる場合があります。続けますか？`;
