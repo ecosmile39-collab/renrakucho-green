@@ -67,6 +67,14 @@
             <h2>施設一覧</h2>
             <p id="loadingMessage" class="muted">施設一覧を読み込んでいます...</p>
             <div id="facilityList"></div>
+            <section id="invoiceHistoryPanel" class="hidden" style="margin-top: 20px; padding: 16px; border: 1px solid #adb5bd; border-radius: 6px; background: #f8f9fa;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                    <h2 id="invoiceHistoryTitle" style="margin: 0;">請求書履歴</h2>
+                    <button type="button" onclick="closeInvoiceHistory()" style="background: #868e96;">閉じる</button>
+                </div>
+                <p id="invoiceHistoryMessage" class="muted"></p>
+                <div id="invoiceHistoryList"></div>
+            </section>
             <p id="facilityError" class="error"></p>
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                 <h2 style="margin-bottom: 12px;">退会履歴</h2>
@@ -80,7 +88,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-        import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
         const firebaseConfig = {
@@ -100,6 +108,7 @@
         const ADMIN_CONTROL_KEY = "ecosma2026-admin";
         let facilities = [];
         let cancellationRecords = [];
+        let currentInvoiceHistory = [];
 
         document.getElementById("showAdminKey").addEventListener("change", function() {
             document.getElementById("adminKey").type = this.checked ? "text" : "password";
@@ -282,12 +291,84 @@
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                         <button type="button" style="background: #1971c2;" onclick="previewTestInvoice('${encodeURIComponent(facility.id)}')">🧾 テスト請求書PDFプレビュー</button>
                         <button type="button" style="background: #2f9e44;" onclick="sendTestInvoiceFromPreview('${encodeURIComponent(facility.id)}', this)">📧 テスト請求書メールを送信</button>
+                        <button type="button" style="background: #495057;" onclick="showFacilityInvoiceHistory('${encodeURIComponent(facility.id)}')">📚 請求書履歴</button>
                         <button class="${isLocked ? "unlock" : "lock"}" onclick="toggleFacility('${encodeURIComponent(facility.id)}', ${isLocked})">${isLocked ? "🔓 解除する" : "🔒 ロックする"}</button>
                         <button class="delete" onclick="deleteFacility('${encodeURIComponent(facility.id)}')">🗑️ 登録施設を削除</button>
                     </div>
                 </div>`;
             }).join("");
         }
+
+        window.showFacilityInvoiceHistory = async function(encodedFacilityId) {
+            const facilityId = decodeURIComponent(encodedFacilityId);
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) return;
+
+            const panel = document.getElementById("invoiceHistoryPanel");
+            const message = document.getElementById("invoiceHistoryMessage");
+            const list = document.getElementById("invoiceHistoryList");
+            document.getElementById("invoiceHistoryTitle").textContent = `${facility.facilityName || facilityId} の請求書履歴`;
+            panel.classList.remove("hidden");
+            message.textContent = "履歴を読み込んでいます...";
+            list.innerHTML = "";
+            panel.scrollIntoView({ behavior: "smooth", block: "start" });
+
+            try {
+                const historySnapshot = await getDocs(query(
+                    collection(db, "facilities", facilityId, "invoiceHistory"),
+                    orderBy("sentAt", "desc")
+                ));
+                currentInvoiceHistory = historySnapshot.docs.map(historyDoc => ({ id: historyDoc.id, ...historyDoc.data() }));
+                if (!currentInvoiceHistory.length) {
+                    message.textContent = "この施設の請求書送信履歴はまだありません。";
+                    return;
+                }
+
+                message.textContent = `${currentInvoiceHistory.length}件の送信履歴`;
+                list.innerHTML = `<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; background: white;">
+                    <thead><tr style="background: #e9ecef;">
+                        <th style="padding: 8px; border: 1px solid #ced4da; text-align: left;">請求書番号</th>
+                        <th style="padding: 8px; border: 1px solid #ced4da; text-align: left;">発行日・対象月</th>
+                        <th style="padding: 8px; border: 1px solid #ced4da; text-align: left;">送信先</th>
+                        <th style="padding: 8px; border: 1px solid #ced4da; text-align: right;">税込金額</th>
+                        <th style="padding: 8px; border: 1px solid #ced4da;">区分</th>
+                        <th style="padding: 8px; border: 1px solid #ced4da;"></th>
+                    </tr></thead><tbody>${currentInvoiceHistory.map((record, index) => {
+                        const issueDate = record.issueDate || "日付不明";
+                        return `<tr>
+                            <td style="padding: 8px; border: 1px solid #ced4da;">${escapeHtml(record.invoiceNumber)}</td>
+                            <td style="padding: 8px; border: 1px solid #ced4da;">${escapeHtml(issueDate)}<br>${escapeHtml(record.billingMonth)}</td>
+                            <td style="padding: 8px; border: 1px solid #ced4da;">${escapeHtml(record.recipient)}</td>
+                            <td style="padding: 8px; border: 1px solid #ced4da; text-align: right;">${(Number(record.total) || 0).toLocaleString("ja-JP")}円</td>
+                            <td style="padding: 8px; border: 1px solid #ced4da;">${record.test ? "テスト" : "発行"}</td>
+                            <td style="padding: 8px; border: 1px solid #ced4da;">${record.invoiceHtml ? `<button type="button" data-invoice-history-index="${index}" style="background: #1971c2;">請求書を表示</button>` : ""}</td>
+                        </tr>`;
+                    }).join("")}</tbody></table></div>`;
+
+                list.querySelectorAll("[data-invoice-history-index]").forEach(button => {
+                    button.addEventListener("click", () => window.openInvoiceHistoryEntry(Number(button.dataset.invoiceHistoryIndex)));
+                });
+            } catch (error) {
+                message.textContent = "履歴を読み込めませんでした: " + (error.message || error);
+            }
+        };
+
+        window.closeInvoiceHistory = function() {
+            document.getElementById("invoiceHistoryPanel").classList.add("hidden");
+        };
+
+        window.openInvoiceHistoryEntry = function(index) {
+            const invoice = currentInvoiceHistory[index];
+            if (!invoice || !invoice.invoiceHtml) return;
+            const invoiceWindow = window.open("", "_blank");
+            if (!invoiceWindow) {
+                alert("ポップアップがブロックされました。このサイトのポップアップを許可してください。");
+                return;
+            }
+            invoiceWindow.document.open();
+            invoiceWindow.document.write(invoice.invoiceHtml);
+            invoiceWindow.document.close();
+        };
 
         window.sendTestInvoiceFromPreview = async function(encodedFacilityId, button) {
             const facilityId = decodeURIComponent(encodedFacilityId);

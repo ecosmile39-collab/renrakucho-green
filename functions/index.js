@@ -98,18 +98,27 @@ exports.sendTestInvoiceEmail = onCall({
             html
         });
 
-        await getFirestore().collection("invoiceEmailLogs").add({
+        const invoiceHistoryEntry = {
             test: true,
             facilityId,
             facilityName,
             recipient: INVOICE_TEST_RECIPIENT,
             invoiceNumber,
+            issueDate,
+            dueDate: `${dueParts.year}-${dueParts.month}-${dueParts.day}`,
+            billingMonth,
             subtotal: 5000,
             tax: 500,
             total: 5500,
             sentAt: FieldValue.serverTimestamp(),
-            messageId: result.messageId
-        }).catch(error => logger.warn("Test invoice email sent but audit logging failed", error));
+            messageId: result.messageId,
+            invoiceHtml: html
+        };
+        const { invoiceHtml, ...auditEntry } = invoiceHistoryEntry;
+        await Promise.all([
+            getFirestore().collection("facilities").doc(facilityId).collection("invoiceHistory").add(invoiceHistoryEntry),
+            getFirestore().collection("invoiceEmailLogs").add(auditEntry)
+        ]).catch(error => logger.warn("Test invoice email sent but history logging failed", error));
 
         return { success: true, recipient: INVOICE_TEST_RECIPIENT, invoiceNumber };
     } catch (error) {
