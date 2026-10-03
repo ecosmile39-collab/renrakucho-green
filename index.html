@@ -131,6 +131,7 @@
     <div class="form-box" id="mainForm" style="display: none;">
         
         <h2 id="secretTitle" style="user-select: none; cursor: pointer; margin-top: 0; color: #2b8a3e;">🌿 <span id="displayFacilityName">施設名読込中...</span> 連絡帳</h2>
+        <div id="trialNotice" style="display: none; margin: 0 0 14px; padding: 10px 12px; background: #fff4e6; border-left: 4px solid #f08c00; color: #7c4a03; font-weight: bold;"></div>
         
         <div style="text-align: right; margin-bottom: 15px;">
             <a id="unsubscribeActionLink" href="unsubscribe.html" style="display: none; margin-right: 12px; color: #c92a2a; font-weight: bold;">🗑️ システムを退会する</a>
@@ -966,6 +967,45 @@
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; } 
+
+            let facilitySnapshot;
+            try {
+                facilitySnapshot = await getDoc(doc(db, "facilities", facilityId));
+            } catch (error) {
+                alert("施設の利用状態を確認できませんでした。通信環境を確認して再読み込みしてください。");
+                return;
+            }
+            if (!facilitySnapshot.exists() || facilitySnapshot.data().status === "locked") {
+                localStorage.removeItem("currentFacilityId");
+                localStorage.removeItem("currentFacilityName");
+                localStorage.removeItem("isStaffAuthenticated");
+                window.location.replace("login.html");
+                return;
+            }
+
+            const facilityData = facilitySnapshot.data();
+            if (facilityData.subscriptionStatus === "trial") {
+                const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
+                if (!Number.isFinite(trialEndsAt) || Date.now() >= trialEndsAt) {
+                    localStorage.removeItem("currentFacilityId");
+                    localStorage.removeItem("currentFacilityName");
+                    localStorage.removeItem("isStaffAuthenticated");
+                    alert("無料お試し期間が終了しました。利用を続ける場合は販売元へお問い合わせください。");
+                    window.location.replace("login.html");
+                    return;
+                }
+                const trialDaysRemaining = Math.ceil((trialEndsAt - Date.now()) / (24 * 60 * 60 * 1000));
+                const trialNotice = document.getElementById("trialNotice");
+                trialNotice.textContent = `無料お試し期間中：残り${trialDaysRemaining}日（${new Date(trialEndsAt).toLocaleDateString("ja-JP")}まで）`;
+                trialNotice.style.display = "block";
+                window.setTimeout(() => {
+                    localStorage.removeItem("currentFacilityId");
+                    localStorage.removeItem("currentFacilityName");
+                    localStorage.removeItem("isStaffAuthenticated");
+                    alert("無料お試し期間が終了しました。利用を続ける場合は販売元へお問い合わせください。");
+                    window.location.replace("login.html");
+                }, Math.min(trialEndsAt - Date.now(), 2147483647));
+            }
             
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
             document.getElementById("displayFacilityName").textContent = facilityName;

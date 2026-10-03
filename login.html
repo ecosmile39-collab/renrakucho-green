@@ -40,14 +40,14 @@
         <div id="registerFormArea" style="display: none;">
             <h2 style="color: #2e7d32;">新規利用登録</h2>
             <div class="description">
-                ダウンロード時にお渡しした<b>「秘密の合言葉」</b>、お好きな施設名・パスワード、および<b>緊急時のサポート連絡先</b>を入力してください。
+                まずは<b>7日間無料</b>でお試しいただけます。ダウンロード時にお渡しした<b>「秘密の合言葉」</b>、お好きな施設名・パスワード、および<b>緊急時のサポート連絡先</b>を入力してください。無料期間終了後も利用を続ける場合は、販売元へお問い合わせください。
             </div>
             <input type="text" id="secretKey" placeholder="🔑 秘密の合言葉">
             <input type="text" id="regFacilityName" placeholder="📛 好きな施設名（ログインIDになります）">
             <input type="password" id="regPassword" placeholder="🔐 好きなパスワード">
             <input type="email" id="regEmail" placeholder="✉️ 連絡先メールアドレス（必須・緊急時連絡用）">
             <input type="tel" id="regPhone" placeholder="📞 ご連絡先お電話番号（任意）">
-            <button class="btn-register" onclick="handleRegister()">合言葉でシステムに登録する</button>
+            <button class="btn-register" onclick="handleRegister()">7日間無料で登録する</button>
             <p id="registerError" class="error">エラーメッセージ</p>
             <a onclick="toggleForm('login')" class="link">⬅️ 登録済みの方（ログイン）に戻る</a>
         </div>
@@ -69,6 +69,13 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const SECRET_KEY = "ecosma2026";
+        const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+
+        function isTrialExpired(facilityData) {
+            if (facilityData.subscriptionStatus !== "trial") return false;
+            const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
+            return !Number.isFinite(trialEndsAt) || Date.now() >= trialEndsAt;
+        }
 
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
@@ -76,11 +83,17 @@
 
             try {
                 let facilitySnapshot = await getDoc(doc(db, "facilities", facilityId));
-                if (facilitySnapshot.exists() && facilitySnapshot.data().status !== "locked") {
-                    let facilityName = facilitySnapshot.data().facilityName || facilityId;
+                const facilityData = facilitySnapshot.exists() ? facilitySnapshot.data() : null;
+                if (facilityData && facilityData.status !== "locked" && !isTrialExpired(facilityData)) {
+                    let facilityName = facilityData.facilityName || facilityId;
                     localStorage.setItem("currentFacilityName", facilityName);
                     window.location.replace("index.html");
                     return;
+                }
+                if (facilityData && isTrialExpired(facilityData)) {
+                    const errorMsg = document.getElementById("loginError");
+                    errorMsg.textContent = "無料お試し期間が終了しました。利用を続ける場合は販売元へお問い合わせください。";
+                    errorMsg.style.display = "block";
                 }
             } catch (error) {
                 console.warn("保存済み施設ログインを確認できませんでした:", error);
@@ -144,6 +157,11 @@
                     errorMsg.style.display = "block";
                     return;
                 }
+                if (isTrialExpired(data)) {
+                    errorMsg.textContent = "無料お試し期間が終了しました。利用を続ける場合は販売元へお問い合わせください。";
+                    errorMsg.style.display = "block";
+                    return;
+                }
                 loginSuccess(facilityDoc.id, data.facilityName || facilityDoc.id);
             } catch (error) {
                 errorMsg.textContent = "通信エラーが発生しました。インターネット環境を確認してください。";
@@ -182,15 +200,20 @@
                     errorMsg.style.display = "block";
                     return;
                 }
+                const trialStartedAt = new Date();
+                const trialEndsAt = new Date(trialStartedAt.getTime() + TRIAL_DURATION_MS);
                 let facilityRef = await addDoc(collection(db, "facilities"), {
                     facilityName: newName,
                     password: newPass,
                     email,
                     phone: phone || "未登録",
                     status: "active",
-                    createdAt: new Date().toISOString()
+                    createdAt: trialStartedAt.toISOString(),
+                    subscriptionStatus: "trial",
+                    trialStartedAt: trialStartedAt.toISOString(),
+                    trialEndsAt: trialEndsAt.toISOString()
                 });
-                alert("施設の登録が完了しました。");
+                alert(`施設の登録が完了しました。無料お試し期間は7日間です。\n終了日時：${trialEndsAt.toLocaleString("ja-JP")}`);
                 loginSuccess(facilityRef.id, newName);
             } catch (error) {
                 errorMsg.textContent = "通信エラーが発生しました。もう一度お試しください。";

@@ -211,6 +211,10 @@ exports.sendMonthlyInvoices = onSchedule({
         const facility = facilityDocument.data();
         const facilityId = facilityDocument.id;
         const facilityName = facility.facilityName || facilityId;
+        if (facility.subscriptionStatus === "trial") {
+            skippedCount++;
+            continue;
+        }
         const recipient = typeof facility.email === "string" ? facility.email.trim() : "";
         if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
             skippedCount++;

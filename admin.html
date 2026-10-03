@@ -23,6 +23,8 @@
         .status { display: inline-block; margin-top: 7px; padding: 4px 10px; border-radius: 14px; font-size: 13px; font-weight: bold; }
         .active { color: #087f23; background: #d3f9d8; border: 1px solid #2f9e44; }
         .locked { color: #c92a2a; background: #ffe3e3; border: 1px solid #fa5252; }
+        .trial { color: #8a5b00; background: #fff3bf; border: 1px solid #f08c00; }
+        .trial-expired { color: #c92a2a; background: #ffe3e3; border: 1px solid #fa5252; }
         .muted { color: #868e96; font-size: 13px; }
         .error { color: #c92a2a; font-weight: bold; margin: 10px 0 0; }
         .hidden { display: none; }
@@ -164,18 +166,23 @@
                     message.textContent = "その施設名はすでに登録されています。別の名前を指定してください。";
                     return;
                 }
+                const trialStartedAt = new Date();
+                const trialEndsAt = new Date(trialStartedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
                 await addDoc(collection(db, "facilities"), {
                     facilityName: name,
                     password,
                     email,
                     status: "active",
-                    createdAt: new Date().toISOString()
+                    createdAt: trialStartedAt.toISOString(),
+                    subscriptionStatus: "trial",
+                    trialStartedAt: trialStartedAt.toISOString(),
+                    trialEndsAt: trialEndsAt.toISOString()
                 });
                 document.getElementById("newFacilityName").value = "";
                 document.getElementById("newFacilityPassword").value = "";
                 document.getElementById("newFacilityEmail").value = "";
                 message.style.color = "#237032";
-                message.textContent = `${name} を登録しました。施設一覧に追加しました。`;
+                message.textContent = `${name} を7日間の無料お試しとして登録しました。`;
                 await loadFacilities();
             } catch (error) {
                 message.style.color = "#c92a2a";
@@ -293,22 +300,50 @@
             }
             list.innerHTML = facilities.map(facility => {
                 let isLocked = facility.status === "locked";
+                let isTrial = facility.subscriptionStatus === "trial";
+                let trialEndTime = Date.parse(facility.trialEndsAt || "");
+                let isTrialExpired = isTrial && (!Number.isFinite(trialEndTime) || Date.now() >= trialEndTime);
+                let trialDaysRemaining = isTrial && !isTrialExpired ? Math.ceil((trialEndTime - Date.now()) / (24 * 60 * 60 * 1000)) : 0;
+                let statusClass = isLocked ? "locked" : isTrialExpired ? "trial-expired" : isTrial ? "trial" : "active";
+                let statusLabel = isLocked ? "🔴 利用停止中" : isTrialExpired ? "⏰ 無料期間終了" : isTrial ? `🟠 無料お試し中（残り${trialDaysRemaining}日）` : "🟢 利用中";
                 return `<div class="facility">
                     <div><div class="facility-name">${escapeHtml(facility.facilityName || facility.id)}</div>
                     <div style="margin-top: 6px; color: #1971c2; font-size: 14px; font-weight: bold;">🔑 パスワード：${escapeHtml(facility.password || "未設定")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">✉️ メールアドレス：${escapeHtml(facility.email || "未登録")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">📞 電話番号：${escapeHtml(facility.phone || "未登録")}</div>
-                    <span class="status ${isLocked ? "locked" : "active"}">${isLocked ? "🔴 利用停止中" : "🟢 利用中"}</span></div>
+                    <span class="status ${statusClass}">${statusLabel}</span></div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                         <button type="button" style="background: #1971c2;" onclick="previewTestInvoice('${encodeURIComponent(facility.id)}')">🧾 テスト請求書PDFプレビュー</button>
                         <button type="button" style="background: #2f9e44;" onclick="sendTestInvoiceFromPreview('${encodeURIComponent(facility.id)}', this)">📧 テスト請求書メールを送信</button>
                         <button type="button" style="background: #495057;" onclick="showFacilityInvoiceHistory('${encodeURIComponent(facility.id)}')">📚 請求書履歴</button>
+                        ${isTrial ? `<button type="button" style="background: #087f23;" onclick="activateFacilitySubscription('${encodeURIComponent(facility.id)}')">✅ 購入後の本利用へ切替</button>` : ""}
                         <button class="${isLocked ? "unlock" : "lock"}" onclick="toggleFacility('${encodeURIComponent(facility.id)}', ${isLocked})">${isLocked ? "🔓 解除する" : "🔒 ロックする"}</button>
                         <button class="delete" onclick="deleteFacility('${encodeURIComponent(facility.id)}')">🗑️ 登録施設を削除</button>
                     </div>
                 </div>`;
             }).join("");
         }
+
+        window.activateFacilitySubscription = async function(encodedFacilityId) {
+            const facilityId = decodeURIComponent(encodedFacilityId);
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) return;
+            const facilityName = facility.facilityName || facilityId;
+            if (!confirm(`${facilityName} を無料お試しから本利用へ切り替えますか？以後、月次請求の対象になります。`)) return;
+
+            try {
+                await updateDoc(doc(db, "facilities", facilityId), {
+                    subscriptionStatus: "active",
+                    status: "active",
+                    planActivatedAt: new Date().toISOString()
+                });
+                facility.subscriptionStatus = "active";
+                facility.status = "active";
+                renderFacilities();
+            } catch (error) {
+                document.getElementById("facilityError").textContent = "本利用への切り替えに失敗しました: " + error.message;
+            }
+        };
 
         window.showFacilityInvoiceHistory = async function(encodedFacilityId) {
             const facilityId = decodeURIComponent(encodedFacilityId);
