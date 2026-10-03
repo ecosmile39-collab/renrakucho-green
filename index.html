@@ -995,7 +995,7 @@
                 secretClickCount++;
                 clearTimeout(secretClickTimer);
                 secretClickTimer = setTimeout(() => { secretClickCount = 0; }, 3000); 
-                if (secretClickCount === 3) { 
+                if (secretClickCount === 10) {
                     let testSections = document.querySelectorAll(".test-mode-section");
                     let isHidden = (window.getComputedStyle(testSections[0]).display === "none");
                     testSections.forEach(section => { section.style.display = isHidden ? "block" : "none"; });
