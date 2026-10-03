@@ -357,10 +357,11 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
 <table><tbody><tr><th>発行元</th><td>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：ecosmile39@gmail.com<br>適格請求書発行事業者登録番号：なし</td></tr>
 <tr><th>お振込先</th><td>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</td></tr></tbody></table>
 <div class="notice">テスト送信ボタンは上記の固定宛先に請求内容をメールします。施設への実請求メールではありません。</div>
-<div class="actions"><button class="send" type="button" onclick="window.sendInvoiceTest(this)">📧 テスト請求書メールを送信</button><button class="print" type="button" onclick="window.print()">印刷 / PDFとして保存</button></div>
+<div class="actions"><button id="sendInvoiceTestButton" class="send" type="button">📧 テスト請求書メールを送信</button><button class="print" type="button" onclick="window.print()">印刷 / PDFとして保存</button></div>
 </body></html>`);
             printWindow.document.close();
-            printWindow.sendInvoiceTest = button => window.sendTestInvoiceFromPreview(facility.id, button);
+            const sendButton = printWindow.document.getElementById("sendInvoiceTestButton");
+            sendButton.addEventListener("click", () => window.sendTestInvoiceFromPreview(facility.id, sendButton));
         };
 
         function renderCancellationRecords() {
