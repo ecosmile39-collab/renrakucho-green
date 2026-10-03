@@ -679,6 +679,8 @@
         let newFaceBlob = null; 
         let ffmpegInstance = null;
         let ffmpegLoadingPromise = null;
+        let ffmpegClassWorkerURL = null;
+        let ffmpegDependencyUrls = [];
         let videoCompressionQueue = Promise.resolve();
 
         window.showToast = function(message, duration = 3000) {
@@ -721,8 +723,28 @@
                         import("https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js")
                     ]);
                     const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+                    const packageBaseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm";
+                    const [workerResponse, constResponse, errorsResponse] = await Promise.all([
+                        fetch(`${packageBaseURL}/worker.js`),
+                        fetch(`${packageBaseURL}/const.js`),
+                        fetch(`${packageBaseURL}/errors.js`)
+                    ]);
+                    if (!workerResponse.ok || !constResponse.ok || !errorsResponse.ok) {
+                        throw new Error("動画圧縮用Workerを読み込めませんでした。");
+                    }
+                    const [workerSource, constSource, errorsSource] = await Promise.all([
+                        workerResponse.text(), constResponse.text(), errorsResponse.text()
+                    ]);
+                    const constURL = URL.createObjectURL(new Blob([constSource], { type: "text/javascript" }));
+                    const errorsURL = URL.createObjectURL(new Blob([errorsSource], { type: "text/javascript" }));
+                    const localWorkerSource = workerSource
+                        .replace('from "./const.js"', `from "${constURL}"`)
+                        .replace('from "./errors.js"', `from "${errorsURL}"`);
+                    ffmpegClassWorkerURL = URL.createObjectURL(new Blob([localWorkerSource], { type: "text/javascript" }));
+                    ffmpegDependencyUrls = [constURL, errorsURL];
                     const ffmpeg = new FFmpeg();
                     await ffmpeg.load({
+                        classWorkerURL: ffmpegClassWorkerURL,
                         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
                         wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm")
                     });
@@ -730,6 +752,10 @@
                     return ffmpeg;
                 })().catch(error => {
                     ffmpegLoadingPromise = null;
+                    if (ffmpegClassWorkerURL) URL.revokeObjectURL(ffmpegClassWorkerURL);
+                    ffmpegDependencyUrls.forEach(url => URL.revokeObjectURL(url));
+                    ffmpegClassWorkerURL = null;
+                    ffmpegDependencyUrls = [];
                     throw error;
                 });
             }
