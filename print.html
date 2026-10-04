@@ -156,6 +156,18 @@
             padding-left: 0.3em; 
         }
 
+        .birthday-card-container-v2.layout-vertical1::before {
+            content: "";
+            position: absolute;
+            z-index: 2;
+            top: 7%;
+            left: 27%;
+            width: 46%;
+            height: 14%;
+            background: radial-gradient(ellipse, #f4eadb 55%, rgba(244, 234, 219, 0.94) 72%, transparent 100%);
+            pointer-events: none;
+        }
+
         /* ==========================================
            🎉 各デザイン個別の位置調整
            ========================================== */
@@ -1248,7 +1260,7 @@
                 }
 
                 cardPageDiv.innerHTML = `
-                    <div class="birthday-card-container-v2 ${layoutClass}${Number(bData.age) >= 70 && ["layout-vertical3", "layout-horizontal3", "layout-horizontal4"].includes(layoutClass) ? " card-longevity" : ""}${secondImgUrl ? " card-two-photos" : ""}">
+                    <div class="birthday-card-container-v2 ${layoutClass}${Number(bData.age) >= 70 ? " card-longevity" : ""}${secondImgUrl ? " card-two-photos" : ""}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
                         <div class="dynamic-chouju-v2">祝 長 寿</div>
                         <img src="${todayImgUrl}" class="dynamic-photo-v2 dynamic-photo-primary-v2" alt="利用者の写真1">
@@ -1516,7 +1528,7 @@
                 }
 
                 cardPageDiv.innerHTML = `
-                    <div class="birthday-card-container-v2 ${layoutClass}${Number(bData.age) >= 70 && ["layout-vertical3", "layout-horizontal3", "layout-horizontal4"].includes(layoutClass) ? " card-longevity" : ""}${secondImgUrl ? " card-two-photos" : ""}">
+                    <div class="birthday-card-container-v2 ${layoutClass}${Number(bData.age) >= 70 ? " card-longevity" : ""}${secondImgUrl ? " card-two-photos" : ""}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
                         <div class="dynamic-chouju-v2">祝 長 寿</div>
                         <img src="${todayImgUrl}" class="dynamic-photo-v2 dynamic-photo-primary-v2" alt="利用者の写真1">
