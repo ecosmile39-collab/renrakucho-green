@@ -59,6 +59,7 @@
                 <option value="デイサービス">☀️ デイサービス</option>
                 <option value="ショートステイ" selected>🌙 ショートステイ</option>
                 <option value="放課後等デイサービス">🎒 放課後等デイサービス</option>
+                <option value="児童発達支援">🧸 児童発達支援</option>
             </select>
             <input type="month" id="targetMonth" class="month-input">
             <button class="btn-search" onclick="searchData()">この月のデータを探す</button>
@@ -272,19 +273,19 @@
                         </tr>`;
                     });
                     html += `</table>`;
-                } else if (sType === "放課後等デイサービス") {
+                } else if (["放課後等デイサービス", "児童発達支援"].includes(sType)) {
                     html += `<table class="history-table">
-                        <tr><th>日付</th><th>出欠</th><th>到着／出発</th><th>送迎</th><th>おやつ</th><th>活動・個別支援</th><th>保護者への申し送り</th></tr>`;
+                        <tr><th>日付</th><th>出欠</th><th>到着／出発</th><th>送迎</th><th>健康・排泄</th><th>活動</th><th>エピソード・家庭連絡</th></tr>`;
                     userRecords.forEach(d => {
                         const transport = [d.afterSchoolPickup, d.afterSchoolDropoff].filter(Boolean).map(escapeHtml).join("<br>") || "--";
                         html += `<tr>
                             <td>${escapeHtml(d.date.substring(5).replace('-', '/'))}</td>
                             <td>${escapeHtml(d.afterSchoolAttendance || "--")}</td>
-                            <td>${escapeHtml(d.afterSchoolArrivalTime || "--")}／${escapeHtml(d.afterSchoolDepartureTime || "--")}</td>
-                            <td>${transport}</td>
-                            <td>${escapeHtml(d.afterSchoolSnack || "--")}</td>
-                            <td style="text-align:left;white-space:pre-wrap;">${escapeHtml(d.afterSchoolSupport || "--")}</td>
-                            <td style="text-align:left;white-space:pre-wrap;">${escapeHtml(d.afterSchoolHandover || "--")}</td>
+                            <td>${escapeHtml(d.afterSchoolProvideStart || "--")}〜${escapeHtml(d.afterSchoolProvideEnd || "--")}<br>${escapeHtml(d.afterSchoolArrivalTime || "--")}／${escapeHtml(d.afterSchoolDepartureTime || "--")}</td>
+                            <td>${escapeHtml(d.afterSchoolPickupType || "--")} ${transport}<br>${escapeHtml(d.afterSchoolDropoffType || "")}</td>
+                            <td>体温 ${escapeHtml(d.temp1 || "--")}℃ ${escapeHtml(d.afterSchoolHealth || "")}<br>排泄 ${escapeHtml(d.afterSchoolToiletTime || "--")} ${escapeHtml(d.afterSchoolToilet || "--")}<br>おやつ ${escapeHtml(d.afterSchoolSnackIntake || "--")}</td>
+                            <td style="text-align:left;white-space:pre-wrap;">${escapeHtml((d.afterSchoolActivityTags || []).join("、"))}<br>${escapeHtml(d.afterSchoolSupport || "--")}</td>
+                            <td style="text-align:left;white-space:pre-wrap;">${escapeHtml(d.afterSchoolEpisode || "")}<br>${escapeHtml(d.afterSchoolHandover || "--")}</td>
                         </tr>`;
                     });
                     html += `</table>`;

@@ -390,6 +390,7 @@
                     <option value="デイサービス" selected>☀️ デイサービス（日帰り）</option>
                     <option value="ショートステイ">🌙 ショートステイ（宿泊）</option>
                     <option value="放課後等デイサービス">🎒 放課後等デイサービス</option>
+                    <option value="児童発達支援">🧸 児童発達支援</option>
                 </select>
             </div>
 
@@ -1351,14 +1352,25 @@
                 
                 let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
                 let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
-                let afterSchoolHtml = data.serviceType === "放課後等デイサービス" ? `
-                    <div class="section-title">■ 放課後等デイサービス記録</div>
+                let isChildService = ["放課後等デイサービス", "児童発達支援"].includes(data.serviceType);
+                let childArrivalLabel = data.serviceType === "児童発達支援" ? "事業所への到着" : "学校からの到着";
+                let childDepartureLabel = data.serviceType === "児童発達支援" ? "事業所からの退所" : "事業所からの出発";
+                let childServiceHtml = isChildService ? `
+                    <div class="section-title">■ ${data.serviceType}記録</div>
                     <table class="compact-table">
-                        <tr><th>出欠状況</th><td>${data.afterSchoolAttendance || '未入力'}</td><th>学校からの到着</th><td>${data.afterSchoolArrivalTime || '未入力'}</td><th>事業所からの出発</th><td>${data.afterSchoolDepartureTime || '未入力'}</td></tr>
-                        <tr><th>学校から事業所への送迎</th><td colspan="2">${data.afterSchoolPickup || '未入力'}</td><th>事業所から自宅への送迎</th><td colspan="2">${data.afterSchoolDropoff || '未入力'}</td></tr>
-                        <tr><th>おやつ</th><td colspan="5">${data.afterSchoolSnack || '未入力'}</td></tr>
+                        <tr><th>利用日・提供時間</th><td>${data.date}</td><th>提供時間</th><td>${data.afterSchoolProvideStart || '未入力'}〜${data.afterSchoolProvideEnd || '未入力'}</td><th>担当指導員</th><td>${data.careStaff || '未入力'}</td></tr>
+                        <tr><th>出欠状況</th><td>${data.afterSchoolAttendance || '未入力'}</td><th>${childArrivalLabel}</th><td>${data.afterSchoolArrivalTime || '未入力'}</td><th>${childDepartureLabel}</th><td>${data.afterSchoolDepartureTime || '未入力'}</td></tr>
+                        <tr><th>来所時の送迎</th><td colspan="2">${data.afterSchoolPickupType || '未入力'} ${data.afterSchoolPickup || ''}</td><th>退所時の送迎</th><td colspan="2">${data.afterSchoolDropoffType || '未入力'} ${data.afterSchoolDropoff || ''}</td></tr>
+                        <tr><th>体温測定時刻</th><td>${data.afterSchoolTempTime || '未入力'}</td><th>健康状態</th><td colspan="3">${data.afterSchoolHealth || '未入力'} ${data.afterSchoolHealthNote || ''}</td></tr>
+                        <tr><th>排泄</th><td colspan="2">${data.afterSchoolToiletTime || '未入力'} ${data.afterSchoolToilet || ''}</td><th>水分補給</th><td>${data.water || '未入力'}ml</td><th>おやつ</th><td>${data.afterSchoolSnack || '未入力'} ／ ${data.afterSchoolSnackIntake || '未入力'}</td></tr>
+                        <tr><th>活動タグ</th><td colspan="5">${(data.afterSchoolActivityTags || []).join("、") || '未入力'}</td></tr>
+                        <tr><th>次回利用・持ち物</th><td colspan="5">${data.afterSchoolNextUseDate || '未入力'} ／ ${data.afterSchoolBelongings || '未入力'}</td></tr>
+                        <tr><th>家庭からの連絡</th><td colspan="5">睡眠 ${data.afterSchoolHomeSleepHours || '未入力'}時間 ${data.afterSchoolHomeSleepQuality || ''} ／ 朝の様子：${data.afterSchoolMorningState || '未入力'}</td></tr>
+                        <tr><th>保護者からの連絡</th><td colspan="5">${familyMessageText || '未入力'}</td></tr>
+                        <tr><th>保護者確認</th><td colspan="5">${data.afterSchoolParentSign || '未入力'}</td></tr>
                     </table>
-                    <div class="section-title">■ 活動・個別支援の内容</div><div class="text-box">${(data.afterSchoolSupport || '未入力').replace(/\n/g, '<br>')}</div>
+                    <div class="section-title">■ 活動の具体的内容</div><div class="text-box">${(data.afterSchoolSupport || '未入力').replace(/\n/g, '<br>')}</div>
+                    <div class="section-title">■ 施設での様子・エピソード</div><div class="text-box">${(data.afterSchoolEpisode || '未入力').replace(/\n/g, '<br>')}</div>
                     <div class="section-title">■ 保護者への申し送り</div><div class="text-box">${(data.afterSchoolHandover || '未入力').replace(/\n/g, '<br>')}</div>
                 ` : "";
 
@@ -1366,7 +1378,7 @@
                     <div class="punch-mark">▷</div>
                     <div class="print-header">
                         <div class="facility-name">${facilityName}</div>
-                        <h1>${data.serviceType === "放課後等デイサービス" ? "放課後等デイサービス 利用記録" : "本日の連絡帳"}</h1>
+                        <h1>${isChildService ? `${data.serviceType} 利用記録` : "本日の連絡帳"}</h1>
                     </div>
 
                     ${birthdayBannerHtml}
@@ -1400,7 +1412,7 @@
                         </tr>
                         ${excretionRow}
                     </table>
-                    ${afterSchoolHtml}
+                    ${childServiceHtml}
                     
                     <div class="compact-avg">
                         📊 この1ヶ月の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%

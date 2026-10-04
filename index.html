@@ -109,6 +109,9 @@
                 <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
                     <input type="checkbox" id="editServiceAfterSchool" style="width: auto; margin-right: 5px;">🎒 放課後等デイサービス
                 </label>
+                <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" id="editServiceChildDevelopment" style="width: auto; margin-right: 5px;">🧸 児童発達支援
+                </label>
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 25px;">
@@ -149,6 +152,7 @@
                 <option value="デイサービス">☀️ デイサービス（通所介護・日帰り）</option>
                 <option value="ショートステイ">🌙 ショートステイ（短期入所・宿泊）</option>
                 <option value="放課後等デイサービス">🎒 放課後等デイサービス</option>
+                <option value="児童発達支援">🧸 児童発達支援</option>
             </select>
         </div>
 
@@ -253,9 +257,9 @@
         <div style="margin-top: 15px; padding: 15px; background-color: #fff9db; border: 1px solid #ffd43b; border-radius: 8px;">
             <h3 id="careJournalTitle" style="margin-top: 0; color: #8d6e00;">介護日誌</h3>
             <a id="changePasswordActionLink" href="change_password.html" style="display: none; margin: 0 0 12px; color: #4682b4; font-weight: bold;">🔑 パスワード変更画面を開く</a>
-            <label>担当スタッフ</label>
+            <label id="careStaffLabel">担当スタッフ</label>
             <input type="text" id="careStaff" placeholder="例：山田">
-            <label>本日の介護日誌</label>
+            <label id="careJournalLabel">本日の介護日誌</label>
             <textarea id="careJournal" rows="5" placeholder="利用中の様子、介助内容、変化、申し送り事項などを入力してください"></textarea>
             <div style="margin-top: 12px; padding: 10px; background-color: #fff4e6; border: 1px dashed #f08c00; border-radius: 6px;">
                 <strong style="color: #c92a2a;">重要申し送りフラグ</strong>
@@ -393,29 +397,64 @@
         </div>
 
         <div id="afterSchoolSection" style="display: none; margin-top: 15px; padding: 15px; background-color: #f3f0ff; border: 1px solid #b197fc; border-radius: 8px;">
-            <h3 style="margin-top: 0; color: #6741d9; border-color: #b197fc;">🎒 放課後等デイサービス記録</h3>
-            <label>出欠状況</label>
-            <select id="afterSchoolAttendance">
-                <option value="">選択してください</option>
-                <option value="利用">利用</option>
-                <option value="欠席">欠席</option>
-                <option value="遅刻">遅刻</option>
-                <option value="早退">早退</option>
-            </select>
+            <h3 id="childServiceTitle" style="margin-top: 0; color: #6741d9; border-color: #b197fc;">🎒 放課後等デイサービス連絡帳</h3>
             <div class="flex-box">
-                <div><label>学校からの到着時刻</label><input type="time" id="afterSchoolArrivalTime"></div>
-                <div><label>事業所からの出発時刻</label><input type="time" id="afterSchoolDepartureTime"></div>
+                <div><label>利用状況</label><select id="afterSchoolAttendance"><option value="">選択してください</option><option value="利用">利用</option><option value="欠席">欠席</option><option value="遅刻">遅刻</option><option value="早退">早退</option></select></div>
+                <div><label>担当指導員</label><input type="text" id="afterSchoolStaff" placeholder="記入者名"></div>
             </div>
             <div class="flex-box">
-                <div><label>学校から事業所への送迎</label><input type="text" id="afterSchoolPickup" placeholder="例：学校迎え・担当者名"></div>
-                <div><label>事業所から自宅への送迎</label><input type="text" id="afterSchoolDropoff" placeholder="例：自宅送り・担当者名"></div>
+                <div><label>提供開始予定</label><input type="time" id="afterSchoolProvideStart"></div>
+                <div><label>提供終了予定</label><input type="time" id="afterSchoolProvideEnd"></div>
             </div>
-            <label>活動・個別支援の内容</label>
-            <textarea id="afterSchoolSupport" rows="4" placeholder="例：宿題、個別課題、集団活動、支援内容や本人の様子"></textarea>
-            <label>おやつ</label>
-            <input type="text" id="afterSchoolSnack" placeholder="例：完食、半量、水分摂取など">
-            <label>保護者への申し送り</label>
-            <textarea id="afterSchoolHandover" rows="3" placeholder="送迎時に保護者へ伝える内容"></textarea>
+            <div class="flex-box">
+                <div><label id="afterSchoolArrivalLabel">学校からの到着時刻</label><input type="time" id="afterSchoolArrivalTime"></div>
+                <div><label id="afterSchoolDepartureLabel">事業所からの出発時刻</label><input type="time" id="afterSchoolDepartureTime"></div>
+            </div>
+            <h4>送迎状況</h4>
+            <div class="flex-box">
+                <div><label id="afterSchoolPickupLabel">来所時</label><select id="afterSchoolPickupType"><option value="">選択してください</option><option value="施設送迎（学校迎え）">施設送迎（学校迎え）</option><option value="施設送迎（自宅迎え）">施設送迎（自宅迎え）</option><option value="家族送迎">家族送迎</option><option value="自力来所">自力来所</option></select><input type="text" id="afterSchoolPickup" placeholder="送迎担当者・補足（任意）"></div>
+                <div><label>退所時</label><select id="afterSchoolDropoffType"><option value="">選択してください</option><option value="施設送迎（自宅送り）">施設送迎（自宅送り）</option><option value="家族お迎え">家族お迎え</option><option value="自力帰宅">自力帰宅</option></select><input type="text" id="afterSchoolDropoff" placeholder="送迎担当者・補足（任意）"></div>
+            </div>
+            <h4>バイタル・健康チェック</h4>
+            <div class="flex-box">
+                <div><label>体温測定時刻</label><input type="time" id="afterSchoolTempTime"></div>
+                <div><label>健康状態</label><select id="afterSchoolHealth"><option value="">選択してください</option><option value="良好">良好</option><option value="鼻水・咳">鼻水・咳</option><option value="機嫌不良">機嫌不良</option><option value="怪我・その他">怪我・その他</option></select></div>
+            </div>
+            <input type="text" id="afterSchoolHealthNote" placeholder="健康状態・怪我などの補足（任意）">
+            <h4>排泄・水分・おやつ</h4>
+            <div class="flex-box">
+                <div><label>トイレ時刻</label><input type="time" id="afterSchoolToiletTime"></div>
+                <div><label>排泄状況</label><select id="afterSchoolToilet"><option value="">選択してください</option><option value="自立排尿">自立排尿</option><option value="促し">促し</option><option value="失敗・着替え">失敗・着替え</option><option value="排便">排便</option><option value="なし">なし</option></select></div>
+            </div>
+            <div class="flex-box">
+                <div><label>提供したおやつ</label><input type="text" id="afterSchoolSnack" placeholder="例：ゼリー・おせんべい"></div>
+                <div><label>おやつ摂取量</label><select id="afterSchoolSnackIntake"><option value="">選択してください</option><option value="完食">完食</option><option value="半分">半分</option><option value="拒否">拒否</option><option value="提供なし">提供なし</option></select></div>
+            </div>
+            <h4>本日の活動・集団プログラム</h4>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="afterSchoolActivityTag" value="学習支援（宿題）" style="width:auto;"> 学習支援（宿題）</label>
+                <label><input type="checkbox" name="afterSchoolActivityTag" value="運動療育（粗大運動）" style="width:auto;"> 運動療育（粗大運動）</label>
+                <label><input type="checkbox" name="afterSchoolActivityTag" value="創作・手先活動（微細運動）" style="width:auto;"> 創作・手先活動（微細運動）</label>
+                <label><input type="checkbox" name="afterSchoolActivityTag" value="ソーシャルスキルトレーニング（SST）" style="width:auto;"> ソーシャルスキルトレーニング（SST）</label>
+                <label><input type="checkbox" name="afterSchoolActivityTag" value="外出・自然体験" style="width:auto;"> 外出・自然体験</label>
+            </div>
+            <label>活動の具体的内容</label>
+            <textarea id="afterSchoolSupport" rows="3" placeholder="例：公園での活動内容、個別課題への取り組み"></textarea>
+            <label>施設での様子・エピソード（スタッフ記入欄）</label>
+            <textarea id="afterSchoolEpisode" rows="4" placeholder="表情、友だちとの関わり、できたこと、支援の様子、怪我や体調変化など"></textarea>
+            <div class="flex-box">
+                <div><label>次回利用予定日</label><input type="date" id="afterSchoolNextUseDate"></div>
+                <div><label>持ち物・お知らせ</label><input type="text" id="afterSchoolBelongings" placeholder="例：外靴、水筒、着替え"></div>
+            </div>
+            <h4>保護者記入欄</h4>
+            <div class="flex-box">
+                <div><label>昨晩の睡眠時間</label><input type="number" id="afterSchoolHomeSleepHours" min="0" max="24" step="0.5" placeholder="時間"></div>
+                <div><label>昨晩の睡眠の様子</label><input type="text" id="afterSchoolHomeSleepQuality" placeholder="例：良好・夜泣きなし"></div>
+            </div>
+            <label>朝の様子</label>
+            <input type="text" id="afterSchoolMorningState" placeholder="例：食欲あり、元気に登校">
+            <label>保護者確認印・サイン（任意）</label>
+            <input type="text" id="afterSchoolParentSign" placeholder="保護者名など">
         </div>
 
         <div id="shortStaySection" style="display: none;">
@@ -638,7 +677,7 @@
         </select>
         <textarea id="message" rows="4"></textarea>
 
-        <label style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal;">（ご家庭でのご様子など）</span></label>
+        <label id="familyMessageLabel" style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項（ご家庭でのご様子など）</label>
         <textarea id="familyMessage" rows="3" placeholder="ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。"></textarea>
 
         <div style="margin-top: 15px;">
@@ -1164,11 +1203,23 @@
             let regTitle = document.getElementById("regBoxTitle");
 
             let isShortStay = sType === "ショートステイ";
-            let isAfterSchool = sType === "放課後等デイサービス";
+            let isAfterSchool = sType === "放課後等デイサービス" || sType === "児童発達支援";
             daySec.style.display = isShortStay ? "none" : "block";
             stSec.style.display = isShortStay ? "block" : "none";
             afterSchoolSec.style.display = isAfterSchool ? "block" : "none";
-            document.getElementById("dayVitalsTitle").textContent = isAfterSchool ? "バイタル（放課後等デイサービス）" : "バイタル（デイサービス）";
+            const isEarlyChildhood = sType === "児童発達支援";
+            document.getElementById("dayVitalsTitle").textContent = isAfterSchool ? `バイタル（${sType}）` : "バイタル（デイサービス）";
+            document.getElementById("childServiceTitle").textContent = `🎒 ${sType}連絡帳`;
+            document.getElementById("afterSchoolArrivalLabel").textContent = isEarlyChildhood ? "事業所への到着時刻" : "学校からの到着時刻";
+            document.getElementById("afterSchoolDepartureLabel").textContent = isEarlyChildhood ? "事業所からの退所時刻" : "事業所からの出発時刻";
+            const pickupSelect = document.getElementById("afterSchoolPickupType");
+            pickupSelect.options[1].textContent = isEarlyChildhood ? "施設送迎（自宅迎え）" : "施設送迎（学校迎え）";
+            pickupSelect.options[1].value = pickupSelect.options[1].textContent;
+            pickupSelect.options[2].textContent = isEarlyChildhood ? "施設送迎（事業所迎え）" : "施設送迎（自宅迎え）";
+            pickupSelect.options[2].value = pickupSelect.options[2].textContent;
+            document.getElementById("careStaffLabel").textContent = isAfterSchool ? "担当指導員（記入者）" : "担当スタッフ";
+            document.getElementById("careJournalLabel").textContent = isAfterSchool ? "施設での様子・エピソード" : "本日の介護日誌";
+            document.getElementById("familyMessageLabel").textContent = isAfterSchool ? "保護者記入欄（家庭からの連絡・体調）" : "お客様からの御連絡事項（ご家庭でのご様子など）";
             regTitle.textContent = `➕ 【${sType}】の名簿に新しく登録する`;
 
             let facilityId = localStorage.getItem("currentFacilityId");
@@ -1338,6 +1389,7 @@
             document.getElementById("editServiceDay").checked = userServices.includes("デイサービス");
             document.getElementById("editServiceShort").checked = userServices.includes("ショートステイ");
             document.getElementById("editServiceAfterSchool").checked = userServices.includes("放課後等デイサービス");
+            document.getElementById("editServiceChildDevelopment").checked = userServices.includes("児童発達支援");
 
             document.getElementById("editUserModal").style.display = "flex";
         };
@@ -1356,12 +1408,14 @@
             let isDay = document.getElementById("editServiceDay").checked;
             let isShort = document.getElementById("editServiceShort").checked;
             let isAfterSchool = document.getElementById("editServiceAfterSchool").checked;
-            if (!isDay && !isShort && !isAfterSchool) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
+            let isChildDevelopment = document.getElementById("editServiceChildDevelopment").checked;
+            if (!isDay && !isShort && !isAfterSchool && !isChildDevelopment) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
 
             let newServices = [];
             if (isDay) newServices.push("デイサービス");
             if (isShort) newServices.push("ショートステイ");
             if (isAfterSchool) newServices.push("放課後等デイサービス");
+            if (isChildDevelopment) newServices.push("児童発達支援");
 
             let currentData = window.globalUsersData[oldName] || {};
 
@@ -1486,12 +1540,31 @@
                 document.getElementsByName("training").forEach(c => c.checked = trainingArray.includes(c.value));
                 document.getElementById("activity").value = d.activity || "";
                 document.getElementById("afterSchoolAttendance").value = d.afterSchoolAttendance || "";
+                document.getElementById("afterSchoolProvideStart").value = d.afterSchoolProvideStart || "";
+                document.getElementById("afterSchoolProvideEnd").value = d.afterSchoolProvideEnd || "";
                 document.getElementById("afterSchoolArrivalTime").value = d.afterSchoolArrivalTime || "";
                 document.getElementById("afterSchoolDepartureTime").value = d.afterSchoolDepartureTime || "";
+                document.getElementById("afterSchoolPickupType").value = d.afterSchoolPickupType || "";
                 document.getElementById("afterSchoolPickup").value = d.afterSchoolPickup || "";
+                document.getElementById("afterSchoolDropoffType").value = d.afterSchoolDropoffType || "";
                 document.getElementById("afterSchoolDropoff").value = d.afterSchoolDropoff || "";
+                document.getElementById("afterSchoolTempTime").value = d.afterSchoolTempTime || "";
+                document.getElementById("afterSchoolHealth").value = d.afterSchoolHealth || "";
+                document.getElementById("afterSchoolHealthNote").value = d.afterSchoolHealthNote || "";
+                document.getElementById("afterSchoolToiletTime").value = d.afterSchoolToiletTime || "";
+                document.getElementById("afterSchoolToilet").value = d.afterSchoolToilet || "";
                 document.getElementById("afterSchoolSupport").value = d.afterSchoolSupport || "";
+                document.querySelectorAll('input[name="afterSchoolActivityTag"]').forEach(input => { input.checked = (d.afterSchoolActivityTags || []).includes(input.value); });
+                document.getElementById("afterSchoolEpisode").value = d.afterSchoolEpisode || "";
                 document.getElementById("afterSchoolSnack").value = d.afterSchoolSnack || "";
+                document.getElementById("afterSchoolSnackIntake").value = d.afterSchoolSnackIntake || "";
+                document.getElementById("afterSchoolNextUseDate").value = d.afterSchoolNextUseDate || "";
+                document.getElementById("afterSchoolBelongings").value = d.afterSchoolBelongings || "";
+                document.getElementById("afterSchoolHomeSleepHours").value = d.afterSchoolHomeSleepHours || "";
+                document.getElementById("afterSchoolHomeSleepQuality").value = d.afterSchoolHomeSleepQuality || "";
+                document.getElementById("afterSchoolMorningState").value = d.afterSchoolMorningState || "";
+                document.getElementById("afterSchoolParentSign").value = d.afterSchoolParentSign || "";
+                document.getElementById("afterSchoolHandover").value = d.afterSchoolHandover || "";
                 document.getElementById("afterSchoolHandover").value = d.afterSchoolHandover || "";
 
                 if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = d.stTempIn || d.stTemp1 || d.temp1 || "";
@@ -1629,12 +1702,31 @@
                         document.getElementsByName("training").forEach(c => c.checked = trainingArray.includes(c.value));
                         document.getElementById("activity").value = data.activity || "";
                         document.getElementById("afterSchoolAttendance").value = data.afterSchoolAttendance || "";
+                        document.getElementById("afterSchoolProvideStart").value = data.afterSchoolProvideStart || "";
+                        document.getElementById("afterSchoolProvideEnd").value = data.afterSchoolProvideEnd || "";
                         document.getElementById("afterSchoolArrivalTime").value = data.afterSchoolArrivalTime || "";
                         document.getElementById("afterSchoolDepartureTime").value = data.afterSchoolDepartureTime || "";
+                        document.getElementById("afterSchoolPickupType").value = data.afterSchoolPickupType || "";
                         document.getElementById("afterSchoolPickup").value = data.afterSchoolPickup || "";
+                        document.getElementById("afterSchoolDropoffType").value = data.afterSchoolDropoffType || "";
                         document.getElementById("afterSchoolDropoff").value = data.afterSchoolDropoff || "";
+                        document.getElementById("afterSchoolTempTime").value = data.afterSchoolTempTime || "";
+                        document.getElementById("afterSchoolHealth").value = data.afterSchoolHealth || "";
+                        document.getElementById("afterSchoolHealthNote").value = data.afterSchoolHealthNote || "";
+                        document.getElementById("afterSchoolToiletTime").value = data.afterSchoolToiletTime || "";
+                        document.getElementById("afterSchoolToilet").value = data.afterSchoolToilet || "";
                         document.getElementById("afterSchoolSupport").value = data.afterSchoolSupport || "";
+                        document.querySelectorAll('input[name="afterSchoolActivityTag"]').forEach(input => { input.checked = (data.afterSchoolActivityTags || []).includes(input.value); });
+                        document.getElementById("afterSchoolEpisode").value = data.afterSchoolEpisode || "";
                         document.getElementById("afterSchoolSnack").value = data.afterSchoolSnack || "";
+                        document.getElementById("afterSchoolSnackIntake").value = data.afterSchoolSnackIntake || "";
+                        document.getElementById("afterSchoolNextUseDate").value = data.afterSchoolNextUseDate || "";
+                        document.getElementById("afterSchoolBelongings").value = data.afterSchoolBelongings || "";
+                        document.getElementById("afterSchoolHomeSleepHours").value = data.afterSchoolHomeSleepHours || "";
+                        document.getElementById("afterSchoolHomeSleepQuality").value = data.afterSchoolHomeSleepQuality || "";
+                        document.getElementById("afterSchoolMorningState").value = data.afterSchoolMorningState || "";
+                        document.getElementById("afterSchoolParentSign").value = data.afterSchoolParentSign || "";
+                        document.getElementById("afterSchoolHandover").value = data.afterSchoolHandover || "";
                         document.getElementById("afterSchoolHandover").value = data.afterSchoolHandover || "";
 
                         if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = data.stTempIn || data.stTemp1 || data.temp1 || "";
@@ -1950,14 +2042,32 @@
                 data.bathReason = document.getElementById("bathReason").value;
                 data.training = tList.join("、");
                 data.activity = document.getElementById("activity").value;
-                if (sType === "放課後等デイサービス") {
+                if (sType === "放課後等デイサービス" || sType === "児童発達支援") {
                     data.afterSchoolAttendance = document.getElementById("afterSchoolAttendance").value;
+                    data.afterSchoolProvideStart = document.getElementById("afterSchoolProvideStart").value;
+                    data.afterSchoolProvideEnd = document.getElementById("afterSchoolProvideEnd").value;
                     data.afterSchoolArrivalTime = document.getElementById("afterSchoolArrivalTime").value;
                     data.afterSchoolDepartureTime = document.getElementById("afterSchoolDepartureTime").value;
+                    data.afterSchoolPickupType = document.getElementById("afterSchoolPickupType").value;
                     data.afterSchoolPickup = document.getElementById("afterSchoolPickup").value;
+                    data.afterSchoolDropoffType = document.getElementById("afterSchoolDropoffType").value;
                     data.afterSchoolDropoff = document.getElementById("afterSchoolDropoff").value;
+                    data.afterSchoolTempTime = document.getElementById("afterSchoolTempTime").value;
+                    data.afterSchoolHealth = document.getElementById("afterSchoolHealth").value;
+                    data.afterSchoolHealthNote = document.getElementById("afterSchoolHealthNote").value;
+                    data.afterSchoolToiletTime = document.getElementById("afterSchoolToiletTime").value;
+                    data.afterSchoolToilet = document.getElementById("afterSchoolToilet").value;
                     data.afterSchoolSupport = document.getElementById("afterSchoolSupport").value;
+                    data.afterSchoolActivityTags = Array.from(document.querySelectorAll('input[name="afterSchoolActivityTag"]:checked')).map(input => input.value);
+                    data.afterSchoolEpisode = document.getElementById("afterSchoolEpisode").value;
                     data.afterSchoolSnack = document.getElementById("afterSchoolSnack").value;
+                    data.afterSchoolSnackIntake = document.getElementById("afterSchoolSnackIntake").value;
+                    data.afterSchoolNextUseDate = document.getElementById("afterSchoolNextUseDate").value;
+                    data.afterSchoolBelongings = document.getElementById("afterSchoolBelongings").value;
+                    data.afterSchoolHomeSleepHours = document.getElementById("afterSchoolHomeSleepHours").value;
+                    data.afterSchoolHomeSleepQuality = document.getElementById("afterSchoolHomeSleepQuality").value;
+                    data.afterSchoolMorningState = document.getElementById("afterSchoolMorningState").value;
+                    data.afterSchoolParentSign = document.getElementById("afterSchoolParentSign").value;
                     data.afterSchoolHandover = document.getElementById("afterSchoolHandover").value;
                 }
             } else {
@@ -2205,12 +2315,30 @@
             document.getElementById("medication").value = ""; document.getElementById("bathReason").value = "";
             document.getElementById("activity").value = "";
             document.getElementById("afterSchoolAttendance").value = "";
+            document.getElementById("afterSchoolProvideStart").value = "";
+            document.getElementById("afterSchoolProvideEnd").value = "";
             document.getElementById("afterSchoolArrivalTime").value = "";
             document.getElementById("afterSchoolDepartureTime").value = "";
+            document.getElementById("afterSchoolPickupType").value = "";
             document.getElementById("afterSchoolPickup").value = "";
+            document.getElementById("afterSchoolDropoffType").value = "";
             document.getElementById("afterSchoolDropoff").value = "";
+            document.getElementById("afterSchoolTempTime").value = "";
+            document.getElementById("afterSchoolHealth").value = "";
+            document.getElementById("afterSchoolHealthNote").value = "";
+            document.getElementById("afterSchoolToiletTime").value = "";
+            document.getElementById("afterSchoolToilet").value = "";
             document.getElementById("afterSchoolSupport").value = "";
+            document.querySelectorAll('input[name="afterSchoolActivityTag"]').forEach(input => { input.checked = false; });
+            document.getElementById("afterSchoolEpisode").value = "";
             document.getElementById("afterSchoolSnack").value = "";
+            document.getElementById("afterSchoolSnackIntake").value = "";
+            document.getElementById("afterSchoolNextUseDate").value = "";
+            document.getElementById("afterSchoolBelongings").value = "";
+            document.getElementById("afterSchoolHomeSleepHours").value = "";
+            document.getElementById("afterSchoolHomeSleepQuality").value = "";
+            document.getElementById("afterSchoolMorningState").value = "";
+            document.getElementById("afterSchoolParentSign").value = "";
             document.getElementById("afterSchoolHandover").value = "";
             document.getElementsByName("bath").forEach(r => r.checked = false);
             document.getElementsByName("training").forEach(c => c.checked = false);
