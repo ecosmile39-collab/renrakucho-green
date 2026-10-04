@@ -99,7 +99,7 @@
             <input type="date" id="editUserBirthday" style="font-size: 16px; padding: 8px;">
 
             <label style="margin-top: 12px; font-size: 14px;">ご利用サービス種別（複数選択可）</label>
-            <div style="display: flex; gap: 15px; margin-top: 6px;">
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 6px;">
                 <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
                     <input type="checkbox" id="editServiceDay" style="width: auto; margin-right: 5px;">☀️ デイサービス
                 </label>
@@ -111,6 +111,9 @@
                 </label>
                 <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
                     <input type="checkbox" id="editServiceChildDevelopment" style="width: auto; margin-right: 5px;">🧸 児童発達支援
+                </label>
+                <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" id="editServiceLifeCare" style="width: auto; margin-right: 5px;">♿ 生活介護
                 </label>
             </div>
 
@@ -154,6 +157,7 @@
                 <option value="ショートステイ">🌙 ショートステイ（短期入所・宿泊）</option>
                 <option value="放課後等デイサービス">🎒 放課後等デイサービス</option>
                 <option value="児童発達支援">🧸 児童発達支援</option>
+                <option value="生活介護">♿ 生活介護（日中活動・生活支援）</option>
             </select>
         </div>
 
@@ -456,6 +460,61 @@
             <input type="text" id="afterSchoolMorningState" placeholder="例：食欲あり、元気に登校">
             <label>保護者確認印・サイン（任意）</label>
             <input type="text" id="afterSchoolParentSign" placeholder="保護者名など">
+        </div>
+
+        <div id="lifeCareSection" style="display: none; margin-top: 15px; padding: 15px; background-color: #e7f5ff; border: 1px solid #74c0fc; border-radius: 8px;">
+            <h3 id="lifeCareTitle" style="margin-top: 0; color: #1864ab; border-color: #74c0fc;">♿ 生活介護記録</h3>
+            <div class="flex-box">
+                <div><label>利用状況</label><select id="lifeCareAttendance"><option value="">選択してください</option><option value="利用">利用</option><option value="欠席">欠席</option><option value="遅刻">遅刻</option><option value="早退">早退</option></select></div>
+                <div><label>担当職員</label><input type="text" id="lifeCareStaff" placeholder="記入者名"></div>
+            </div>
+            <div class="flex-box">
+                <div><label>提供開始</label><input type="time" id="lifeCareStartTime"></div>
+                <div><label>提供終了</label><input type="time" id="lifeCareEndTime"></div>
+                <div><label>来所時刻</label><input type="time" id="lifeCareArrivalTime"></div>
+                <div><label>退所時刻</label><input type="time" id="lifeCareDepartureTime"></div>
+            </div>
+            <h4>送迎状況</h4>
+            <div class="flex-box">
+                <div><label>来所時</label><select id="lifeCarePickupType"><option value="">選択してください</option><option value="施設送迎">施設送迎</option><option value="家族送迎">家族送迎</option><option value="自力来所">自力来所</option></select><input type="text" id="lifeCarePickupNote" placeholder="送迎担当・補足（任意）"></div>
+                <div><label>退所時</label><select id="lifeCareDropoffType"><option value="">選択してください</option><option value="施設送迎">施設送迎</option><option value="家族お迎え">家族お迎え</option><option value="自力帰宅">自力帰宅</option></select><input type="text" id="lifeCareDropoffNote" placeholder="送迎担当・補足（任意）"></div>
+            </div>
+            <h4>健康・バイタル</h4>
+            <div class="flex-box">
+                <div><label>体温</label><input type="number" step="0.1" id="lifeCareTemperature" placeholder="例：36.5"></div>
+                <div><label>脈拍</label><input type="number" id="lifeCarePulse" placeholder="回/分"></div>
+                <div><label>血圧（上／下）</label><div class="bp-box"><input type="number" id="lifeCareBpHigh" placeholder="上"><span>/</span><input type="number" id="lifeCareBpLow" placeholder="下"></div></div>
+                <div><label>酸素飽和度</label><input type="number" id="lifeCareSpo2" placeholder="%"></div>
+            </div>
+            <label>健康状態・体調変化</label>
+            <textarea id="lifeCareHealthNote" rows="2" placeholder="体調や健康面で気付いたこと"></textarea>
+            <h4>日常生活の支援</h4>
+            <div class="flex-box">
+                <div><label>食事・摂取量</label><input type="text" id="lifeCareMeal" placeholder="例：昼食 8割"></div>
+                <div><label>水分摂取量</label><input type="text" id="lifeCareWater" placeholder="例：約500ml"></div>
+                <div><label>服薬・医療的ケア</label><input type="text" id="lifeCareMedication" placeholder="実施内容・なし"></div>
+            </div>
+            <div class="flex-box">
+                <div><label>排泄・トイレ支援</label><input type="text" id="lifeCareToileting" placeholder="例：声かけでトイレ誘導"></div>
+                <div><label>入浴・清潔保持</label><input type="text" id="lifeCareBathing" placeholder="例：入浴、清拭、整容"></div>
+            </div>
+            <h4>日中活動・個別支援</h4>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="lifeCareActivityTag" value="創作活動" style="width:auto;"> 創作活動</label>
+                <label><input type="checkbox" name="lifeCareActivityTag" value="生産活動" style="width:auto;"> 生産活動</label>
+                <label><input type="checkbox" name="lifeCareActivityTag" value="機能訓練" style="width:auto;"> 機能訓練</label>
+                <label><input type="checkbox" name="lifeCareActivityTag" value="運動・余暇活動" style="width:auto;"> 運動・余暇活動</label>
+                <label><input type="checkbox" name="lifeCareActivityTag" value="地域交流・外出" style="width:auto;"> 地域交流・外出</label>
+                <label><input type="checkbox" name="lifeCareActivityTag" value="生活訓練・日常動作" style="width:auto;"> 生活訓練・日常動作</label>
+            </div>
+            <label>個別支援計画に沿った支援・達成状況</label>
+            <textarea id="lifeCareGoalProgress" rows="3" placeholder="支援目標に対して行った支援や、ご本人の反応・達成状況"></textarea>
+            <label>活動の具体的内容</label>
+            <textarea id="lifeCareActivityDetails" rows="3" placeholder="活動内容、参加の様子、ご本人の選択や意思表示"></textarea>
+            <label>ご本人の様子・特記事項</label>
+            <textarea id="lifeCareEpisode" rows="4" placeholder="表情、他者との関わり、できたこと、体調変化、事故等"></textarea>
+            <label>ご家族への申し送り</label>
+            <textarea id="lifeCareHandover" rows="3" placeholder="ご家族に伝える生活・支援上の連絡事項"></textarea>
         </div>
 
         <div id="shortStaySection" style="display: none;">
@@ -1201,16 +1260,19 @@
             let daySec = document.getElementById("dayServiceSection");
             let stSec = document.getElementById("shortStaySection");
             let afterSchoolSec = document.getElementById("afterSchoolSection");
+            let lifeCareSec = document.getElementById("lifeCareSection");
             let regTitle = document.getElementById("regBoxTitle");
 
             let isShortStay = sType === "ショートステイ";
             let isAfterSchool = sType === "放課後等デイサービス" || sType === "児童発達支援";
-            daySec.style.display = isShortStay || isAfterSchool ? "none" : "block";
+            let isLifeCare = sType === "生活介護";
+            daySec.style.display = isShortStay || isAfterSchool || isLifeCare ? "none" : "block";
             stSec.style.display = isShortStay ? "block" : "none";
             afterSchoolSec.style.display = isAfterSchool ? "block" : "none";
-            document.getElementById("careJournalArea").style.display = isAfterSchool ? "none" : "block";
-            document.getElementById("facilityPRControl").style.display = isAfterSchool ? "none" : "block";
-            if (isAfterSchool) document.getElementById("prInputArea").style.display = "none";
+            lifeCareSec.style.display = isLifeCare ? "block" : "none";
+            document.getElementById("careJournalArea").style.display = isAfterSchool || isLifeCare ? "none" : "block";
+            document.getElementById("facilityPRControl").style.display = isAfterSchool || isLifeCare ? "none" : "block";
+            if (isAfterSchool || isLifeCare) document.getElementById("prInputArea").style.display = "none";
             const isEarlyChildhood = sType === "児童発達支援";
             document.getElementById("dayVitalsTitle").textContent = isAfterSchool ? `バイタル（${sType}）` : "バイタル（デイサービス）";
             document.getElementById("childServiceTitle").textContent = `${isEarlyChildhood ? "🧸" : "🎒"} ${sType}連絡帳`;
@@ -1221,12 +1283,13 @@
             pickupSelect.options[1].value = pickupSelect.options[1].textContent;
             pickupSelect.options[2].textContent = isEarlyChildhood ? "施設送迎（事業所迎え）" : "施設送迎（自宅迎え）";
             pickupSelect.options[2].value = pickupSelect.options[2].textContent;
-            document.getElementById("careStaffLabel").textContent = isAfterSchool ? "担当指導員（記入者）" : "担当スタッフ";
+            document.getElementById("careStaffLabel").textContent = isAfterSchool ? "担当指導員（記入者）" : isLifeCare ? "担当職員" : "担当スタッフ";
             document.getElementById("careJournalLabel").textContent = isAfterSchool ? "施設での様子・エピソード" : "本日の介護日誌";
-            document.getElementById("familyMessageLabel").textContent = isAfterSchool ? "保護者記入欄（家庭からの連絡・体調）" : "お客様からの御連絡事項（ご家庭でのご様子など）";
-            document.getElementById("familyContactSectionTitle").textContent = isAfterSchool ? "施設からのお知らせ・保護者記入欄（連絡事項）" : "ご利用いただきありがとうございます（連絡事項）";
+            document.getElementById("familyMessageLabel").textContent = isAfterSchool ? "保護者記入欄（家庭からの連絡・体調）" : isLifeCare ? "ご家族からの連絡事項" : "お客様からの御連絡事項（ご家庭でのご様子など）";
+            document.getElementById("familyContactSectionTitle").textContent = isAfterSchool ? "施設からのお知らせ・保護者記入欄（連絡事項）" : isLifeCare ? "施設からのお知らせ・ご家族への連絡" : "ご利用いただきありがとうございます（連絡事項）";
             document.getElementById("familyMessage").placeholder = isAfterSchool
                 ? "家庭での体調、睡眠、朝の様子などの連絡事項を入力してください。"
+                : isLifeCare ? "家庭での体調や生活の変化、ご家族からの連絡事項を入力してください。"
                 : "ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。";
             const facilityMessageLabel = document.getElementById("facilityMessageLabel");
             const messageTemplate = document.getElementById("messageTemplate");
@@ -1237,6 +1300,13 @@
                     <option value="本日もご利用ありがとうございました。活動の様子は下記の記録をご覧ください。">1. 本日もご利用ありがとうございました。活動記録をご覧ください。</option>
                     <option value="次回利用予定と持ち物は、下記のお知らせをご確認ください。">2. 次回利用予定と持ち物をご確認ください。</option>
                     <option value="ご不明な点やご相談がございましたら、施設までお問い合わせください。">3. ご相談は施設までお問い合わせください。</option>`;
+            } else if (isLifeCare) {
+                facilityMessageLabel.textContent = "施設からのお知らせ・生活介護の連絡事項";
+                messageTemplate.innerHTML = `
+                    <option value="">📝 定型文を選ぶ</option>
+                    <option value="本日もご利用ありがとうございました。日中活動や支援の様子は下記の記録をご確認ください。">1. 本日もご利用ありがとうございました。活動・支援記録をご確認ください。</option>
+                    <option value="次回利用時の持ち物や予定について、下記のお知らせをご確認ください。">2. 次回利用時の持ち物・予定をご確認ください。</option>
+                    <option value="ご自宅での様子や支援についてご相談がありましたら、施設までご連絡ください。">3. ご家庭での様子や支援のご相談は施設までご連絡ください。</option>`;
             } else {
                 facilityMessageLabel.textContent = "施設からの御連絡事項";
                 messageTemplate.innerHTML = `
@@ -1415,6 +1485,7 @@
             document.getElementById("editServiceShort").checked = userServices.includes("ショートステイ");
             document.getElementById("editServiceAfterSchool").checked = userServices.includes("放課後等デイサービス");
             document.getElementById("editServiceChildDevelopment").checked = userServices.includes("児童発達支援");
+            document.getElementById("editServiceLifeCare").checked = userServices.includes("生活介護");
 
             document.getElementById("editUserModal").style.display = "flex";
         };
@@ -1434,13 +1505,15 @@
             let isShort = document.getElementById("editServiceShort").checked;
             let isAfterSchool = document.getElementById("editServiceAfterSchool").checked;
             let isChildDevelopment = document.getElementById("editServiceChildDevelopment").checked;
-            if (!isDay && !isShort && !isAfterSchool && !isChildDevelopment) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
+            let isLifeCare = document.getElementById("editServiceLifeCare").checked;
+            if (!isDay && !isShort && !isAfterSchool && !isChildDevelopment && !isLifeCare) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
 
             let newServices = [];
             if (isDay) newServices.push("デイサービス");
             if (isShort) newServices.push("ショートステイ");
             if (isAfterSchool) newServices.push("放課後等デイサービス");
             if (isChildDevelopment) newServices.push("児童発達支援");
+            if (isLifeCare) newServices.push("生活介護");
 
             let currentData = window.globalUsersData[oldName] || {};
 
@@ -1593,6 +1666,58 @@
                 document.getElementById("afterSchoolParentSign").value = d.afterSchoolParentSign || "";
                 document.getElementById("afterSchoolHandover").value = d.afterSchoolHandover || "";
                 document.getElementById("afterSchoolHandover").value = d.afterSchoolHandover || "";
+                document.getElementById("lifeCareAttendance").value = d.lifeCareAttendance || "";
+                document.getElementById("lifeCareStaff").value = d.lifeCareStaff || d.careStaff || "";
+                document.getElementById("lifeCareStartTime").value = d.lifeCareStartTime || "";
+                document.getElementById("lifeCareEndTime").value = d.lifeCareEndTime || "";
+                document.getElementById("lifeCareArrivalTime").value = d.lifeCareArrivalTime || "";
+                document.getElementById("lifeCareDepartureTime").value = d.lifeCareDepartureTime || "";
+                document.getElementById("lifeCarePickupType").value = d.lifeCarePickupType || "";
+                document.getElementById("lifeCarePickupNote").value = d.lifeCarePickupNote || "";
+                document.getElementById("lifeCareDropoffType").value = d.lifeCareDropoffType || "";
+                document.getElementById("lifeCareDropoffNote").value = d.lifeCareDropoffNote || "";
+                document.getElementById("lifeCareTemperature").value = d.lifeCareTemperature || "";
+                document.getElementById("lifeCarePulse").value = d.lifeCarePulse || "";
+                document.getElementById("lifeCareBpHigh").value = d.lifeCareBpHigh || "";
+                document.getElementById("lifeCareBpLow").value = d.lifeCareBpLow || "";
+                document.getElementById("lifeCareSpo2").value = d.lifeCareSpo2 || "";
+                document.getElementById("lifeCareHealthNote").value = d.lifeCareHealthNote || "";
+                document.getElementById("lifeCareMeal").value = d.lifeCareMeal || "";
+                document.getElementById("lifeCareWater").value = d.lifeCareWater || "";
+                document.getElementById("lifeCareMedication").value = d.lifeCareMedication || "";
+                document.getElementById("lifeCareToileting").value = d.lifeCareToileting || "";
+                document.getElementById("lifeCareBathing").value = d.lifeCareBathing || "";
+                document.querySelectorAll('input[name="lifeCareActivityTag"]').forEach(input => { input.checked = (d.lifeCareActivityTags || []).includes(input.value); });
+                document.getElementById("lifeCareGoalProgress").value = d.lifeCareGoalProgress || "";
+                document.getElementById("lifeCareActivityDetails").value = d.lifeCareActivityDetails || "";
+                document.getElementById("lifeCareEpisode").value = d.lifeCareEpisode || "";
+                document.getElementById("lifeCareHandover").value = d.lifeCareHandover || "";
+                document.getElementById("lifeCareAttendance").value = d.lifeCareAttendance || "";
+                document.getElementById("lifeCareStaff").value = d.lifeCareStaff || d.careStaff || "";
+                document.getElementById("lifeCareStartTime").value = d.lifeCareStartTime || "";
+                document.getElementById("lifeCareEndTime").value = d.lifeCareEndTime || "";
+                document.getElementById("lifeCareArrivalTime").value = d.lifeCareArrivalTime || "";
+                document.getElementById("lifeCareDepartureTime").value = d.lifeCareDepartureTime || "";
+                document.getElementById("lifeCarePickupType").value = d.lifeCarePickupType || "";
+                document.getElementById("lifeCarePickupNote").value = d.lifeCarePickupNote || "";
+                document.getElementById("lifeCareDropoffType").value = d.lifeCareDropoffType || "";
+                document.getElementById("lifeCareDropoffNote").value = d.lifeCareDropoffNote || "";
+                document.getElementById("lifeCareTemperature").value = d.lifeCareTemperature || "";
+                document.getElementById("lifeCarePulse").value = d.lifeCarePulse || "";
+                document.getElementById("lifeCareBpHigh").value = d.lifeCareBpHigh || "";
+                document.getElementById("lifeCareBpLow").value = d.lifeCareBpLow || "";
+                document.getElementById("lifeCareSpo2").value = d.lifeCareSpo2 || "";
+                document.getElementById("lifeCareHealthNote").value = d.lifeCareHealthNote || "";
+                document.getElementById("lifeCareMeal").value = d.lifeCareMeal || "";
+                document.getElementById("lifeCareWater").value = d.lifeCareWater || "";
+                document.getElementById("lifeCareMedication").value = d.lifeCareMedication || "";
+                document.getElementById("lifeCareToileting").value = d.lifeCareToileting || "";
+                document.getElementById("lifeCareBathing").value = d.lifeCareBathing || "";
+                document.querySelectorAll('input[name="lifeCareActivityTag"]').forEach(input => { input.checked = (d.lifeCareActivityTags || []).includes(input.value); });
+                document.getElementById("lifeCareGoalProgress").value = d.lifeCareGoalProgress || "";
+                document.getElementById("lifeCareActivityDetails").value = d.lifeCareActivityDetails || "";
+                document.getElementById("lifeCareEpisode").value = d.lifeCareEpisode || "";
+                document.getElementById("lifeCareHandover").value = d.lifeCareHandover || "";
 
                 if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = d.stTempIn || d.stTemp1 || d.temp1 || "";
                 if(document.getElementById("stPulseIn")) document.getElementById("stPulseIn").value = d.stPulseIn || d.stPulse || d.pulse || "";
@@ -1757,6 +1882,58 @@
                         document.getElementById("afterSchoolParentSign").value = data.afterSchoolParentSign || "";
                         document.getElementById("afterSchoolHandover").value = data.afterSchoolHandover || "";
                         document.getElementById("afterSchoolHandover").value = data.afterSchoolHandover || "";
+                        document.getElementById("lifeCareAttendance").value = data.lifeCareAttendance || "";
+                        document.getElementById("lifeCareStaff").value = data.lifeCareStaff || data.careStaff || "";
+                        document.getElementById("lifeCareStartTime").value = data.lifeCareStartTime || "";
+                        document.getElementById("lifeCareEndTime").value = data.lifeCareEndTime || "";
+                        document.getElementById("lifeCareArrivalTime").value = data.lifeCareArrivalTime || "";
+                        document.getElementById("lifeCareDepartureTime").value = data.lifeCareDepartureTime || "";
+                        document.getElementById("lifeCarePickupType").value = data.lifeCarePickupType || "";
+                        document.getElementById("lifeCarePickupNote").value = data.lifeCarePickupNote || "";
+                        document.getElementById("lifeCareDropoffType").value = data.lifeCareDropoffType || "";
+                        document.getElementById("lifeCareDropoffNote").value = data.lifeCareDropoffNote || "";
+                        document.getElementById("lifeCareTemperature").value = data.lifeCareTemperature || "";
+                        document.getElementById("lifeCarePulse").value = data.lifeCarePulse || "";
+                        document.getElementById("lifeCareBpHigh").value = data.lifeCareBpHigh || "";
+                        document.getElementById("lifeCareBpLow").value = data.lifeCareBpLow || "";
+                        document.getElementById("lifeCareSpo2").value = data.lifeCareSpo2 || "";
+                        document.getElementById("lifeCareHealthNote").value = data.lifeCareHealthNote || "";
+                        document.getElementById("lifeCareMeal").value = data.lifeCareMeal || "";
+                        document.getElementById("lifeCareWater").value = data.lifeCareWater || "";
+                        document.getElementById("lifeCareMedication").value = data.lifeCareMedication || "";
+                        document.getElementById("lifeCareToileting").value = data.lifeCareToileting || "";
+                        document.getElementById("lifeCareBathing").value = data.lifeCareBathing || "";
+                        document.querySelectorAll('input[name="lifeCareActivityTag"]').forEach(input => { input.checked = (data.lifeCareActivityTags || []).includes(input.value); });
+                        document.getElementById("lifeCareGoalProgress").value = data.lifeCareGoalProgress || "";
+                        document.getElementById("lifeCareActivityDetails").value = data.lifeCareActivityDetails || "";
+                        document.getElementById("lifeCareEpisode").value = data.lifeCareEpisode || "";
+                        document.getElementById("lifeCareHandover").value = data.lifeCareHandover || "";
+                        document.getElementById("lifeCareAttendance").value = data.lifeCareAttendance || "";
+                        document.getElementById("lifeCareStaff").value = data.lifeCareStaff || data.careStaff || "";
+                        document.getElementById("lifeCareStartTime").value = data.lifeCareStartTime || "";
+                        document.getElementById("lifeCareEndTime").value = data.lifeCareEndTime || "";
+                        document.getElementById("lifeCareArrivalTime").value = data.lifeCareArrivalTime || "";
+                        document.getElementById("lifeCareDepartureTime").value = data.lifeCareDepartureTime || "";
+                        document.getElementById("lifeCarePickupType").value = data.lifeCarePickupType || "";
+                        document.getElementById("lifeCarePickupNote").value = data.lifeCarePickupNote || "";
+                        document.getElementById("lifeCareDropoffType").value = data.lifeCareDropoffType || "";
+                        document.getElementById("lifeCareDropoffNote").value = data.lifeCareDropoffNote || "";
+                        document.getElementById("lifeCareTemperature").value = data.lifeCareTemperature || "";
+                        document.getElementById("lifeCarePulse").value = data.lifeCarePulse || "";
+                        document.getElementById("lifeCareBpHigh").value = data.lifeCareBpHigh || "";
+                        document.getElementById("lifeCareBpLow").value = data.lifeCareBpLow || "";
+                        document.getElementById("lifeCareSpo2").value = data.lifeCareSpo2 || "";
+                        document.getElementById("lifeCareHealthNote").value = data.lifeCareHealthNote || "";
+                        document.getElementById("lifeCareMeal").value = data.lifeCareMeal || "";
+                        document.getElementById("lifeCareWater").value = data.lifeCareWater || "";
+                        document.getElementById("lifeCareMedication").value = data.lifeCareMedication || "";
+                        document.getElementById("lifeCareToileting").value = data.lifeCareToileting || "";
+                        document.getElementById("lifeCareBathing").value = data.lifeCareBathing || "";
+                        document.querySelectorAll('input[name="lifeCareActivityTag"]').forEach(input => { input.checked = (data.lifeCareActivityTags || []).includes(input.value); });
+                        document.getElementById("lifeCareGoalProgress").value = data.lifeCareGoalProgress || "";
+                        document.getElementById("lifeCareActivityDetails").value = data.lifeCareActivityDetails || "";
+                        document.getElementById("lifeCareEpisode").value = data.lifeCareEpisode || "";
+                        document.getElementById("lifeCareHandover").value = data.lifeCareHandover || "";
 
                         if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = data.stTempIn || data.stTemp1 || data.temp1 || "";
                         if(document.getElementById("stPulseIn")) document.getElementById("stPulseIn").value = data.stPulseIn || data.stPulse || data.pulse || "";
@@ -2025,6 +2202,7 @@
         function getFormData() {
             let sType = document.getElementById("serviceType").value;
             let isChildService = sType === "放課後等デイサービス" || sType === "児童発達支援";
+            let isLifeCare = sType === "生活介護";
             let userName = document.getElementById("userName").value;
             let date = document.getElementById("date").value;
             let facilityId = localStorage.getItem("currentFacilityId");
@@ -2035,20 +2213,20 @@
 
             let data = {
                 facilityId: facilityId, userName: userName, date: date, serviceType: sType,
-                careStaff: isChildService ? document.getElementById("afterSchoolStaff").value : document.getElementById("careStaff").value,
-                careJournal: isChildService ? "" : document.getElementById("careJournal").value,
-                handoverRequired: !isChildService && document.getElementById("handoverRequired").checked,
-                medicalVisit: !isChildService && document.getElementById("medicalVisit").checked,
-                conditionChange: !isChildService && document.getElementById("conditionChange").checked,
-                handoverNote: isChildService ? document.getElementById("afterSchoolHandover").value : document.getElementById("handoverNote").value,
+                careStaff: isChildService ? document.getElementById("afterSchoolStaff").value : isLifeCare ? document.getElementById("lifeCareStaff").value : document.getElementById("careStaff").value,
+                careJournal: isChildService || isLifeCare ? "" : document.getElementById("careJournal").value,
+                handoverRequired: !isChildService && !isLifeCare && document.getElementById("handoverRequired").checked,
+                medicalVisit: !isChildService && !isLifeCare && document.getElementById("medicalVisit").checked,
+                conditionChange: !isChildService && !isLifeCare && document.getElementById("conditionChange").checked,
+                handoverNote: isChildService ? document.getElementById("afterSchoolHandover").value : isLifeCare ? document.getElementById("lifeCareHandover").value : document.getElementById("handoverNote").value,
                 message: document.getElementById("message").value,
                 familyMessage: document.getElementById("familyMessage").value,
-                facilityPR: isChildService ? "" : (document.getElementById("facilityPR") ? document.getElementById("facilityPR").value : ""),
+                facilityPR: isChildService || isLifeCare ? "" : (document.getElementById("facilityPR") ? document.getElementById("facilityPR").value : ""),
                 imageCount: finalImageCount, videoCount: window.currentVideoCount,
                 imageFiles: imageFiles, videoFiles: videoFiles
             };
 
-            if (sType !== "ショートステイ") {
+            if (sType !== "ショートステイ" && !isLifeCare) {
                 let bathVal = ""; document.getElementsByName("bath").forEach(r => { if(r.checked) bathVal = r.value; });
                 let tList = []; document.getElementsByName("training").forEach(c => { if(c.checked) tList.push(c.value); });
                 data.temp1 = document.getElementById("temp1").value;
@@ -2102,6 +2280,33 @@
                     data.afterSchoolParentSign = document.getElementById("afterSchoolParentSign").value;
                     data.afterSchoolHandover = document.getElementById("afterSchoolHandover").value;
                 }
+            } else if (isLifeCare) {
+                data.lifeCareAttendance = document.getElementById("lifeCareAttendance").value;
+                data.lifeCareStaff = document.getElementById("lifeCareStaff").value;
+                data.lifeCareStartTime = document.getElementById("lifeCareStartTime").value;
+                data.lifeCareEndTime = document.getElementById("lifeCareEndTime").value;
+                data.lifeCareArrivalTime = document.getElementById("lifeCareArrivalTime").value;
+                data.lifeCareDepartureTime = document.getElementById("lifeCareDepartureTime").value;
+                data.lifeCarePickupType = document.getElementById("lifeCarePickupType").value;
+                data.lifeCarePickupNote = document.getElementById("lifeCarePickupNote").value;
+                data.lifeCareDropoffType = document.getElementById("lifeCareDropoffType").value;
+                data.lifeCareDropoffNote = document.getElementById("lifeCareDropoffNote").value;
+                data.lifeCareTemperature = document.getElementById("lifeCareTemperature").value;
+                data.lifeCarePulse = document.getElementById("lifeCarePulse").value;
+                data.lifeCareBpHigh = document.getElementById("lifeCareBpHigh").value;
+                data.lifeCareBpLow = document.getElementById("lifeCareBpLow").value;
+                data.lifeCareSpo2 = document.getElementById("lifeCareSpo2").value;
+                data.lifeCareHealthNote = document.getElementById("lifeCareHealthNote").value;
+                data.lifeCareMeal = document.getElementById("lifeCareMeal").value;
+                data.lifeCareWater = document.getElementById("lifeCareWater").value;
+                data.lifeCareMedication = document.getElementById("lifeCareMedication").value;
+                data.lifeCareToileting = document.getElementById("lifeCareToileting").value;
+                data.lifeCareBathing = document.getElementById("lifeCareBathing").value;
+                data.lifeCareActivityTags = Array.from(document.querySelectorAll('input[name="lifeCareActivityTag"]:checked')).map(input => input.value);
+                data.lifeCareGoalProgress = document.getElementById("lifeCareGoalProgress").value;
+                data.lifeCareActivityDetails = document.getElementById("lifeCareActivityDetails").value;
+                data.lifeCareEpisode = document.getElementById("lifeCareEpisode").value;
+                data.lifeCareHandover = document.getElementById("lifeCareHandover").value;
             } else {
                 let stBathVal = ""; document.getElementsByName("stBath").forEach(r => { if(r.checked) stBathVal = r.value; });
                 
@@ -2260,7 +2465,7 @@
                 pendingArea.style.display = "block";
                 pendingList.innerHTML = "";
                 batchDataList.forEach((data, index) => {
-                    let serviceLabel = data.serviceType === "デイサービス" ? "デイ" : data.serviceType === "放課後等デイサービス" ? "放デイ" : "ショート";
+                    let serviceLabel = data.serviceType === "デイサービス" ? "デイ" : data.serviceType === "放課後等デイサービス" ? "放デイ" : data.serviceType === "児童発達支援" ? "児発" : data.serviceType === "生活介護" ? "生活介護" : "ショート";
                     let span = document.createElement("span");
                     let name = document.createElement("span");
                     name.textContent = data.userName + " 様 (" + serviceLabel + ")";
@@ -2374,6 +2579,58 @@
             document.getElementById("afterSchoolMorningState").value = "";
             document.getElementById("afterSchoolParentSign").value = "";
             document.getElementById("afterSchoolHandover").value = "";
+            document.getElementById("lifeCareAttendance").value = "";
+            document.getElementById("lifeCareStaff").value = "";
+            document.getElementById("lifeCareStartTime").value = "";
+            document.getElementById("lifeCareEndTime").value = "";
+            document.getElementById("lifeCareArrivalTime").value = "";
+            document.getElementById("lifeCareDepartureTime").value = "";
+            document.getElementById("lifeCarePickupType").value = "";
+            document.getElementById("lifeCarePickupNote").value = "";
+            document.getElementById("lifeCareDropoffType").value = "";
+            document.getElementById("lifeCareDropoffNote").value = "";
+            document.getElementById("lifeCareTemperature").value = "";
+            document.getElementById("lifeCarePulse").value = "";
+            document.getElementById("lifeCareBpHigh").value = "";
+            document.getElementById("lifeCareBpLow").value = "";
+            document.getElementById("lifeCareSpo2").value = "";
+            document.getElementById("lifeCareHealthNote").value = "";
+            document.getElementById("lifeCareMeal").value = "";
+            document.getElementById("lifeCareWater").value = "";
+            document.getElementById("lifeCareMedication").value = "";
+            document.getElementById("lifeCareToileting").value = "";
+            document.getElementById("lifeCareBathing").value = "";
+            document.querySelectorAll('input[name="lifeCareActivityTag"]').forEach(input => { input.checked = false; });
+            document.getElementById("lifeCareGoalProgress").value = "";
+            document.getElementById("lifeCareActivityDetails").value = "";
+            document.getElementById("lifeCareEpisode").value = "";
+            document.getElementById("lifeCareHandover").value = "";
+            document.getElementById("lifeCareAttendance").value = "";
+            document.getElementById("lifeCareStaff").value = "";
+            document.getElementById("lifeCareStartTime").value = "";
+            document.getElementById("lifeCareEndTime").value = "";
+            document.getElementById("lifeCareArrivalTime").value = "";
+            document.getElementById("lifeCareDepartureTime").value = "";
+            document.getElementById("lifeCarePickupType").value = "";
+            document.getElementById("lifeCarePickupNote").value = "";
+            document.getElementById("lifeCareDropoffType").value = "";
+            document.getElementById("lifeCareDropoffNote").value = "";
+            document.getElementById("lifeCareTemperature").value = "";
+            document.getElementById("lifeCarePulse").value = "";
+            document.getElementById("lifeCareBpHigh").value = "";
+            document.getElementById("lifeCareBpLow").value = "";
+            document.getElementById("lifeCareSpo2").value = "";
+            document.getElementById("lifeCareHealthNote").value = "";
+            document.getElementById("lifeCareMeal").value = "";
+            document.getElementById("lifeCareWater").value = "";
+            document.getElementById("lifeCareMedication").value = "";
+            document.getElementById("lifeCareToileting").value = "";
+            document.getElementById("lifeCareBathing").value = "";
+            document.querySelectorAll('input[name="lifeCareActivityTag"]').forEach(input => { input.checked = false; });
+            document.getElementById("lifeCareGoalProgress").value = "";
+            document.getElementById("lifeCareActivityDetails").value = "";
+            document.getElementById("lifeCareEpisode").value = "";
+            document.getElementById("lifeCareHandover").value = "";
             document.getElementsByName("bath").forEach(r => r.checked = false);
             document.getElementsByName("training").forEach(c => c.checked = false);
 
@@ -2572,7 +2829,7 @@
                 let patientPromises = dummyPatients.map(async (p, i) => {
                     let userRef = doc(db, "facilities", facilityId, "users", p.name);
                     let docSnap = await getDoc(userRef);
-                    let services = ["デイサービス", "ショートステイ", "放課後等デイサービス"];
+                    let services = ["デイサービス", "ショートステイ", "放課後等デイサービス", "児童発達支援", "生活介護"];
                     await setDoc(userRef, { birthday: p.birthday, photoNg: p.ng, needExcretion: p.ex, registeredAt: new Date().toISOString(), services: services }, { merge: true });
 
                     // 顔写真をアップロード（選んでいればその写真を、なければ文字画像を）
@@ -2627,6 +2884,25 @@
                                 familyMessage: "", 
                                 facilityPR: "", 
                                 imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0,
+                                lifeCareAttendance: sType === "生活介護" ? "利用" : "",
+                                lifeCareStaff: sType === "生活介護" ? "佐藤" : "",
+                                lifeCareStartTime: sType === "生活介護" ? "09:00" : "",
+                                lifeCareEndTime: sType === "生活介護" ? "16:00" : "",
+                                lifeCareArrivalTime: sType === "生活介護" ? "09:00" : "",
+                                lifeCareDepartureTime: sType === "生活介護" ? "16:00" : "",
+                                lifeCarePickupType: sType === "生活介護" ? "施設送迎" : "",
+                                lifeCareDropoffType: sType === "生活介護" ? "施設送迎" : "",
+                                lifeCareTemperature: sType === "生活介護" ? t1 : "",
+                                lifeCarePulse: sType === "生活介護" ? pulse : "",
+                                lifeCareBpHigh: sType === "生活介護" ? bpHigh : "",
+                                lifeCareBpLow: sType === "生活介護" ? bpLow : "",
+                                lifeCareSpo2: sType === "生活介護" ? "98" : "",
+                                lifeCareMeal: sType === "生活介護" ? "昼食 8割" : "",
+                                lifeCareWater: sType === "生活介護" ? "500ml" : "",
+                                lifeCareActivityTags: sType === "生活介護" ? ["創作活動", "機能訓練"] : [],
+                                lifeCareGoalProgress: sType === "生活介護" ? "個別支援計画に沿って活動に参加されました。" : "",
+                                lifeCareActivityDetails: sType === "生活介護" ? "創作活動と歩行訓練を行いました。" : "",
+                                lifeCareEpisode: sType === "生活介護" ? "落ち着いた様子で過ごされました。" : "",
                                 afterSchoolAttendance: sType === "放課後等デイサービス" ? "利用" : "",
                                 afterSchoolArrivalTime: sType === "放課後等デイサービス" ? "15:00" : "",
                                 afterSchoolDepartureTime: sType === "放課後等デイサービス" ? "17:00" : "",

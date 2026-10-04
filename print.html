@@ -391,6 +391,7 @@
                     <option value="ショートステイ">🌙 ショートステイ（宿泊）</option>
                     <option value="放課後等デイサービス">🎒 放課後等デイサービス</option>
                     <option value="児童発達支援">🧸 児童発達支援</option>
+                    <option value="生活介護">♿ 生活介護</option>
                 </select>
             </div>
 
@@ -1353,11 +1354,12 @@
                 let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
                 let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
                 let isChildService = ["放課後等デイサービス", "児童発達支援"].includes(data.serviceType);
+                let isLifeCare = data.serviceType === "生活介護";
                 let childArrivalLabel = data.serviceType === "児童発達支援" ? "事業所への到着" : "学校からの到着";
                 let childDepartureLabel = data.serviceType === "児童発達支援" ? "事業所からの退所" : "事業所からの出発";
-                let facilityMessageTitle = isChildService ? "施設からのお知らせ・次回利用など" : "お客様への御連絡事項";
-                let familyMessageTitle = isChildService ? "保護者記入欄（家庭からの連絡・体調）" : "お客様からの御連絡事項";
-                let adultDataHtml = isChildService ? "" : `
+                let facilityMessageTitle = isChildService ? "施設からのお知らせ・次回利用など" : isLifeCare ? "施設からのお知らせ・生活介護の連絡" : "お客様への御連絡事項";
+                let familyMessageTitle = isChildService ? "保護者記入欄（家庭からの連絡・体調）" : isLifeCare ? "ご家族からの連絡事項" : "お客様からの御連絡事項";
+                let adultDataHtml = isChildService || isLifeCare ? "" : `
                     <table class="compact-table">
                         <tr><th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td><th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td><th width="16%">血圧</th><td width="18%">${bpStrDay}</td></tr>
                         <tr><th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td><th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td></tr>
@@ -1389,12 +1391,26 @@
                     <div class="section-title">■ 施設での様子・エピソード</div><div class="text-box">${(data.afterSchoolEpisode || '未入力').replace(/\n/g, '<br>')}</div>
                     <div class="section-title">■ 保護者への申し送り</div><div class="text-box">${(data.afterSchoolHandover || '未入力').replace(/\n/g, '<br>')}</div>
                 ` : "";
+                let lifeCareHtml = isLifeCare ? `
+                    <div class="section-title">■ 生活介護記録</div>
+                    <table class="compact-table">
+                        <tr><th>利用状況</th><td>${data.lifeCareAttendance || '未入力'}</td><th>提供時間</th><td>${data.lifeCareStartTime || '未入力'}〜${data.lifeCareEndTime || '未入力'}</td><th>担当職員</th><td>${data.lifeCareStaff || '未入力'}</td></tr>
+                        <tr><th>来所／退所時刻</th><td>${data.lifeCareArrivalTime || '未入力'}／${data.lifeCareDepartureTime || '未入力'}</td><th>送迎（来所）</th><td>${data.lifeCarePickupType || '未入力'} ${data.lifeCarePickupNote || ''}</td><th>送迎（退所）</th><td>${data.lifeCareDropoffType || '未入力'} ${data.lifeCareDropoffNote || ''}</td></tr>
+                        <tr><th>健康・バイタル</th><td colspan="5">体温 ${data.lifeCareTemperature || '未入力'}℃／脈拍 ${data.lifeCarePulse || '未入力'}／血圧 ${data.lifeCareBpHigh || '--'}/${data.lifeCareBpLow || '--'}／SpO2 ${data.lifeCareSpo2 || '未入力'}%<br>${data.lifeCareHealthNote || ''}</td></tr>
+                        <tr><th>食事・水分</th><td colspan="2">${data.lifeCareMeal || '未入力'}／${data.lifeCareWater || '未入力'}</td><th>服薬・医療的ケア</th><td colspan="3">${data.lifeCareMedication || '未入力'}</td></tr>
+                        <tr><th>排泄・入浴</th><td colspan="5">${data.lifeCareToileting || '未入力'}／${data.lifeCareBathing || '未入力'}</td></tr>
+                        <tr><th>日中活動タグ</th><td colspan="5">${(data.lifeCareActivityTags || []).join('、') || '未入力'}</td></tr>
+                    </table>
+                    <div class="section-title">■ 個別支援計画に沿った支援・達成状況</div><div class="text-box">${(data.lifeCareGoalProgress || '未入力').replace(/\n/g, '<br>')}</div>
+                    <div class="section-title">■ 日中活動の具体的内容</div><div class="text-box">${(data.lifeCareActivityDetails || '未入力').replace(/\n/g, '<br>')}</div>
+                    <div class="section-title">■ ご本人の様子・特記事項</div><div class="text-box">${(data.lifeCareEpisode || '未入力').replace(/\n/g, '<br>')}</div>
+                ` : "";
 
                 pageDiv.innerHTML = `
                     <div class="punch-mark">▷</div>
                     <div class="print-header">
                         <div class="facility-name">${facilityName}</div>
-                        <h1>${isChildService ? `${data.serviceType} 利用記録` : "本日の連絡帳"}</h1>
+                        <h1>${isChildService || isLifeCare ? `${data.serviceType} 利用記録` : "本日の連絡帳"}</h1>
                     </div>
 
                     ${birthdayBannerHtml}
@@ -1406,6 +1422,7 @@
 
                     ${adultDataHtml}
                     ${childServiceHtml}
+                    ${lifeCareHtml}
                     <div class="section-title">■ ${facilityMessageTitle} <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
                     ${finalMessageHtml}
                     
