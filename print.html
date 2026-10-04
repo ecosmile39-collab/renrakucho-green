@@ -149,13 +149,10 @@
             display: none; 
         }
 
-        /* 横型が選ばれたときだけ祝長寿を表示します */
-        .layout-horizontal1 .dynamic-chouju-v2,
-        .layout-horizontal2 .dynamic-chouju-v2 {
+        .card-longevity .dynamic-chouju-v2 {
             display: block;
-            /* ★ はみ出さないように、さらに少し下げて 13% にしました ★ */
-            top: 13%; 
-            font-size: 5cqw; /* さらに少し小さく上品に */
+            top: 1.5%;
+            font-size: 4cqw;
             padding-left: 0.3em; 
         }
 
@@ -198,16 +195,6 @@
             aspect-ratio: 1.414 / 1; 
         }
 
-        /* 横型カードの祝長寿 */
-        .layout-horizontal1 .dynamic-chouju-v2,
-        .layout-horizontal2 .dynamic-chouju-v2 {
-            display: block;
-            top: 14%;
-            font-size: 5cqw;
-            padding-left: 0.3em; 
-        }
-        .layout-horizontal1 .dynamic-chouju-v2 { top: 9%; }
-        
         /* 横型1（鶴亀と松竹梅） */
         .layout-horizontal1 .dynamic-photo-v2 { top: 24%; left: 32%; width: 36%; }
         .layout-horizontal1 .dynamic-text-area-v2 { top: 66%; left: 15%; width: 70%; height: 33%; }
@@ -1261,7 +1248,7 @@
                 }
 
                 cardPageDiv.innerHTML = `
-                    <div class="birthday-card-container-v2 ${layoutClass}${secondImgUrl ? " card-two-photos" : ""}">
+                    <div class="birthday-card-container-v2 ${layoutClass}${Number(bData.age) >= 70 && ["layout-vertical3", "layout-horizontal3", "layout-horizontal4"].includes(layoutClass) ? " card-longevity" : ""}${secondImgUrl ? " card-two-photos" : ""}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
                         <div class="dynamic-chouju-v2">祝 長 寿</div>
                         <img src="${todayImgUrl}" class="dynamic-photo-v2 dynamic-photo-primary-v2" alt="利用者の写真1">
@@ -1529,7 +1516,7 @@
                 }
 
                 cardPageDiv.innerHTML = `
-                    <div class="birthday-card-container-v2 ${layoutClass}${secondImgUrl ? " card-two-photos" : ""}">
+                    <div class="birthday-card-container-v2 ${layoutClass}${Number(bData.age) >= 70 && ["layout-vertical3", "layout-horizontal3", "layout-horizontal4"].includes(layoutClass) ? " card-longevity" : ""}${secondImgUrl ? " card-two-photos" : ""}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
                         <div class="dynamic-chouju-v2">祝 長 寿</div>
                         <img src="${todayImgUrl}" class="dynamic-photo-v2 dynamic-photo-primary-v2" alt="利用者の写真1">
