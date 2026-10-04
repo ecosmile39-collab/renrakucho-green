@@ -227,6 +227,22 @@
         .layout-horizontal2 .dynamic-age-v2 { font-size: 3cqw; margin-bottom: 0.3cqw; }
         .layout-horizontal2 .dynamic-staff-msg-v2 { font-size: 2cqw; margin-top: 0.5cqw; transform: translateY(0.5cqw); }
 
+        /* 横型3・4（折り紙の花）：画像比率に合わせ、中央の余白に写真と文字を配置 */
+        .birthday-card-container-v2.layout-horizontal3,
+        .birthday-card-container-v2.layout-horizontal4 { aspect-ratio: 1.49 / 1; }
+        .layout-horizontal3 .dynamic-photo-v2,
+        .layout-horizontal4 .dynamic-photo-v2 { top: 32%; left: 41%; width: 21%; border-radius: 50%; -webkit-mask-image: none; mask-image: none; }
+        .layout-horizontal3 .dynamic-text-area-v2,
+        .layout-horizontal4 .dynamic-text-area-v2 { top: 57%; left: 60%; width: 37%; height: 39%; justify-content: center; }
+        .layout-horizontal3 .dynamic-name-v2,
+        .layout-horizontal4 .dynamic-name-v2 { font-size: 2.1cqw; margin-bottom: 0.4cqw; }
+        .layout-horizontal3 .dynamic-date-v2,
+        .layout-horizontal4 .dynamic-date-v2 { font-size: 1.8cqw; margin-bottom: 0.4cqw; }
+        .layout-horizontal3 .dynamic-age-v2,
+        .layout-horizontal4 .dynamic-age-v2 { font-size: 2.6cqw; margin-bottom: 0.3cqw; }
+        .layout-horizontal3 .dynamic-staff-msg-v2,
+        .layout-horizontal4 .dynamic-staff-msg-v2 { font-size: 1.5cqw; margin-top: 0.5cqw; }
+
         .print-only { display: none; }
 
         /* ==========================================
@@ -271,7 +287,9 @@
                 height: 288mm !important; box-shadow: none !important; 
             }
             body:not(.mode-card-only) .birthday-card-container-v2.layout-horizontal1,
-            body:not(.mode-card-only) .birthday-card-container-v2.layout-horizontal2 { 
+            body:not(.mode-card-only) .birthday-card-container-v2.layout-horizontal2,
+            body:not(.mode-card-only) .birthday-card-container-v2.layout-horizontal3,
+            body:not(.mode-card-only) .birthday-card-container-v2.layout-horizontal4 { 
                 height: auto !important; margin-top: 15mm !important; box-shadow: none !important; 
             }
 
