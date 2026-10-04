@@ -389,6 +389,7 @@
                 <select id="selectServiceType" class="filter-select" onchange="onServiceTypeChanged()">
                     <option value="デイサービス" selected>☀️ デイサービス（日帰り）</option>
                     <option value="ショートステイ">🌙 ショートステイ（宿泊）</option>
+                    <option value="放課後等デイサービス">🎒 放課後等デイサービス</option>
                 </select>
             </div>
 
@@ -537,7 +538,7 @@
             let sType = document.getElementById("selectServiceType").value;
             localStorage.setItem('currentServiceType', sType);
 
-            if (sType === "デイサービス") {
+            if (sType !== "ショートステイ") {
                 document.getElementById("dayServiceDateRow").style.display = "flex";
                 document.getElementById("shortStayDateRow").style.display = "none";
             } else {
@@ -551,8 +552,8 @@
             let facilityId = localStorage.getItem("currentFacilityId");
             let sType = document.getElementById("selectServiceType").value;
             
-            let startDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
-            let endDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
+            let startDate = (sType !== "ショートステイ") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
+            let endDate = (sType !== "ショートステイ") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
 
             let selectBox = document.getElementById("userSelectBox");
             let checkboxesArea = document.getElementById("userCheckboxes");
@@ -661,8 +662,8 @@
         window.loadSelectedAndPrint = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             let sType = document.getElementById("selectServiceType").value;
-            let startDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
-            let endDate = (sType === "デイサービス") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
+            let startDate = (sType !== "ショートステイ") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
+            let endDate = (sType !== "ショートステイ") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
             
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
             
@@ -1350,12 +1351,22 @@
                 
                 let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
                 let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
+                let afterSchoolHtml = data.serviceType === "放課後等デイサービス" ? `
+                    <div class="section-title">■ 放課後等デイサービス記録</div>
+                    <table class="compact-table">
+                        <tr><th>出欠状況</th><td>${data.afterSchoolAttendance || '未入力'}</td><th>学校からの到着</th><td>${data.afterSchoolArrivalTime || '未入力'}</td><th>事業所からの出発</th><td>${data.afterSchoolDepartureTime || '未入力'}</td></tr>
+                        <tr><th>学校から事業所への送迎</th><td colspan="2">${data.afterSchoolPickup || '未入力'}</td><th>事業所から自宅への送迎</th><td colspan="2">${data.afterSchoolDropoff || '未入力'}</td></tr>
+                        <tr><th>おやつ</th><td colspan="5">${data.afterSchoolSnack || '未入力'}</td></tr>
+                    </table>
+                    <div class="section-title">■ 活動・個別支援の内容</div><div class="text-box">${(data.afterSchoolSupport || '未入力').replace(/\n/g, '<br>')}</div>
+                    <div class="section-title">■ 保護者への申し送り</div><div class="text-box">${(data.afterSchoolHandover || '未入力').replace(/\n/g, '<br>')}</div>
+                ` : "";
 
                 pageDiv.innerHTML = `
                     <div class="punch-mark">▷</div>
                     <div class="print-header">
                         <div class="facility-name">${facilityName}</div>
-                        <h1>本日の連絡帳</h1>
+                        <h1>${data.serviceType === "放課後等デイサービス" ? "放課後等デイサービス 利用記録" : "本日の連絡帳"}</h1>
                     </div>
 
                     ${birthdayBannerHtml}
@@ -1389,6 +1400,7 @@
                         </tr>
                         ${excretionRow}
                     </table>
+                    ${afterSchoolHtml}
                     
                     <div class="compact-avg">
                         📊 この1ヶ月の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%

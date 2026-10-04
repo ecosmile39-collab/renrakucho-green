@@ -106,6 +106,9 @@
                 <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
                     <input type="checkbox" id="editServiceShort" style="width: auto; margin-right: 5px;">🌙 ショートステイ
                 </label>
+                <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" id="editServiceAfterSchool" style="width: auto; margin-right: 5px;">🎒 放課後等デイサービス
+                </label>
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 25px;">
@@ -145,6 +148,7 @@
             <select id="serviceType" onchange="onServiceTypeChanged()">
                 <option value="デイサービス">☀️ デイサービス（通所介護・日帰り）</option>
                 <option value="ショートステイ">🌙 ショートステイ（短期入所・宿泊）</option>
+                <option value="放課後等デイサービス">🎒 放課後等デイサービス</option>
             </select>
         </div>
 
@@ -299,7 +303,7 @@
                 <datalist id="bpLowList"><option value="60"></option><option value="70"></option><option value="80"></option><option value="90"></option></datalist>
             </div>
 
-            <h3>生活の様子（デイサービス）</h3>
+            <h3>生活の様子（食事・水分など）</h3>
             <div class="flex-box">
                 <div><label>食事（主食）</label><input type="text" id="mealMain" list="mealList" placeholder="例：100%"></div>
                 <div><label>食事（副食）</label><input type="text" id="mealSub" list="mealList" placeholder="例：100%"></div>
@@ -386,6 +390,32 @@
                 </div>
             </div>
             <textarea id="activity" rows="3" placeholder="その他の活動（例：朝の会、ラジオ体操、脳トレ、集団体操など）"></textarea>
+        </div>
+
+        <div id="afterSchoolSection" style="display: none; margin-top: 15px; padding: 15px; background-color: #f3f0ff; border: 1px solid #b197fc; border-radius: 8px;">
+            <h3 style="margin-top: 0; color: #6741d9; border-color: #b197fc;">🎒 放課後等デイサービス記録</h3>
+            <label>出欠状況</label>
+            <select id="afterSchoolAttendance">
+                <option value="">選択してください</option>
+                <option value="利用">利用</option>
+                <option value="欠席">欠席</option>
+                <option value="遅刻">遅刻</option>
+                <option value="早退">早退</option>
+            </select>
+            <div class="flex-box">
+                <div><label>学校からの到着時刻</label><input type="time" id="afterSchoolArrivalTime"></div>
+                <div><label>事業所からの出発時刻</label><input type="time" id="afterSchoolDepartureTime"></div>
+            </div>
+            <div class="flex-box">
+                <div><label>学校から事業所への送迎</label><input type="text" id="afterSchoolPickup" placeholder="例：学校迎え・担当者名"></div>
+                <div><label>事業所から自宅への送迎</label><input type="text" id="afterSchoolDropoff" placeholder="例：自宅送り・担当者名"></div>
+            </div>
+            <label>活動・個別支援の内容</label>
+            <textarea id="afterSchoolSupport" rows="4" placeholder="例：宿題、個別課題、集団活動、支援内容や本人の様子"></textarea>
+            <label>おやつ</label>
+            <input type="text" id="afterSchoolSnack" placeholder="例：完食、半量、水分摂取など">
+            <label>保護者への申し送り</label>
+            <textarea id="afterSchoolHandover" rows="3" placeholder="送迎時に保護者へ伝える内容"></textarea>
         </div>
 
         <div id="shortStaySection" style="display: none;">
@@ -1130,17 +1160,16 @@
 
             let daySec = document.getElementById("dayServiceSection");
             let stSec = document.getElementById("shortStaySection");
+            let afterSchoolSec = document.getElementById("afterSchoolSection");
             let regTitle = document.getElementById("regBoxTitle");
 
-            if (sType === "デイサービス") {
-                daySec.style.display = "block";
-                stSec.style.display = "none";
-                regTitle.textContent = "➕ 【デイサービス】の名簿に新しく登録する";
-            } else {
-                daySec.style.display = "none";
-                stSec.style.display = "block";
-                regTitle.textContent = "➕ 【ショートステイ】の名簿に新しく登録する";
-            }
+            let isShortStay = sType === "ショートステイ";
+            let isAfterSchool = sType === "放課後等デイサービス";
+            daySec.style.display = isShortStay ? "none" : "block";
+            stSec.style.display = isShortStay ? "block" : "none";
+            afterSchoolSec.style.display = isAfterSchool ? "block" : "none";
+            document.getElementById("dayVitalsTitle").textContent = isAfterSchool ? "バイタル（放課後等デイサービス）" : "バイタル（デイサービス）";
+            regTitle.textContent = `➕ 【${sType}】の名簿に新しく登録する`;
 
             let facilityId = localStorage.getItem("currentFacilityId");
             await loadUserNames(facilityId); 
@@ -1308,6 +1337,7 @@
             document.getElementById("editUserBirthday").value = userData.birthday || "";
             document.getElementById("editServiceDay").checked = userServices.includes("デイサービス");
             document.getElementById("editServiceShort").checked = userServices.includes("ショートステイ");
+            document.getElementById("editServiceAfterSchool").checked = userServices.includes("放課後等デイサービス");
 
             document.getElementById("editUserModal").style.display = "flex";
         };
@@ -1325,11 +1355,13 @@
             if (!newName) { alert("お名前を入力してください。"); return; }
             let isDay = document.getElementById("editServiceDay").checked;
             let isShort = document.getElementById("editServiceShort").checked;
-            if (!isDay && !isShort) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
+            let isAfterSchool = document.getElementById("editServiceAfterSchool").checked;
+            if (!isDay && !isShort && !isAfterSchool) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
 
             let newServices = [];
             if (isDay) newServices.push("デイサービス");
             if (isShort) newServices.push("ショートステイ");
+            if (isAfterSchool) newServices.push("放課後等デイサービス");
 
             let currentData = window.globalUsersData[oldName] || {};
 
@@ -1453,6 +1485,14 @@
                 let trainingArray = d.training || [];
                 document.getElementsByName("training").forEach(c => c.checked = trainingArray.includes(c.value));
                 document.getElementById("activity").value = d.activity || "";
+                document.getElementById("afterSchoolAttendance").value = d.afterSchoolAttendance || "";
+                document.getElementById("afterSchoolArrivalTime").value = d.afterSchoolArrivalTime || "";
+                document.getElementById("afterSchoolDepartureTime").value = d.afterSchoolDepartureTime || "";
+                document.getElementById("afterSchoolPickup").value = d.afterSchoolPickup || "";
+                document.getElementById("afterSchoolDropoff").value = d.afterSchoolDropoff || "";
+                document.getElementById("afterSchoolSupport").value = d.afterSchoolSupport || "";
+                document.getElementById("afterSchoolSnack").value = d.afterSchoolSnack || "";
+                document.getElementById("afterSchoolHandover").value = d.afterSchoolHandover || "";
 
                 if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = d.stTempIn || d.stTemp1 || d.temp1 || "";
                 if(document.getElementById("stPulseIn")) document.getElementById("stPulseIn").value = d.stPulseIn || d.stPulse || d.pulse || "";
@@ -1588,6 +1628,14 @@
                         let trainingArray = data.training ? data.training.split("、") : [];
                         document.getElementsByName("training").forEach(c => c.checked = trainingArray.includes(c.value));
                         document.getElementById("activity").value = data.activity || "";
+                        document.getElementById("afterSchoolAttendance").value = data.afterSchoolAttendance || "";
+                        document.getElementById("afterSchoolArrivalTime").value = data.afterSchoolArrivalTime || "";
+                        document.getElementById("afterSchoolDepartureTime").value = data.afterSchoolDepartureTime || "";
+                        document.getElementById("afterSchoolPickup").value = data.afterSchoolPickup || "";
+                        document.getElementById("afterSchoolDropoff").value = data.afterSchoolDropoff || "";
+                        document.getElementById("afterSchoolSupport").value = data.afterSchoolSupport || "";
+                        document.getElementById("afterSchoolSnack").value = data.afterSchoolSnack || "";
+                        document.getElementById("afterSchoolHandover").value = data.afterSchoolHandover || "";
 
                         if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = data.stTempIn || data.stTemp1 || data.temp1 || "";
                         if(document.getElementById("stPulseIn")) document.getElementById("stPulseIn").value = data.stPulseIn || data.stPulse || data.pulse || "";
@@ -1878,7 +1926,7 @@
                 imageFiles: imageFiles, videoFiles: videoFiles
             };
 
-            if (sType === "デイサービス") {
+            if (sType !== "ショートステイ") {
                 let bathVal = ""; document.getElementsByName("bath").forEach(r => { if(r.checked) bathVal = r.value; });
                 let tList = []; document.getElementsByName("training").forEach(c => { if(c.checked) tList.push(c.value); });
                 data.temp1 = document.getElementById("temp1").value;
@@ -1902,6 +1950,16 @@
                 data.bathReason = document.getElementById("bathReason").value;
                 data.training = tList.join("、");
                 data.activity = document.getElementById("activity").value;
+                if (sType === "放課後等デイサービス") {
+                    data.afterSchoolAttendance = document.getElementById("afterSchoolAttendance").value;
+                    data.afterSchoolArrivalTime = document.getElementById("afterSchoolArrivalTime").value;
+                    data.afterSchoolDepartureTime = document.getElementById("afterSchoolDepartureTime").value;
+                    data.afterSchoolPickup = document.getElementById("afterSchoolPickup").value;
+                    data.afterSchoolDropoff = document.getElementById("afterSchoolDropoff").value;
+                    data.afterSchoolSupport = document.getElementById("afterSchoolSupport").value;
+                    data.afterSchoolSnack = document.getElementById("afterSchoolSnack").value;
+                    data.afterSchoolHandover = document.getElementById("afterSchoolHandover").value;
+                }
             } else {
                 let stBathVal = ""; document.getElementsByName("stBath").forEach(r => { if(r.checked) stBathVal = r.value; });
                 
@@ -2060,9 +2118,10 @@
                 pendingArea.style.display = "block";
                 pendingList.innerHTML = "";
                 batchDataList.forEach((data, index) => {
+                    let serviceLabel = data.serviceType === "デイサービス" ? "デイ" : data.serviceType === "放課後等デイサービス" ? "放デイ" : "ショート";
                     let span = document.createElement("span");
                     let name = document.createElement("span");
-                    name.textContent = data.userName + " 様 (" + (data.serviceType === "デイサービス" ? "デイ" : "ショート") + ")";
+                    name.textContent = data.userName + " 様 (" + serviceLabel + ")";
                     let removeButton = document.createElement("button");
                     removeButton.type = "button";
                     removeButton.className = "pending-remove-btn";
@@ -2145,6 +2204,14 @@
             document.getElementById("bpHigh").value = ""; document.getElementById("bpLow").value = "";
             document.getElementById("medication").value = ""; document.getElementById("bathReason").value = "";
             document.getElementById("activity").value = "";
+            document.getElementById("afterSchoolAttendance").value = "";
+            document.getElementById("afterSchoolArrivalTime").value = "";
+            document.getElementById("afterSchoolDepartureTime").value = "";
+            document.getElementById("afterSchoolPickup").value = "";
+            document.getElementById("afterSchoolDropoff").value = "";
+            document.getElementById("afterSchoolSupport").value = "";
+            document.getElementById("afterSchoolSnack").value = "";
+            document.getElementById("afterSchoolHandover").value = "";
             document.getElementsByName("bath").forEach(r => r.checked = false);
             document.getElementsByName("training").forEach(c => c.checked = false);
 
@@ -2343,7 +2410,7 @@
                 let patientPromises = dummyPatients.map(async (p, i) => {
                     let userRef = doc(db, "facilities", facilityId, "users", p.name);
                     let docSnap = await getDoc(userRef);
-                    let services = ["デイサービス", "ショートステイ"];
+                    let services = ["デイサービス", "ショートステイ", "放課後等デイサービス"];
                     await setDoc(userRef, { birthday: p.birthday, photoNg: p.ng, needExcretion: p.ex, registeredAt: new Date().toISOString(), services: services }, { merge: true });
 
                     // 顔写真をアップロード（選んでいればその写真を、なければ文字画像を）
@@ -2386,10 +2453,10 @@
 
                         let recordRef = doc(db, "facilities", facilityId, "daily_records", `${targetDateStr}_${sType}_${p.name}`);
 
-                        if (sType === "デイサービス") {
+                        if (sType !== "ショートステイ") {
                             dayPromises.push(setDoc(recordRef, {
                                 facilityId: facilityId, userName: p.name, date: targetDateStr,
-                                serviceType: "デイサービス",
+                                serviceType: sType,
                                 temp1: t1, temp2: t1, pulse: pulse, spo2: "98", bpHigh: bpHigh, bpLow: bpLow,
                                 mealMain: "100%", mealSub: "100%", water: "300ml", medication: "軟膏塗布", oralCare: "歯ブラシ",
                                 bath: "あり", bathReason: "", bowel: p.ex ? "あり" : "なし", bowel1: p.ex ? "普通便" : "", bowel2: "", bowel3: "",
@@ -2397,7 +2464,15 @@
                                 message: "終始おだやかな表情で過ごされていました。",
                                 familyMessage: "", 
                                 facilityPR: "", 
-                                imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0
+                                imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0,
+                                afterSchoolAttendance: sType === "放課後等デイサービス" ? "利用" : "",
+                                afterSchoolArrivalTime: sType === "放課後等デイサービス" ? "15:00" : "",
+                                afterSchoolDepartureTime: sType === "放課後等デイサービス" ? "17:00" : "",
+                                afterSchoolPickup: sType === "放課後等デイサービス" ? "学校迎え" : "",
+                                afterSchoolDropoff: sType === "放課後等デイサービス" ? "自宅送り" : "",
+                                afterSchoolSupport: sType === "放課後等デイサービス" ? "宿題と個別課題に取り組みました。" : "",
+                                afterSchoolSnack: sType === "放課後等デイサービス" ? "完食" : "",
+                                afterSchoolHandover: sType === "放課後等デイサービス" ? "本日の活動内容を保護者へお伝えしました。" : ""
                             }));
                         } else {
                             dayPromises.push(setDoc(recordRef, {
