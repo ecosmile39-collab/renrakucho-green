@@ -184,6 +184,14 @@
         .layout-vertical2 .dynamic-age-v2 { font-size: 5.0cqw; margin-bottom: 1.5cqw; }
         .layout-vertical2 .dynamic-staff-msg-v2 { font-size: 2.8cqw; margin-top: 2cqw; }
 
+        .birthday-card-container-v2.layout-vertical3 { aspect-ratio: 2 / 3; }
+        .layout-vertical3 .dynamic-photo-v2 { top: 58%; left: 31%; width: 38%; border-radius: 50%; -webkit-mask-image: none; mask-image: none; }
+        .layout-vertical3 .dynamic-text-area-v2 { top: 22%; left: 29%; width: 44%; height: 20%; justify-content: center; }
+        .layout-vertical3 .dynamic-name-v2 { font-size: 3.5cqw; margin-bottom: 1cqw; }
+        .layout-vertical3 .dynamic-date-v2 { font-size: 3cqw; margin-bottom: 1cqw; }
+        .layout-vertical3 .dynamic-age-v2 { font-size: 4cqw; margin-bottom: 0.5cqw; }
+        .layout-vertical3 .dynamic-staff-msg-v2 { font-size: 2.2cqw; margin-top: 1cqw; }
+
         /* 横型の設定（A4横の比率） */
         .birthday-card-container-v2.layout-horizontal1,
         .birthday-card-container-v2.layout-horizontal2 {
@@ -421,8 +429,11 @@
                 <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged(); updateCardPhotoCountVisibility()">
                     <option value="vertical1" selected>縦型1（鶴亀と松竹梅）</option>
                     <option value="vertical2">縦型2（ピンクの花柄）</option>
+                    <option value="vertical3">縦型3（どうぶつフレーム）</option>
                     <option value="horizontal1">横型1（鶴亀と松竹梅）</option>
                     <option value="horizontal2">横型2（ピンクの花柄）</option>
+                    <option value="horizontal3">横型3（折り紙の花・緑）</option>
+                    <option value="horizontal4">横型4（折り紙の花・赤）</option>
                 </select>
             </div>
 
@@ -1212,12 +1223,21 @@
                 } else if (cardOrientationChoice === "vertical2") {
                     layoutClass = "layout-vertical2";
                     bgImageSrc = "bg_birthday_v2.jpg";
+                } else if (cardOrientationChoice === "vertical3") {
+                    layoutClass = "layout-vertical3";
+                    bgImageSrc = "functions/b1.png";
                 } else if (cardOrientationChoice === "horizontal1") {
                     layoutClass = "layout-horizontal1";
                     bgImageSrc = "bg_birthday_h_2.jpg"; 
                 } else if (cardOrientationChoice === "horizontal2") {
                     layoutClass = "layout-horizontal2";
                     bgImageSrc = "bg_birthday_h_1.jpg"; 
+                } else if (cardOrientationChoice === "horizontal3") {
+                    layoutClass = "layout-horizontal3";
+                    bgImageSrc = "functions/B2.png";
+                } else if (cardOrientationChoice === "horizontal4") {
+                    layoutClass = "layout-horizontal4";
+                    bgImageSrc = "functions/B3.png";
                 }
 
                 cardPageDiv.innerHTML = `
@@ -1471,12 +1491,21 @@
                 } else if (cardOrientationChoice === "vertical2") {
                     layoutClass = "layout-vertical2";
                     bgImageSrc = "bg_birthday_v2.jpg";
+                } else if (cardOrientationChoice === "vertical3") {
+                    layoutClass = "layout-vertical3";
+                    bgImageSrc = "functions/b1.png";
                 } else if (cardOrientationChoice === "horizontal1") {
                     layoutClass = "layout-horizontal1";
                     bgImageSrc = "bg_birthday_h_2.jpg"; 
                 } else if (cardOrientationChoice === "horizontal2") {
                     layoutClass = "layout-horizontal2";
                     bgImageSrc = "bg_birthday_h_1.jpg"; 
+                } else if (cardOrientationChoice === "horizontal3") {
+                    layoutClass = "layout-horizontal3";
+                    bgImageSrc = "functions/B2.png";
+                } else if (cardOrientationChoice === "horizontal4") {
+                    layoutClass = "layout-horizontal4";
+                    bgImageSrc = "functions/B3.png";
                 }
 
                 cardPageDiv.innerHTML = `
