@@ -1355,13 +1355,29 @@
                 let isChildService = ["放課後等デイサービス", "児童発達支援"].includes(data.serviceType);
                 let childArrivalLabel = data.serviceType === "児童発達支援" ? "事業所への到着" : "学校からの到着";
                 let childDepartureLabel = data.serviceType === "児童発達支援" ? "事業所からの退所" : "事業所からの出発";
+                let facilityMessageTitle = isChildService ? "施設からのお知らせ・次回利用など" : "お客様への御連絡事項";
+                let familyMessageTitle = isChildService ? "保護者記入欄（家庭からの連絡・体調）" : "お客様からの御連絡事項";
+                let adultDataHtml = isChildService ? "" : `
+                    <table class="compact-table">
+                        <tr><th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td><th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td><th width="16%">血圧</th><td width="18%">${bpStrDay}</td></tr>
+                        <tr><th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td><th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td></tr>
+                    </table>
+                    <table class="compact-table">
+                        <tr><th width="12%">食事(主食)</th><td width="13%">${data.mealMain || '未入力'}</td><th width="12%">食事(副食)</th><td width="13%">${data.mealSub || '未入力'}</td><th width="10%">水分</th><td width="15%">${data.water || '未入力'}</td><th width="10%">口腔ケア</th><td width="15%">${data.oralCare || '未実施'}</td></tr>
+                        <tr><th>入浴</th><td colspan="3">${data.bath || '未入力'} <span style="font-size:10px;">${data.bathReason ? '(' + data.bathReason + ')' : ''}</span></td><th>服薬・処置</th><td colspan="3">${data.medication || 'なし'}</td></tr>
+                        ${excretionRow}
+                    </table>
+                    <div class="compact-avg">📊 この1ヶ月の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%</div>
+                    <div class="chart-container ds-chart"><canvas id="${chartCanvasId}"></canvas><img id="${chartCanvasId}_print_img" class="chart-print-image" style="display:none;width:100%;height:120px;object-fit:contain;"></div>
+                    <div class="section-title">■ 機能訓練・活動の様子</div><div class="text-box">${trainAct || '特になし'}</div>
+                `;
                 let childServiceHtml = isChildService ? `
                     <div class="section-title">■ ${data.serviceType}記録</div>
                     <table class="compact-table">
                         <tr><th>利用日・提供時間</th><td>${data.date}</td><th>提供時間</th><td>${data.afterSchoolProvideStart || '未入力'}〜${data.afterSchoolProvideEnd || '未入力'}</td><th>担当指導員</th><td>${data.careStaff || '未入力'}</td></tr>
                         <tr><th>出欠状況</th><td>${data.afterSchoolAttendance || '未入力'}</td><th>${childArrivalLabel}</th><td>${data.afterSchoolArrivalTime || '未入力'}</td><th>${childDepartureLabel}</th><td>${data.afterSchoolDepartureTime || '未入力'}</td></tr>
                         <tr><th>来所時の送迎</th><td colspan="2">${data.afterSchoolPickupType || '未入力'} ${data.afterSchoolPickup || ''}</td><th>退所時の送迎</th><td colspan="2">${data.afterSchoolDropoffType || '未入力'} ${data.afterSchoolDropoff || ''}</td></tr>
-                        <tr><th>体温測定時刻</th><td>${data.afterSchoolTempTime || '未入力'}</td><th>健康状態</th><td colspan="3">${data.afterSchoolHealth || '未入力'} ${data.afterSchoolHealthNote || ''}</td></tr>
+                        <tr><th>来所時体温</th><td>${data.afterSchoolTemperature ? data.afterSchoolTemperature + '℃' : '未入力'}（${data.afterSchoolTempTime || '未入力'}）</td><th>健康状態</th><td colspan="3">${data.afterSchoolHealth || '未入力'} ${data.afterSchoolHealthNote || ''}</td></tr>
                         <tr><th>排泄</th><td colspan="2">${data.afterSchoolToiletTime || '未入力'} ${data.afterSchoolToilet || ''}</td><th>水分補給</th><td>${data.water || '未入力'}ml</td><th>おやつ</th><td>${data.afterSchoolSnack || '未入力'} ／ ${data.afterSchoolSnackIntake || '未入力'}</td></tr>
                         <tr><th>活動タグ</th><td colspan="5">${(data.afterSchoolActivityTags || []).join("、") || '未入力'}</td></tr>
                         <tr><th>次回利用・持ち物</th><td colspan="5">${data.afterSchoolNextUseDate || '未入力'} ／ ${data.afterSchoolBelongings || '未入力'}</td></tr>
@@ -1388,48 +1404,12 @@
                         <div class="print-date" style="margin: 0;">📓 記録日： ${data.date}</div>
                     </div>
 
-                    <table class="compact-table">
-                        <tr>
-                            <th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td>
-                            <th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td>
-                            <th width="16%">血圧</th><td width="18%">${bpStrDay}</td>
-                        </tr>
-                        <tr>
-                            <th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td>
-                            <th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td>
-                        </tr>
-                    </table>
-                    <table class="compact-table">
-                        <tr>
-                            <th width="12%">食事(主食)</th><td width="13%">${data.mealMain || '未入力'}</td>
-                            <th width="12%">食事(副食)</th><td width="13%">${data.mealSub || '未入力'}</td>
-                            <th width="10%">水分</th><td width="15%">${data.water || '未入力'}</td>
-                            <th width="10%">口腔ケア</th><td width="15%">${data.oralCare || '未実施'}</td>
-                        </tr>
-                        <tr>
-                            <th>入浴</th><td colspan="3">${data.bath || '未入力'} <span style="font-size:10px;">${data.bathReason ? '(' + data.bathReason + ')' : ''}</span></td>
-                            <th>服薬・処置</th><td colspan="3">${data.medication || 'なし'}</td>
-                        </tr>
-                        ${excretionRow}
-                    </table>
+                    ${adultDataHtml}
                     ${childServiceHtml}
-                    
-                    <div class="compact-avg">
-                        📊 この1ヶ月の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%
-                    </div>
-                    
-                    <div class="chart-container ds-chart">
-                        <canvas id="${chartCanvasId}"></canvas>
-                        <img id="${chartCanvasId}_print_img" class="chart-print-image" style="display: none; width: 100%; height: 120px; object-fit: contain;">
-                    </div>
-                    
-                    <div class="section-title">■ 機能訓練・活動の様子</div>
-                    <div class="text-box">${trainAct || '特になし'}</div>
-
-                    <div class="section-title">■ お客様への御連絡事項 <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
+                    <div class="section-title">■ ${facilityMessageTitle} <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
                     ${finalMessageHtml}
                     
-                    <div class="section-title">■ お客様からの御連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
+                    <div class="section-title">■ ${familyMessageTitle} <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
                     <div class="text-box family-box">${familyMessageText}</div>
 
                     <div class="section-title">■ 本日のご様子 (写真・動画)</div>

@@ -283,7 +283,7 @@
                             <td>${escapeHtml(d.afterSchoolAttendance || "--")}</td>
                             <td>${escapeHtml(d.afterSchoolProvideStart || "--")}〜${escapeHtml(d.afterSchoolProvideEnd || "--")}<br>${escapeHtml(d.afterSchoolArrivalTime || "--")}／${escapeHtml(d.afterSchoolDepartureTime || "--")}</td>
                             <td>${escapeHtml(d.afterSchoolPickupType || "--")} ${transport}<br>${escapeHtml(d.afterSchoolDropoffType || "")}</td>
-                            <td>体温 ${escapeHtml(d.temp1 || "--")}℃ ${escapeHtml(d.afterSchoolHealth || "")}<br>排泄 ${escapeHtml(d.afterSchoolToiletTime || "--")} ${escapeHtml(d.afterSchoolToilet || "--")}<br>おやつ ${escapeHtml(d.afterSchoolSnackIntake || "--")}</td>
+                            <td>体温 ${escapeHtml(d.afterSchoolTemperature || "--")}℃（${escapeHtml(d.afterSchoolTempTime || "--")}） ${escapeHtml(d.afterSchoolHealth || "")}<br>排泄 ${escapeHtml(d.afterSchoolToiletTime || "--")} ${escapeHtml(d.afterSchoolToilet || "--")}<br>おやつ ${escapeHtml(d.afterSchoolSnackIntake || "--")}</td>
                             <td style="text-align:left;white-space:pre-wrap;">${escapeHtml((d.afterSchoolActivityTags || []).join("、"))}<br>${escapeHtml(d.afterSchoolSupport || "--")}</td>
                             <td style="text-align:left;white-space:pre-wrap;">${escapeHtml(d.afterSchoolEpisode || "")}<br>${escapeHtml(d.afterSchoolHandover || "--")}</td>
                         </tr>`;
