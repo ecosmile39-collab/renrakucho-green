@@ -2203,6 +2203,10 @@
             let sType = document.getElementById("serviceType").value;
             let isChildService = sType === "放課後等デイサービス" || sType === "児童発達支援";
             let isLifeCare = sType === "生活介護";
+            const readOptionalValue = id => {
+                const field = document.getElementById(id);
+                return field ? field.value : "";
+            };
             let userName = document.getElementById("userName").value;
             let date = document.getElementById("date").value;
             let facilityId = localStorage.getItem("currentFacilityId");
@@ -2213,12 +2217,12 @@
 
             let data = {
                 facilityId: facilityId, userName: userName, date: date, serviceType: sType,
-                careStaff: isChildService ? document.getElementById("afterSchoolStaff").value : isLifeCare ? document.getElementById("lifeCareStaff").value : document.getElementById("careStaff").value,
+                careStaff: isChildService ? readOptionalValue("afterSchoolStaff") : isLifeCare ? readOptionalValue("lifeCareStaff") : document.getElementById("careStaff").value,
                 careJournal: isChildService || isLifeCare ? "" : document.getElementById("careJournal").value,
                 handoverRequired: !isChildService && !isLifeCare && document.getElementById("handoverRequired").checked,
                 medicalVisit: !isChildService && !isLifeCare && document.getElementById("medicalVisit").checked,
                 conditionChange: !isChildService && !isLifeCare && document.getElementById("conditionChange").checked,
-                handoverNote: isChildService ? document.getElementById("afterSchoolHandover").value : isLifeCare ? document.getElementById("lifeCareHandover").value : document.getElementById("handoverNote").value,
+                handoverNote: isChildService ? readOptionalValue("afterSchoolHandover") : isLifeCare ? readOptionalValue("lifeCareHandover") : document.getElementById("handoverNote").value,
                 message: document.getElementById("message").value,
                 familyMessage: document.getElementById("familyMessage").value,
                 facilityPR: isChildService || isLifeCare ? "" : (document.getElementById("facilityPR") ? document.getElementById("facilityPR").value : ""),
@@ -2251,34 +2255,34 @@
                 data.training = tList.join("、");
                 data.activity = document.getElementById("activity").value;
                 if (sType === "放課後等デイサービス" || sType === "児童発達支援") {
-                    data.afterSchoolStaff = document.getElementById("afterSchoolStaff").value;
-                    data.afterSchoolTemperature = document.getElementById("afterSchoolTemperature").value;
-                    data.afterSchoolAttendance = document.getElementById("afterSchoolAttendance").value;
-                    data.afterSchoolProvideStart = document.getElementById("afterSchoolProvideStart").value;
-                    data.afterSchoolProvideEnd = document.getElementById("afterSchoolProvideEnd").value;
-                    data.afterSchoolArrivalTime = document.getElementById("afterSchoolArrivalTime").value;
-                    data.afterSchoolDepartureTime = document.getElementById("afterSchoolDepartureTime").value;
-                    data.afterSchoolPickupType = document.getElementById("afterSchoolPickupType").value;
-                    data.afterSchoolPickup = document.getElementById("afterSchoolPickup").value;
-                    data.afterSchoolDropoffType = document.getElementById("afterSchoolDropoffType").value;
-                    data.afterSchoolDropoff = document.getElementById("afterSchoolDropoff").value;
-                    data.afterSchoolTempTime = document.getElementById("afterSchoolTempTime").value;
-                    data.afterSchoolHealth = document.getElementById("afterSchoolHealth").value;
-                    data.afterSchoolHealthNote = document.getElementById("afterSchoolHealthNote").value;
-                    data.afterSchoolToiletTime = document.getElementById("afterSchoolToiletTime").value;
-                    data.afterSchoolToilet = document.getElementById("afterSchoolToilet").value;
-                    data.afterSchoolSupport = document.getElementById("afterSchoolSupport").value;
+                    data.afterSchoolStaff = readOptionalValue("afterSchoolStaff");
+                    data.afterSchoolTemperature = readOptionalValue("afterSchoolTemperature");
+                    data.afterSchoolAttendance = readOptionalValue("afterSchoolAttendance");
+                    data.afterSchoolProvideStart = readOptionalValue("afterSchoolProvideStart");
+                    data.afterSchoolProvideEnd = readOptionalValue("afterSchoolProvideEnd");
+                    data.afterSchoolArrivalTime = readOptionalValue("afterSchoolArrivalTime");
+                    data.afterSchoolDepartureTime = readOptionalValue("afterSchoolDepartureTime");
+                    data.afterSchoolPickupType = readOptionalValue("afterSchoolPickupType");
+                    data.afterSchoolPickup = readOptionalValue("afterSchoolPickup");
+                    data.afterSchoolDropoffType = readOptionalValue("afterSchoolDropoffType");
+                    data.afterSchoolDropoff = readOptionalValue("afterSchoolDropoff");
+                    data.afterSchoolTempTime = readOptionalValue("afterSchoolTempTime");
+                    data.afterSchoolHealth = readOptionalValue("afterSchoolHealth");
+                    data.afterSchoolHealthNote = readOptionalValue("afterSchoolHealthNote");
+                    data.afterSchoolToiletTime = readOptionalValue("afterSchoolToiletTime");
+                    data.afterSchoolToilet = readOptionalValue("afterSchoolToilet");
+                    data.afterSchoolSupport = readOptionalValue("afterSchoolSupport");
                     data.afterSchoolActivityTags = Array.from(document.querySelectorAll('input[name="afterSchoolActivityTag"]:checked')).map(input => input.value);
-                    data.afterSchoolEpisode = document.getElementById("afterSchoolEpisode").value;
-                    data.afterSchoolSnack = document.getElementById("afterSchoolSnack").value;
-                    data.afterSchoolSnackIntake = document.getElementById("afterSchoolSnackIntake").value;
-                    data.afterSchoolNextUseDate = document.getElementById("afterSchoolNextUseDate").value;
-                    data.afterSchoolBelongings = document.getElementById("afterSchoolBelongings").value;
-                    data.afterSchoolHomeSleepHours = document.getElementById("afterSchoolHomeSleepHours").value;
-                    data.afterSchoolHomeSleepQuality = document.getElementById("afterSchoolHomeSleepQuality").value;
-                    data.afterSchoolMorningState = document.getElementById("afterSchoolMorningState").value;
-                    data.afterSchoolParentSign = document.getElementById("afterSchoolParentSign").value;
-                    data.afterSchoolHandover = document.getElementById("afterSchoolHandover").value;
+                    data.afterSchoolEpisode = readOptionalValue("afterSchoolEpisode");
+                    data.afterSchoolSnack = readOptionalValue("afterSchoolSnack");
+                    data.afterSchoolSnackIntake = readOptionalValue("afterSchoolSnackIntake");
+                    data.afterSchoolNextUseDate = readOptionalValue("afterSchoolNextUseDate");
+                    data.afterSchoolBelongings = readOptionalValue("afterSchoolBelongings");
+                    data.afterSchoolHomeSleepHours = readOptionalValue("afterSchoolHomeSleepHours");
+                    data.afterSchoolHomeSleepQuality = readOptionalValue("afterSchoolHomeSleepQuality");
+                    data.afterSchoolMorningState = readOptionalValue("afterSchoolMorningState");
+                    data.afterSchoolParentSign = readOptionalValue("afterSchoolParentSign");
+                    data.afterSchoolHandover = readOptionalValue("afterSchoolHandover");
                 }
             } else if (isLifeCare) {
                 data.lifeCareAttendance = document.getElementById("lifeCareAttendance").value;
@@ -2556,86 +2560,31 @@
             document.getElementById("bpHigh").value = ""; document.getElementById("bpLow").value = "";
             document.getElementById("medication").value = ""; document.getElementById("bathReason").value = "";
             document.getElementById("activity").value = "";
-            document.getElementById("afterSchoolAttendance").value = "";
-            document.getElementById("afterSchoolStaff").value = "";
-            document.getElementById("afterSchoolProvideStart").value = "";
-            document.getElementById("afterSchoolProvideEnd").value = "";
-            document.getElementById("afterSchoolArrivalTime").value = "";
-            document.getElementById("afterSchoolDepartureTime").value = "";
-            document.getElementById("afterSchoolPickupType").value = "";
-            document.getElementById("afterSchoolPickup").value = "";
-            document.getElementById("afterSchoolDropoffType").value = "";
-            document.getElementById("afterSchoolDropoff").value = "";
-            document.getElementById("afterSchoolTemperature").value = "";
-            document.getElementById("afterSchoolTempTime").value = "";
-            document.getElementById("afterSchoolHealth").value = "";
-            document.getElementById("afterSchoolHealthNote").value = "";
-            document.getElementById("afterSchoolToiletTime").value = "";
-            document.getElementById("afterSchoolToilet").value = "";
-            document.getElementById("afterSchoolSupport").value = "";
+            [
+                "afterSchoolAttendance", "afterSchoolStaff", "afterSchoolProvideStart", "afterSchoolProvideEnd",
+                "afterSchoolArrivalTime", "afterSchoolDepartureTime", "afterSchoolPickupType", "afterSchoolPickup",
+                "afterSchoolDropoffType", "afterSchoolDropoff", "afterSchoolTemperature", "afterSchoolTempTime",
+                "afterSchoolHealth", "afterSchoolHealthNote", "afterSchoolToiletTime", "afterSchoolToilet",
+                "afterSchoolSupport", "afterSchoolEpisode", "afterSchoolSnack", "afterSchoolSnackIntake",
+                "afterSchoolNextUseDate", "afterSchoolBelongings", "afterSchoolHomeSleepHours",
+                "afterSchoolHomeSleepQuality", "afterSchoolMorningState", "afterSchoolParentSign", "afterSchoolHandover"
+            ].forEach(id => {
+                const field = document.getElementById(id);
+                if (field) field.value = "";
+            });
             document.querySelectorAll('input[name="afterSchoolActivityTag"]').forEach(input => { input.checked = false; });
-            document.getElementById("afterSchoolEpisode").value = "";
-            document.getElementById("afterSchoolSnack").value = "";
-            document.getElementById("afterSchoolSnackIntake").value = "";
-            document.getElementById("afterSchoolNextUseDate").value = "";
-            document.getElementById("afterSchoolBelongings").value = "";
-            document.getElementById("afterSchoolHomeSleepHours").value = "";
-            document.getElementById("afterSchoolHomeSleepQuality").value = "";
-            document.getElementById("afterSchoolMorningState").value = "";
-            document.getElementById("afterSchoolParentSign").value = "";
-            document.getElementById("afterSchoolHandover").value = "";
-            document.getElementById("lifeCareAttendance").value = "";
-            document.getElementById("lifeCareStaff").value = "";
-            document.getElementById("lifeCareStartTime").value = "";
-            document.getElementById("lifeCareEndTime").value = "";
-            document.getElementById("lifeCareArrivalTime").value = "";
-            document.getElementById("lifeCareDepartureTime").value = "";
-            document.getElementById("lifeCarePickupType").value = "";
-            document.getElementById("lifeCarePickupNote").value = "";
-            document.getElementById("lifeCareDropoffType").value = "";
-            document.getElementById("lifeCareDropoffNote").value = "";
-            document.getElementById("lifeCareTemperature").value = "";
-            document.getElementById("lifeCarePulse").value = "";
-            document.getElementById("lifeCareBpHigh").value = "";
-            document.getElementById("lifeCareBpLow").value = "";
-            document.getElementById("lifeCareSpo2").value = "";
-            document.getElementById("lifeCareHealthNote").value = "";
-            document.getElementById("lifeCareMeal").value = "";
-            document.getElementById("lifeCareWater").value = "";
-            document.getElementById("lifeCareMedication").value = "";
-            document.getElementById("lifeCareToileting").value = "";
-            document.getElementById("lifeCareBathing").value = "";
+            [
+                "lifeCareAttendance", "lifeCareStaff", "lifeCareStartTime", "lifeCareEndTime",
+                "lifeCareArrivalTime", "lifeCareDepartureTime", "lifeCarePickupType", "lifeCarePickupNote",
+                "lifeCareDropoffType", "lifeCareDropoffNote", "lifeCareTemperature", "lifeCarePulse",
+                "lifeCareBpHigh", "lifeCareBpLow", "lifeCareSpo2", "lifeCareHealthNote", "lifeCareMeal",
+                "lifeCareWater", "lifeCareMedication", "lifeCareToileting", "lifeCareBathing",
+                "lifeCareGoalProgress", "lifeCareActivityDetails", "lifeCareEpisode", "lifeCareHandover"
+            ].forEach(id => {
+                const field = document.getElementById(id);
+                if (field) field.value = "";
+            });
             document.querySelectorAll('input[name="lifeCareActivityTag"]').forEach(input => { input.checked = false; });
-            document.getElementById("lifeCareGoalProgress").value = "";
-            document.getElementById("lifeCareActivityDetails").value = "";
-            document.getElementById("lifeCareEpisode").value = "";
-            document.getElementById("lifeCareHandover").value = "";
-            document.getElementById("lifeCareAttendance").value = "";
-            document.getElementById("lifeCareStaff").value = "";
-            document.getElementById("lifeCareStartTime").value = "";
-            document.getElementById("lifeCareEndTime").value = "";
-            document.getElementById("lifeCareArrivalTime").value = "";
-            document.getElementById("lifeCareDepartureTime").value = "";
-            document.getElementById("lifeCarePickupType").value = "";
-            document.getElementById("lifeCarePickupNote").value = "";
-            document.getElementById("lifeCareDropoffType").value = "";
-            document.getElementById("lifeCareDropoffNote").value = "";
-            document.getElementById("lifeCareTemperature").value = "";
-            document.getElementById("lifeCarePulse").value = "";
-            document.getElementById("lifeCareBpHigh").value = "";
-            document.getElementById("lifeCareBpLow").value = "";
-            document.getElementById("lifeCareSpo2").value = "";
-            document.getElementById("lifeCareHealthNote").value = "";
-            document.getElementById("lifeCareMeal").value = "";
-            document.getElementById("lifeCareWater").value = "";
-            document.getElementById("lifeCareMedication").value = "";
-            document.getElementById("lifeCareToileting").value = "";
-            document.getElementById("lifeCareBathing").value = "";
-            document.querySelectorAll('input[name="lifeCareActivityTag"]').forEach(input => { input.checked = false; });
-            document.getElementById("lifeCareGoalProgress").value = "";
-            document.getElementById("lifeCareActivityDetails").value = "";
-            document.getElementById("lifeCareEpisode").value = "";
-            document.getElementById("lifeCareHandover").value = "";
             document.getElementsByName("bath").forEach(r => r.checked = false);
             document.getElementsByName("training").forEach(c => c.checked = false);
 
