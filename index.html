@@ -776,7 +776,7 @@
         <div id="previewArea"></div>
         
         <div class="btn-group-bottom">
-            <button class="temp-save-btn" onclick="saveToBatch()">📥 この方のデータを一時保存し、次の方を入力する（上に戻る）</button>
+            <button type="button" class="temp-save-btn" onclick="saveToBatch()">📥 この方のデータを一時保存し、次の方を入力する（上に戻る）</button>
             <button class="single-send-btn" onclick="sendSingleData()">📤 この方だけのデータを今すぐ送信して完了する（一人用）</button>
         </div>
     </div>
@@ -2389,21 +2389,26 @@
             let date = document.getElementById("date").value;
             let sType = document.getElementById("serviceType").value;
             if (!userName) { showToast("⚠️ お名前を選択してください。"); return; }
-            if (!date) { showToast("⚠️ 日付を入力してください。"); return; }
+            if (!date) { showToast("⚠️ 日付を選択してください。"); return; }
 
-            let recordData = getFormData();
-            let existingIndex = batchDataList.findIndex(d => d.userName === userName);
-            if (existingIndex >= 0) batchDataList[existingIndex] = recordData;
-            else batchDataList.push(recordData);
+            try {
+                let recordData = getFormData();
+                let existingIndex = batchDataList.findIndex(d => d.userName === userName);
+                if (existingIndex >= 0) batchDataList[existingIndex] = recordData;
+                else batchDataList.push(recordData);
 
-            updatePendingListUI();
-            resetFormInputs();
-            localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${sType}_${userName}`);
-            
-            showToast(`✅ ${userName} 様（${sType}）のデータを一時保存しました。`, 3000);
-            document.getElementById("userName").value = "";
-            onUserSelected();
-            window.scrollTo({top: 0, behavior: 'smooth'});
+                updatePendingListUI();
+                resetFormInputs();
+                localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${sType}_${userName}`);
+
+                showToast(`✅ ${userName} 様（${sType}）のデータを一時保存しました。`, 3000);
+                document.getElementById("userName").value = "";
+                onUserSelected();
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            } catch (error) {
+                console.error("一時保存に失敗しました:", error);
+                showToast("❌ 一時保存エラー: " + getErrorMessage(error), 8000);
+            }
         };
 
         window.sendSingleData = async function() {
