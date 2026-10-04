@@ -668,8 +668,8 @@
 
         window.onCardBgChanged = function() {
             const refreshButton = document.getElementById("batchPrintBtn");
-            const hasRenderedCard = document.querySelector("#printArea .birthday-card-container-v2");
-            if (hasRenderedCard && refreshButton && !refreshButton.disabled) {
+            const hasRenderedOutput = document.getElementById("printArea").children.length > 0;
+            if (hasRenderedOutput && refreshButton && !refreshButton.disabled) {
                 loadSelectedAndPrint();
             }
         };
