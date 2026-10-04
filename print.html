@@ -667,7 +667,9 @@
         };
 
         window.onCardBgChanged = function() {
-            if (document.getElementById("batchPrintBtn").textContent === "🔄 表示を更新する") {
+            const refreshButton = document.getElementById("batchPrintBtn");
+            const hasRenderedCard = document.querySelector("#printArea .birthday-card-container-v2");
+            if (hasRenderedCard && refreshButton && !refreshButton.disabled) {
                 loadSelectedAndPrint();
             }
         };
