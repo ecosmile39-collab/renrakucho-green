@@ -2811,7 +2811,7 @@
                     let userRef = doc(db, "facilities", facilityId, "users", p.name);
                     let docSnap = await getDoc(userRef);
                     let services = ["デイサービス", "ショートステイ", "放課後等デイサービス", "児童発達支援", "生活介護"];
-                    await setDoc(userRef, { birthday: p.birthday, photoNg: p.ng, needExcretion: p.ex, registeredAt: new Date().toISOString(), services: services }, { merge: true });
+                    await setDoc(userRef, { birthday: p.birthday, photoNg: p.ng, needExcretion: p.ex, active: true, registeredAt: new Date().toISOString(), services: services }, { merge: true });
 
                     // 顔写真をアップロード（選んでいればその写真を、なければ文字画像を）
                     let faceBlob;
