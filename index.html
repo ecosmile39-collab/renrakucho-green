@@ -801,8 +801,6 @@
         };
 
         const app = initializeApp(firebaseConfig);
-            const isChildService = ["放課後等デイサービス", "児童発達支援"].includes(sType);
-            const isLifeCare = sType === "生活介護";
         const storage = getStorage(app); 
         const db = getFirestore(app);   
 
@@ -2738,6 +2736,8 @@
             if (!facilityId || !date) { alert("日付を選択してください。"); return; }
 
             let sType = document.getElementById("serviceType").value;
+            const isChildService = ["放課後等デイサービス", "児童発達支援"].includes(sType);
+            const isLifeCare = sType === "生活介護";
             
             let faceInput = document.getElementById("dummyFaceFiles");
             let actInput = document.getElementById("dummyActFiles");
