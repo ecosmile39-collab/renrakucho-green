@@ -2758,7 +2758,7 @@
             let dateParts = date.split('-');
             let curD = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
 
-            const dummyPatients = [
+            const seniorDummyPatients = [
                 { name: "三宅 恒子", birthday: "1940-05-24", t1: "36.9", p: "94", bh: "128", bl: "80", ng: false, ex: true },
                 { name: "佐藤 健一", birthday: "1942-08-15", t1: "36.5", p: "72", bh: "125", bl: "75", ng: false, ex: true },
                 { name: "田中 幸子", birthday: "1938-11-03", t1: "36.6", p: "78", bh: "135", bl: "80", ng: false, ex: false },
@@ -2770,6 +2770,31 @@
                 { name: "中村 敏子", birthday: "1937-10-22", t1: "36.7", p: "80", bh: "138", bl: "82", ng: false, ex: true },
                 { name: "小林 茂",   birthday: "1946-01-10", t1: "36.4", p: "66", bh: "115", bl: "65", ng: false, ex: false }
             ];
+
+            const youthProfiles = [
+                { name: "佐藤 陽菜", age: 5, t1: "36.6", p: "96", bh: "100", bl: "62", ng: false, ex: false },
+                { name: "田中 蒼太", age: 8, t1: "36.5", p: "90", bh: "104", bl: "66", ng: false, ex: false },
+                { name: "鈴木 美咲", age: 10, t1: "36.7", p: "86", bh: "108", bl: "68", ng: false, ex: false },
+                { name: "高橋 蓮", age: 12, t1: "36.4", p: "82", bh: "110", bl: "70", ng: false, ex: false },
+                { name: "伊藤 結衣", age: 15, t1: "36.8", p: "78", bh: "114", bl: "72", ng: false, ex: false },
+                { name: "小林 悠真", age: 18, t1: "36.5", p: "74", bh: "118", bl: "74", ng: false, ex: false },
+                { name: "山本 彩花", age: 21, t1: "36.6", p: "72", bh: "116", bl: "72", ng: false, ex: false },
+                { name: "中村 大翔", age: 24, t1: "36.4", p: "70", bh: "120", bl: "76", ng: false, ex: false },
+                { name: "加藤 七海", age: 27, t1: "36.7", p: "68", bh: "122", bl: "78", ng: false, ex: false },
+                { name: "吉田 光", age: 30, t1: "36.5", p: "72", bh: "124", bl: "80", ng: false, ex: false }
+            ];
+            const youthDummyPatients = youthProfiles.map(profile => {
+                const birthdayYear = curD.getFullYear() - profile.age;
+                const birthdayMonth = curD.getMonth();
+                const birthdayDay = Math.min(curD.getDate(), new Date(birthdayYear, birthdayMonth + 1, 0).getDate());
+                const { age, ...patient } = profile;
+                return {
+                    ...patient,
+                    birthday: `${birthdayYear}-${String(birthdayMonth + 1).padStart(2, "0")}-${String(birthdayDay).padStart(2, "0")}`
+                };
+            });
+            const youthServices = ["放課後等デイサービス", "児童発達支援", "生活介護"];
+            const dummyPatients = youthServices.includes(sType) ? youthDummyPatients : seniorDummyPatients;
 
             function makeDummyImage(text, bgColor) {
                 const c = document.createElement('canvas'); c.width = 400; c.height = 300;
