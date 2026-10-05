@@ -1790,7 +1790,7 @@
 
         async function fetchServerData(userName, date) {
             let facilityId = localStorage.getItem("currentFacilityId");
-            if (!userName || !date || !facilityId) return;
+            if (!userName || !date || !facilityId) return false;
 
             try {
                 let currentServiceType = document.getElementById("serviceType").value;
@@ -1808,7 +1808,7 @@
                      if (!localStorage.getItem(draftKey)) {
                          resetFormInputs();
                      }
-                     return;
+                     return false;
                 }
 
                 if (docSnap.exists()) {
@@ -1816,7 +1816,7 @@
 
                     if (data.serviceType && data.serviceType !== currentServiceType) {
                         if (!localStorage.getItem(draftKey)) resetFormInputs(); 
-                        return;
+                            return false;
                     }
 
                     window.currentImageCount = data.imageCount !== undefined ? data.imageCount : (data.hasImage ? 1 : 0);
@@ -2000,10 +2000,14 @@
                         }
                     }
                 }
-            } catch (e) { console.log(e); }
-            window.checkTemp('temp1', 'temp1Alert');
-            window.checkTemp('stTempIn', 'stTempInAlert');
-            window.checkTemp('stTempOut', 'stTempOutAlert');
+                window.checkTemp('temp1', 'temp1Alert');
+                window.checkTemp('stTempIn', 'stTempInAlert');
+                window.checkTemp('stTempOut', 'stTempOutAlert');
+                return true;
+            } catch (e) {
+                console.error("記録データの読込に失敗しました:", e);
+                return false;
+            }
         }
 
         window.showUserFace = async function(userName) {
@@ -2956,12 +2960,24 @@
 
                 await Promise.all(patientPromises);
 
-                showToast("🎉 大成功！選んだ写真を使ってテストデータが完全に作成されました！", 4000);
                 await loadUserNames(facilityId);
-                
-                document.getElementById("userName").value = dummyPatients[0].name;
-                await window.onUserSelected();
+                const firstDummyPatient = dummyPatients[0];
+                const userNameSelect = document.getElementById("userName");
+                const firstUserIsListed = Array.from(userNameSelect.options).some(option => option.value === firstDummyPatient.name);
+                if (!firstUserIsListed) {
+                    throw new Error(`${firstDummyPatient.name} 様を名簿から選べませんでした。`);
+                }
+                localStorage.removeItem(`draft_${facilityId}_${date}_${sType}_${firstDummyPatient.name}`);
+                userNameSelect.value = firstDummyPatient.name;
+                const firstRecordLoaded = await window.onUserSelected();
+                const firstRecordDetails = isChildService
+                    ? document.getElementById("afterSchoolEpisode").value
+                    : isLifeCare ? document.getElementById("lifeCareEpisode").value : "loaded";
+                if (!firstRecordLoaded || !firstRecordDetails) {
+                    throw new Error("テストデータは保存されましたが、フォームへの表示を確認できませんでした。画面を再読み込みしてご確認ください。");
+                }
 
+                showToast("🎉 大成功！テストデータを作成し、フォームへの表示も確認しました！", 4000);
                 btn.disabled = false;
                 btn.textContent = "🪄 選んだ写真を使って10人×10日分のテストデータを作成する";
 
