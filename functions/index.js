@@ -8,12 +8,16 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const nodemailer = require("nodemailer");
+const { GoogleAuth } = require("google-auth-library");
 
 initializeApp();
 
 const VIDEO_RETENTION_MS = 72 * 60 * 60 * 1000;
 const DELETE_BATCH_SIZE = 50;
 const INVOICE_TEST_RECIPIENT = "ecosmile39@gmail.com";
+const FIRESTORE_BACKUP_PROJECT_ID = "renrakucho-app-6b157";
+const FIRESTORE_BACKUP_BUCKET = "renrakucho-firestore-backups-astral-bazaar-510707-c6";
+const FIRESTORE_BACKUP_SERVICE_ACCOUNT = "firestore-daily-exporter@renrakucho-app-6b157.iam.gserviceaccount.com";
 const INVOICE_GMAIL_USER = defineSecret("INVOICE_GMAIL_USER");
 const INVOICE_GMAIL_APP_PASSWORD = defineSecret("INVOICE_GMAIL_APP_PASSWORD");
 const INVOICE_ADMIN_KEY = defineSecret("INVOICE_ADMIN_KEY");
@@ -363,5 +367,33 @@ exports.deleteExpiredVideos = onSchedule("every 60 minutes", async () => {
         scanned: files.length,
         expired: expiredFiles.length,
         deleted: deletedCount
+    });
+});
+
+exports.exportDailyRecordsBackup = onSchedule({
+    schedule: "every day 03:00",
+    timeZone: "Asia/Tokyo",
+    maxInstances: 1,
+    serviceAccount: FIRESTORE_BACKUP_SERVICE_ACCOUNT
+}, async () => {
+    const now = new Date();
+    const backupDate = dateKey(getTokyoDateParts(now));
+    const outputUriPrefix = `gs://${FIRESTORE_BACKUP_BUCKET}/firestore/facility_data/${backupDate}_${now.getTime()}`;
+    const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
+    const authClient = await auth.getClient();
+
+    const response = await authClient.request({
+        url: `https://firestore.googleapis.com/v1/projects/${FIRESTORE_BACKUP_PROJECT_ID}/databases/(default):exportDocuments`,
+        method: "POST",
+        data: {
+            collectionIds: ["daily_records", "users"],
+            outputUriPrefix
+        }
+    });
+
+    logger.info("Started facility data backup export", {
+        backupDate,
+        outputUriPrefix,
+        operationName: response.data.name
     });
 });
