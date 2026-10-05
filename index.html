@@ -1318,7 +1318,7 @@
 
             let facilityId = localStorage.getItem("currentFacilityId");
             await loadUserNames(facilityId); 
-            onUserSelected();
+            await onUserSelected();
         };
 
         window.loadUserNames = async function(facilityId) {
@@ -2972,6 +2972,7 @@
 
                 await Promise.all(patientPromises);
 
+                await window.onServiceTypeChanged();
                 await loadUserNames(facilityId);
                 const firstDummyPatient = dummyPatients[0];
                 const userNameSelect = document.getElementById("userName");
