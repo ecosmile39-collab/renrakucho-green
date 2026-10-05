@@ -799,7 +799,6 @@
             messagingSenderId: "63418706991",
             appId: "1:63418706991:web:43085ce485d2a3d6302ada"
         };
-
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app); 
         const db = getFirestore(app);   
@@ -2799,6 +2798,7 @@
                     birthday: `${birthdayYear}-${String(birthdayMonth + 1).padStart(2, "0")}-${String(birthdayDay).padStart(2, "0")}`
                 };
             });
+            const seniorDummyServices = ["デイサービス", "ショートステイ"];
             const youthServices = ["放課後等デイサービス", "児童発達支援", "生活介護"];
             const dummyPatients = youthServices.includes(sType) ? youthDummyPatients : seniorDummyPatients;
 
@@ -2811,10 +2811,22 @@
             }
 
             try {
+                const dummyServiceGroups = [
+                    { patients: seniorDummyPatients, services: seniorDummyServices },
+                    { patients: youthProfiles, services: youthServices }
+                ];
+                const normalizeExistingDummyUsers = dummyServiceGroups.flatMap(group => group.patients.map(async patient => {
+                    let userRef = doc(db, "facilities", facilityId, "users", patient.name);
+                    let userSnapshot = await getDoc(userRef);
+                    if (userSnapshot.exists()) {
+                        await setDoc(userRef, { services: group.services }, { merge: true });
+                    }
+                }));
+                await Promise.all(normalizeExistingDummyUsers);
+
                 let patientPromises = dummyPatients.map(async (p, i) => {
                     let userRef = doc(db, "facilities", facilityId, "users", p.name);
-                    let docSnap = await getDoc(userRef);
-                    let services = ["デイサービス", "ショートステイ", "放課後等デイサービス", "児童発達支援", "生活介護"];
+                    let services = youthServices.includes(sType) ? youthServices : seniorDummyServices;
                     await setDoc(userRef, { birthday: p.birthday, photoNg: p.ng, needExcretion: p.ex, active: true, registeredAt: new Date().toISOString(), services: services }, { merge: true });
 
                     // 顔写真をアップロード（選んでいればその写真を、なければ文字画像を）
