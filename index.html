@@ -801,6 +801,8 @@
         };
 
         const app = initializeApp(firebaseConfig);
+            const isChildService = ["放課後等デイサービス", "児童発達支援"].includes(sType);
+            const isLifeCare = sType === "生活介護";
         const storage = getStorage(app); 
         const db = getFirestore(app);   
 
@@ -2841,6 +2843,9 @@
                         let pm = String(targetDateObj.getMonth() + 1).padStart(2, '0');
                         let pd = String(targetDateObj.getDate()).padStart(2, '0');
                         let targetDateStr = `${py}-${pm}-${pd}`;
+                        let nextUseDateObj = new Date(targetDateObj);
+                        nextUseDateObj.setDate(nextUseDateObj.getDate() + 7);
+                        let nextUseDate = `${nextUseDateObj.getFullYear()}-${String(nextUseDateObj.getMonth() + 1).padStart(2, '0')}-${String(nextUseDateObj.getDate()).padStart(2, '0')}`;
 
                         let randTemp = (Math.random() * 0.6 - 0.3);
                         let randBp = Math.floor(Math.random() * 8) - 4;
@@ -2863,33 +2868,60 @@
                                 familyMessage: "", 
                                 facilityPR: "", 
                                 imageCount: (dOffset === 0) ? 1 : 0, videoCount: 0,
-                                lifeCareAttendance: sType === "生活介護" ? "利用" : "",
-                                lifeCareStaff: sType === "生活介護" ? "佐藤" : "",
-                                lifeCareStartTime: sType === "生活介護" ? "09:00" : "",
-                                lifeCareEndTime: sType === "生活介護" ? "16:00" : "",
-                                lifeCareArrivalTime: sType === "生活介護" ? "09:00" : "",
-                                lifeCareDepartureTime: sType === "生活介護" ? "16:00" : "",
-                                lifeCarePickupType: sType === "生活介護" ? "施設送迎" : "",
-                                lifeCareDropoffType: sType === "生活介護" ? "施設送迎" : "",
-                                lifeCareTemperature: sType === "生活介護" ? t1 : "",
-                                lifeCarePulse: sType === "生活介護" ? pulse : "",
-                                lifeCareBpHigh: sType === "生活介護" ? bpHigh : "",
-                                lifeCareBpLow: sType === "生活介護" ? bpLow : "",
-                                lifeCareSpo2: sType === "生活介護" ? "98" : "",
-                                lifeCareMeal: sType === "生活介護" ? "昼食 8割" : "",
-                                lifeCareWater: sType === "生活介護" ? "500ml" : "",
-                                lifeCareActivityTags: sType === "生活介護" ? ["創作活動", "機能訓練"] : [],
-                                lifeCareGoalProgress: sType === "生活介護" ? "個別支援計画に沿って活動に参加されました。" : "",
-                                lifeCareActivityDetails: sType === "生活介護" ? "創作活動と歩行訓練を行いました。" : "",
-                                lifeCareEpisode: sType === "生活介護" ? "落ち着いた様子で過ごされました。" : "",
-                                afterSchoolAttendance: sType === "放課後等デイサービス" ? "利用" : "",
-                                afterSchoolArrivalTime: sType === "放課後等デイサービス" ? "15:00" : "",
-                                afterSchoolDepartureTime: sType === "放課後等デイサービス" ? "17:00" : "",
-                                afterSchoolPickup: sType === "放課後等デイサービス" ? "学校迎え" : "",
-                                afterSchoolDropoff: sType === "放課後等デイサービス" ? "自宅送り" : "",
-                                afterSchoolSupport: sType === "放課後等デイサービス" ? "宿題と個別課題に取り組みました。" : "",
-                                afterSchoolSnack: sType === "放課後等デイサービス" ? "完食" : "",
-                                afterSchoolHandover: sType === "放課後等デイサービス" ? "本日の活動内容を保護者へお伝えしました。" : ""
+                                lifeCareAttendance: isLifeCare ? "利用" : "",
+                                lifeCareStaff: isLifeCare ? "佐藤" : "",
+                                lifeCareStartTime: isLifeCare ? "09:00" : "",
+                                lifeCareEndTime: isLifeCare ? "16:00" : "",
+                                lifeCareArrivalTime: isLifeCare ? "09:00" : "",
+                                lifeCareDepartureTime: isLifeCare ? "16:00" : "",
+                                lifeCarePickupType: isLifeCare ? "施設送迎" : "",
+                                lifeCarePickupNote: isLifeCare ? "佐藤が送迎" : "",
+                                lifeCareDropoffType: isLifeCare ? "施設送迎" : "",
+                                lifeCareDropoffNote: isLifeCare ? "ご自宅まで送迎" : "",
+                                lifeCareTemperature: isLifeCare ? t1 : "",
+                                lifeCarePulse: isLifeCare ? pulse : "",
+                                lifeCareBpHigh: isLifeCare ? bpHigh : "",
+                                lifeCareBpLow: isLifeCare ? bpLow : "",
+                                lifeCareSpo2: isLifeCare ? "98" : "",
+                                lifeCareHealthNote: isLifeCare ? "体調は安定しています。" : "",
+                                lifeCareMeal: isLifeCare ? "昼食 8割" : "",
+                                lifeCareWater: isLifeCare ? "500ml" : "",
+                                lifeCareMedication: isLifeCare ? "服薬確認済み" : "",
+                                lifeCareToileting: isLifeCare ? "声かけでトイレ誘導" : "",
+                                lifeCareBathing: isLifeCare ? "入浴しました" : "",
+                                lifeCareActivityTags: isLifeCare ? ["創作活動", "機能訓練", "運動・余暇活動"] : [],
+                                lifeCareGoalProgress: isLifeCare ? "個別支援計画に沿って活動に参加されました。" : "",
+                                lifeCareActivityDetails: isLifeCare ? "創作活動と歩行訓練を行いました。" : "",
+                                lifeCareEpisode: isLifeCare ? "落ち着いた様子で他の利用者と過ごされました。" : "",
+                                lifeCareHandover: isLifeCare ? "本日の活動と体調についてご家族へお伝えしました。" : "",
+                                afterSchoolAttendance: isChildService ? "利用" : "",
+                                afterSchoolStaff: isChildService ? "佐藤" : "",
+                                afterSchoolProvideStart: isChildService ? (sType === "児童発達支援" ? "09:00" : "15:00") : "",
+                                afterSchoolProvideEnd: isChildService ? (sType === "児童発達支援" ? "15:00" : "17:00") : "",
+                                afterSchoolArrivalTime: isChildService ? (sType === "児童発達支援" ? "09:00" : "15:00") : "",
+                                afterSchoolDepartureTime: isChildService ? (sType === "児童発達支援" ? "15:00" : "17:00") : "",
+                                afterSchoolPickupType: isChildService ? (sType === "児童発達支援" ? "施設送迎（自宅迎え）" : "施設送迎（学校迎え）") : "",
+                                afterSchoolPickup: isChildService ? "佐藤が送迎" : "",
+                                afterSchoolDropoffType: isChildService ? "施設送迎（自宅送り）" : "",
+                                afterSchoolDropoff: isChildService ? "ご自宅まで送迎" : "",
+                                afterSchoolTemperature: isChildService ? t1 : "",
+                                afterSchoolTempTime: isChildService ? (sType === "児童発達支援" ? "09:10" : "15:10") : "",
+                                afterSchoolHealth: isChildService ? "良好" : "",
+                                afterSchoolHealthNote: isChildService ? "発熱や体調不良はありません。" : "",
+                                afterSchoolToiletTime: isChildService ? "16:00" : "",
+                                afterSchoolToilet: isChildService ? "促し" : "",
+                                afterSchoolSupport: isChildService ? "学習課題と創作活動に取り組みました。" : "",
+                                afterSchoolActivityTags: isChildService ? ["学習支援（宿題）", "創作・手先活動（微細運動）", "ソーシャルスキルトレーニング（SST）"] : [],
+                                afterSchoolEpisode: isChildService ? "笑顔で活動に参加し、最後まで課題に取り組まれました。" : "",
+                                afterSchoolSnack: isChildService ? "ゼリーとおせんべい" : "",
+                                afterSchoolSnackIntake: isChildService ? "完食" : "",
+                                afterSchoolNextUseDate: isChildService ? nextUseDate : "",
+                                afterSchoolBelongings: isChildService ? "水筒、連絡帳" : "",
+                                afterSchoolHomeSleepHours: isChildService ? "9" : "",
+                                afterSchoolHomeSleepQuality: isChildService ? "よく眠れました。" : "",
+                                afterSchoolMorningState: isChildService ? "朝食を食べ、元気に来所しました。" : "",
+                                afterSchoolParentSign: isChildService ? "保護者確認済み" : "",
+                                afterSchoolHandover: isChildService ? "本日の活動内容を保護者へお伝えしました。" : ""
                             }));
                         } else {
                             dayPromises.push(setDoc(recordRef, {
