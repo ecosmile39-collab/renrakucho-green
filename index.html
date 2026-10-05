@@ -284,6 +284,13 @@
                 <div>
                     <label>体温(来所時) ℃ <span id="temp1Alert" style="color: red; font-size: 18px; margin-left: 5px;"></span></label>
                     <input type="number" step="0.1" id="temp1" list="temp1List" placeholder="例:36.5" oninput="checkTemp('temp1', 'temp1Alert')">
+                <h4>朝礼申し送り（職員間）</h4>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="afterSchoolHandoverRequired" style="width:auto;"> 要申し送り</label>
+                    <label><input type="checkbox" id="afterSchoolMedicalVisit" style="width:auto;"> 受診対応あり</label>
+                    <label><input type="checkbox" id="afterSchoolConditionChange" style="width:auto;"> 体調変化</label>
+                </div>
+                <textarea id="afterSchoolHandoverNote" rows="3" placeholder="翌日の朝礼で共有する内容"></textarea>
                     <datalist id="temp1List"><option value="36.0"></option><option value="36.2"></option><option value="36.4"></option><option value="36.6"></option><option value="36.8"></option><option value="37.0"></option></datalist>
                 </div>
                 <div>
@@ -513,6 +520,13 @@
             <textarea id="lifeCareActivityDetails" rows="3" placeholder="活動内容、参加の様子、ご本人の選択や意思表示"></textarea>
             <label>ご本人の様子・特記事項</label>
             <textarea id="lifeCareEpisode" rows="4" placeholder="表情、他者との関わり、できたこと、体調変化、事故等"></textarea>
+            <h4>朝礼申し送り（職員間）</h4>
+            <div class="checkbox-group">
+                <label><input type="checkbox" id="lifeCareHandoverRequired" style="width:auto;"> 要申し送り</label>
+                <label><input type="checkbox" id="lifeCareMedicalVisit" style="width:auto;"> 受診対応あり</label>
+                <label><input type="checkbox" id="lifeCareConditionChange" style="width:auto;"> 体調変化</label>
+            </div>
+            <textarea id="lifeCareStaffHandoverNote" rows="3" placeholder="翌日の朝礼で共有する内容"></textarea>
             <label>ご家族への申し送り</label>
             <textarea id="lifeCareHandover" rows="3" placeholder="ご家族に伝える生活・支援上の連絡事項"></textarea>
         </div>
@@ -1676,8 +1690,11 @@
                 document.getElementById("afterSchoolHomeSleepQuality").value = d.afterSchoolHomeSleepQuality || "";
                 document.getElementById("afterSchoolMorningState").value = d.afterSchoolMorningState || "";
                 document.getElementById("afterSchoolParentSign").value = d.afterSchoolParentSign || "";
-                document.getElementById("afterSchoolHandover").value = d.afterSchoolHandover || "";
-                document.getElementById("afterSchoolHandover").value = d.afterSchoolHandover || "";
+                if (document.getElementById("afterSchoolHandover")) document.getElementById("afterSchoolHandover").value = d.afterSchoolHandover || "";
+                document.getElementById("afterSchoolHandoverRequired").checked = !!d.handoverRequired;
+                document.getElementById("afterSchoolMedicalVisit").checked = !!d.medicalVisit;
+                document.getElementById("afterSchoolConditionChange").checked = !!d.conditionChange;
+                document.getElementById("afterSchoolHandoverNote").value = d.handoverNote || "";
                 document.getElementById("lifeCareAttendance").value = d.lifeCareAttendance || "";
                 document.getElementById("lifeCareStaff").value = d.lifeCareStaff || d.careStaff || "";
                 document.getElementById("lifeCareStartTime").value = d.lifeCareStartTime || "";
@@ -1704,6 +1721,10 @@
                 document.getElementById("lifeCareActivityDetails").value = d.lifeCareActivityDetails || "";
                 document.getElementById("lifeCareEpisode").value = d.lifeCareEpisode || "";
                 document.getElementById("lifeCareHandover").value = d.lifeCareHandover || "";
+                document.getElementById("lifeCareHandoverRequired").checked = !!d.handoverRequired;
+                document.getElementById("lifeCareMedicalVisit").checked = !!d.medicalVisit;
+                document.getElementById("lifeCareConditionChange").checked = !!d.conditionChange;
+                document.getElementById("lifeCareStaffHandoverNote").value = d.handoverNote || "";
                 document.getElementById("lifeCareAttendance").value = d.lifeCareAttendance || "";
                 document.getElementById("lifeCareStaff").value = d.lifeCareStaff || d.careStaff || "";
                 document.getElementById("lifeCareStartTime").value = d.lifeCareStartTime || "";
@@ -1894,8 +1915,11 @@
                         document.getElementById("afterSchoolHomeSleepQuality").value = data.afterSchoolHomeSleepQuality || "";
                         document.getElementById("afterSchoolMorningState").value = data.afterSchoolMorningState || "";
                         document.getElementById("afterSchoolParentSign").value = data.afterSchoolParentSign || "";
-                        document.getElementById("afterSchoolHandover").value = data.afterSchoolHandover || "";
-                        document.getElementById("afterSchoolHandover").value = data.afterSchoolHandover || "";
+                        if (document.getElementById("afterSchoolHandover")) document.getElementById("afterSchoolHandover").value = data.afterSchoolHandover || "";
+                        document.getElementById("afterSchoolHandoverRequired").checked = !!data.handoverRequired;
+                        document.getElementById("afterSchoolMedicalVisit").checked = !!data.medicalVisit;
+                        document.getElementById("afterSchoolConditionChange").checked = !!data.conditionChange;
+                        document.getElementById("afterSchoolHandoverNote").value = data.handoverNote || "";
                         document.getElementById("lifeCareAttendance").value = data.lifeCareAttendance || "";
                         document.getElementById("lifeCareStaff").value = data.lifeCareStaff || data.careStaff || "";
                         document.getElementById("lifeCareStartTime").value = data.lifeCareStartTime || "";
@@ -1922,6 +1946,10 @@
                         document.getElementById("lifeCareActivityDetails").value = data.lifeCareActivityDetails || "";
                         document.getElementById("lifeCareEpisode").value = data.lifeCareEpisode || "";
                         document.getElementById("lifeCareHandover").value = data.lifeCareHandover || "";
+                        document.getElementById("lifeCareHandoverRequired").checked = !!data.handoverRequired;
+                        document.getElementById("lifeCareMedicalVisit").checked = !!data.medicalVisit;
+                        document.getElementById("lifeCareConditionChange").checked = !!data.conditionChange;
+                        document.getElementById("lifeCareStaffHandoverNote").value = data.handoverNote || "";
                         document.getElementById("lifeCareAttendance").value = data.lifeCareAttendance || "";
                         document.getElementById("lifeCareStaff").value = data.lifeCareStaff || data.careStaff || "";
                         document.getElementById("lifeCareStartTime").value = data.lifeCareStartTime || "";
@@ -2240,7 +2268,7 @@
                 handoverRequired: !isChildService && !isLifeCare && document.getElementById("handoverRequired").checked,
                 medicalVisit: !isChildService && !isLifeCare && document.getElementById("medicalVisit").checked,
                 conditionChange: !isChildService && !isLifeCare && document.getElementById("conditionChange").checked,
-                handoverNote: isChildService ? readOptionalValue("afterSchoolHandover") : isLifeCare ? readOptionalValue("lifeCareHandover") : document.getElementById("handoverNote").value,
+                handoverNote: !isChildService && !isLifeCare ? document.getElementById("handoverNote").value : "",
                 message: document.getElementById("message").value,
                 familyMessage: document.getElementById("familyMessage").value,
                 facilityPR: isChildService || isLifeCare ? "" : (document.getElementById("facilityPR") ? document.getElementById("facilityPR").value : ""),
@@ -2301,6 +2329,10 @@
                     data.afterSchoolMorningState = readOptionalValue("afterSchoolMorningState");
                     data.afterSchoolParentSign = readOptionalValue("afterSchoolParentSign");
                     data.afterSchoolHandover = readOptionalValue("afterSchoolHandover");
+                    data.handoverRequired = document.getElementById("afterSchoolHandoverRequired").checked;
+                    data.medicalVisit = document.getElementById("afterSchoolMedicalVisit").checked;
+                    data.conditionChange = document.getElementById("afterSchoolConditionChange").checked;
+                    data.handoverNote = document.getElementById("afterSchoolHandoverNote").value;
                 }
             } else if (isLifeCare) {
                 data.lifeCareAttendance = document.getElementById("lifeCareAttendance").value;
@@ -2329,6 +2361,10 @@
                 data.lifeCareActivityDetails = document.getElementById("lifeCareActivityDetails").value;
                 data.lifeCareEpisode = document.getElementById("lifeCareEpisode").value;
                 data.lifeCareHandover = document.getElementById("lifeCareHandover").value;
+                data.handoverRequired = document.getElementById("lifeCareHandoverRequired").checked;
+                data.medicalVisit = document.getElementById("lifeCareMedicalVisit").checked;
+                data.conditionChange = document.getElementById("lifeCareConditionChange").checked;
+                data.handoverNote = document.getElementById("lifeCareStaffHandoverNote").value;
             } else {
                 let stBathVal = ""; document.getElementsByName("stBath").forEach(r => { if(r.checked) stBathVal = r.value; });
                 
@@ -2589,11 +2625,14 @@
                 "afterSchoolHealth", "afterSchoolHealthNote", "afterSchoolToiletTime", "afterSchoolToilet",
                 "afterSchoolSupport", "afterSchoolEpisode", "afterSchoolSnack", "afterSchoolSnackIntake",
                 "afterSchoolNextUseDate", "afterSchoolBelongings", "afterSchoolHomeSleepHours",
-                "afterSchoolHomeSleepQuality", "afterSchoolMorningState", "afterSchoolParentSign", "afterSchoolHandover"
+                "afterSchoolHomeSleepQuality", "afterSchoolMorningState", "afterSchoolParentSign", "afterSchoolHandover",
+                "afterSchoolHandoverNote"
             ].forEach(id => {
                 const field = document.getElementById(id);
                 if (field) field.value = "";
             });
+            ["afterSchoolHandoverRequired", "afterSchoolMedicalVisit", "afterSchoolConditionChange"]
+                .forEach(id => { document.getElementById(id).checked = false; });
             document.querySelectorAll('input[name="afterSchoolActivityTag"]').forEach(input => { input.checked = false; });
             [
                 "lifeCareAttendance", "lifeCareStaff", "lifeCareStartTime", "lifeCareEndTime",
@@ -2601,11 +2640,14 @@
                 "lifeCareDropoffType", "lifeCareDropoffNote", "lifeCareTemperature", "lifeCarePulse",
                 "lifeCareBpHigh", "lifeCareBpLow", "lifeCareSpo2", "lifeCareHealthNote", "lifeCareMeal",
                 "lifeCareWater", "lifeCareMedication", "lifeCareToileting", "lifeCareBathing",
-                "lifeCareGoalProgress", "lifeCareActivityDetails", "lifeCareEpisode", "lifeCareHandover"
+                "lifeCareGoalProgress", "lifeCareActivityDetails", "lifeCareEpisode", "lifeCareHandover",
+                "lifeCareStaffHandoverNote"
             ].forEach(id => {
                 const field = document.getElementById(id);
                 if (field) field.value = "";
             });
+            ["lifeCareHandoverRequired", "lifeCareMedicalVisit", "lifeCareConditionChange"]
+                .forEach(id => { document.getElementById(id).checked = false; });
             document.querySelectorAll('input[name="lifeCareActivityTag"]').forEach(input => { input.checked = false; });
             document.getElementsByName("bath").forEach(r => r.checked = false);
             document.getElementsByName("training").forEach(c => c.checked = false);
@@ -2895,6 +2937,12 @@
                             dayPromises.push(setDoc(recordRef, {
                                 facilityId: facilityId, userName: p.name, date: targetDateStr,
                                 serviceType: sType,
+                                handoverRequired: (isChildService || isLifeCare) && i === 0 && dOffset === 1,
+                                medicalVisit: false,
+                                conditionChange: false,
+                                handoverNote: (isChildService || isLifeCare) && i === 0 && dOffset === 1
+                                    ? "テスト用：翌日の朝礼で確認してください。"
+                                    : "",
                                 temp1: t1, temp2: t1, pulse: pulse, spo2: "98", bpHigh: bpHigh, bpLow: bpLow,
                                 mealMain: "100%", mealSub: "100%", water: "300ml", medication: "軟膏塗布", oralCare: "歯ブラシ",
                                 bath: "あり", bathReason: "", bowel: p.ex ? "あり" : "なし", bowel1: p.ex ? "普通便" : "", bowel2: "", bowel3: "",
