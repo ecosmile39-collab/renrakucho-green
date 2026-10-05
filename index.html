@@ -804,6 +804,7 @@
         const db = getFirestore(app);   
 
         let batchDataList = [];
+        let serverDataLoadSequence = 0;
         window.globalUsersData = {}; 
         let globalNgUsers = []; 
         const mediaUrlCache = new Map();
@@ -1425,6 +1426,7 @@
         };
 
         window.onUserSelected = function() {
+            serverDataLoadSequence++;
             let userName = document.getElementById("userName").value;
             let dateStr = document.getElementById("date").value;
             
@@ -1801,12 +1803,14 @@
         async function fetchServerData(userName, date) {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!userName || !date || !facilityId) return false;
+            const loadSequence = ++serverDataLoadSequence;
 
             try {
                 let currentServiceType = document.getElementById("serviceType").value;
                 let docId = `${date}_${currentServiceType}_${userName}`;
                 let docRef = doc(db, "facilities", facilityId, "daily_records", docId);
                 let docSnap = await getDoc(docRef);
+                if (loadSequence !== serverDataLoadSequence) return false;
                 
                 window.currentImageCount = 0; window.currentVideoCount = 0;
                 let badge = document.getElementById("preUploadedBadge");
