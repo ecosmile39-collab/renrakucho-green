@@ -221,6 +221,10 @@
                 ⏹️ 利用終了にする
             </button>
         </div>
+        <div id="linePairingArea" style="display: none; margin-top: 10px; padding: 12px; background: #f3f8f4; border: 1px solid #b2dfbf; border-radius: 6px;">
+            <div id="lineLinkStatus" style="font-size: 13px; color: #495057; margin-bottom: 8px;">LINE連携状況を確認しています...</div>
+            <button type="button" onclick="generateLinePairingCode()" style="padding: 9px 12px; background: #06c755; color: white; border: 0; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">保護者のLINE連携コードを発行</button>
+        </div>
 
         <div id="userSettingsArea" style="display: none; margin-top: 10px; padding: 15px; background-color: #f8f9fa; border: 1px solid #ced4da; border-radius: 8px;">
             <div style="font-weight: bold; color: #495057; font-size: 14px; margin-bottom: 12px; border-bottom: 1px dashed #adb5bd; padding-bottom: 5px;">⚙️ このお客様の個別設定</div>
@@ -802,8 +806,11 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { hasFacilitySession } from "./facility-auth.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, getMetadata, deleteObject, listAll } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -814,8 +821,10 @@
             appId: "1:63418706991:web:43085ce485d2a3d6302ada"
         };
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const storage = getStorage(app); 
         const db = getFirestore(app);   
+        const functions = getFunctions(app);
 
         let batchDataList = [];
         let serverDataLoadSequence = 0;
@@ -1114,6 +1123,13 @@
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; } 
+            if (!(await hasFacilitySession(auth, facilityId))) {
+                localStorage.removeItem("currentFacilityId");
+                localStorage.removeItem("currentFacilityName");
+                localStorage.removeItem("isStaffAuthenticated");
+                window.location.replace("login.html");
+                return;
+            }
 
             let facilitySnapshot;
             try {
@@ -1448,12 +1464,14 @@
             let stExcretionArea = document.getElementById("stExcretionArea");
             let userSettingsArea = document.getElementById("userSettingsArea"); 
             let userActionBtns = document.getElementById("userActionBtns");
+            let linePairingArea = document.getElementById("linePairingArea");
 
             if(!userName) {
                 document.getElementById("userFace").style.display = "none";
                 document.getElementById("ageDisplay").textContent = "";
                 userSettingsArea.style.display = "none";
                 userActionBtns.style.display = "none";
+                linePairingArea.style.display = "none";
                 dayExcretionArea.style.display = "none";
                 stExcretionArea.style.display = "none";
                 resetFormInputs();
@@ -1483,8 +1501,10 @@
 
             userSettingsArea.style.display = "block";
             userActionBtns.style.display = "flex";
+            linePairingArea.style.display = "block";
             document.getElementById("photoNgCheck").checked = (userData && userData.photoNg === true);
             document.getElementById("existNeedExcretion").checked = (userData && userData.needExcretion === true);
+            refreshLineRecipientStatus(userName);
 
             if (userData && userData.needExcretion === true) {
                 dayExcretionArea.style.display = "block";
@@ -1497,6 +1517,36 @@
             showUserFace(userName); 
             applyDraftOrEmpty(userName, dateStr);
             return fetchServerData(userName, dateStr);
+        };
+
+        async function refreshLineRecipientStatus(userName) {
+            const status = document.getElementById("lineLinkStatus");
+            status.textContent = "LINE連携状況を確認しています...";
+            try {
+                const getStatus = httpsCallable(functions, "getLineRecipientStatus");
+                const result = await getStatus({ userName });
+                if (document.getElementById("userName").value !== userName) return;
+                const count = result.data.recipientCount || 0;
+                status.textContent = count > 0 ? `保護者LINE：${count}件連携済み` : "保護者LINE：未連携";
+            } catch (error) {
+                if (document.getElementById("userName").value === userName) {
+                    status.textContent = "LINE連携状況を取得できません。ログインし直してください。";
+                }
+            }
+        }
+
+        window.generateLinePairingCode = async function() {
+            const userName = document.getElementById("userName").value;
+            if (!userName) return;
+            if (!confirm(`${userName} 様の保護者LINE連携コードを発行します。発行済みの保護者がいる場合は、追加のLINEアカウントも連携されます。続けますか？`)) return;
+            try {
+                const createCode = httpsCallable(functions, "createLinePairingCode");
+                const result = await createCode({ userName });
+                alert(`公式LINE「ecosmile39」（@108nturw）を友だち追加し、トークに次のコードを送ってもらってください。\n\n${result.data.code}\n\nコードの有効期限は15分です。保護者本人へ個別にお伝えください。`);
+                refreshLineRecipientStatus(userName);
+            } catch (error) {
+                alert("LINE連携コードを発行できませんでした: " + getErrorMessage(error));
+            }
         };
 
         window.openEditUserModal = function() {
@@ -1552,6 +1602,10 @@
                     let docSnap = await getDoc(userRef);
                     if (docSnap.exists()) {
                         alert(`「${newName}」様は既に名簿に登録されています。別のお名前にしてください。`);
+                        return;
+                    }
+                    if (Array.isArray(currentData.lineUserIds) && currentData.lineUserIds.length) {
+                        alert("LINE連携済みの利用者はお名前を変更できません。変更が必要な場合は管理者へご相談ください。");
                         return;
                     }
                     let saveData = { ...currentData, services: newServices };
@@ -2469,6 +2523,33 @@
             }
         };
 
+        async function notifyRecordsViaLine(records) {
+            try {
+                const getStatus = httpsCallable(functions, "getLineRecipientStatus");
+                const recordsWithRecipients = await Promise.all(records.map(async record => {
+                    const result = await getStatus({ userName: record.userName });
+                    return { ...record, recipientCount: result.data.recipientCount || 0 };
+                }));
+                const linkedRecords = recordsWithRecipients.filter(record => record.recipientCount > 0);
+                if (!linkedRecords.length) return "";
+
+                const linkedNames = linkedRecords.map(record => `${record.userName} 様`).join("、");
+                if (!confirm(`${linkedNames} の保護者LINEへ、連絡帳の閲覧リンクを送信しますか？\nリンクは7日間有効です。`)) return "";
+
+                const sendNotification = httpsCallable(functions, "sendLineRecordNotification");
+                const results = await Promise.allSettled(linkedRecords.map(record => sendNotification({
+                    userName: record.userName,
+                    date: record.date,
+                    serviceType: record.serviceType
+                })));
+                const successCount = results.filter(result => result.status === "fulfilled").length;
+                if (successCount === linkedRecords.length) return `保護者LINE ${successCount}件へ閲覧リンクを送信しました。`;
+                return `記録は保存済みですが、LINE通知は${successCount}/${linkedRecords.length}件です。未送信分は連絡帳を再送してください。`;
+            } catch (error) {
+                return `記録は保存済みですが、LINE通知の確認に失敗しました: ${getErrorMessage(error)}`;
+            }
+        }
+
         window.sendSingleData = async function() {
             let userName = document.getElementById("userName").value;
             let date = document.getElementById("date").value;
@@ -2502,6 +2583,7 @@
                 }
 
                 await setDoc(docRef, saveObj);
+                const lineNotice = await notifyRecordsViaLine([recordData]);
                 await loadImportantHandoverDashboard(recordData.facilityId, getPreviousDateString(date), sType);
 
                 batchDataList = batchDataList.filter(d => d.userName !== userName);
@@ -2512,7 +2594,7 @@
                 onUserSelected();
 
                 document.getElementById("loadingOverlay").style.display = "none";
-                showToast("🎉 大成功！1名分のデータが正常に送信・保存されました！", 5000);
+                showToast(lineNotice || "🎉 大成功！1名分のデータが正常に送信・保存されました！", 7000);
                 window.scrollTo({top: 0, behavior: 'smooth'}); 
 
             } catch (error) {
@@ -2588,6 +2670,7 @@
                 });
 
                 await Promise.all(uploadPromises);
+                const lineNotice = await notifyRecordsViaLine(batchDataList);
                 let dashboardDate = getPreviousDateString(document.getElementById("date").value);
                 await loadImportantHandoverDashboard(
                     localStorage.getItem("currentFacilityId"),
@@ -2595,7 +2678,7 @@
                     document.getElementById("serviceType").value
                 );
                 document.getElementById("loadingOverlay").style.display = "none";
-                showToast("🎉 大成功！全員分のデータが正常に送信されました！", 5000);
+                showToast(lineNotice || "🎉 大成功！全員分のデータが正常に送信されました！", 7000);
                 batchDataList = [];
                 updatePendingListUI();
                 window.scrollTo({top: 0, behavior: 'smooth'});
@@ -3107,56 +3190,15 @@
             try {
                 let deletionPassword = await requestFacilityDeletePassword(facilityName);
                 if (deletionPassword === null) return;
-                let facilitySnapshot = await getDoc(doc(db, "facilities", facilityId));
-                if (!facilitySnapshot.exists() || facilitySnapshot.data().password !== deletionPassword) {
-                    alert("パスワードが一致しません。削除していません。");
-                    return;
-                }
-
-                let usersSnap = await getDocs(collection(db, "facilities", facilityId, "users"));
-                let userNames = [];
-                usersSnap.forEach(docSnap => { userNames.push(docSnap.id); });
-
-                let allFacilitiesSnap = await getDocs(collection(db, "facilities"));
-                let otherFacilityUserNames = new Set();
-                for (let otherFacility of allFacilitiesSnap.docs) {
-                    if (otherFacility.id === facilityId) continue;
-                    let otherUsersSnap = await getDocs(collection(db, "facilities", otherFacility.id, "users"));
-                    otherUsersSnap.forEach(userDoc => otherFacilityUserNames.add(userDoc.id));
-                }
-
-                let recordsSnap = await getDocs(collection(db, "facilities", facilityId, "daily_records"));
-                let scopedStorageFiles = [];
-                let legacyStorageFiles = [];
-                let ambiguousLegacyFiles = [];
-
-                async function listFolderFiles(folderPath) {
-                    let result = await listAll(ref(storage, folderPath));
-                    let files = [...result.items];
-                    for (let prefixRef of result.prefixes) files.push(...await listFolderFiles(prefixRef.fullPath));
-                    return files;
-                }
-
-                let scopedLists = await Promise.all([
-                    listFolderFiles(`images/${facilityId}`),
-                    listFolderFiles(`videos/${facilityId}`),
-                    listFolderFiles(`faces/${facilityId}`)
-                ]);
-                scopedStorageFiles.push(...scopedLists.flat());
-
-                for (let userName of userNames) {
-                    let legacyLists = await Promise.all([
-                        listFolderFiles(`images/${userName}`),
-                        listFolderFiles(`videos/${userName}`),
-                        listFolderFiles(`faces/${userName}`)
-                    ]);
-                    if (otherFacilityUserNames.has(userName)) ambiguousLegacyFiles.push(...legacyLists.flat());
-                    else legacyStorageFiles.push(...legacyLists.flat());
-                }
-
-                let preview = `削除対象を確認してください。\n\n施設：${facilityName}\n利用者名簿：${usersSnap.size}件\n連絡帳・介護日誌：${recordsSnap.size}件\n施設ID付き写真・動画・顔写真：${scopedStorageFiles.length}ファイル\n旧保存先（現行名簿から施設を照合できたもの）：${legacyStorageFiles.length}ファイル\n旧保存先（他施設と共有の可能性があるため対象外）：${ambiguousLegacyFiles.length}ファイル\n\n旧保存先には、過去に名簿から削除された利用者など所属先を特定できないファイルが残っている場合があります。この件数は旧ファイル全体や孤立ファイルを保証するものではありません。\nStorageのSoft Delete・世代管理設定はこの画面では確認できません。Firebase Consoleで確認してください。\n\nテスト用データを削除して初期状態に戻しますか？`;
-                if (ambiguousLegacyFiles.length > 0) {
-                    alert(`${preview}\n\n旧保存先に他施設と共有の可能性があるファイルがあります。誤削除防止のため処理を中止しました。旧ファイルを確認してから再実行してください。`);
+                const createDeletionSession = httpsCallable(functions, "createFacilitySession");
+                const session = await createDeletionSession({ facilityName, password: deletionPassword });
+                await signInWithCustomToken(auth, session.data.customToken);
+                const previewDeletion = httpsCallable(functions, "previewFacilityDeletion");
+                const previewResult = await previewDeletion({ password: deletionPassword });
+                const counts = previewResult.data;
+                let preview = `削除対象を確認してください。\n\n施設：${counts.facilityName}\n利用者名簿：${counts.users}件\n連絡帳・介護日誌：${counts.records}件\n請求書履歴：${counts.invoiceHistory}件\n施設ID付き写真・動画：${counts.scopedStorageFiles}ファイル\n旧保存先の写真・動画：${counts.legacyStorageFiles}ファイル\n他施設と共有の可能性がある旧ファイル：${counts.ambiguousLegacyUsers}名分\n\n旧保存先の孤立ファイルは所属施設を判定できず、対象件数に含まれない場合があります。StorageのSoft Delete・世代管理設定は別途Firebase Consoleで確認してください。\n\nテスト用データを削除して初期状態に戻しますか？`;
+                if (counts.ambiguousLegacyUsers > 0) {
+                    alert(`${preview}\n\n誤削除防止のため処理を中止しました。管理者へお問い合わせください。`);
                     return;
                 }
                 if (!confirm(preview)) return;
@@ -3164,20 +3206,8 @@
 
                 document.getElementById("loadingOverlay").style.display = "flex";
                 document.getElementById("loadingText").innerHTML = "Storageの写真・動画を削除しています...<br>画面を閉じずにお待ちください";
-                let storageDeleteResults = await Promise.allSettled([...scopedStorageFiles, ...legacyStorageFiles].map(fileRef => deleteObject(fileRef)));
-                let failedStorageDeletes = storageDeleteResults.filter(result => result.status === "rejected");
-                if (failedStorageDeletes.length > 0) {
-                    throw new Error(`${failedStorageDeletes.length}個のStorageファイルを削除できませんでした。Firestoreデータは削除していません。`);
-                }
-
-                let deletePromises = [];
-                recordsSnap.forEach(docSnap => deletePromises.push(deleteDoc(docSnap.ref)));
-                await Promise.all(deletePromises);
-
-                let userDeletePromises = [];
-                usersSnap.forEach(docSnap => userDeletePromises.push(deleteDoc(docSnap.ref)));
-                await Promise.all(userDeletePromises);
-                await deleteDoc(doc(db, "facilities", facilityId));
+                const deleteFacility = httpsCallable(functions, "deleteFacilityAccount");
+                const deleted = await deleteFacility({ password: deletionPassword, confirmedFacilityName: facilityName });
 
                 let keysToRemove = [];
                 for (let i = 0; i < localStorage.length; i++) {
@@ -3190,8 +3220,9 @@
                 localStorage.removeItem("currentFacilityName");
                 localStorage.removeItem("isStaffAuthenticated");
                 localStorage.removeItem("currentServiceType");
+                await signOut(auth);
                 document.getElementById("loadingOverlay").style.display = "none";
-                alert(`削除完了：利用者${usersSnap.size}件、記録${recordsSnap.size}件、Storageファイル${scopedStorageFiles.length + legacyStorageFiles.length}件を削除しました。\nSoft Delete等の設定によっては、物理的な完全消去や容量反映に時間がかかる場合があります。`);
+                alert(`削除完了：利用者${deleted.data.users}件、記録${deleted.data.records}件、Storageファイル${deleted.data.deletedStorageFiles}件を削除しました。\nSoft Delete等の設定によっては、物理的な完全消去や容量反映に時間がかかる場合があります。`);
                 window.location.replace("login.html");
 
             } catch (error) {

@@ -56,7 +56,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, doc, getDoc, getDocs, addDoc, query, where, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getAuth, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -67,10 +69,9 @@
             appId: "1:63418706991:web:43085ce485d2a3d6302ada"
         };
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const functions = getFunctions(app);
         const db = getFirestore(app);
-        const SECRET_KEY = "ecosma2026";
-        const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
-
         function isTrialExpired(facilityData) {
             if (facilityData.subscriptionStatus !== "trial") return false;
             const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
@@ -82,6 +83,19 @@
             if (!facilityId || localStorage.getItem("isStaffAuthenticated") !== "true") return;
 
             try {
+                const authenticatedUser = await new Promise(resolve => {
+                    const unsubscribe = onAuthStateChanged(auth, user => {
+                        unsubscribe();
+                        resolve(user);
+                    });
+                });
+                if (!authenticatedUser || authenticatedUser.uid !== facilityId) {
+                    await signOut(auth);
+                    localStorage.removeItem("currentFacilityId");
+                    localStorage.removeItem("currentFacilityName");
+                    localStorage.removeItem("isStaffAuthenticated");
+                    return;
+                }
                 let facilitySnapshot = await getDoc(doc(db, "facilities", facilityId));
                 const facilityData = facilitySnapshot.exists() ? facilitySnapshot.data() : null;
                 if (facilityData && facilityData.status !== "locked" && !isTrialExpired(facilityData)) {
@@ -130,41 +144,13 @@
             }
 
             try {
-                let facilitySnapshot = await getDocs(query(collection(db, "facilities"), where("facilityName", "==", name)));
-                let facilityDoc = facilitySnapshot.docs[0] || null;
-                if (!facilityDoc) {
-                    let legacyDoc = await getDoc(doc(db, "facilities", name));
-                    if (legacyDoc.exists() && (!legacyDoc.data().facilityName || legacyDoc.data().facilityName === name)) facilityDoc = legacyDoc;
-                }
-                if (!facilityDoc) {
-                    errorMsg.textContent = "この施設名は登録されていません。はじめての方は下の「新規登録」からお進みください。";
-                    errorMsg.style.display = "block";
-                    return;
-                }
-                if (facilitySnapshot.size > 1) {
-                    errorMsg.textContent = "同じ施設名が複数登録されています。管理者にお問い合わせください。";
-                    errorMsg.style.display = "block";
-                    return;
-                }
-                const data = facilityDoc.data();
-                if (data.password !== pass) {
-                    errorMsg.textContent = "パスワードが違います。";
-                    errorMsg.style.display = "block";
-                    return;
-                }
-                if (data.status === "locked") {
-                    errorMsg.textContent = "システムが利用停止中です。管理者にお問い合わせください。";
-                    errorMsg.style.display = "block";
-                    return;
-                }
-                if (isTrialExpired(data)) {
-                    errorMsg.textContent = "無料お試し期間が終了しました。利用を続ける場合は販売元へお問い合わせください。";
-                    errorMsg.style.display = "block";
-                    return;
-                }
-                loginSuccess(facilityDoc.id, data.facilityName || facilityDoc.id);
+                const createSession = httpsCallable(functions, "createFacilitySession");
+                const result = await createSession({ facilityName: name, password: pass });
+                await loginSuccess(result.data.facilityId, result.data.facilityName, result.data.customToken);
             } catch (error) {
-                errorMsg.textContent = "通信エラーが発生しました。インターネット環境を確認してください。";
+                errorMsg.textContent = error.code === "functions/unauthenticated" || error.code === "functions/permission-denied"
+                    ? error.message
+                    : "通信エラーが発生しました。インターネット環境を確認してください。";
                 errorMsg.style.display = "block";
             }
         };
@@ -187,41 +173,27 @@
                 errorMsg.style.display = "block";
                 return;
             }
-            if (secretInput !== SECRET_KEY) {
-                errorMsg.textContent = "秘密の合言葉が間違っています。";
-                errorMsg.style.display = "block";
-                return;
-            }
             try {
-                let matchingFacilities = await getDocs(query(collection(db, "facilities"), where("facilityName", "==", newName)));
-                let legacyFacility = await getDoc(doc(db, "facilities", newName));
-                if (!matchingFacilities.empty || legacyFacility.exists()) {
-                    errorMsg.textContent = "この施設名は既に使用されています。別の施設名に変更してから、もう一度「合言葉でシステムに登録する」を押してください。";
-                    errorMsg.style.display = "block";
-                    return;
-                }
-                const trialStartedAt = new Date();
-                const trialEndsAt = new Date(trialStartedAt.getTime() + TRIAL_DURATION_MS);
-                let facilityRef = await addDoc(collection(db, "facilities"), {
+                const registerFacility = httpsCallable(functions, "registerTrialFacility");
+                const result = await registerFacility({
+                    registrationKey: secretInput,
                     facilityName: newName,
                     password: newPass,
                     email,
-                    phone: phone || "未登録",
-                    status: "active",
-                    createdAt: trialStartedAt.toISOString(),
-                    subscriptionStatus: "trial",
-                    trialStartedAt: trialStartedAt.toISOString(),
-                    trialEndsAt: trialEndsAt.toISOString()
+                    phone
                 });
-                alert(`施設の登録が完了しました。無料お試し期間は7日間です。\n終了日時：${trialEndsAt.toLocaleString("ja-JP")}`);
-                loginSuccess(facilityRef.id, newName);
+                alert(`施設の登録が完了しました。無料お試し期間は7日間です。\n終了日時：${new Date(result.data.trialEndsAt).toLocaleString("ja-JP")}`);
+                await loginSuccess(result.data.facilityId, result.data.facilityName, result.data.customToken);
             } catch (error) {
-                errorMsg.textContent = "通信エラーが発生しました。もう一度お試しください。";
+                errorMsg.textContent = error.code === "functions/permission-denied" || error.code === "functions/already-exists" || error.code === "functions/invalid-argument"
+                    ? error.message
+                    : "通信エラーが発生しました。もう一度お試しください。";
                 errorMsg.style.display = "block";
             }
         };
 
-        function loginSuccess(facilityId, facilityName) {
+        async function loginSuccess(facilityId, facilityName, customToken) {
+            await signInWithCustomToken(auth, customToken);
             localStorage.setItem("currentFacilityId", facilityId);
             localStorage.setItem("currentFacilityName", facilityName);
             localStorage.setItem("isStaffAuthenticated", "true"); 

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex,nofollow">
+    <title>連絡帳</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+            background: #f2f7f3;
+            color: #25332a;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 18px 12px 40px; }
+        main { width: min(100%, 720px); margin: 0 auto; }
+        header { padding: 20px 18px; background: #fff; border-top: 5px solid #2b8a3e; border-radius: 6px; }
+        h1 { margin: 0; color: #246b34; font-size: 22px; }
+        #recordMeta { margin-top: 12px; color: #526158; font-size: 14px; }
+        #expiryNotice { margin: 14px 0 0; padding: 10px 12px; color: #694c00; background: #fff7d6; border-left: 4px solid #e0a800; font-size: 13px; line-height: 1.6; }
+        #recordFields { margin-top: 14px; padding: 4px 18px; background: #fff; border-radius: 6px; }
+        .record-row { display: grid; grid-template-columns: minmax(120px, 0.36fr) minmax(0, 1fr); gap: 14px; padding: 14px 0; border-bottom: 1px solid #e4ebe6; }
+        .record-row:last-child { border-bottom: 0; }
+        dt { color: #526158; font-size: 14px; font-weight: 700; }
+        dd { margin: 0; color: #202b23; font-size: 15px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+        #status { padding: 24px 18px; background: #fff; border-radius: 6px; color: #526158; line-height: 1.7; }
+        #status.error { color: #a61e2d; border-left: 4px solid #c92a2a; }
+        @media (max-width: 520px) {
+            body { padding: 10px 8px 28px; }
+            header { padding: 17px 14px; }
+            h1 { font-size: 20px; }
+            #recordFields { padding: 2px 14px; }
+            .record-row { grid-template-columns: 1fr; gap: 5px; padding: 12px 0; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <header id="recordHeader" hidden>
+            <h1>連絡帳</h1>
+            <div id="recordMeta"></div>
+        </header>
+        <p id="expiryNotice" hidden>この閲覧リンクは7日間有効です。リンクを他の方へ転送・共有しないでください。</p>
+        <dl id="recordFields" hidden></dl>
+        <div id="status" role="status" aria-live="polite">連絡帳を確認しています...</div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
+            authDomain: "renrakucho-app-6b157.firebaseapp.com",
+            projectId: "renrakucho-app-6b157",
+            storageBucket: "renrakucho-app-6b157.firebasestorage.app",
+            messagingSenderId: "63418706991",
+            appId: "1:63418706991:web:43085ce485d2a3d6302ada"
+        };
+
+        const status = document.getElementById("status");
+        function showError(message) {
+            status.textContent = message;
+            status.classList.add("error");
+        }
+
+        const token = new URLSearchParams(window.location.search).get("token") || "";
+        window.history.replaceState({}, document.title, window.location.pathname);
+        if (!/^[a-f0-9]{64}$/i.test(token)) {
+            showError("閲覧リンクが正しくありません。施設から届いた最新のリンクをご確認ください。");
+        } else {
+            try {
+                const app = initializeApp(firebaseConfig);
+                const getSharedRecord = httpsCallable(getFunctions(app), "getLineSharedRecord");
+                const result = await getSharedRecord({ token });
+                const record = result.data;
+
+                document.getElementById("recordMeta").textContent = `${record.userName} 様 ／ ${record.date} ／ ${record.serviceType}`;
+                document.getElementById("recordHeader").hidden = false;
+                document.getElementById("expiryNotice").hidden = false;
+                const fieldList = document.getElementById("recordFields");
+                for (const field of record.fields || []) {
+                    const row = document.createElement("div");
+                    row.className = "record-row";
+                    const label = document.createElement("dt");
+                    label.textContent = field.label;
+                    const value = document.createElement("dd");
+                    value.textContent = field.value;
+                    row.append(label, value);
+                    fieldList.appendChild(row);
+                }
+                fieldList.hidden = false;
+                status.hidden = true;
+            } catch (error) {
+                const message = error.code === "functions/unauthenticated"
+                    ? "閲覧リンクが無効か、有効期限が切れています。施設へ新しいリンクをお申し付けください。"
+                    : "連絡帳を表示できませんでした。通信環境を確認して、もう一度お試しください。";
+                showError(message);
+            }
+        }
+    </script>
+</body>
+</html>

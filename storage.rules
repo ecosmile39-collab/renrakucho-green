@@ -1,0 +1,59 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.role == 'admin';
+    }
+
+    function isFacility(facilityId) {
+      return signedIn()
+        && request.auth.token.role == 'facility'
+        && request.auth.uid == facilityId
+        && firestore.get(/databases/(default)/documents/facilities/$(facilityId)).data.status != 'locked';
+    }
+
+    function isUniqueLegacyOwner(userName) {
+      let userPath = /databases/(default)/documents/facilities/$(request.auth.uid)/users/$(userName);
+      return signedIn()
+        && request.auth.token.role == 'facility'
+        && firestore.get(/databases/(default)/documents/facilities/$(request.auth.uid)).data.status != 'locked'
+        && firestore.exists(userPath)
+        && firestore.get(userPath).data.legacyStorageOwnerFacilityId == request.auth.uid;
+    }
+
+    match /images/{facilityId}/{userName}/{filePath=**} {
+      allow read, write: if isAdmin() || isFacility(facilityId);
+    }
+
+    match /videos/{facilityId}/{userName}/{filePath=**} {
+      allow read, write: if isAdmin() || isFacility(facilityId);
+    }
+
+    match /faces/{facilityId}/{userName}/{filePath=**} {
+      allow read, write: if isAdmin() || isFacility(facilityId);
+    }
+
+    match /images/{userName}/{fileName} {
+      allow read: if isAdmin() || isUniqueLegacyOwner(userName);
+      allow write: if isAdmin();
+    }
+
+    match /videos/{userName}/{fileName} {
+      allow read: if isAdmin() || isUniqueLegacyOwner(userName);
+      allow write: if isAdmin();
+    }
+
+    match /faces/{userName}/{fileName} {
+      allow read: if isAdmin() || isUniqueLegacyOwner(userName);
+      allow write: if isAdmin();
+    }
+
+    match /{filePath=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

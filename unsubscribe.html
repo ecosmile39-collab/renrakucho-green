@@ -42,8 +42,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, doc, getDoc, getDocs, query, where, deleteDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-        import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+        import { getAuth, signInWithCustomToken, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -54,21 +54,11 @@
             appId: "1:63418706991:web:43085ce485d2a3d6302ada"
         };
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const storage = getStorage(app);
+        const auth = getAuth(app);
+        const functions = getFunctions(app);
         let verifiedFacilityId = null;
         let verifiedFacilityName = null;
         let verifiedPassword = null;
-        let filesToDelete = [];
-        let userDocsToDelete = [];
-        let recordDocsToDelete = [];
-
-        async function listFolderFiles(folderPath) {
-            let result = await listAll(ref(storage, folderPath));
-            let files = [...result.items];
-            for (let prefixRef of result.prefixes) files.push(...await listFolderFiles(prefixRef.fullPath));
-            return files;
-        }
 
         function setStatus(text, type = "error") {
             let status = document.getElementById("statusMessage");
@@ -91,61 +81,24 @@
             button.disabled = true;
             button.textContent = "削除対象を確認しています...";
             try {
-                let nameMatches = await getDocs(query(collection(db, "facilities"), where("facilityName", "==", facilityName)));
-                let facilityDoc = nameMatches.docs[0] || null;
-                if (!facilityDoc) {
-                    let legacyDoc = await getDoc(doc(db, "facilities", facilityName));
-                    if (legacyDoc.exists() && (!legacyDoc.data().facilityName || legacyDoc.data().facilityName === facilityName)) facilityDoc = legacyDoc;
-                }
-                if (!facilityDoc) throw new Error("施設名が見つかりません。");
-                if (nameMatches.size > 1) throw new Error("同じ施設名の施設が複数あります。管理者にお問い合わせください。");
-                let facility = facilityDoc.data();
-                if (facility.password !== password) throw new Error("施設名またはパスワードが違います。");
-                if (facility.status === "locked") throw new Error("この施設は利用停止中です。管理者へお問い合わせください。");
-
-                let facilityId = facilityDoc.id;
-                let [usersSnapshot, recordsSnapshot, allFacilitiesSnapshot] = await Promise.all([
-                    getDocs(collection(db, "facilities", facilityId, "users")),
-                    getDocs(collection(db, "facilities", facilityId, "daily_records")),
-                    getDocs(collection(db, "facilities"))
-                ]);
-                let userNames = usersSnapshot.docs.map(userDoc => userDoc.id);
-                let otherNames = new Set();
-                for (let otherFacility of allFacilitiesSnapshot.docs) {
-                    if (otherFacility.id === facilityId) continue;
-                    let otherUsers = await getDocs(collection(db, "facilities", otherFacility.id, "users"));
-                    otherUsers.forEach(userDoc => otherNames.add(userDoc.id));
-                }
-
-                let scopedLists = await Promise.all([
-                    listFolderFiles(`images/${facilityId}`),
-                    listFolderFiles(`videos/${facilityId}`),
-                    listFolderFiles(`faces/${facilityId}`)
-                ]);
-                let legacyLists = [];
-                let ambiguousLegacyFiles = [];
-                for (let userName of userNames) {
-                    let oldFiles = await Promise.all([
-                        listFolderFiles(`images/${userName}`),
-                        listFolderFiles(`videos/${userName}`),
-                        listFolderFiles(`faces/${userName}`)
-                    ]);
-                    if (otherNames.has(userName)) ambiguousLegacyFiles.push(...oldFiles.flat());
-                    else legacyLists.push(...oldFiles.flat());
-                }
-                if (ambiguousLegacyFiles.length) throw new Error(`旧保存先に他施設と共有の可能性があるファイルが${ambiguousLegacyFiles.length}個あります。誤削除防止のため退会処理を止めました。管理者へお問い合わせください。`);
-
-                filesToDelete = [...scopedLists.flat(), ...legacyLists];
-                userDocsToDelete = usersSnapshot.docs;
-                recordDocsToDelete = recordsSnapshot.docs;
-                verifiedFacilityId = facilityId;
-                verifiedFacilityName = facility.facilityName || facilityName;
+                const createSession = httpsCallable(functions, "createFacilityDeletionSession");
+                const session = await createSession({ facilityName, password });
+                await signInWithCustomToken(auth, session.data.customToken);
+                const previewDeletion = httpsCallable(functions, "previewFacilityDeletion");
+                const result = await previewDeletion({ password });
+                const previewData = result.data;
+                verifiedFacilityId = previewData.facilityId;
+                verifiedFacilityName = previewData.facilityName;
                 verifiedPassword = password;
-                document.getElementById("preview").textContent = `退会対象の確認\n\n施設：${verifiedFacilityName}\n利用者名簿：${userDocsToDelete.length}件\n連絡帳・介護日誌：${recordDocsToDelete.length}件\nStorage写真・動画：${filesToDelete.length}ファイル\n\n旧保存先の孤立ファイルは所属施設を判定できず、対象件数に含まれない場合があります。Soft Delete等が有効な場合、削除後もしばらく復元可能な状態で残ることがあります。\n\n内容を確認し、退会を確定する場合は下に施設名をもう一度入力してください。`;
+                document.getElementById("preview").textContent = `退会対象の確認\n\n施設：${verifiedFacilityName}\n利用者名簿：${previewData.users}件\n連絡帳・介護日誌：${previewData.records}件\n請求書履歴：${previewData.invoiceHistory}件\n施設ID付き写真・動画：${previewData.scopedStorageFiles}ファイル\n旧保存先の写真・動画：${previewData.legacyStorageFiles}ファイル\n他施設と共有の可能性がある旧ファイル：${previewData.ambiguousLegacyUsers}名分\n\n旧保存先の孤立ファイルは所属施設を判定できず、対象件数に含まれない場合があります。Soft Delete等が有効な場合、削除後もしばらく復元可能な状態で残ることがあります。\n\n内容を確認し、退会を確定する場合は下に施設名をもう一度入力してください。`;
                 document.getElementById("preview").style.display = "block";
                 document.getElementById("confirmDeletionArea").style.display = "block";
-                document.getElementById("deleteButton").style.display = "block";
                 document.getElementById("deleteFacilityNameConfirm").value = "";
+                if (previewData.ambiguousLegacyUsers > 0) {
+                    setStatus("他施設と共有の可能性がある旧ファイルがあるため、退会処理を中止しました。管理者へお問い合わせください。", "error");
+                    return;
+                }
+                document.getElementById("deleteButton").style.display = "block";
                 setStatus("削除対象を表示しました。ここではまだ何も削除していません。", "success");
             } catch (error) {
                 setStatus(error.message || "削除対象を確認できませんでした。");
@@ -169,41 +122,25 @@
 
             let button = document.getElementById("deleteButton");
             button.disabled = true;
-            setStatus("Storageファイルを削除しています。画面を閉じないでください。", "success");
-            const cancellationRef = doc(db, "facilityCancellations", verifiedFacilityId);
-            let cancellationStarted = false;
+            setStatus("Storageファイルと施設データを削除しています。画面を閉じないでください。", "success");
             try {
-                await setDoc(cancellationRef, {
-                    facilityId: verifiedFacilityId,
-                    facilityName: verifiedFacilityName,
-                    status: "processing",
-                    requestedAt: new Date().toISOString(),
-                    usersCount: userDocsToDelete.length,
-                    recordsCount: recordDocsToDelete.length,
-                    storageFilesCount: filesToDelete.length
+                const deleteFacility = httpsCallable(functions, "deleteFacilityAccount");
+                const result = await deleteFacility({
+                    password: verifiedPassword,
+                    confirmedFacilityName: verifiedFacilityName
                 });
-                cancellationStarted = true;
-                let results = await Promise.allSettled(filesToDelete.map(fileRef => deleteObject(fileRef)));
-                let failures = results.filter(result => result.status === "rejected");
-                if (failures.length) throw new Error(`${failures.length}個のStorageファイルを削除できませんでした。Firestoreの記録は残しています。`);
-                await Promise.all(recordDocsToDelete.map(recordDoc => deleteDoc(recordDoc.ref)));
-                await Promise.all(userDocsToDelete.map(userDoc => deleteDoc(userDoc.ref)));
-                await deleteDoc(doc(db, "facilities", verifiedFacilityId));
-                await updateDoc(cancellationRef, { status: "completed", completedAt: new Date().toISOString() });
 
                 if (localStorage.getItem("currentFacilityId") === verifiedFacilityId) {
                     localStorage.removeItem("currentFacilityId");
                     localStorage.removeItem("currentFacilityName");
                     localStorage.removeItem("isStaffAuthenticated");
                 }
+                await signOut(auth);
                 setStatus("退会処理が完了しました。StorageのSoft Delete設定によっては完全消去まで時間がかかります。", "success");
                 document.getElementById("deleteButton").style.display = "none";
                 document.getElementById("facilityPassword").value = "";
                 verifiedFacilityId = null;
             } catch (error) {
-                if (cancellationStarted) {
-                    await updateDoc(cancellationRef, { status: "failed", errorMessage: error.message || "削除エラー", updatedAt: new Date().toISOString() }).catch(() => {});
-                }
                 setStatus("退会処理を完了できませんでした: " + (error.message || "不明なエラー"), "error");
             } finally {
                 button.disabled = false;

@@ -507,6 +507,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { hasFacilitySession } from "./facility-auth.js";
         import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
@@ -520,6 +522,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app);
         const facilityId = localStorage.getItem("currentFacilityId");
@@ -534,6 +537,13 @@
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; }
+            if (!(await hasFacilitySession(auth, facilityId))) {
+                localStorage.removeItem("currentFacilityId");
+                localStorage.removeItem("currentFacilityName");
+                localStorage.removeItem("isStaffAuthenticated");
+                window.location.replace("login.html");
+                return;
+            }
             
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
             let nameEl = document.getElementById("displayFacilityName");

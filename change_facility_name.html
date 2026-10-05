@@ -35,7 +35,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, doc, getDoc, getDocs, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -46,7 +46,7 @@
             appId: "1:63418706991:web:43085ce485d2a3d6302ada"
         };
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        const functions = getFunctions(app);
         const facilityId = localStorage.getItem("currentFacilityId");
 
         document.getElementById("facilityId").textContent = facilityId || "ログインが必要です";
@@ -68,28 +68,14 @@
             }
 
             try {
-                const facilityRef = doc(db, "facilities", facilityId);
-                const facilitySnapshot = await getDoc(facilityRef);
-                if (!facilitySnapshot.exists()) {
-                    showMessage("施設情報が見つかりません。管理者にお問い合わせください。", "error");
-                    return;
-                }
-                if (facilitySnapshot.data().password !== currentPassword) {
-                    showMessage("現在のパスワードが違います。", "error");
-                    return;
-                }
-                const nameMatches = await getDocs(query(collection(db, "facilities"), where("facilityName", "==", newFacilityName)));
-                if (nameMatches.docs.some(match => match.id !== facilityId)) {
-                    showMessage("その施設名はすでに使われています。別の名前を入力してください。", "error");
-                    return;
-                }
-                await updateDoc(facilityRef, { facilityName: newFacilityName });
+                const rename = httpsCallable(functions, "renameFacility");
+                const result = await rename({ currentPassword, newFacilityName });
                 localStorage.setItem("currentFacilityName", newFacilityName);
                 document.getElementById("currentPassword").value = "";
-                showMessage("施設名を変更しました。施設IDと保存データは変わりません。", "success");
+                showMessage(`${result.data.facilityName} に変更しました。施設IDと保存データは変わりません。`, "success");
             } catch (error) {
-                if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
-                    showMessage("現在のパスワードが違います。", "error");
+                if (error.code === "functions/unauthenticated" || error.code === "functions/permission-denied" || error.code === "functions/already-exists") {
+                    showMessage(error.message || "現在のパスワードまたは施設名を確認してください。", "error");
                 } else {
                     showMessage("変更できませんでした。エラーコード：" + (error.code || "不明"), "error");
                 }

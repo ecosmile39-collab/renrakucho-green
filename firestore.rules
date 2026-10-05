@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.role == 'admin';
+    }
+
+    function isFacility(facilityId) {
+      return signedIn()
+        && request.auth.token.role == 'facility'
+        && request.auth.uid == facilityId
+        && get(/databases/$(database)/documents/facilities/$(facilityId)).data.status != 'locked';
+    }
+
+    match /facilities/{facilityId} {
+      allow read: if isAdmin() || isFacility(facilityId);
+      allow write: if isAdmin();
+
+      match /users/{userName} {
+        allow read: if isAdmin() || isFacility(facilityId);
+        allow create: if isAdmin() || (
+          isFacility(facilityId)
+          && request.resource.data.get('lineUserIds', null) == null
+          && request.resource.data.get('lineLinkedAt', null) == null
+        );
+        allow update: if isAdmin() || (
+          isFacility(facilityId)
+          && request.resource.data.get('lineUserIds', null) == resource.data.get('lineUserIds', null)
+          && request.resource.data.get('lineLinkedAt', null) == resource.data.get('lineLinkedAt', null)
+          && request.resource.data.get('legacyStorageOwnerFacilityId', null) == resource.data.get('legacyStorageOwnerFacilityId', null)
+        );
+        allow delete: if isAdmin() || isFacility(facilityId);
+      }
+
+      match /daily_records/{recordId} {
+        allow read, write: if isAdmin() || isFacility(facilityId);
+      }
+
+      match /invoiceHistory/{invoiceId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    match /facilityCancellations/{facilityId} {
+      allow read: if isAdmin() || isFacility(facilityId);
+      allow write: if isAdmin();
+    }
+
+    match /linePairingCodes/{codeHash} {
+      allow read, write: if isAdmin();
+    }
+
+    match /lineRecordLinks/{tokenHash} {
+      allow read, write: if isAdmin();
+    }
+
+    match /invoiceEmailLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
