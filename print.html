@@ -1411,6 +1411,10 @@
                     <div class="section-title">■ ${familyMessageTitle} <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
                     <div class="text-box family-box">${familyMessageText}</div>
                 `;
+                let familyMessageBottomHtml = isChildService || isLifeCare ? `
+                    <div class="section-title">■ 家族からの連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
+                    <div class="text-box family-box">${familyMessageText}</div>
+                ` : "";
                 let adultDataHtml = isChildService || isLifeCare ? "" : `
                     <table class="compact-table">
                         <tr><th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td><th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td><th width="16%">血圧</th><td width="18%">${bpStrDay}</td></tr>
@@ -1478,6 +1482,7 @@
 
                     <div class="section-title">■ 本日のご様子 (写真・動画)</div>
                     <div class="media-print-area">${mediaHtml}</div>
+                    ${familyMessageBottomHtml}
                 `;
 
                 container.appendChild(pageDiv);
