@@ -165,7 +165,16 @@
             try {
                 let recordsRef = collection(db, "facilities", facilityId, "daily_records");
                 let q = query(recordsRef, where("date", ">=", startDate), where("date", "<=", endDate));
-                let snapshot = await getDocs(q);
+                let usersRef = collection(db, "facilities", facilityId, "users");
+                let [snapshot, usersSnapshot] = await Promise.all([getDocs(q), getDocs(usersRef)]);
+                let servicesByUser = new Map();
+                usersSnapshot.forEach(userDoc => {
+                    let userData = userDoc.data();
+                    let services = Array.isArray(userData.services)
+                        ? userData.services
+                        : userData.serviceType ? [userData.serviceType] : ["デイサービス"];
+                    servicesByUser.set(userDoc.id, services);
+                });
 
                 window.matchedRecordsGlobal = [];
                 let uniqueUsers = new Set();
@@ -173,7 +182,9 @@
                 snapshot.forEach(docSnap => {
                     let data = docSnap.data();
                     let recordService = data.serviceType || "デイサービス";
-                    if (recordService === sType) {
+                    let registeredServices = servicesByUser.get(data.userName);
+                    let userMatchesService = !registeredServices || registeredServices.includes(sType);
+                    if (recordService === sType && userMatchesService) {
                         window.matchedRecordsGlobal.push(data);
                         uniqueUsers.add(data.userName);
                     }
