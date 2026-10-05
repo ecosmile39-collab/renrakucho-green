@@ -625,6 +625,9 @@
                     let recordService = data.serviceType || "デイサービス";
 
                     if (recordService === sType) {
+                        let userData = window.globalUsersData[data.userName];
+                        let userServices = userData && (userData.services || (userData.serviceType ? [userData.serviceType] : null));
+                        if (userServices && !userServices.includes(sType)) return;
                         window.matchedRecordsGlobal.push(data);
                         uniqueUsers.add(data.userName);
                     }
