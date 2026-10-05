@@ -1,0 +1,76 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Inspect Commit Changes",
+			"type": "shell",
+			"command": "git status --short --branch; git diff --stat; git diff --cached --stat",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check Handover Commit Files",
+			"type": "shell",
+			"command": "git status --short --branch; git diff --stat; git diff --cached --stat",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Inspect Handover HEAD",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"log",
+				"-1",
+				"--format=%H %s"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check Current Handover Changes",
+			"type": "shell",
+			"command": "git status --short --branch; git log -1 --format=%H; git diff --stat; git diff --cached --stat",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Verify Handover Commit Content",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"show",
+				"HEAD:index.html"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Search Committed Handover Fields",
+			"type": "shell",
+			"command": "git show HEAD:index.html | Select-String -Pattern 'afterSchoolHandoverRequired|lifeCareHandoverRequired|serverDataLoadSequence'",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check Main Commit Timestamp",
+			"type": "shell",
+			"command": "git log -3 --date=iso-strict --format=\"%h %ad %s\"",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Read Main Commit History",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"log",
+				"-3",
+				"--date=iso-strict",
+				"--format=%h %ad %s"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}
