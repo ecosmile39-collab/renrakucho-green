@@ -2927,7 +2927,7 @@
                 showToast("🎉 大成功！選んだ写真を使ってテストデータが完全に作成されました！", 4000);
                 await loadUserNames(facilityId);
                 
-                document.getElementById("userName").value = "三宅 恒子";
+                document.getElementById("userName").value = dummyPatients[0].name;
                 onUserSelected();
 
                 btn.disabled = false;
