@@ -1407,6 +1407,10 @@
                 let childDepartureLabel = data.serviceType === "児童発達支援" ? "事業所からの退所" : "事業所からの出発";
                 let facilityMessageTitle = isChildService ? "施設からのお知らせ・次回利用など" : isLifeCare ? "施設からのお知らせ・生活介護の連絡" : "お客様への御連絡事項";
                 let familyMessageTitle = isChildService ? "保護者記入欄（家庭からの連絡・体調）" : isLifeCare ? "ご家族からの連絡事項" : "お客様からの御連絡事項";
+                let familyMessageHtml = isChildService || isLifeCare ? "" : `
+                    <div class="section-title">■ ${familyMessageTitle} <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
+                    <div class="text-box family-box">${familyMessageText}</div>
+                `;
                 let adultDataHtml = isChildService || isLifeCare ? "" : `
                     <table class="compact-table">
                         <tr><th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td><th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td><th width="16%">血圧</th><td width="18%">${bpStrDay}</td></tr>
@@ -1431,12 +1435,9 @@
                         <tr><th>排泄</th><td colspan="2">${data.afterSchoolToiletTime || '未入力'} ${data.afterSchoolToilet || ''}</td><th>水分補給</th><td>${data.water || '未入力'}ml</td><th>おやつ</th><td>${data.afterSchoolSnack || '未入力'} ／ ${data.afterSchoolSnackIntake || '未入力'}</td></tr>
                         <tr><th>活動タグ</th><td colspan="5">${(data.afterSchoolActivityTags || []).join("、") || '未入力'}</td></tr>
                         <tr><th>次回利用・持ち物</th><td colspan="5">${data.afterSchoolNextUseDate || '未入力'} ／ ${data.afterSchoolBelongings || '未入力'}</td></tr>
-                        <tr><th>家庭からの連絡</th><td colspan="5">睡眠 ${data.afterSchoolHomeSleepHours || '未入力'}時間 ${data.afterSchoolHomeSleepQuality || ''} ／ 朝の様子：${data.afterSchoolMorningState || '未入力'}</td></tr>
-                        <tr><th>保護者からの連絡</th><td colspan="5">${familyMessageText || '未入力'}</td></tr>
                         <tr><th>保護者確認</th><td colspan="5">${data.afterSchoolParentSign || '未入力'}</td></tr>
                     </table>
                     <div class="section-title">■ 活動の具体的内容</div><div class="text-box">${(data.afterSchoolSupport || '未入力').replace(/\n/g, '<br>')}</div>
-                    <div class="section-title">■ 施設での様子・エピソード</div><div class="text-box">${(data.afterSchoolEpisode || '未入力').replace(/\n/g, '<br>')}</div>
                     <div class="section-title">■ 保護者への申し送り</div><div class="text-box">${(data.afterSchoolHandover || '未入力').replace(/\n/g, '<br>')}</div>
                 ` : "";
                 let lifeCareHtml = isLifeCare ? `
@@ -1451,7 +1452,6 @@
                     </table>
                     <div class="section-title">■ 個別支援計画に沿った支援・達成状況</div><div class="text-box">${(data.lifeCareGoalProgress || '未入力').replace(/\n/g, '<br>')}</div>
                     <div class="section-title">■ 日中活動の具体的内容</div><div class="text-box">${(data.lifeCareActivityDetails || '未入力').replace(/\n/g, '<br>')}</div>
-                    <div class="section-title">■ ご本人の様子・特記事項</div><div class="text-box">${(data.lifeCareEpisode || '未入力').replace(/\n/g, '<br>')}</div>
                 ` : "";
 
                 pageDiv.innerHTML = `
@@ -1474,8 +1474,7 @@
                     <div class="section-title">■ ${facilityMessageTitle} <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
                     ${finalMessageHtml}
                     
-                    <div class="section-title">■ ${familyMessageTitle} <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
-                    <div class="text-box family-box">${familyMessageText}</div>
+                    ${familyMessageHtml}
 
                     <div class="section-title">■ 本日のご様子 (写真・動画)</div>
                     <div class="media-print-area">${mediaHtml}</div>
