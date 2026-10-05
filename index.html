@@ -1472,7 +1472,7 @@
 
             showUserFace(userName); 
             applyDraftOrEmpty(userName, dateStr);
-            fetchServerData(userName, dateStr);
+            return fetchServerData(userName, dateStr);
         };
 
         window.openEditUserModal = function() {
@@ -2960,7 +2960,7 @@
                 await loadUserNames(facilityId);
                 
                 document.getElementById("userName").value = dummyPatients[0].name;
-                onUserSelected();
+                await window.onUserSelected();
 
                 btn.disabled = false;
                 btn.textContent = "🪄 選んだ写真を使って10人×10日分のテストデータを作成する";
