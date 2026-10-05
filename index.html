@@ -1031,16 +1031,20 @@
             return `${year}-${month}-${day}`;
         }
 
-        async function loadImportantHandoverDashboard(facilityId, targetDate) {
+        async function loadImportantHandoverDashboard(facilityId, targetDate, serviceType) {
             let dashboard = document.getElementById("importantHandoverDashboard");
             let list = document.getElementById("importantHandoverList");
+            dashboard.style.display = "none";
+            list.innerHTML = "";
             try {
                 let recordsRef = collection(db, "facilities", facilityId, "daily_records");
                 let snapshot = await getDocs(query(recordsRef, where("date", "==", targetDate)));
                 let importantRecords = [];
                 snapshot.forEach(docSnap => {
                     let data = docSnap.data();
-                    if (data.handoverRequired || data.medicalVisit || data.conditionChange) importantRecords.push(data);
+                    if (data.serviceType === serviceType && (data.handoverRequired || data.medicalVisit || data.conditionChange)) {
+                        importantRecords.push(data);
+                    }
                 });
 
                 if (importantRecords.length === 0) {
@@ -1147,12 +1151,15 @@
             let month = String(today.getMonth() + 1).padStart(2, '0');
             let day = String(today.getDate()).padStart(2, '0');
             document.getElementById("date").value = `${year}-${month}-${day}`;
-            await loadImportantHandoverDashboard(facilityId, getPreviousDateString(`${year}-${month}-${day}`));
-            
             let savedServiceType = localStorage.getItem('currentServiceType');
             if (savedServiceType) {
                 document.getElementById("serviceType").value = savedServiceType;
             }
+            await loadImportantHandoverDashboard(
+                facilityId,
+                getPreviousDateString(`${year}-${month}-${day}`),
+                document.getElementById("serviceType").value
+            );
             
             let secretClickCount = 0;
             let secretClickTimer = null;
@@ -1319,6 +1326,10 @@
             let facilityId = localStorage.getItem("currentFacilityId");
             await loadUserNames(facilityId); 
             await onUserSelected();
+            let selectedDate = document.getElementById("date").value;
+            if (facilityId && selectedDate) {
+                await loadImportantHandoverDashboard(facilityId, getPreviousDateString(selectedDate), sType);
+            }
         };
 
         window.loadUserNames = async function(facilityId) {
@@ -2451,7 +2462,7 @@
                 }
 
                 await setDoc(docRef, saveObj);
-                await loadImportantHandoverDashboard(recordData.facilityId, getPreviousDateString(date));
+                await loadImportantHandoverDashboard(recordData.facilityId, getPreviousDateString(date), sType);
 
                 batchDataList = batchDataList.filter(d => d.userName !== userName);
                 updatePendingListUI();
@@ -2538,7 +2549,11 @@
 
                 await Promise.all(uploadPromises);
                 let dashboardDate = getPreviousDateString(document.getElementById("date").value);
-                await loadImportantHandoverDashboard(localStorage.getItem("currentFacilityId"), dashboardDate);
+                await loadImportantHandoverDashboard(
+                    localStorage.getItem("currentFacilityId"),
+                    dashboardDate,
+                    document.getElementById("serviceType").value
+                );
                 document.getElementById("loadingOverlay").style.display = "none";
                 showToast("🎉 大成功！全員分のデータが正常に送信されました！", 5000);
                 batchDataList = [];
