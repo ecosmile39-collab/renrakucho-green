@@ -60,6 +60,10 @@
                     </label>
                     <button type="button" id="registerFacilityBtn" onclick="registerFacility()" style="background: #4caf50; min-width: 120px;">登録する</button>
                 </div>
+                <label style="display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; font-size: 13px; line-height: 1.5;">
+                    <input type="checkbox" id="facilityTermsAgreement" style="width: auto; margin-top: 3px; flex: 0 0 auto;">
+                    <span><a href="terms.html" target="_blank" rel="noopener noreferrer" onclick="window.adminTermsOpened = true;">利用規約を開いて確認</a>し、施設責任者の同意を得たことを確認しました。</span>
+                </label>
                 <p id="registerFacilityMessage" class="error"></p>
             </div>
 
@@ -165,6 +169,7 @@
             let name = document.getElementById("newFacilityName").value.trim();
             let password = document.getElementById("newFacilityPassword").value;
             let email = document.getElementById("newFacilityEmail").value.trim();
+            let termsAccepted = document.getElementById("facilityTermsAgreement").checked;
             let message = document.getElementById("registerFacilityMessage");
             let button = document.getElementById("registerFacilityBtn");
             message.textContent = "";
@@ -179,6 +184,10 @@
             }
             if (password.length < 6) {
                 message.textContent = "初期パスワードは6文字以上にしてください。";
+                return;
+            }
+            if (!window.adminTermsOpened || !termsAccepted) {
+                message.textContent = "利用規約を開いて確認し、施設責任者の同意を確認してください。";
                 return;
             }
 
@@ -200,11 +209,16 @@
                     createdAt: trialStartedAt.toISOString(),
                     subscriptionStatus: "trial",
                     trialStartedAt: trialStartedAt.toISOString(),
-                    trialEndsAt: trialEndsAt.toISOString()
+                    trialEndsAt: trialEndsAt.toISOString(),
+                    acceptedTermsVersion: "2026-10-06-v1",
+                    termsAcceptedAt: new Date().toISOString(),
+                    termsAcceptanceMethod: "admin-confirmed"
                 });
                 document.getElementById("newFacilityName").value = "";
                 document.getElementById("newFacilityPassword").value = "";
                 document.getElementById("newFacilityEmail").value = "";
+                document.getElementById("facilityTermsAgreement").checked = false;
+                window.adminTermsOpened = false;
                 message.style.color = "#237032";
                 message.textContent = `${name} を7日間の無料お試しとして登録しました。`;
                 await loadFacilities();
