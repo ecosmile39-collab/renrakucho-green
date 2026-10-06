@@ -47,6 +47,10 @@
             <input type="password" id="regPassword" placeholder="🔐 好きなパスワード">
             <input type="email" id="regEmail" placeholder="✉️ 連絡先メールアドレス（必須・緊急時連絡用）">
             <input type="tel" id="regPhone" placeholder="📞 ご連絡先お電話番号（任意）">
+            <label style="display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; text-align: left; font-size: 14px; line-height: 1.6;">
+                <input type="checkbox" id="termsAgreement" style="width: auto; margin-top: 4px; flex: 0 0 auto;">
+                <span><a href="terms.html" target="_blank" rel="noopener noreferrer" onclick="window.termsOpened = true;">利用規約を開いて確認</a>し、内容に同意します。</span>
+            </label>
             <button class="btn-register" onclick="handleRegister()">7日間無料で登録する</button>
             <p id="registerError" class="error">エラーメッセージ</p>
             <a onclick="toggleForm('login')" class="link">⬅️ 登録済みの方（ログイン）に戻る</a>
@@ -72,6 +76,8 @@
         const auth = getAuth(app);
         const functions = getFunctions(app);
         const db = getFirestore(app);
+        const TERMS_VERSION = "2026-10-06-v1";
+        window.termsOpened = false;
         function isTrialExpired(facilityData) {
             if (facilityData.subscriptionStatus !== "trial") return false;
             const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
@@ -123,6 +129,8 @@
             document.getElementById('registerError').style.display = 'none';
             
             if (type === 'register') {
+                window.termsOpened = false;
+                document.getElementById("termsAgreement").checked = false;
                 document.getElementById('loginFormArea').style.display = 'none';
                 document.getElementById('registerFormArea').style.display = 'block';
             } else {
@@ -161,6 +169,7 @@
             const newPass = document.getElementById("regPassword").value.trim();
             const email = document.getElementById("regEmail").value.trim();
             const phone = document.getElementById("regPhone").value.trim();
+            const termsAccepted = document.getElementById("termsAgreement").checked;
             const errorMsg = document.getElementById("registerError");
             errorMsg.style.display = "none";
             if (!secretInput || !newName || !newPass || !email) {
@@ -173,6 +182,11 @@
                 errorMsg.style.display = "block";
                 return;
             }
+            if (!window.termsOpened || !termsAccepted) {
+                errorMsg.textContent = "利用規約を開いて確認し、同意のチェックを入れてください。";
+                errorMsg.style.display = "block";
+                return;
+            }
             try {
                 const registerFacility = httpsCallable(functions, "registerTrialFacility");
                 const result = await registerFacility({
@@ -180,7 +194,8 @@
                     facilityName: newName,
                     password: newPass,
                     email,
-                    phone
+                    phone,
+                    acceptedTermsVersion: TERMS_VERSION
                 });
                 alert(`施設の登録が完了しました。無料お試し期間は7日間です。\n終了日時：${new Date(result.data.trialEndsAt).toLocaleString("ja-JP")}`);
                 await loginSuccess(result.data.facilityId, result.data.facilityName, result.data.customToken);

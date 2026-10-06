@@ -28,6 +28,7 @@ const FACILITY_REGISTRATION_KEY = defineSecret("FACILITY_REGISTRATION_KEY");
 const LINE_CHANNEL_ACCESS_TOKEN = defineSecret("LINE_CHANNEL_ACCESS_TOKEN");
 const LINE_CHANNEL_SECRET = defineSecret("LINE_CHANNEL_SECRET");
 const FACILITY_LINE_ENCRYPTION_KEY = defineSecret("FACILITY_LINE_ENCRYPTION_KEY");
+const CURRENT_TERMS_VERSION = "2026-10-06-v1";
 const LINE_RECORD_BASE_URL = "https://renrakucho-green.vercel.app/line-record.html";
 const LINE_WEBHOOK_BASE_URL = "https://us-central1-renrakucho-app-6b157.cloudfunctions.net/facilityLineMessagingWebhook";
 const companyStampPng = readFileSync(path.join(__dirname, "company_stamp.png"));
@@ -186,12 +187,16 @@ exports.prepareLegacyStorageOwnership = onCall(async request => {
 
 exports.registerTrialFacility = onCall({ secrets: [FACILITY_REGISTRATION_KEY] }, async request => {
     const registrationKey = request.data?.registrationKey;
+    const acceptedTermsVersion = request.data?.acceptedTermsVersion;
     const facilityName = typeof request.data?.facilityName === "string" ? request.data.facilityName.trim() : "";
     const password = typeof request.data?.password === "string" ? request.data.password : "";
     const email = typeof request.data?.email === "string" ? request.data.email.trim() : "";
     const phone = typeof request.data?.phone === "string" ? request.data.phone.trim() : "";
     if (!secretsMatch(registrationKey, FACILITY_REGISTRATION_KEY.value())) {
         throw new HttpsError("permission-denied", "秘密の合言葉が違います。");
+    }
+    if (acceptedTermsVersion !== CURRENT_TERMS_VERSION) {
+        throw new HttpsError("failed-precondition", "最新の利用規約を確認し、同意してから登録してください。");
     }
     if (!facilityName || facilityName.length > 200 || password.length < 6 || password.length > 200 ||
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -215,7 +220,9 @@ exports.registerTrialFacility = onCall({ secrets: [FACILITY_REGISTRATION_KEY] },
         createdAt: trialStartedAt.toISOString(),
         subscriptionStatus: "trial",
         trialStartedAt: trialStartedAt.toISOString(),
-        trialEndsAt: trialEndsAt.toISOString()
+        trialEndsAt: trialEndsAt.toISOString(),
+        acceptedTermsVersion: CURRENT_TERMS_VERSION,
+        termsAcceptedAt: new Date().toISOString()
     });
     return {
         facilityId: facilityRef.id,
