@@ -49,7 +49,7 @@
             <input type="tel" id="regPhone" placeholder="📞 ご連絡先お電話番号（任意）">
             <label style="display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; text-align: left; font-size: 14px; line-height: 1.6;">
                 <input type="checkbox" id="termsAgreement" style="width: auto; margin-top: 4px; flex: 0 0 auto;">
-                <span><a href="terms.html" target="_blank" rel="noopener noreferrer" onclick="window.termsOpened = true;">利用規約を開いて確認</a>し、内容に同意します。</span>
+                <span><a href="terms.html" target="_blank" rel="noopener noreferrer">利用規約を開いて確認</a>し、内容に同意します。</span>
             </label>
             <button class="btn-register" onclick="handleRegister()">7日間無料で登録する</button>
             <p id="registerError" class="error">エラーメッセージ</p>
@@ -77,7 +77,6 @@
         const functions = getFunctions(app);
         const db = getFirestore(app);
         const TERMS_VERSION = "2026-10-06-v1";
-        window.termsOpened = false;
         function isTrialExpired(facilityData) {
             if (facilityData.subscriptionStatus !== "trial") return false;
             const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
@@ -129,7 +128,6 @@
             document.getElementById('registerError').style.display = 'none';
             
             if (type === 'register') {
-                window.termsOpened = false;
                 document.getElementById("termsAgreement").checked = false;
                 document.getElementById('loginFormArea').style.display = 'none';
                 document.getElementById('registerFormArea').style.display = 'block';
@@ -182,8 +180,8 @@
                 errorMsg.style.display = "block";
                 return;
             }
-            if (!window.termsOpened || !termsAccepted) {
-                errorMsg.textContent = "利用規約を開いて確認し、同意のチェックを入れてください。";
+            if (!termsAccepted) {
+                errorMsg.textContent = "利用規約を確認し、同意のチェックを入れてください。";
                 errorMsg.style.display = "block";
                 return;
             }
