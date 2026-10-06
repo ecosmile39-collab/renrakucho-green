@@ -21,6 +21,10 @@
         #recordMeta { margin-top: 12px; color: #526158; font-size: 14px; }
         #expiryNotice { margin: 14px 0 0; padding: 10px 12px; color: #694c00; background: #fff7d6; border-left: 4px solid #e0a800; font-size: 13px; line-height: 1.6; }
         #recordFields { margin-top: 14px; padding: 4px 18px; background: #fff; border-radius: 6px; }
+        #recordMedia { margin-top: 14px; padding: 16px 18px; background: #fff; border-radius: 6px; }
+        #recordMedia h2 { margin: 0 0 12px; font-size: 17px; }
+        .media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .media-grid img, .media-grid video { display: block; width: 100%; max-height: 420px; object-fit: contain; background: #e9ecef; border-radius: 4px; }
         .record-row { display: grid; grid-template-columns: minmax(120px, 0.36fr) minmax(0, 1fr); gap: 14px; padding: 14px 0; border-bottom: 1px solid #e4ebe6; }
         .record-row:last-child { border-bottom: 0; }
         dt { color: #526158; font-size: 14px; font-weight: 700; }
@@ -43,6 +47,10 @@
             <div id="recordMeta"></div>
         </header>
         <p id="expiryNotice" hidden>この閲覧リンクは7日間有効です。リンクを他の方へ転送・共有しないでください。</p>
+        <section id="recordMedia" hidden>
+            <h2>写真・動画</h2>
+            <div id="recordMediaItems" class="media-grid"></div>
+        </section>
         <dl id="recordFields" hidden></dl>
         <div id="status" role="status" aria-live="polite">連絡帳を確認しています...</div>
     </main>
@@ -91,6 +99,22 @@
                     row.append(label, value);
                     fieldList.appendChild(row);
                 }
+                const mediaItems = document.getElementById("recordMediaItems");
+                for (const [index, attachment] of (record.attachments?.images || []).entries()) {
+                    const image = document.createElement("img");
+                    image.src = attachment.url;
+                    image.alt = `連絡帳の写真 ${index + 1}`;
+                    image.loading = "lazy";
+                    mediaItems.appendChild(image);
+                }
+                for (const attachment of record.attachments?.videos || []) {
+                    const video = document.createElement("video");
+                    video.src = attachment.url;
+                    video.controls = true;
+                    video.preload = "metadata";
+                    mediaItems.appendChild(video);
+                }
+                if (mediaItems.childElementCount) document.getElementById("recordMedia").hidden = false;
                 fieldList.hidden = false;
                 status.hidden = true;
             } catch (error) {

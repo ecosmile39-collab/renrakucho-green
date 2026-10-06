@@ -582,6 +582,23 @@ function getFamilyVisibleFields(record) {
     return fields;
 }
 
+async function getLineAttachment(filePath, linkDate, expiresAt, checkUploadDate = false) {
+    try {
+        const file = getStorage().bucket().file(filePath);
+        const [metadata] = await file.getMetadata();
+        if (checkUploadDate && metadata.metadata?.uploadedForDate !== linkDate) return null;
+        const [url] = await file.getSignedUrl({
+            action: "read",
+            expires: expiresAt,
+            version: "v4"
+        });
+        return { url, contentType: metadata.contentType || "" };
+    } catch (error) {
+        logger.warn("LINE record attachment unavailable", { reason: error.code || "unknown" });
+        return null;
+    }
+}
+
 exports.getLineSharedRecord = onCall(async request => {
     const token = typeof request.data?.token === "string" ? request.data.token : "";
     if (!/^[a-f0-9]{64}$/i.test(token)) {
@@ -605,11 +622,37 @@ exports.getLineSharedRecord = onCall(async request => {
         throw new HttpsError("permission-denied", "連絡帳を確認できません。");
     }
 
+    const userSnapshot = await getFirestore().collection("facilities").doc(link.facilityId)
+        .collection("users").doc(link.userName).get();
+    const attachments = { images: [], videos: [] };
+    if (userSnapshot.exists && userSnapshot.data().photoNg !== true) {
+        const imageCount = Number.isInteger(record.imageCount) ? Math.min(record.imageCount, 20) : 0;
+        const videoCount = Number.isInteger(record.videoCount) ? Math.min(record.videoCount, 10) : 0;
+        const imageAttachments = await Promise.all(Array.from({ length: imageCount }, (_, index) =>
+            getLineAttachment(
+                `images/${link.facilityId}/${link.userName}/image_${index + 1}.jpg`,
+                link.date,
+                expiration,
+                true
+            )
+        ));
+        const videoAttachments = await Promise.all(Array.from({ length: videoCount }, (_, index) =>
+            getLineAttachment(
+                `videos/${link.facilityId}/${link.userName}/${link.date}_video_${index + 1}.mp4`,
+                link.date,
+                expiration
+            )
+        ));
+        attachments.images = imageAttachments.filter(Boolean);
+        attachments.videos = videoAttachments.filter(Boolean);
+    }
+
     return {
         userName: link.userName,
         date: link.date,
         serviceType: link.serviceType,
-        fields: getFamilyVisibleFields(record)
+        fields: getFamilyVisibleFields(record),
+        attachments
     };
 });
 
