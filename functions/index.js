@@ -486,13 +486,13 @@ exports.createLinePairingCode = onCall(async request => {
         facilityId,
         userName,
         createdAt: FieldValue.serverTimestamp(),
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000)
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
     const lineSettingsSnapshot = await getFirestore().collection("facilityLineSettings").doc(facilityId).get();
     const lineSettings = lineSettingsSnapshot.exists ? lineSettingsSnapshot.data() : {};
     return {
         code,
-        expiresInMinutes: 15,
+        expiresInHours: 24,
         officialAccountName: lineSettings.displayName || "ecosmile39",
         officialAccountId: lineSettings.basicId || "@108nturw"
     };

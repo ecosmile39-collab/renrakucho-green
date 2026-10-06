@@ -1656,7 +1656,7 @@
             try {
                 const createCode = httpsCallable(functions, "createLinePairingCode");
                 const result = await createCode({ userName });
-                alert(`公式LINE「${result.data.officialAccountName}」（${result.data.officialAccountId}）を友だち追加し、トークに次のコードを送ってもらってください。\n\n${result.data.code}\n\nコードの有効期限は15分です。保護者本人へ個別にお伝えください。`);
+                alert(`公式LINE「${result.data.officialAccountName}」（${result.data.officialAccountId}）を友だち追加し、トークに次のコードを送ってもらってください。\n\n${result.data.code}\n\nコードの有効期限は24時間です。保護者本人へ個別にお伝えください。`);
                 refreshLineRecipientStatus(userName);
             } catch (error) {
                 alert("LINE連携コードを発行できませんでした: " + getErrorMessage(error));
