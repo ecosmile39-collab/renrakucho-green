@@ -17,7 +17,9 @@
         body { margin: 0; padding: 18px 12px 40px; }
         main { width: min(100%, 720px); margin: 0 auto; }
         header { padding: 20px 18px; background: #fff; border-top: 5px solid #2b8a3e; border-radius: 6px; }
+        .record-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 12px; min-width: 0; }
         h1 { margin: 0; color: #246b34; font-size: 22px; }
+        #facilityName { color: #526158; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
         #recordMeta { margin-top: 12px; color: #526158; font-size: 14px; }
         #expiryNotice { margin: 14px 0 0; padding: 10px 12px; color: #694c00; background: #fff7d6; border-left: 4px solid #e0a800; font-size: 13px; line-height: 1.6; }
         #recordFields { margin-top: 14px; padding: 4px 18px; background: #fff; border-radius: 6px; }
@@ -35,6 +37,7 @@
             body { padding: 10px 8px 28px; }
             header { padding: 17px 14px; }
             h1 { font-size: 20px; }
+            #facilityName { font-size: 14px; }
             #recordFields { padding: 2px 14px; }
             .record-row { grid-template-columns: 1fr; gap: 5px; padding: 12px 0; }
         }
@@ -43,7 +46,10 @@
 <body>
     <main>
         <header id="recordHeader" hidden>
-            <h1>連絡帳</h1>
+            <div class="record-heading">
+                <h1>連絡帳</h1>
+                <span id="facilityName"></span>
+            </div>
             <div id="recordMeta"></div>
         </header>
         <p id="expiryNotice" hidden>この閲覧リンクは7日間有効です。リンクを他の方へ転送・共有しないでください。</p>
@@ -85,6 +91,7 @@
                 const result = await getSharedRecord({ token });
                 const record = result.data;
 
+                document.getElementById("facilityName").textContent = record.facilityName || "";
                 document.getElementById("recordMeta").textContent = `${record.userName} 様 ／ ${record.date} ／ ${record.serviceType}`;
                 document.getElementById("recordHeader").hidden = false;
                 document.getElementById("expiryNotice").hidden = false;

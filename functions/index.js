@@ -656,6 +656,7 @@ exports.getLineSharedRecord = onCall(async request => {
 
     const userSnapshot = await getFirestore().collection("facilities").doc(link.facilityId)
         .collection("users").doc(link.userName).get();
+    const facilitySnapshot = await getFirestore().collection("facilities").doc(link.facilityId).get();
     const attachments = { images: [], videos: [] };
     if (userSnapshot.exists && userSnapshot.data().photoNg !== true) {
         const imageCount = Number.isInteger(record.imageCount) ? Math.min(record.imageCount, 20) : 0;
@@ -680,6 +681,7 @@ exports.getLineSharedRecord = onCall(async request => {
     }
 
     return {
+        facilityName: facilitySnapshot.exists ? (facilitySnapshot.data().facilityName || "") : "",
         userName: link.userName,
         date: link.date,
         serviceType: link.serviceType,
