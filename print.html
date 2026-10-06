@@ -665,6 +665,15 @@
                     userLbl.innerHTML = `<input type="checkbox" class="user-chk" value="${userName}" checked> ${userName} 様`;
                     div.appendChild(userLbl);
 
+                    let linkedLineCount = Array.isArray(uData?.lineUserIds) ? uData.lineUserIds.length : 0;
+                    let lineStatus = document.createElement("span");
+                    lineStatus.textContent = linkedLineCount
+                        ? `保護者LINE：${linkedLineCount}件連携済み`
+                        : "保護者LINE：未連携";
+                    lineStatus.style.fontSize = "12px";
+                    lineStatus.style.color = linkedLineCount ? "#237032" : "#6c757d";
+                    div.appendChild(lineStatus);
+
                     if (bData) {
                         let cardLbl = document.createElement("label");
                         cardLbl.className = "card-checkbox-label";
