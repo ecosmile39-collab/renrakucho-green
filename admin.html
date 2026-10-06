@@ -124,6 +124,7 @@
         const createAdminSession = httpsCallable(functions, "createAdminSession");
         let facilities = [];
         let cancellationRecords = [];
+        let latestInvoiceByFacility = new Map();
         let currentInvoiceHistory = [];
         let currentInvoiceFacilityId = "";
 
@@ -242,6 +243,22 @@
                 facilities = [];
                 snapshot.forEach(docSnap => facilities.push({ id: docSnap.id, ...docSnap.data() }));
                 facilities.sort((a, b) => a.id.localeCompare(b.id));
+                const invoiceEntries = await Promise.all(facilities.map(async facility => {
+                    try {
+                        const history = await getDocs(query(
+                            collection(db, "facilities", facility.id, "invoiceHistory"),
+                            orderBy("sentAt", "desc")
+                        ));
+                        const latestInvoice = history.docs
+                            .map(invoiceDoc => ({ id: invoiceDoc.id, ...invoiceDoc.data() }))
+                            .find(invoice => invoice.test !== true && invoice.status === "sent");
+                        return [facility.id, latestInvoice || null];
+                    } catch (invoiceError) {
+                        console.warn("施設の最新請求書状況を取得できませんでした:", facility.id, invoiceError);
+                        return [facility.id, null];
+                    }
+                }));
+                latestInvoiceByFacility = new Map(invoiceEntries);
                 cancellationRecords = cancellationsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
                 cancellationRecords.sort((a, b) => String(b.requestedAt || "").localeCompare(String(a.requestedAt || "")));
                 loading.style.display = "none";
@@ -350,11 +367,21 @@
                 let trialDaysRemaining = isTrial && !isTrialExpired ? Math.ceil((trialEndTime - Date.now()) / (24 * 60 * 60 * 1000)) : 0;
                 let statusClass = isLocked ? "locked" : isTrialExpired ? "trial-expired" : isTrial ? "trial" : "active";
                 let statusLabel = isLocked ? "🔴 利用停止中" : isTrialExpired ? "⏰ 無料期間終了" : isTrial ? `🟠 無料お試し中（残り${trialDaysRemaining}日）` : "🟢 利用中";
+                let invoice = latestInvoiceByFacility.get(facility.id);
+                let invoiceSent = Boolean(invoice);
+                let invoicePaid = invoice?.paymentStatus === "paid";
                 return `<div class="facility">
                     <div><div class="facility-name">${escapeHtml(facility.facilityName || facility.id)}</div>
                     <div style="margin-top: 6px; color: #1971c2; font-size: 14px; font-weight: bold;">🔑 パスワード：${escapeHtml(facility.password || "未設定")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">✉️ メールアドレス：${escapeHtml(facility.email || "未登録")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">📞 電話番号：${escapeHtml(facility.phone || "未登録")}</div>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 13px;">
+                        <strong>請求状況${invoice ? `（${escapeHtml(invoice.invoiceNumber || "最新請求書")}）` : ""}</strong>
+                        <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0;"><input type="checkbox" ${invoiceSent ? "checked" : ""} disabled style="width: auto; margin: 0;">発送済み</label>
+                        <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; ${invoiceSent ? "cursor: pointer;" : "color: #868e96;"}"><input type="checkbox" data-facility-payment-id="${encodeURIComponent(facility.id)}" data-payment-status="paid" ${invoicePaid ? "checked" : ""} ${invoiceSent ? "" : "disabled"} style="width: auto; margin: 0;">入金済み</label>
+                        <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; ${invoiceSent ? "cursor: pointer;" : "color: #868e96;"}"><input type="checkbox" data-facility-payment-id="${encodeURIComponent(facility.id)}" data-payment-status="unpaid" ${invoiceSent && !invoicePaid ? "checked" : ""} ${invoiceSent ? "" : "disabled"} style="width: auto; margin: 0;">未入金</label>
+                        ${invoiceSent ? "" : "<span style=\"color:#868e96;\">請求書未発送</span>"}
+                    </div>
                     <span class="status ${statusClass}">${statusLabel}</span></div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                         <button type="button" style="background: #1971c2;" onclick="previewTestInvoice('${encodeURIComponent(facility.id)}')">🧾 テスト請求書PDFプレビュー</button>
@@ -366,6 +393,32 @@
                     </div>
                 </div>`;
             }).join("");
+            list.querySelectorAll("[data-facility-payment-id]").forEach(checkbox => {
+                checkbox.addEventListener("change", () => updateFacilityInvoicePaymentStatus(checkbox));
+            });
+        }
+
+        async function updateFacilityInvoicePaymentStatus(checkbox) {
+            const facilityId = decodeURIComponent(checkbox.dataset.facilityPaymentId);
+            const invoice = latestInvoiceByFacility.get(facilityId);
+            if (!invoice || invoice.test === true || invoice.status !== "sent") return;
+
+            const nextStatus = checkbox.dataset.paymentStatus;
+            const previousStatus = invoice.paymentStatus === "paid" ? "paid" : "unpaid";
+            const paymentCheckboxes = Array.from(checkbox.closest(".facility").querySelectorAll("[data-payment-status]"));
+            paymentCheckboxes.forEach(item => { item.disabled = true; });
+            try {
+                await updateDoc(doc(db, "facilities", facilityId, "invoiceHistory", invoice.id), {
+                    paymentStatus: nextStatus,
+                    paymentUpdatedAt: new Date().toISOString()
+                });
+                invoice.paymentStatus = nextStatus;
+                renderFacilities();
+            } catch (error) {
+                invoice.paymentStatus = previousStatus;
+                renderFacilities();
+                document.getElementById("facilityError").textContent = "入金状況を保存できませんでした: " + (error.message || error);
+            }
         }
 
         window.activateFacilitySubscription = async function(encodedFacilityId) {
@@ -466,6 +519,11 @@
                 });
                 invoice.paymentStatus = isPaid ? "paid" : "unpaid";
                 statusLabel.textContent = isPaid ? "入金済" : "未入金";
+                const latestInvoice = latestInvoiceByFacility.get(currentInvoiceFacilityId);
+                if (latestInvoice?.id === invoice.id) {
+                    latestInvoice.paymentStatus = invoice.paymentStatus;
+                    renderFacilities();
+                }
             } catch (error) {
                 checkbox.checked = previousStatus;
                 alert("入金状況を保存できませんでした: " + (error.message || error));
