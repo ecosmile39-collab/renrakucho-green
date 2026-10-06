@@ -1204,11 +1204,11 @@
             
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
             document.getElementById("displayFacilityName").textContent = facilityName;
-            await loadFacilityLineSettingsStatus();
 
             document.getElementById("mainForm").style.display = "block";
             document.getElementById("scrollGroup").style.display = "flex";
             document.getElementById("newFacePreview").src = defaultIcon;
+            loadFacilityLineSettingsStatus();
 
             let today = new Date();
             let year = today.getFullYear();
