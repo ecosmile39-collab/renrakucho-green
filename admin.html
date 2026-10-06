@@ -403,7 +403,9 @@
             const invoice = latestInvoiceByFacility.get(facilityId);
             if (!invoice || invoice.test === true || invoice.status !== "sent") return;
 
-            const nextStatus = checkbox.dataset.paymentStatus;
+            const nextStatus = checkbox.checked
+                ? checkbox.dataset.paymentStatus
+                : checkbox.dataset.paymentStatus === "paid" ? "unpaid" : "paid";
             const previousStatus = invoice.paymentStatus === "paid" ? "paid" : "unpaid";
             const paymentCheckboxes = Array.from(checkbox.closest(".facility").querySelectorAll("[data-payment-status]"));
             paymentCheckboxes.forEach(item => { item.disabled = true; });
