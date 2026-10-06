@@ -1181,8 +1181,9 @@ exports.sendMonthlyInvoices = onSchedule({
             <tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">5,500円</th></tr></tbody></table>
             <div style="display:flex;justify-content:flex-start;align-items:flex-start;gap:16px;margin-top:28px"><div><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div><img src="cid:company-stamp" alt="株式会社えこすまいる会社印" width="92" height="92" style="width:92px;height:92px;object-fit:contain;margin-top:90px"></div>
             <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
+            <p style="margin-top:28px">平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。</p>
         </body></html>`;
-        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\nシステム利用料：5,000円\n消費税（10%）：500円\n税込合計：5,500円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル`;
+        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\nシステム利用料：5,000円\n消費税（10%）：500円\n税込合計：5,500円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
 
         try {
             const result = await transporter.sendMail({
