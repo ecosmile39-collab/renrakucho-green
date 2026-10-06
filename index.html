@@ -150,6 +150,38 @@
             <a href="history.html" style="color: #2b8a3e; font-weight: bold;">➡ 過去データ一覧へ</a>
         </div>
 
+        <section style="margin: 12px 0; padding: 12px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div>
+                    <strong>施設のLINE公式アカウント</strong>
+                    <div id="facilityLineSettingsStatus" style="margin-top: 4px; font-size: 13px; color: #526158;">設定を確認しています...</div>
+                </div>
+                <button type="button" onclick="toggleFacilityLineSettings()" style="padding: 8px 12px; background: #495057; color: white; border: 0; border-radius: 4px; cursor: pointer;">設定を開く</button>
+            </div>
+            <div id="facilityLineSettingsForm" hidden style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #dee2e6;">
+                <p style="font-size: 13px; line-height: 1.6;">この施設専用のLINE公式アカウントを設定します。LINE Developersで次の値を確認してください。</p>
+                <ol style="font-size: 13px; line-height: 1.7; padding-left: 22px;">
+                    <li>施設のLINE公式アカウントに対応するMessaging APIチャネルを開きます。</li>
+                    <li>「Basic settings」でChannel secretを確認し、「Messaging API」でチャネルアクセストークンを発行します。</li>
+                    <li>下の欄に両方を入力して保存し、表示されるWebhook URLを同じMessaging API画面に登録します。</li>
+                </ol>
+                <p style="font-size: 13px; line-height: 1.6;">秘密情報は暗号化してサーバーに保存し、保存後は画面に再表示しません。LINE Developers以外の人や、このチャットには共有しないでください。</p>
+                <label for="facilityLineAccessToken">チャネルアクセストークン</label>
+                <input type="password" id="facilityLineAccessToken" autocomplete="new-password" placeholder="LINE Developers からコピー">
+                <label for="facilityLineChannelSecret">Channel secret（32文字）</label>
+                <input type="password" id="facilityLineChannelSecret" autocomplete="new-password" maxlength="128" placeholder="Basic settings からコピー">
+                <button type="button" id="saveFacilityLineSettingsButton" onclick="saveFacilityLineSettings()" style="padding: 9px 14px; background: #2b8a3e; color: white; border: 0; border-radius: 4px; font-weight: bold; cursor: pointer;">LINE設定を保存</button>
+                <p id="facilityLineSettingsMessage" role="status" style="font-size: 13px;"></p>
+                <div id="facilityLineWebhookDetails" hidden style="margin-top: 12px; padding: 10px; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <strong>LINE Developers の Webhook URL</strong>
+                    <p style="font-size: 13px;">このURLを LINE Developers の Messaging API に登録し、Verify の成功後に「Webhookの利用」をオンにしてください。</p>
+                    <input type="text" id="facilityLineWebhookUrl" readonly aria-label="施設専用Webhook URL">
+                    <button type="button" onclick="copyFacilityLineWebhookUrl()" style="padding: 8px 12px; background: #1c7ed6; color: white; border: 0; border-radius: 4px; cursor: pointer;">Webhook URLをコピー</button>
+                    <button type="button" id="removeFacilityLineSettingsButton" onclick="removeFacilityLineSettings()" style="padding: 8px 12px; margin-left: 6px; background: #e03131; color: white; border: 0; border-radius: 4px; cursor: pointer;">設定を解除</button>
+                </div>
+            </div>
+        </section>
+
         <div class="service-select-card">
             <label>📌 ご入力するサービス種別を選択してください：</label>
             <select id="serviceType" onchange="onServiceTypeChanged()">
@@ -1172,6 +1204,7 @@
             
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
             document.getElementById("displayFacilityName").textContent = facilityName;
+            await loadFacilityLineSettingsStatus();
 
             document.getElementById("mainForm").style.display = "block";
             document.getElementById("scrollGroup").style.display = "flex";
@@ -1535,6 +1568,87 @@
             }
         }
 
+        window.toggleFacilityLineSettings = function() {
+            const form = document.getElementById("facilityLineSettingsForm");
+            form.hidden = !form.hidden;
+        };
+
+        async function loadFacilityLineSettingsStatus() {
+            const status = document.getElementById("facilityLineSettingsStatus");
+            const details = document.getElementById("facilityLineWebhookDetails");
+            try {
+                const getStatus = httpsCallable(functions, "getFacilityLineSettingsStatus");
+                const result = await getStatus({});
+                const settings = result.data;
+                status.textContent = settings.configured
+                    ? `設定済み：${settings.displayName}（${settings.basicId}）`
+                    : "未設定：現在は共通のえこすまいる公式LINEを使用中";
+                details.hidden = !settings.configured;
+                document.getElementById("facilityLineWebhookUrl").value = settings.webhookUrl;
+            } catch (error) {
+                status.textContent = "LINE設定を確認できませんでした。再読み込みしてください。";
+            }
+        }
+
+        window.saveFacilityLineSettings = async function() {
+            const channelAccessToken = document.getElementById("facilityLineAccessToken").value.trim();
+            const channelSecret = document.getElementById("facilityLineChannelSecret").value.trim();
+            const message = document.getElementById("facilityLineSettingsMessage");
+            const button = document.getElementById("saveFacilityLineSettingsButton");
+            if (!channelAccessToken || !channelSecret) {
+                message.textContent = "アクセストークンとChannel secretを入力してください。";
+                return;
+            }
+
+            button.disabled = true;
+            message.textContent = "LINE公式アカウントを確認して保存しています...";
+            try {
+                const saveSettings = httpsCallable(functions, "saveFacilityLineSettings");
+                const result = await saveSettings({ channelAccessToken, channelSecret });
+                document.getElementById("facilityLineAccessToken").value = "";
+                document.getElementById("facilityLineChannelSecret").value = "";
+                document.getElementById("facilityLineWebhookUrl").value = result.data.webhookUrl;
+                document.getElementById("facilityLineWebhookDetails").hidden = false;
+                document.getElementById("facilityLineSettingsStatus").textContent =
+                    `設定済み：${result.data.displayName}（${result.data.basicId}）`;
+                message.textContent = result.data.accountChanged
+                    ? "保存しました。新しい公式LINEにWebhook URLを登録し、旧アカウントのWebhookをオフにしてください。保護者の再連携も必要です。"
+                    : "保存しました。LINE Developers にWebhook URLを登録してください。";
+            } catch (error) {
+                message.textContent = error.code === "functions/invalid-argument"
+                    ? (error.message || "入力内容を確認してください。")
+                    : "保存できませんでした。入力内容と通信環境を確認してください。";
+            } finally {
+                button.disabled = false;
+            }
+        };
+
+        window.copyFacilityLineWebhookUrl = async function() {
+            const input = document.getElementById("facilityLineWebhookUrl");
+            try {
+                await navigator.clipboard.writeText(input.value);
+                document.getElementById("facilityLineSettingsMessage").textContent = "Webhook URLをコピーしました。";
+            } catch {
+                input.focus();
+                input.select();
+                document.execCommand("copy");
+                document.getElementById("facilityLineSettingsMessage").textContent = "Webhook URLを選択しました。コピーしてください。";
+            }
+        };
+
+        window.removeFacilityLineSettings = async function() {
+            if (!confirm("施設専用LINE設定を解除しますか？保護者のLINE連携も解除されます。先にLINE Developersで施設専用Webhookの利用をオフにしてください。解除後は共通LINEへ戻ります。")) return;
+            const message = document.getElementById("facilityLineSettingsMessage");
+            try {
+                const removeSettings = httpsCallable(functions, "removeFacilityLineSettings");
+                await removeSettings({});
+                message.textContent = "施設専用LINE設定を解除しました。";
+                await loadFacilityLineSettingsStatus();
+            } catch {
+                message.textContent = "設定を解除できませんでした。時間をおいて再試行してください。";
+            }
+        };
+
         window.generateLinePairingCode = async function() {
             const userName = document.getElementById("userName").value;
             if (!userName) return;
@@ -1542,7 +1656,7 @@
             try {
                 const createCode = httpsCallable(functions, "createLinePairingCode");
                 const result = await createCode({ userName });
-                alert(`公式LINE「ecosmile39」（@108nturw）を友だち追加し、トークに次のコードを送ってもらってください。\n\n${result.data.code}\n\nコードの有効期限は15分です。保護者本人へ個別にお伝えください。`);
+                alert(`公式LINE「${result.data.officialAccountName}」（${result.data.officialAccountId}）を友だち追加し、トークに次のコードを送ってもらってください。\n\n${result.data.code}\n\nコードの有効期限は15分です。保護者本人へ個別にお伝えください。`);
                 refreshLineRecipientStatus(userName);
             } catch (error) {
                 alert("LINE連携コードを発行できませんでした: " + getErrorMessage(error));

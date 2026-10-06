@@ -50,6 +50,10 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /facilityLineSettings/{facilityId} {
+      allow read, write: if isAdmin();
+    }
+
     match /linePairingCodes/{codeHash} {
       allow read, write: if isAdmin();
     }

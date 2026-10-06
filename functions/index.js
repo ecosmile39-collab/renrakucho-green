@@ -11,6 +11,7 @@ const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const nodemailer = require("nodemailer");
 const { GoogleAuth } = require("google-auth-library");
+const { decryptCredentials, encryptCredentials } = require("./line-credential-crypto");
 
 initializeApp();
 
@@ -26,7 +27,9 @@ const ADMIN_CONTROL_KEY = defineSecret("ADMIN_CONTROL_KEY");
 const FACILITY_REGISTRATION_KEY = defineSecret("FACILITY_REGISTRATION_KEY");
 const LINE_CHANNEL_ACCESS_TOKEN = defineSecret("LINE_CHANNEL_ACCESS_TOKEN");
 const LINE_CHANNEL_SECRET = defineSecret("LINE_CHANNEL_SECRET");
+const FACILITY_LINE_ENCRYPTION_KEY = defineSecret("FACILITY_LINE_ENCRYPTION_KEY");
 const LINE_RECORD_BASE_URL = "https://renrakucho-green.vercel.app/line-record.html";
+const LINE_WEBHOOK_BASE_URL = "https://us-central1-renrakucho-app-6b157.cloudfunctions.net/facilityLineMessagingWebhook";
 const companyStampPng = readFileSync(path.join(__dirname, "company_stamp.png"));
 const companyStampDataUrl = `data:image/png;base64,${companyStampPng.toString("base64")}`;
 
@@ -110,6 +113,19 @@ function secretsMatch(supplied, expected) {
     const suppliedBuffer = Buffer.from(supplied);
     const expectedBuffer = Buffer.from(expected);
     return suppliedBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(suppliedBuffer, expectedBuffer);
+}
+
+function encryptFacilityLineCredentials(facilityId, credentials) {
+    return encryptCredentials(credentials, FACILITY_LINE_ENCRYPTION_KEY.value(), facilityId);
+}
+
+function decryptFacilityLineCredentials(facilityId, encrypted) {
+    return decryptCredentials(encrypted, FACILITY_LINE_ENCRYPTION_KEY.value(), facilityId);
+}
+
+async function getFacilityLineCredentials(facilityId) {
+    const snapshot = await getFirestore().collection("facilityLineSettings").doc(facilityId).get();
+    return snapshot.exists ? decryptFacilityLineCredentials(facilityId, snapshot.data().encryptedCredentials) : null;
 }
 
 exports.createAdminSession = onCall({ secrets: [ADMIN_CONTROL_KEY] }, async request => {
@@ -401,7 +417,8 @@ exports.deleteFacilityAccount = onCall(async request => {
             deleteFirestoreDocuments(plan.usersSnapshot.docs),
             deleteFirestoreDocuments(plan.invoiceHistorySnapshot.docs),
             deleteFirestoreDocuments(pairingCodes.docs),
-            deleteFirestoreDocuments(recordLinks.docs)
+            deleteFirestoreDocuments(recordLinks.docs),
+            db.collection("facilityLineSettings").doc(facilityId).delete()
         ]);
         await facilityRef.delete();
         await cancellationRef.set({ status: "completed", completedAt: new Date().toISOString() }, { merge: true });
@@ -464,16 +481,24 @@ exports.createLinePairingCode = onCall(async request => {
         createdAt: FieldValue.serverTimestamp(),
         expiresAt: new Date(Date.now() + 15 * 60 * 1000)
     });
-    return { code, expiresInMinutes: 15 };
+    const lineSettingsSnapshot = await getFirestore().collection("facilityLineSettings").doc(facilityId).get();
+    const lineSettings = lineSettingsSnapshot.exists ? lineSettingsSnapshot.data() : {};
+    return {
+        code,
+        expiresInMinutes: 15,
+        officialAccountName: lineSettings.displayName || "ecosmile39",
+        officialAccountId: lineSettings.basicId || "@108nturw"
+    };
 });
 
-async function connectLineUser(code, lineUserId) {
+async function connectLineUser(code, lineUserId, expectedFacilityId = "") {
     const db = getFirestore();
     const codeRef = db.collection("linePairingCodes").doc(hashLineCode(code));
     return db.runTransaction(async transaction => {
         const codeSnapshot = await transaction.get(codeRef);
         if (!codeSnapshot.exists) return { status: "invalid" };
         const pairing = codeSnapshot.data();
+        if (expectedFacilityId && pairing.facilityId !== expectedFacilityId) return { status: "invalid" };
         const expiration = pairing.expiresAt?.toDate ? pairing.expiresAt.toDate() : new Date(pairing.expiresAt);
         if (!Number.isFinite(expiration.getTime()) || expiration.getTime() <= Date.now()) {
             transaction.delete(codeRef);
@@ -499,11 +524,11 @@ async function connectLineUser(code, lineUserId) {
     });
 }
 
-async function replyToLine(replyToken, text) {
+async function replyToLine(replyToken, text, channelAccessToken) {
     const response = await fetch("https://api.line.me/v2/bot/message/reply", {
         method: "POST",
         headers: {
-            Authorization: `Bearer ${LINE_CHANNEL_ACCESS_TOKEN.value()}`,
+            Authorization: `Bearer ${channelAccessToken}`,
             "Content-Type": "application/json"
         },
         body: JSON.stringify({ replyToken, messages: [{ type: "text", text }] })
@@ -670,8 +695,98 @@ exports.getLineRecipientStatus = onCall(async request => {
     return { recipientCount: lineUserIds.length };
 });
 
+exports.getFacilityLineSettingsStatus = onCall(async request => {
+    const facilityId = requireFacilityId(request);
+    await verifyFacilityIsActive(facilityId);
+    const snapshot = await getFirestore().collection("facilityLineSettings").doc(facilityId).get();
+    const settings = snapshot.exists ? snapshot.data() : {};
+    return {
+        configured: snapshot.exists,
+        displayName: settings.displayName || "",
+        basicId: settings.basicId || "",
+        webhookUrl: `${LINE_WEBHOOK_BASE_URL}/${encodeURIComponent(facilityId)}`
+    };
+});
+
+exports.saveFacilityLineSettings = onCall({ secrets: [FACILITY_LINE_ENCRYPTION_KEY] }, async request => {
+    const facilityId = requireFacilityId(request);
+    await verifyFacilityIsActive(facilityId);
+    const channelAccessToken = typeof request.data?.channelAccessToken === "string"
+        ? request.data.channelAccessToken.trim()
+        : "";
+    const channelSecret = typeof request.data?.channelSecret === "string"
+        ? request.data.channelSecret.trim()
+        : "";
+    if (!channelAccessToken || channelAccessToken.length > 4096 || channelSecret.length !== 32) {
+        throw new HttpsError("invalid-argument", "アクセストークンと32文字のChannel secretを確認してください。");
+    }
+
+    let botInfoResponse;
+    try {
+        botInfoResponse = await fetch("https://api.line.me/v2/bot/info", {
+            headers: { Authorization: `Bearer ${channelAccessToken}` }
+        });
+    } catch {
+        throw new HttpsError("unavailable", "LINEに接続できませんでした。時間をおいて再試行してください。");
+    }
+    if (!botInfoResponse.ok) {
+        throw new HttpsError("invalid-argument", "アクセストークンが正しいか確認してください。");
+    }
+    const botInfo = await botInfoResponse.json();
+    if (typeof botInfo.basicId !== "string" || typeof botInfo.displayName !== "string") {
+        throw new HttpsError("invalid-argument", "LINE公式アカウント情報を確認できませんでした。");
+    }
+
+    const settingsRef = getFirestore().collection("facilityLineSettings").doc(facilityId);
+    const currentSnapshot = await settingsRef.get();
+    const previousBasicId = currentSnapshot.exists ? currentSnapshot.data().basicId : "@108nturw";
+    const accountChanged = previousBasicId !== botInfo.basicId;
+    await settingsRef.set({
+        encryptedCredentials: encryptFacilityLineCredentials(facilityId, { channelAccessToken, channelSecret }),
+        basicId: botInfo.basicId,
+        displayName: botInfo.displayName,
+        updatedAt: FieldValue.serverTimestamp()
+    });
+
+    if (accountChanged) {
+        const users = await getFirestore().collection("facilities").doc(facilityId).collection("users").get();
+        for (let offset = 0; offset < users.docs.length; offset += 400) {
+            const batch = getFirestore().batch();
+            users.docs.slice(offset, offset + 400).forEach(user => batch.update(user.ref, {
+                lineUserIds: [],
+                lineLinkedAt: FieldValue.delete()
+            }));
+            await batch.commit();
+        }
+    }
+
+    return {
+        configured: true,
+        displayName: botInfo.displayName,
+        basicId: botInfo.basicId,
+        accountChanged,
+        webhookUrl: `${LINE_WEBHOOK_BASE_URL}/${encodeURIComponent(facilityId)}`
+    };
+});
+
+exports.removeFacilityLineSettings = onCall(async request => {
+    const facilityId = requireFacilityId(request);
+    await verifyFacilityIsActive(facilityId);
+    await getFirestore().collection("facilityLineSettings").doc(facilityId).delete();
+    const users = await getFirestore().collection("facilities").doc(facilityId).collection("users").get();
+    for (let offset = 0; offset < users.docs.length; offset += 400) {
+        const batch = getFirestore().batch();
+        users.docs.slice(offset, offset + 400).forEach(user => batch.update(user.ref, {
+            lineUserIds: [],
+            lineLinkedAt: FieldValue.delete()
+        }));
+        await batch.commit();
+    }
+    return { removed: true };
+});
+
 exports.sendLineRecordNotification = onCall({
-    secrets: [LINE_CHANNEL_ACCESS_TOKEN]
+    secrets: [FACILITY_LINE_ENCRYPTION_KEY, LINE_CHANNEL_ACCESS_TOKEN]
 }, async request => {
     const facilityId = requireFacilityId(request);
     await verifyFacilityIsActive(facilityId);
@@ -696,6 +811,9 @@ exports.sendLineRecordNotification = onCall({
         throw new HttpsError("failed-precondition", "保護者のLINE連携がまだ完了していません。");
     }
 
+    const facilityLineCredentials = await getFacilityLineCredentials(facilityId);
+    const channelAccessToken = facilityLineCredentials?.channelAccessToken || LINE_CHANNEL_ACCESS_TOKEN.value();
+
     const token = crypto.randomBytes(32).toString("hex");
     await db.collection("lineRecordLinks").doc(hashLineCode(token)).set({
         facilityId,
@@ -710,7 +828,7 @@ exports.sendLineRecordNotification = onCall({
     const results = await Promise.allSettled(lineUserIds.map(lineUserId => fetch("https://api.line.me/v2/bot/message/push", {
         method: "POST",
         headers: {
-            Authorization: `Bearer ${LINE_CHANNEL_ACCESS_TOKEN.value()}`,
+            Authorization: `Bearer ${channelAccessToken}`,
             "Content-Type": "application/json"
         },
         body: JSON.stringify({ to: lineUserId, messages: [{ type: "text", text: message }] })
@@ -743,14 +861,12 @@ exports.deleteExpiredLineLinks = onSchedule({
     }
 });
 
-exports.lineMessagingWebhook = onRequest({
-    secrets: [LINE_CHANNEL_ACCESS_TOKEN, LINE_CHANNEL_SECRET]
-}, async (request, response) => {
+async function handleLineMessagingWebhook(request, response, credentials, expectedFacilityId = "") {
     if (request.method === "GET") return response.status(200).send("OK");
     if (request.method !== "POST") return response.status(405).send("Method not allowed");
 
     const signature = request.get("x-line-signature") || "";
-    const expectedSignature = crypto.createHmac("sha256", LINE_CHANNEL_SECRET.value())
+    const expectedSignature = crypto.createHmac("sha256", credentials.channelSecret)
         .update(request.rawBody)
         .digest();
     const receivedSignature = Buffer.from(signature, "base64");
@@ -764,17 +880,49 @@ exports.lineMessagingWebhook = onRequest({
         const code = event.message.text.trim().toUpperCase();
         if (!/^[A-F0-9]{12}$/.test(code)) continue;
         try {
-            const result = await connectLineUser(code, event.source.userId);
+            const result = await connectLineUser(code, event.source.userId, expectedFacilityId);
             const reply = result.status === "linked"
                 ? `${result.userName} 様の連絡帳を受け取るLINE連携が完了しました。`
                 : "連携コードが無効か、有効期限が切れています。施設へ新しいコードをお申し付けください。";
-            await replyToLine(event.replyToken, reply);
+            await replyToLine(event.replyToken, reply, credentials.channelAccessToken);
         } catch (error) {
             logger.error("LINE account pairing failed", { error });
-            await replyToLine(event.replyToken, "連携できませんでした。時間をおいて再度お試しください。").catch(() => {});
+            await replyToLine(event.replyToken, "連携できませんでした。時間をおいて再度お試しください。", credentials.channelAccessToken).catch(() => {});
         }
     }
     return response.status(200).send("OK");
+}
+
+exports.lineMessagingWebhook = onRequest({
+    secrets: [LINE_CHANNEL_ACCESS_TOKEN, LINE_CHANNEL_SECRET]
+}, async (request, response) => handleLineMessagingWebhook(request, response, {
+    channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN.value(),
+    channelSecret: LINE_CHANNEL_SECRET.value()
+}));
+
+exports.facilityLineMessagingWebhook = onRequest({
+    secrets: [FACILITY_LINE_ENCRYPTION_KEY]
+}, async (request, response) => {
+    let facilityId = "";
+    try {
+        const pathParts = request.path.split("/").filter(Boolean);
+        if (pathParts.length !== 1) return response.status(404).send("Not found");
+        facilityId = decodeURIComponent(pathParts[0]);
+    } catch {
+        return response.status(404).send("Not found");
+    }
+    if (!facilityId || facilityId.includes("/") || facilityId.length > 200) {
+        return response.status(404).send("Not found");
+    }
+    if (request.method === "GET") return response.status(200).send("OK");
+
+    const facilitySnapshot = await getFirestore().collection("facilities").doc(facilityId).get();
+    if (!facilitySnapshot.exists || facilitySnapshot.data().status === "locked") {
+        return response.status(404).send("Not found");
+    }
+    const credentials = await getFacilityLineCredentials(facilityId);
+    if (!credentials) return response.status(404).send("Not found");
+    return handleLineMessagingWebhook(request, response, credentials, facilityId);
 });
 
 function getTokyoDateParts(date) {

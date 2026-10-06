@@ -269,11 +269,12 @@
             button.disabled = true;
             status.textContent = "削除対象をサーバー側で集計しています...";
             try {
-                let [facilitiesSnapshot, cancellationSnapshot, pairingCodesSnapshot, lineLinksSnapshot] = await Promise.all([
+                let [facilitiesSnapshot, cancellationSnapshot, pairingCodesSnapshot, lineLinksSnapshot, lineSettingsSnapshot] = await Promise.all([
                     getDocs(collection(db, "facilities")),
                     getDocs(collection(db, "facilityCancellations")),
                     getDocs(collection(db, "linePairingCodes")),
-                    getDocs(collection(db, "lineRecordLinks"))
+                    getDocs(collection(db, "lineRecordLinks")),
+                    getDocs(collection(db, "facilityLineSettings"))
                 ]);
                 let userDocs = [];
                 let recordDocs = [];
@@ -286,7 +287,7 @@
                     recordDocs.push(...recordsSnapshot.docs);
                 }
                 let storageFiles = await listAllStorageFiles(ref(storage));
-                let preview = `削除対象の集計結果：\n\nFirebaseプロジェクト：${firebaseConfig.projectId}\n施設アカウント：${facilitiesSnapshot.size}件\n利用者名簿：${userDocs.length}件\n連絡帳・介護日誌：${recordDocs.length}件\n退会履歴：${cancellationSnapshot.size}件\nLINE連携コード：${pairingCodesSnapshot.size}件\nLINE閲覧リンク：${lineLinksSnapshot.size}件\nStorage内の全ファイル：${storageFiles.length}件\n\n全施設に影響し、元に戻せません。Storageの保持設定によっては物理消去や容量反映が遅れることがあります。\n\nこの件数で最終確認へ進みますか？`;
+                let preview = `削除対象の集計結果：\n\nFirebaseプロジェクト：${firebaseConfig.projectId}\n施設アカウント：${facilitiesSnapshot.size}件\n利用者名簿：${userDocs.length}件\n連絡帳・介護日誌：${recordDocs.length}件\n退会履歴：${cancellationSnapshot.size}件\nLINE連携コード：${pairingCodesSnapshot.size}件\nLINE閲覧リンク：${lineLinksSnapshot.size}件\n施設LINE設定：${lineSettingsSnapshot.size}件\nStorage内の全ファイル：${storageFiles.length}件\n\n全施設に影響し、元に戻せません。Storageの保持設定によっては物理消去や容量反映が遅れることがあります。\n\nこの件数で最終確認へ進みますか？`;
                 if (!confirm(preview)) {
                     status.textContent = "削除はキャンセルされました。データは変更していません。";
                     return;
@@ -305,6 +306,7 @@
                 await deleteInBatches(cancellationSnapshot.docs, cancellationDoc => deleteDoc(cancellationDoc.ref));
                 await deleteInBatches(pairingCodesSnapshot.docs, pairingCode => deleteDoc(pairingCode.ref));
                 await deleteInBatches(lineLinksSnapshot.docs, lineLink => deleteDoc(lineLink.ref));
+                await deleteInBatches(lineSettingsSnapshot.docs, lineSettings => deleteDoc(lineSettings.ref));
 
                 facilities = [];
                 cancellationRecords = [];
@@ -312,7 +314,7 @@
                 renderCancellationRecords();
                 document.getElementById("loadingMessage").style.display = "none";
                 status.textContent = "";
-                alert(`削除完了：施設${facilitiesSnapshot.size}件、利用者${userDocs.length}件、記録${recordDocs.length}件、退会履歴${cancellationSnapshot.size}件、Storageファイル${storageFiles.length}件を削除しました。`);
+                alert(`削除完了：施設${facilitiesSnapshot.size}件、利用者${userDocs.length}件、記録${recordDocs.length}件、退会履歴${cancellationSnapshot.size}件、LINE設定${lineSettingsSnapshot.size}件、Storageファイル${storageFiles.length}件を削除しました。`);
             } catch (error) {
                 status.textContent = "削除を完了できませんでした: " + error.message;
             } finally {
@@ -598,12 +600,13 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
             let facility = facilities.find(item => item.id === facilityId);
             let facilityName = facility ? (facility.facilityName || facilityId) : facilityId;
             try {
-                let [usersSnapshot, recordsSnapshot, invoiceHistorySnapshot, pairingCodesSnapshot, lineLinksSnapshot] = await Promise.all([
+                let [usersSnapshot, recordsSnapshot, invoiceHistorySnapshot, pairingCodesSnapshot, lineLinksSnapshot, lineSettingsSnapshot] = await Promise.all([
                     getDocs(collection(db, "facilities", facilityId, "users")),
                     getDocs(collection(db, "facilities", facilityId, "daily_records")),
                     getDocs(collection(db, "facilities", facilityId, "invoiceHistory")),
                     getDocs(query(collection(db, "linePairingCodes"), where("facilityId", "==", facilityId))),
-                    getDocs(query(collection(db, "lineRecordLinks"), where("facilityId", "==", facilityId)))
+                    getDocs(query(collection(db, "lineRecordLinks"), where("facilityId", "==", facilityId))),
+                    getDoc(doc(db, "facilityLineSettings", facilityId))
                 ]);
                 let scopedLists = await Promise.all([
                     listAllStorageFiles(ref(storage, `images/${facilityId}`)),
@@ -611,7 +614,7 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                     listAllStorageFiles(ref(storage, `faces/${facilityId}`))
                 ]);
                 let scopedFiles = scopedLists.flat();
-                let preview = `削除対象を確認してください。\n\n施設：${facilityName}\n利用者名簿：${usersSnapshot.size}件\n連絡帳・介護日誌：${recordsSnapshot.size}件\n請求書履歴：${invoiceHistorySnapshot.size}件\nLINE連携コード：${pairingCodesSnapshot.size}件\nLINE閲覧リンク：${lineLinksSnapshot.size}件\n施設ID付きメディア：${scopedFiles.length}ファイル\n\n施設情報と関連データを削除します。Soft Delete設定によっては物理削除が遅れる場合があります。続けますか？`;
+                let preview = `削除対象を確認してください。\n\n施設：${facilityName}\n利用者名簿：${usersSnapshot.size}件\n連絡帳・介護日誌：${recordsSnapshot.size}件\n請求書履歴：${invoiceHistorySnapshot.size}件\nLINE連携コード：${pairingCodesSnapshot.size}件\nLINE閲覧リンク：${lineLinksSnapshot.size}件\n施設専用LINE設定：${lineSettingsSnapshot.exists ? "あり" : "なし"}\n施設ID付きメディア：${scopedFiles.length}ファイル\n\n施設情報と関連データを削除します。Soft Delete設定によっては物理削除が遅れる場合があります。続けますか？`;
                 if (!confirm(preview)) return;
                 if (prompt(`最終確認：施設名「${facilityName}」を入力してください。`) !== facilityName) return;
                 let storageResults = await Promise.allSettled(scopedFiles.map(fileRef => deleteObject(fileRef)));
@@ -621,7 +624,8 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                 await Promise.all([
                     ...invoiceHistorySnapshot.docs.map(document => deleteDoc(document.ref)),
                     ...pairingCodesSnapshot.docs.map(document => deleteDoc(document.ref)),
-                    ...lineLinksSnapshot.docs.map(document => deleteDoc(document.ref))
+                    ...lineLinksSnapshot.docs.map(document => deleteDoc(document.ref)),
+                    lineSettingsSnapshot.exists ? deleteDoc(lineSettingsSnapshot.ref) : Promise.resolve()
                 ]);
                 await deleteDoc(doc(db, "facilities", facilityId));
 
