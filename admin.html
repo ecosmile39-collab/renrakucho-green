@@ -612,7 +612,7 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
 @media print{body{margin:0;padding:12mm}}
 </style></head><body>
 <div class="test">テスト請求書（実請求ではありません）</div>
-<div class="top"><div><div class="recipient">${escapeInvoiceText(facility.facilityName || facilityId)} 御中</div><div>施設登録メール：${escapeInvoiceText(facility.email || "未登録")}<br>株式会社えこすまいる<br>テスト送信先：ecosmile39@gmail.com</div></div>
+<div class="top"><div><div class="recipient">${escapeInvoiceText(facility.facilityName || facilityId)} 御中</div><div>施設登録メール：${escapeInvoiceText(facility.email || "未登録")}<br>送信先：株式会社えこすまいる</div></div>
 <div>請求書番号：${escapeInvoiceText(invoiceNumber)}<br>発行日：${escapeInvoiceText(formatDate(issueDate))}<br>お支払期限：${escapeInvoiceText(formatDate(dueDate))}</div></div>
 <h1>請求書</h1><div>下記のとおりご請求申し上げます。</div>
 <div class="total">ご請求金額（税込）　5,500円</div>
