@@ -389,7 +389,7 @@
                         <button type="button" style="background: #495057;" onclick="showFacilityInvoiceHistory('${encodeURIComponent(facility.id)}')">📚 請求書履歴</button>
                         ${isTrial ? `<button type="button" style="background: #087f23;" onclick="activateFacilitySubscription('${encodeURIComponent(facility.id)}')">✅ 購入後の本利用へ切替</button>` : ""}
                         <button class="${isLocked ? "unlock" : "lock"}" onclick="toggleFacility('${encodeURIComponent(facility.id)}', ${isLocked})">${isLocked ? "🔓 解除する" : "🔒 ロックする"}</button>
-                        <button class="delete" onclick="deleteFacility('${encodeURIComponent(facility.id)}')">🗑️ 登録施設を削除</button>
+                        <button type="button" class="delete" onclick="deleteFacility('${encodeURIComponent(facility.id)}', this)">🗑️ 登録施設を削除</button>
                     </div>
                 </div>`;
             }).join("");
@@ -670,10 +670,18 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
             }
         };
 
-        window.deleteFacility = async function(encodedId) {
+        window.deleteFacility = async function(encodedId, button) {
             let facilityId = decodeURIComponent(encodedId);
             let facility = facilities.find(item => item.id === facilityId);
             let facilityName = facility ? (facility.facilityName || facilityId) : facilityId;
+            const originalButtonText = button?.textContent;
+            const errorArea = document.getElementById("facilityError");
+            errorArea.textContent = "";
+            if (button) {
+                button.disabled = true;
+                button.textContent = "削除対象を確認中...";
+                button.setAttribute("aria-busy", "true");
+            }
             try {
                 let [usersSnapshot, recordsSnapshot, invoiceHistorySnapshot, pairingCodesSnapshot, lineLinksSnapshot, lineSettingsSnapshot] = await Promise.all([
                     getDocs(collection(db, "facilities", facilityId, "users")),
@@ -689,9 +697,10 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                     listAllStorageFiles(ref(storage, `faces/${facilityId}`))
                 ]);
                 let scopedFiles = scopedLists.flat();
-                let preview = `削除対象を確認してください。\n\n施設：${facilityName}\n利用者名簿：${usersSnapshot.size}件\n連絡帳・介護日誌：${recordsSnapshot.size}件\n請求書履歴：${invoiceHistorySnapshot.size}件\nLINE連携コード：${pairingCodesSnapshot.size}件\nLINE閲覧リンク：${lineLinksSnapshot.size}件\n施設専用LINE設定：${lineSettingsSnapshot.exists ? "あり" : "なし"}\n施設ID付きメディア：${scopedFiles.length}ファイル\n\n施設情報と関連データを削除します。Soft Delete設定によっては物理削除が遅れる場合があります。続けますか？`;
+                let preview = `削除対象を確認してください。\n\n施設：${facilityName}\n利用者名簿：${usersSnapshot.size}件\n連絡帳・介護日誌：${recordsSnapshot.size}件\n請求書履歴：${invoiceHistorySnapshot.size}件\nLINE連携コード：${pairingCodesSnapshot.size}件\nLINE閲覧リンク：${lineLinksSnapshot.size}件\n施設専用LINE設定：${lineSettingsSnapshot.exists() ? "あり" : "なし"}\n施設ID付きメディア：${scopedFiles.length}ファイル\n\n施設情報と関連データを削除します。Soft Delete設定によっては物理削除が遅れる場合があります。続けますか？`;
                 if (!confirm(preview)) return;
                 if (prompt(`最終確認：施設名「${facilityName}」を入力してください。`) !== facilityName) return;
+                if (button) button.textContent = "削除中...";
                 let storageResults = await Promise.allSettled(scopedFiles.map(fileRef => deleteObject(fileRef)));
                 if (storageResults.some(result => result.status === "rejected")) throw new Error("Storage内の一部ファイルを削除できませんでした。Firestoreデータは残しています。");
                 await Promise.all(recordsSnapshot.docs.map(recordDoc => deleteDoc(recordDoc.ref)));
@@ -700,7 +709,7 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                     ...invoiceHistorySnapshot.docs.map(document => deleteDoc(document.ref)),
                     ...pairingCodesSnapshot.docs.map(document => deleteDoc(document.ref)),
                     ...lineLinksSnapshot.docs.map(document => deleteDoc(document.ref)),
-                    lineSettingsSnapshot.exists ? deleteDoc(lineSettingsSnapshot.ref) : Promise.resolve()
+                    lineSettingsSnapshot.exists() ? deleteDoc(lineSettingsSnapshot.ref) : Promise.resolve()
                 ]);
                 await deleteDoc(doc(db, "facilities", facilityId));
 
@@ -709,7 +718,15 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                 document.getElementById("facilityError").textContent = "";
                 alert(`${facilityName} を削除しました。`);
             } catch (error) {
-                document.getElementById("facilityError").textContent = "施設の削除に失敗しました: " + error.message;
+                const message = "施設の削除に失敗しました: " + error.message;
+                errorArea.textContent = message;
+                alert(message);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = originalButtonText;
+                    button.removeAttribute("aria-busy");
+                }
             }
         };
     </script>
