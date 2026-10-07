@@ -1562,6 +1562,7 @@
                 if (document.getElementById("userName").value !== userName) return;
                 const count = result.data.recipientCount || 0;
                 status.textContent = count > 0 ? `保護者LINE：${count}件連携済み` : "保護者LINE：未連携";
+                if (result.data.lineEnabled === false) status.textContent += "（共通LINE停止中）";
             } catch (error) {
                 if (document.getElementById("userName").value === userName) {
                     status.textContent = "LINE連携状況を取得できません。ログインし直してください。";
@@ -1583,7 +1584,9 @@
                 const settings = result.data;
                 status.textContent = settings.configured
                     ? `設定済み：${settings.displayName}（${settings.basicId}）`
-                    : "未設定：現在は共通のえこすまいる公式LINEを使用中";
+                    : settings.commonLineEnabled === false
+                        ? "未設定：共通LINEは停止中です。施設専用のLINEを設定するか、管理者へお問い合わせください。"
+                        : "未設定：管理者の許可により共通のえこすまいる公式LINEを使用中";
                 details.hidden = !settings.configured;
                 document.getElementById("facilityLineWebhookUrl").value = settings.webhookUrl;
             } catch (error) {
@@ -2643,10 +2646,12 @@
                 const getStatus = httpsCallable(functions, "getLineRecipientStatus");
                 const recordsWithRecipients = await Promise.all(records.map(async record => {
                     const result = await getStatus({ userName: record.userName });
-                    return { ...record, recipientCount: result.data.recipientCount || 0 };
+                    return { ...record, recipientCount: result.data.recipientCount || 0, lineEnabled: result.data.lineEnabled !== false };
                 }));
-                const linkedRecords = recordsWithRecipients.filter(record => record.recipientCount > 0);
-                if (!linkedRecords.length) return "";
+                const linkedRecords = recordsWithRecipients.filter(record => record.recipientCount > 0 && record.lineEnabled);
+                if (!linkedRecords.length) return recordsWithRecipients.some(record => !record.lineEnabled)
+                    ? "記録を保存しました。共通LINEは管理者により停止中のため、家族向けには公開していません。"
+                    : "";
 
                 const linkedNames = linkedRecords.map(record => `${record.userName} 様`).join("、");
                 if (!confirm(`${linkedNames} の連絡帳を家族向けに公開しますか？\n家族がLINEで「連絡帳を見る」を押すと確認できます。自動通知は送りません。`)) return "記録を保存しました。家族向けには公開していません。";

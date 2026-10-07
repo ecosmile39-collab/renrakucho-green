@@ -207,6 +207,7 @@
                     password,
                     email,
                     status: "active",
+                    commonLineEnabled: false,
                     createdAt: trialStartedAt.toISOString(),
                     subscriptionStatus: "trial",
                     trialStartedAt: trialStartedAt.toISOString(),
@@ -370,6 +371,7 @@
                 let invoice = latestInvoiceByFacility.get(facility.id);
                 let invoiceSent = Boolean(invoice);
                 let invoicePaid = invoice?.paymentStatus === "paid";
+                const commonLineEnabled = facility.commonLineEnabled !== false;
                 return `<div class="facility">
                     <div><div class="facility-name">${escapeHtml(facility.facilityName || facility.id)}</div>
                     <div style="margin-top: 6px; color: #1971c2; font-size: 14px; font-weight: bold;">🔑 パスワード：${escapeHtml(facility.password || "未設定")}</div>
@@ -382,12 +384,14 @@
                         <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; ${invoiceSent ? "cursor: pointer;" : "color: #868e96;"}"><input type="checkbox" data-facility-payment-id="${encodeURIComponent(facility.id)}" data-payment-status="unpaid" ${invoiceSent && !invoicePaid ? "checked" : ""} ${invoiceSent ? "" : "disabled"} style="width: auto; margin: 0;">未入金</label>
                         ${invoiceSent ? "" : "<span style=\"color:#868e96;\">請求書未発送</span>"}
                     </div>
-                    <span class="status ${statusClass}">${statusLabel}</span></div>
+                    <span class="status ${statusClass}">${statusLabel}</span>
+                    <div style="margin-top: 6px; font-size: 13px; font-weight: bold; color: ${commonLineEnabled ? "#237032" : "#c92a2a"};">共通LINE：${commonLineEnabled ? "許可中" : "停止中"}</div></div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                         <button type="button" style="background: #1971c2;" onclick="previewTestInvoice('${encodeURIComponent(facility.id)}')">🧾 テスト請求書PDFプレビュー</button>
                         <button type="button" style="background: #2f9e44;" onclick="sendTestInvoiceFromPreview('${encodeURIComponent(facility.id)}', this)">📧 テスト請求書メールを送信</button>
                         <button type="button" style="background: #495057;" onclick="showFacilityInvoiceHistory('${encodeURIComponent(facility.id)}')">📚 請求書履歴</button>
                         ${isTrial ? `<button type="button" style="background: #087f23;" onclick="activateFacilitySubscription('${encodeURIComponent(facility.id)}')">✅ 購入後の本利用へ切替</button>` : ""}
+                        <button type="button" style="background: ${commonLineEnabled ? "#c92a2a" : "#237032"};" title="この施設の共通LINEのみを切り替えます。施設専用LINEや入力・印刷には影響しません。" onclick="toggleCommonLine('${encodeURIComponent(facility.id)}', this)">${commonLineEnabled ? "⏸ 共通LINEを停止" : "▶ 共通LINEを許可"}</button>
                         <button class="${isLocked ? "unlock" : "lock"}" onclick="toggleFacility('${encodeURIComponent(facility.id)}', ${isLocked})">${isLocked ? "🔓 解除する" : "🔒 ロックする"}</button>
                         <button type="button" class="delete" onclick="deleteFacility('${encodeURIComponent(facility.id)}', this)">🗑️ 登録施設を削除</button>
                     </div>
@@ -667,6 +671,37 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                 renderFacilities();
             } catch (e) {
                 document.getElementById("facilityError").textContent = "状態変更に失敗しました: " + e.message;
+            }
+        };
+
+        window.toggleCommonLine = async function(encodedId, button) {
+            const facilityId = decodeURIComponent(encodedId);
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) { alert("施設一覧を更新してから操作してください。"); return; }
+            const enabled = facility.commonLineEnabled === false;
+            const facilityName = facility.facilityName || facilityId;
+            const description = enabled
+                ? "この施設が共通のえこすまいる公式LINEを利用できるようにします。"
+                : "この施設の新しいLINE連携と、共通LINE経由の連絡帳取得を停止します。";
+            if (!confirm(`${facilityName} の共通LINEを${enabled ? "許可" : "停止"}しますか？\n${description}\n保存済みの記録・LINE連携情報は削除しません。施設専用LINEや入力・印刷には影響しません。`)) return;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = "変更中...";
+            document.getElementById("facilityError").textContent = "";
+            try {
+                await updateDoc(doc(db, "facilities", facilityId), {
+                    commonLineEnabled: enabled,
+                    commonLineUpdatedAt: new Date().toISOString()
+                });
+                facility.commonLineEnabled = enabled;
+                renderFacilities();
+            } catch (error) {
+                const message = "共通LINEの設定変更に失敗しました: " + error.message;
+                document.getElementById("facilityError").textContent = message;
+                alert(message);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
             }
         };
 

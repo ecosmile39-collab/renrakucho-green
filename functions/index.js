@@ -218,6 +218,7 @@ exports.registerTrialFacility = onCall({ secrets: [FACILITY_REGISTRATION_KEY] },
         email,
         phone: phone || "未登録",
         status: "active",
+        commonLineEnabled: false,
         createdAt: trialStartedAt.toISOString(),
         subscriptionStatus: "trial",
         trialStartedAt: trialStartedAt.toISOString(),
@@ -468,6 +469,29 @@ function hashLineCode(value) {
     return crypto.createHash("sha256").update(value).digest("hex");
 }
 
+async function getFacilityLineAccess(facilityId) {
+    const db = getFirestore();
+    const [facilitySnapshot, settingsSnapshot] = await Promise.all([
+        db.collection("facilities").doc(facilityId).get(),
+        db.collection("facilityLineSettings").doc(facilityId).get()
+    ]);
+    const commonLineEnabled = facilitySnapshot.exists && facilitySnapshot.data().commonLineEnabled !== false;
+    return {
+        configured: settingsSnapshot.exists,
+        settings: settingsSnapshot.exists ? settingsSnapshot.data() : {},
+        commonLineEnabled,
+        lineEnabled: settingsSnapshot.exists || commonLineEnabled
+    };
+}
+
+async function requireFacilityLineAccess(facilityId) {
+    const access = await getFacilityLineAccess(facilityId);
+    if (!access.lineEnabled) {
+        throw new HttpsError("failed-precondition", "共通LINEの利用は管理者により停止されています。施設専用のLINEを設定するか、管理者へお問い合わせください。");
+    }
+    return access;
+}
+
 exports.createLinePairingCode = onCall(async request => {
     const facilityId = requireFacilityId(request);
     const userName = typeof request.data?.userName === "string" ? request.data.userName.trim() : "";
@@ -475,6 +499,7 @@ exports.createLinePairingCode = onCall(async request => {
         throw new HttpsError("invalid-argument", "利用者を確認できません。");
     }
     await verifyFacilityIsActive(facilityId);
+    const lineAccess = await requireFacilityLineAccess(facilityId);
 
     const userRef = getFirestore().collection("facilities").doc(facilityId).collection("users").doc(userName);
     const userSnapshot = await userRef.get();
@@ -489,8 +514,7 @@ exports.createLinePairingCode = onCall(async request => {
         createdAt: FieldValue.serverTimestamp(),
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
-    const lineSettingsSnapshot = await getFirestore().collection("facilityLineSettings").doc(facilityId).get();
-    const lineSettings = lineSettingsSnapshot.exists ? lineSettingsSnapshot.data() : {};
+    const lineSettings = lineAccess.settings;
     return {
         code,
         expiresInHours: 24,
@@ -507,6 +531,15 @@ async function connectLineUser(code, lineUserId, expectedFacilityId = "") {
         if (!codeSnapshot.exists) return { status: "invalid" };
         const pairing = codeSnapshot.data();
         if (expectedFacilityId && pairing.facilityId !== expectedFacilityId) return { status: "invalid" };
+        if (!expectedFacilityId) {
+            const [facilitySnapshot, settingsSnapshot] = await Promise.all([
+                transaction.get(db.collection("facilities").doc(pairing.facilityId)),
+                transaction.get(db.collection("facilityLineSettings").doc(pairing.facilityId))
+            ]);
+            if (!facilitySnapshot.exists || facilitySnapshot.data().commonLineEnabled === false || settingsSnapshot.exists) {
+                return { status: "disabled" };
+            }
+        }
         const expiration = pairing.expiresAt?.toDate ? pairing.expiresAt.toDate() : new Date(pairing.expiresAt);
         if (!Number.isFinite(expiration.getTime()) || expiration.getTime() <= Date.now()) {
             transaction.delete(codeRef);
@@ -649,6 +682,11 @@ exports.getLineSharedRecord = onCall(async request => {
     if (!Number.isFinite(expiration.getTime()) || expiration.getTime() <= Date.now()) {
         throw new HttpsError("unauthenticated", "閲覧リンクが無効か、有効期限が切れています。");
     }
+    const lineAccess = await getFacilityLineAccess(link.facilityId);
+    const sharedLink = link.lineAccountType === "shared" || (!link.lineAccountType && !lineAccess.configured);
+    if (sharedLink && !lineAccess.commonLineEnabled) {
+        throw new HttpsError("permission-denied", "この施設の共通LINEによる閲覧は停止されています。施設へお問い合わせください。");
+    }
 
     const recordRef = getFirestore().collection("facilities").doc(link.facilityId)
         .collection("daily_records").doc(`${link.date}_${link.serviceType}_${link.userName}`);
@@ -706,16 +744,19 @@ exports.getLineRecipientStatus = onCall(async request => {
     const userSnapshot = await userRef.get();
     if (!userSnapshot.exists) throw new HttpsError("not-found", "利用者名簿に登録されていません。");
     const lineUserIds = Array.isArray(userSnapshot.data().lineUserIds) ? userSnapshot.data().lineUserIds : [];
-    return { recipientCount: lineUserIds.length };
+    const lineAccess = await getFacilityLineAccess(facilityId);
+    return { recipientCount: lineUserIds.length, lineEnabled: lineAccess.lineEnabled };
 });
 
 exports.getFacilityLineSettingsStatus = onCall(async request => {
     const facilityId = requireFacilityId(request);
     await verifyFacilityIsActive(facilityId);
-    const snapshot = await getFirestore().collection("facilityLineSettings").doc(facilityId).get();
-    const settings = snapshot.exists ? snapshot.data() : {};
+    const access = await getFacilityLineAccess(facilityId);
+    const settings = access.settings;
     return {
-        configured: snapshot.exists,
+        configured: access.configured,
+        commonLineEnabled: access.commonLineEnabled,
+        lineEnabled: access.lineEnabled,
         displayName: settings.displayName || "",
         basicId: settings.basicId || "",
         webhookUrl: `${LINE_WEBHOOK_BASE_URL}/${encodeURIComponent(facilityId)}`
@@ -802,6 +843,7 @@ exports.removeFacilityLineSettings = onCall(async request => {
 exports.sendLineRecordNotification = onCall(async request => {
     const facilityId = requireFacilityId(request);
     await verifyFacilityIsActive(facilityId);
+    await requireFacilityLineAccess(facilityId);
     const { userName, date, serviceType } = request.data || {};
     if (typeof userName !== "string" || !userName || userName.length > 200 ||
         typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
@@ -843,6 +885,7 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
     const today = dateKey(getTokyoDateParts(new Date()));
     const available = [];
     let linked = false;
+    let blocked = false;
     for (const facilityDocument of facilities) {
         if (!facilityDocument.exists) continue;
         const facility = facilityDocument.data();
@@ -853,6 +896,10 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
             (await db.collection("facilityLineSettings").doc(facilityDocument.id).get()).exists) continue;
         const users = await facilityDocument.ref.collection("users")
             .where("lineUserIds", "array-contains", lineUserId).get();
+        if (!expectedFacilityId && facility.commonLineEnabled === false) {
+            if (!users.empty) blocked = true;
+            continue;
+        }
         if (!users.empty) linked = true;
         for (const userDocument of users.docs) {
             const records = await facilityDocument.ref.collection("daily_records")
@@ -868,6 +915,7 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
             }
         }
     }
+    if (!linked && blocked) return null;
     if (!linked) return "LINE連携が確認できません。施設から案内された連携コードを送信してください。";
     if (!available.length) return "公開済みの連絡帳はまだありません。時間をおいて再度ご確認ください。";
     const selected = available.sort((first, second) => second.date.localeCompare(first.date)).slice(0, 5);
@@ -878,6 +926,7 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
             userName: record.userName,
             date: record.date,
             serviceType: record.serviceType,
+            lineAccountType: expectedFacilityId ? "dedicated" : "shared",
             createdAt: FieldValue.serverTimestamp(),
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         });
@@ -924,7 +973,7 @@ async function handleLineMessagingWebhook(request, response, credentials, expect
         if (event.replyToken && event.source?.userId && isFamilyRecordRequest(event)) {
             try {
                 const reply = await getFamilyRecordReply(event.source.userId, expectedFacilityId);
-                await replyToLine(event.replyToken, reply, credentials.channelAccessToken);
+                if (reply !== null) await replyToLine(event.replyToken, reply, credentials.channelAccessToken);
             } catch (error) {
                 logger.error("LINE family record reply failed", { error });
                 await replyToLine(event.replyToken, "連絡帳を取得できませんでした。時間をおいて再度お試しください。", credentials.channelAccessToken).catch(() => {});
@@ -936,6 +985,7 @@ async function handleLineMessagingWebhook(request, response, credentials, expect
         if (!/^[A-F0-9]{12}$/.test(code)) continue;
         try {
             const result = await connectLineUser(code, event.source.userId, expectedFacilityId);
+            if (result.status === "disabled") continue;
             const reply = result.status === "linked"
                 ? `${result.userName} 様のLINE連携が完了しました。下の「連絡帳を見る」を押すと、公開済みの最新連絡帳を確認できます。施設からの自動通知はありません。`
                 : "連携コードが無効か、有効期限が切れています。施設へ新しいコードをお申し付けください。";

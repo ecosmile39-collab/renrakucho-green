@@ -12,18 +12,25 @@ function loadHandlers(entries) {
     function document(referencePath) {
         return {
             id: referencePath.split("/").at(-1),
+            path: referencePath,
             collection: name => collection(`${referencePath}/${name}`),
             async get() {
                 return { exists: documents.has(referencePath), id: this.id, ref: this,
                     data: () => documents.get(referencePath) };
             },
             async update(fields) { documents.set(referencePath, { ...documents.get(referencePath), ...fields }); },
-            async set(fields) { documents.set(referencePath, fields); }
+            async set(fields, options) { documents.set(referencePath, options?.merge ? { ...documents.get(referencePath), ...fields } : fields); }
         };
     }
     function collection(collectionPath, conditions = []) {
         return {
             doc: name => document(`${collectionPath}/${name}`),
+            limit: () => collection(collectionPath, conditions),
+            async add(fields) {
+                const reference = document(`${collectionPath}/generated-${documents.size}`);
+                await reference.set(fields);
+                return reference;
+            },
             where: (field, operator, value) => collection(collectionPath, [...conditions, { field, operator, value }]),
             async get() {
                 const docs = [];
@@ -39,14 +46,19 @@ function loadHandlers(entries) {
     }
     const mockRequire = name => {
         if (name === "firebase-admin/app") return { initializeApp() {} };
-        if (name === "firebase-admin/auth") return {};
+        if (name === "firebase-admin/auth") return { getAuth: () => ({ createCustomToken: async () => "test-custom-token" }) };
         if (name === "firebase-admin/firestore") return {
-            getFirestore: () => ({ collection }), FieldValue: { serverTimestamp: () => "timestamp" }
+            getFirestore: () => ({ collection, runTransaction: callback => callback({
+                get: reference => reference.get(),
+                set: (reference, fields, options) => reference.set(fields, options),
+                delete: reference => documents.delete(reference.path)
+            }) }), FieldValue: { serverTimestamp: () => "timestamp" }
         };
         if (name === "firebase-admin/storage") return {};
         if (name === "firebase-functions/v2/scheduler") return { onSchedule: (...args) => args.at(-1) };
         if (name === "firebase-functions/v2/https") return {
-            onCall: (...args) => args.at(-1), onRequest: (...args) => args.at(-1), HttpsError: Error
+            onCall: (...args) => args.at(-1), onRequest: (...args) => args.at(-1),
+            HttpsError: class extends Error { constructor(code, message) { super(message); this.code = code; } }
         };
         if (name === "firebase-functions/params") return { defineSecret: () => ({ value: () => "test-secret" }) };
         if (name === "firebase-functions/logger") return { warn() {}, error() {}, info() {} };
@@ -64,9 +76,9 @@ function loadHandlers(entries) {
     return { handlers: sandbox.exports, documents, requests };
 }
 
-async function sendFamilyEvent(context, userId) {
+async function sendFamilyEvent(context, userId, text = "連絡帳を見る") {
     const body = { events: [{ type: "message", source: { userId }, replyToken: "test-reply",
-        message: { type: "text", text: "連絡帳を見る" } }] };
+        message: { type: "text", text } }] };
     const rawBody = Buffer.from(JSON.stringify(body));
     const signature = crypto.createHmac("sha256", "test-secret").update(rawBody).digest("base64");
     const response = { status(value) { this.statusCode = value; return this; }, send(value) { this.body = value; return this; } };
@@ -144,4 +156,92 @@ test("common account cannot retrieve dedicated-account or expired-trial records"
     await sendFamilyEvent(context, "family-a");
     assert.match(context.requests[0].body.messages[0].text, /LINE連携が確認できません/);
     assert.equal([...context.documents.keys()].some(key => key.startsWith("lineRecordLinks/")), false);
+});
+
+test("disabled common LINE blocks pairing, publication and replies without removing stored records", async () => {
+    const recordPath = "facilities/facility-a/daily_records/2026-10-06_service_User";
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", commonLineEnabled: false },
+        "facilities/facility-a/users/User": { lineUserIds: ["family-a"] },
+        [recordPath]: { facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "service", familyPublished: true }
+    });
+    const request = { auth: { uid: "facility-a", token: { role: "facility" } }, data: { userName: "User", date: "2026-10-06", serviceType: "service" } };
+    await assert.rejects(context.handlers.createLinePairingCode(request), { code: "failed-precondition" });
+    await assert.rejects(context.handlers.sendLineRecordNotification(request), { code: "failed-precondition" });
+    await sendFamilyEvent(context, "family-a");
+    assert.equal(context.requests.length, 0);
+    assert.equal(context.documents.has(recordPath), true);
+    assert.equal([...context.documents.keys()].some(key => key.startsWith("lineRecordLinks/")), false);
+    context.documents.get("facilities/facility-a").commonLineEnabled = true;
+    await sendFamilyEvent(context, "family-a");
+    assert.equal(context.requests.length, 1);
+});
+
+test("dedicated LINE remains available when common LINE is disabled", async () => {
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", commonLineEnabled: false },
+        "facilityLineSettings/facility-a": { displayName: "Dedicated", basicId: "@dedicated" },
+        "facilities/facility-a/users/User": { lineUserIds: ["family-a"] },
+        "facilities/facility-a/daily_records/2026-10-06_service_User": { facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "service" }
+    });
+    const request = { auth: { uid: "facility-a", token: { role: "facility" } }, data: { userName: "User", date: "2026-10-06", serviceType: "service" } };
+    const status = await context.handlers.getFacilityLineSettingsStatus(request);
+    assert.equal(status.configured, true);
+    assert.equal(status.lineEnabled, true);
+    assert.equal((await context.handlers.createLinePairingCode(request)).officialAccountId, "@dedicated");
+    assert.equal((await context.handlers.sendLineRecordNotification(request)).published, true);
+});
+
+test("previously issued pairing code cannot bypass disabled common LINE", async () => {
+    const code = "ABCDEF123456";
+    const codeHash = crypto.createHash("sha256").update(code).digest("hex");
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", commonLineEnabled: false },
+        "facilities/facility-a/users/User": { lineUserIds: [] },
+        [`linePairingCodes/${codeHash}`]: { facilityId: "facility-a", userName: "User", expiresAt: new Date(Date.now() + 60000) }
+    });
+    await sendFamilyEvent(context, "family-a", code);
+    assert.equal(context.documents.get("facilities/facility-a/users/User").lineUserIds.length, 0);
+    assert.equal(context.requests.length, 0);
+    context.documents.get("facilities/facility-a").commonLineEnabled = true;
+    await sendFamilyEvent(context, "family-a", code);
+    assert.equal(context.documents.get("facilities/facility-a/users/User").lineUserIds.includes("family-a"), true);
+    assert.equal(context.documents.has(`linePairingCodes/${codeHash}`), false);
+    assert.equal(context.requests.length, 1);
+});
+
+test("issued shared viewing links are blocked after common LINE is stopped", async () => {
+    const token = "a".repeat(64);
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", commonLineEnabled: false },
+        [`lineRecordLinks/${hash}`]: { facilityId: "facility-a", lineAccountType: "shared", expiresAt: new Date(Date.now() + 60000) }
+    });
+    await assert.rejects(context.handlers.getLineSharedRecord({ data: { token } }), { code: "permission-denied" });
+    delete context.documents.get(`lineRecordLinks/${hash}`).lineAccountType;
+    await assert.rejects(context.handlers.getLineSharedRecord({ data: { token } }), { code: "permission-denied" });
+});
+
+test("new trial registrations disable common LINE by default", async () => {
+    const context = loadHandlers({});
+    const result = await context.handlers.registerTrialFacility({ data: {
+        registrationKey: "test-secret", acceptedTermsVersion: "2026-10-07-v1",
+        facilityName: "Test Facility", password: "test-password", email: "test@example.invalid"
+    } });
+    assert.equal(context.documents.get(`facilities/${result.facilityId}`).commonLineEnabled, false);
+});
+
+test("dedicated viewing links remain valid when common LINE is stopped", async () => {
+    const token = "b".repeat(64);
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", facilityName: "Dedicated Facility", commonLineEnabled: false },
+        "facilityLineSettings/facility-a": { basicId: "@dedicated" },
+        "facilities/facility-a/users/User": { photoNg: true },
+        "facilities/facility-a/daily_records/2026-10-06_service_User": { facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "service" },
+        [`lineRecordLinks/${hash}`]: { facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "service", lineAccountType: "dedicated", expiresAt: new Date(Date.now() + 60000) }
+    });
+    const result = await context.handlers.getLineSharedRecord({ data: { token } });
+    assert.equal(result.facilityName, "Dedicated Facility");
+    assert.equal(result.userName, "User");
 });
