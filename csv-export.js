@@ -1,5 +1,15 @@
 import Papa from "papaparse";
 
+const serviceTypes = ["デイサービス", "ショートステイ", "放課後等デイサービス", "児童発達支援", "生活介護"];
+
+export function selectUsers(users, filters) {
+    if (!serviceTypes.includes(filters.serviceType)) throw new Error("出力するサービスを選択してください。");
+    return users.filter(user => {
+        const services = Array.isArray(user.services) ? user.services : [user.serviceType || "デイサービス"];
+        return services.includes(filters.serviceType) && (!filters.userName || user.name === filters.userName);
+    });
+}
+
 const recordLabels = {
     careStaff: "担当職員", careJournal: "介護日誌", temp1: "来所時体温", temp2: "途中体温",
     pulse: "脈拍", spo2: "酸素飽和度", bpHigh: "血圧（上）", bpLow: "血圧（下）",
@@ -69,18 +79,19 @@ export function createCsv(table) {
     });
 }
 
-export function rosterTable(users, facility) {
+export function rosterTable(users, facility, serviceType = "") {
     const rows = [...users].sort((first, second) => first.name.localeCompare(second.name, "ja"));
     return [
         ["施設ID", "施設名", "氏名", "生年月日", "利用サービス", "利用中", "写真・動画NG", "排泄記録表示", "LINE連携件数", "登録日時"],
         ...rows.map(user => [facility.id, facility.name, user.name, user.birthday,
-            Array.isArray(user.services) ? user.services : [user.serviceType || "デイサービス"],
+            serviceType || (Array.isArray(user.services) ? user.services : [user.serviceType || "デイサービス"]),
             user.active !== false, user.photoNg === true, user.needExcretion === true,
             Array.isArray(user.lineUserIds) ? user.lineUserIds.length : 0, user.registeredAt])
     ];
 }
 
 export function selectRecords(records, filters) {
+    if (!serviceTypes.includes(filters.serviceType)) throw new Error("出力するサービスを選択してください。");
     const validDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value) &&
         Number.isFinite(Date.parse(`${value}T00:00:00Z`)) &&
         new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
@@ -90,7 +101,7 @@ export function selectRecords(records, filters) {
     return records.filter(record => (!record.facilityId || record.facilityId === filters.facilityId) &&
         validDate(record.date) && record.date >= filters.startDate && record.date <= filters.endDate &&
         (!filters.userName || record.userName === filters.userName) &&
-        (!filters.serviceType || (record.serviceType || "デイサービス") === filters.serviceType))
+        (record.serviceType || "デイサービス") === filters.serviceType)
         .sort((first, second) => first.date.localeCompare(second.date) ||
             String(first.userName).localeCompare(String(second.userName), "ja") ||
             String(first.serviceType || "デイサービス").localeCompare(String(second.serviceType || "デイサービス"), "ja"));

@@ -89,8 +89,7 @@
                 <label>利用者<select id="csvUser"><option value="">すべての利用者</option></select></label>
                 <label>開始日<input type="date" id="csvStartDate" required></label>
                 <label>終了日<input type="date" id="csvEndDate" required></label>
-                <label>サービス<select id="csvService">
-                    <option value="">すべてのサービス</option>
+                <label>サービス<select id="csvService" onchange="onCsvServiceChanged()">
                     <option value="デイサービス">デイサービス</option>
                     <option value="ショートステイ">ショートステイ</option>
                     <option value="放課後等デイサービス">放課後等デイサービス</option>
@@ -144,7 +143,7 @@
         import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { hasFacilitySession } from "./facility-auth.js";
         import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-        import { createCsv, rosterTable, selectRecords, recordsTable } from "./csv-export.js";
+        import { createCsv, rosterTable, selectUsers, selectRecords, recordsTable } from "./csv-export.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -161,6 +160,7 @@
 
         window.matchedRecordsGlobal = [];
         let currentHistoryView = "";
+        let exportUsers = [];
 
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
@@ -179,9 +179,10 @@
             document.getElementById("targetMonth").value = `${year}-${month}`;
             
             let savedServiceType = localStorage.getItem('currentServiceType');
-            if (savedServiceType) {
+            if (Array.from(document.getElementById("selectServiceType").options).some(option => option.value === savedServiceType)) {
                 document.getElementById("selectServiceType").value = savedServiceType;
             }
+            document.getElementById("csvService").value = document.getElementById("selectServiceType").value;
             document.getElementById("csvStartDate").value = `${year}-${month}-01`;
             document.getElementById("csvEndDate").value = `${year}-${month}-${String(today.getDate()).padStart(2, "0")}`;
             try {
@@ -223,14 +224,21 @@
         }
 
         function refreshExportUsers(users) {
+            exportUsers = users;
             const select = document.getElementById("csvUser");
             const selected = select.value;
             select.replaceChildren(new Option("すべての利用者", ""));
-            [...users].sort((first, second) => first.name.localeCompare(second.name, "ja")).forEach(user => {
+            const serviceUsers = selectUsers(users, { serviceType: document.getElementById("csvService").value });
+            serviceUsers.sort((first, second) => first.name.localeCompare(second.name, "ja")).forEach(user => {
                 select.add(new Option(`${user.name}${user.active === false ? "（利用終了）" : ""}`, user.name));
             });
             select.value = Array.from(select.options).some(option => option.value === selected) ? selected : "";
         }
+
+        window.onCsvServiceChanged = function() {
+            document.getElementById("selectServiceType").value = document.getElementById("csvService").value;
+            window.clearResults();
+        };
 
         function downloadCsv(table, filename) {
             const blob = new Blob([createCsv(table)], { type: "text/csv;charset=utf-8" });
@@ -246,19 +254,25 @@
 
         window.exportRosterCsv = async function() {
             const status = document.getElementById("csvExportStatus");
+            const filters = {
+                serviceType: document.getElementById("csvService").value,
+                userName: document.getElementById("csvUser").value
+            };
             setExportBusy(true);
             status.textContent = "利用者名簿を取得しています...";
             try {
+                selectUsers([], filters);
                 const facility = await requireExportFacility();
                 const users = await getExportUsers(facility.id);
                 refreshExportUsers(users);
-                if (!users.length) { status.textContent = "利用者名簿がありません。"; return; }
-                if (!confirm(`${facility.name} の全利用者名簿（${users.length}名・利用終了者を含む）をCSV出力しますか？\n氏名・生年月日を含むため、保存先と取り扱いにご注意ください。`)) {
+                const selectedUsers = selectUsers(users, filters);
+                if (!selectedUsers.length) { status.textContent = "指定したサービス・利用者の名簿はありません。"; return; }
+                if (!confirm(`${facility.name} の【${filters.serviceType}】の利用者名簿（${selectedUsers.length}名・利用終了者を含む）をCSV出力しますか？\n氏名・生年月日を含むため、保存先と取り扱いにご注意ください。`)) {
                     status.textContent = "CSV出力をキャンセルしました。";
                     return;
                 }
-                downloadCsv(rosterTable(users, facility), `${facility.name}_利用者名簿.csv`);
-                status.textContent = `利用者名簿 ${users.length}名分のCSVを作成しました。`;
+                downloadCsv(rosterTable(selectedUsers, facility, filters.serviceType), `${facility.name}_${filters.serviceType}_${filters.userName || "全利用者"}_利用者名簿.csv`);
+                status.textContent = `${filters.serviceType}の利用者名簿 ${selectedUsers.length}名分のCSVを作成しました。`;
             } catch (error) {
                 status.textContent = `CSV出力に失敗しました：${error.message}`;
             } finally {
@@ -286,12 +300,12 @@
                 const snapshot = await getDocs(recordsQuery);
                 const records = selectRecords(snapshot.docs.map(document => document.data()), filters);
                 if (!records.length) { status.textContent = "指定条件の記録はありません。"; return; }
-                if (!confirm(`${facility.name} の ${filters.startDate} ～ ${filters.endDate} の記録（${records.length}件）をCSV出力しますか？\n健康情報・職員間申し送りを含むため、保存先と取り扱いにご注意ください。`)) {
+                if (!confirm(`${facility.name} の【${filters.serviceType}】の ${filters.startDate} ～ ${filters.endDate} の記録（${records.length}件）をCSV出力しますか？\n健康情報・職員間申し送りを含むため、保存先と取り扱いにご注意ください。`)) {
                     status.textContent = "CSV出力をキャンセルしました。";
                     return;
                 }
-                downloadCsv(recordsTable(records, facility), `${facility.name}_${filters.userName || "全利用者"}_${filters.serviceType || "全サービス"}_${filters.startDate}_${filters.endDate}_記録.csv`);
-                status.textContent = `記録 ${records.length}件のCSVを作成しました。`;
+                downloadCsv(recordsTable(records, facility), `${facility.name}_${filters.userName || "全利用者"}_${filters.serviceType}_${filters.startDate}_${filters.endDate}_記録.csv`);
+                status.textContent = `${filters.serviceType}の記録 ${records.length}件のCSVを作成しました。`;
             } catch (error) {
                 status.textContent = `CSV出力に失敗しました：${error.message}`;
             } finally {
@@ -300,6 +314,9 @@
         };
 
         window.clearResults = function() {
+            document.getElementById("csvService").value = document.getElementById("selectServiceType").value;
+            refreshExportUsers(exportUsers);
+            document.getElementById("csvExportStatus").textContent = "";
             document.getElementById("userSelectBox").style.display = "none";
             document.getElementById("staffSelectBox").style.display = "none";
             document.getElementById("auditSelectBox").style.display = "none";

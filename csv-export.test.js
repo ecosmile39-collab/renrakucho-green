@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import Papa from "papaparse";
-import { createCsv, rosterTable, selectRecords, recordsTable } from "./csv-export.js";
+import { createCsv, rosterTable, selectUsers, selectRecords, recordsTable } from "./csv-export.js";
 
 const facility = { id: "facility-a", name: "テスト施設" };
 
@@ -36,9 +36,10 @@ test("inclusive date filters isolate facility, user and service, including legac
         { facilityId: facility.id, userName: "架空 花子", date: "2026-10-03" },
         { facilityId: facility.id, userName: "架空 太郎", date: "2026-09-30" }
     ];
-    const filters = { facilityId: facility.id, startDate: "2026-10-01", endDate: "2026-10-07", userName: "架空 太郎" };
-    assert.deepEqual(selectRecords(records, filters), [records[1], records[0]]);
-    assert.deepEqual(selectRecords(records, { ...filters, serviceType: "デイサービス" }), [records[1]]);
+    const filters = { facilityId: facility.id, startDate: "2026-10-01", endDate: "2026-10-07", userName: "架空 太郎", serviceType: "デイサービス" };
+    assert.deepEqual(selectRecords(records, filters), [records[1]]);
+    assert.deepEqual(selectRecords(records, { ...filters, serviceType: "生活介護" }), [records[0]]);
+    assert.throws(() => selectRecords(records, { ...filters, serviceType: "" }), /サービス/);
     assert.throws(() => selectRecords(records, { ...filters, startDate: "2026-10-08" }));
     assert.throws(() => selectRecords(records, { ...filters, startDate: "2026-02-30" }));
 });
@@ -58,4 +59,29 @@ test("record columns retain all five service types, timestamps and additional fi
     assert.equal(parsed[5].includes("残す"), true);
     assert.equal(parsed[5].includes("2026-10-07T06:00:00.000Z"), true);
     assert.deepEqual(recordsTable([], facility)[0], ["施設ID", "施設名", "日付", "氏名", "利用サービス"]);
+});
+
+test("each of five services exports only its own records for the same user and day", () => {
+    const services = ["デイサービス", "ショートステイ", "放課後等デイサービス", "児童発達支援", "生活介護"];
+    const records = services.map(serviceType => ({ facilityId: facility.id, userName: "架空 太郎", date: "2026-10-07", serviceType }));
+    for (const serviceType of services) {
+        const selected = selectRecords(records, { facilityId: facility.id, startDate: "2026-10-07", endDate: "2026-10-07", serviceType });
+        const parsed = Papa.parse(createCsv(recordsTable(selected, facility))).data;
+        assert.equal(parsed.length, 2);
+        assert.equal(parsed[1][4], serviceType);
+    }
+});
+
+test("service-specific roster filters members, preserves inactive users and labels only the selected service", () => {
+    const users = [
+        { name: "架空 太郎", services: ["デイサービス", "生活介護"], active: false },
+        { name: "架空 花子", serviceType: "生活介護" },
+        { name: "旧名簿" }
+    ];
+    const selected = selectUsers(users, { serviceType: "デイサービス" });
+    assert.deepEqual(selected, [users[0], users[2]]);
+    assert.deepEqual(selectUsers(users, { serviceType: "生活介護", userName: "架空 花子" }), [users[1]]);
+    const parsed = Papa.parse(createCsv(rosterTable(selected, facility, "デイサービス"))).data;
+    assert.equal(parsed.slice(1).every(row => row[4] === "デイサービス"), true);
+    assert.throws(() => selectUsers(users, { serviceType: "" }), /サービス/);
 });
