@@ -1153,6 +1153,14 @@
             printWindow.onload = () => printWindow.print();
         };
 
+        function redirectUnavailableFacility(locked) {
+            localStorage.removeItem("currentFacilityId");
+            localStorage.removeItem("currentFacilityName");
+            localStorage.removeItem("isStaffAuthenticated");
+            if (locked) alert("現在、この施設のシステム利用を停止しています。詳しくは販売元へお問い合わせください。");
+            window.location.replace(locked ? "login.html?notice=stopped" : "login.html");
+        }
+
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; } 
@@ -1168,14 +1176,21 @@
             try {
                 facilitySnapshot = await getDoc(doc(db, "facilities", facilityId));
             } catch (error) {
+                try {
+                    const checkStatus = httpsCallable(functions, "getFacilityAccessStatus");
+                    const result = await checkStatus({});
+                    if (result.data.status === "locked" || result.data.status === "missing") {
+                        redirectUnavailableFacility(result.data.status === "locked");
+                        return;
+                    }
+                } catch (statusError) {
+                    console.warn("施設の停止状態を確認できませんでした:", statusError);
+                }
                 alert("施設の利用状態を確認できませんでした。通信環境を確認して再読み込みしてください。");
                 return;
             }
             if (!facilitySnapshot.exists() || facilitySnapshot.data().status === "locked") {
-                localStorage.removeItem("currentFacilityId");
-                localStorage.removeItem("currentFacilityName");
-                localStorage.removeItem("isStaffAuthenticated");
-                window.location.replace("login.html");
+                redirectUnavailableFacility(facilitySnapshot.exists() && facilitySnapshot.data().status === "locked");
                 return;
             }
 

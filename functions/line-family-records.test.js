@@ -245,3 +245,21 @@ test("dedicated viewing links remain valid when common LINE is stopped", async (
     assert.equal(result.facilityName, "Dedicated Facility");
     assert.equal(result.userName, "User");
 });
+
+test("facility can check only its own access status without receiving private data", async () => {
+    const context = loadHandlers({
+        "facilities/locked": { status: "locked", password: "private-password", email: "private@example.invalid" },
+        "facilities/active": { status: "active" }
+    });
+    const locked = await context.handlers.getFacilityAccessStatus({
+        auth: { uid: "locked", token: { role: "facility" } }, data: { facilityId: "active" }
+    });
+    assert.equal(locked.status, "locked");
+    assert.deepEqual(Object.keys(locked), ["status"]);
+    const active = await context.handlers.getFacilityAccessStatus({ auth: { uid: "active", token: { role: "facility" } } });
+    assert.equal(active.status, "active");
+    const missing = await context.handlers.getFacilityAccessStatus({ auth: { uid: "missing", token: { role: "facility" } } });
+    assert.equal(missing.status, "missing");
+    await assert.rejects(context.handlers.getFacilityAccessStatus({}), { code: "unauthenticated" });
+    await assert.rejects(context.handlers.getFacilityAccessStatus({ auth: { uid: "locked", token: { role: "admin" } } }), { code: "unauthenticated" });
+});

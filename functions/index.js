@@ -66,7 +66,7 @@ exports.createFacilitySession = onCall(async request => {
         throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
     }
     if (data.status === "locked") {
-        throw new HttpsError("permission-denied", "システムが利用停止中です。管理者にお問い合わせください。");
+        throw new HttpsError("permission-denied", "現在、この施設のシステム利用を停止しています。詳しくは販売元へお問い合わせください。");
     }
     if (data.subscriptionStatus === "trial") {
         const trialEndsAt = Date.parse(data.trialEndsAt || "");
@@ -731,6 +731,12 @@ exports.getLineSharedRecord = onCall(async request => {
         fields: getFamilyVisibleFields(record),
         attachments
     };
+});
+
+exports.getFacilityAccessStatus = onCall(async request => {
+    const facilityId = requireFacilityId(request);
+    const snapshot = await getFirestore().collection("facilities").doc(facilityId).get();
+    return { status: !snapshot.exists ? "missing" : snapshot.data().status === "locked" ? "locked" : "active" };
 });
 
 exports.getLineRecipientStatus = onCall(async request => {

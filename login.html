@@ -77,6 +77,7 @@
         const functions = getFunctions(app);
         const db = getFirestore(app);
         const TERMS_VERSION = "2026-10-07-v1";
+        const FACILITY_PAUSE_MESSAGE = "現在、この施設のシステム利用を停止しています。詳しくは販売元へお問い合わせください。";
         function isTrialExpired(facilityData) {
             if (facilityData.subscriptionStatus !== "trial") return false;
             const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
@@ -84,6 +85,11 @@
         }
 
         window.onload = async function() {
+            if (new URLSearchParams(window.location.search).get("notice") === "stopped") {
+                const errorMsg = document.getElementById("loginError");
+                errorMsg.textContent = FACILITY_PAUSE_MESSAGE;
+                errorMsg.style.display = "block";
+            }
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId || localStorage.getItem("isStaffAuthenticated") !== "true") return;
 
@@ -109,12 +115,27 @@
                     window.location.replace("index.html");
                     return;
                 }
-                if (facilityData && isTrialExpired(facilityData)) {
+                if (facilityData && facilityData.status === "locked") {
+                    const errorMsg = document.getElementById("loginError");
+                    errorMsg.textContent = FACILITY_PAUSE_MESSAGE;
+                    errorMsg.style.display = "block";
+                } else if (facilityData && isTrialExpired(facilityData)) {
                     const errorMsg = document.getElementById("loginError");
                     errorMsg.textContent = "無料お試し期間が終了しました。利用を続ける場合は販売元へお問い合わせください。";
                     errorMsg.style.display = "block";
                 }
             } catch (error) {
+                try {
+                    const checkStatus = httpsCallable(functions, "getFacilityAccessStatus");
+                    const result = await checkStatus({});
+                    if (result.data.status === "locked") {
+                        const errorMsg = document.getElementById("loginError");
+                        errorMsg.textContent = FACILITY_PAUSE_MESSAGE;
+                        errorMsg.style.display = "block";
+                    }
+                } catch (statusError) {
+                    console.warn("施設の停止状態を確認できませんでした:", statusError);
+                }
                 console.warn("保存済み施設ログインを確認できませんでした:", error);
             }
 
