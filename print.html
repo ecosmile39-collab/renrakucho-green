@@ -27,8 +27,16 @@
 
         .user-select-box { background-color: #fff; padding: 20px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .user-checkbox-wrapper { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px; margin-bottom: 20px; }
+        #userCheckboxes { display: block; }
+        .line-user-group { margin: 18px 0; }
+        .line-user-group h3 { margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid #ced4da; font-size: 16px; color: #495057; }
+        .line-user-group[data-line-linked="true"] h3 { color: #237032; }
+        .line-user-group .user-checkbox-wrapper { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .line-user-group .user-checkbox-label { min-width: 0; overflow-wrap: anywhere; }
         @media (max-width: 800px) { .user-checkbox-wrapper { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 500px) { .user-checkbox-wrapper { grid-template-columns: 1fr; } }
+        @media (max-width: 800px) { .line-user-group .user-checkbox-wrapper { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 500px) { .line-user-group .user-checkbox-wrapper { grid-template-columns: minmax(0, 1fr); } }
         
         .user-row { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 8px; background-color: #f9f9f9; padding: 12px 15px; border: 1px solid #eee; border-radius: 5px; width: 100%; box-sizing: border-box; }
         .user-row:hover { background-color: #e6f2ff; border-color: #2b8a3e; }
@@ -651,8 +659,33 @@
 
                 checkboxesArea.innerHTML = "";
                 document.getElementById("checkAll").checked = true;
+
+                const userNames = Array.from(uniqueUsers).sort();
+                const lineGroups = new Map();
+                for (const linked of [false, true]) {
+                    const members = userNames.filter(name => {
+                        const lineUserIds = window.globalUsersData[name]?.lineUserIds;
+                        return (Array.isArray(lineUserIds) && lineUserIds.length > 0) === linked;
+                    });
+                    const section = document.createElement("section");
+                    section.className = "line-user-group";
+                    section.dataset.lineLinked = String(linked);
+                    const heading = document.createElement("h3");
+                    heading.textContent = `${linked ? "LINE連携済み" : "LINE未連携"}（${members.length}名）`;
+                    section.appendChild(heading);
+                    const list = document.createElement("div");
+                    list.className = "user-checkbox-wrapper";
+                    if (!members.length) {
+                        const empty = document.createElement("p");
+                        empty.textContent = "対象の利用者はいません。";
+                        section.appendChild(empty);
+                    }
+                    section.appendChild(list);
+                    checkboxesArea.appendChild(section);
+                    lineGroups.set(linked, list);
+                }
                 
-                Array.from(uniqueUsers).sort().forEach((userName) => {
+                userNames.forEach((userName) => {
                     let uData = window.globalUsersData[userName];
                     let isCardOnly = document.getElementById("selectPrintTarget").value === "card_only";
                     let bData = getBirthdayData(uData ? uData.birthday : null, endDate, sType === "ショートステイ", startDate, endDate, isCardOnly);
@@ -689,7 +722,7 @@
                         div.appendChild(msgInput);
                     }
                     
-                    checkboxesArea.appendChild(div);
+                    lineGroups.get(linkedLineCount > 0).appendChild(div);
                 });
 
                 document.getElementById("batchPrintBtn").style.display = "block";
