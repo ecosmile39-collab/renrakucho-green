@@ -12,6 +12,7 @@ const logger = require("firebase-functions/logger");
 const nodemailer = require("nodemailer");
 const { GoogleAuth } = require("google-auth-library");
 const { decryptCredentials, encryptCredentials } = require("./line-credential-crypto");
+const { isFamilyRecordRequest, latestPublishedRecords } = require("./line-family-records");
 
 initializeApp();
 
@@ -28,7 +29,7 @@ const FACILITY_REGISTRATION_KEY = defineSecret("FACILITY_REGISTRATION_KEY");
 const LINE_CHANNEL_ACCESS_TOKEN = defineSecret("LINE_CHANNEL_ACCESS_TOKEN");
 const LINE_CHANNEL_SECRET = defineSecret("LINE_CHANNEL_SECRET");
 const FACILITY_LINE_ENCRYPTION_KEY = defineSecret("FACILITY_LINE_ENCRYPTION_KEY");
-const CURRENT_TERMS_VERSION = "2026-10-06-v1";
+const CURRENT_TERMS_VERSION = "2026-10-07-v1";
 const LINE_RECORD_BASE_URL = "https://renrakucho-green.vercel.app/line-record.html";
 const LINE_WEBHOOK_BASE_URL = "https://us-central1-renrakucho-app-6b157.cloudfunctions.net/facilityLineMessagingWebhook";
 const companyStampPng = readFileSync(path.join(__dirname, "company_stamp.png"));
@@ -538,7 +539,11 @@ async function replyToLine(replyToken, text, channelAccessToken) {
             Authorization: `Bearer ${channelAccessToken}`,
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ replyToken, messages: [{ type: "text", text }] })
+        body: JSON.stringify({ replyToken, messages: [{ type: "text", text,
+            quickReply: { items: [{ type: "action", action: {
+                type: "message", label: "連絡帳を見る", text: "連絡帳を見る"
+            } }] }
+        }] })
     });
     if (!response.ok) {
         logger.warn("LINE webhook reply failed", { status: response.status });
@@ -794,9 +799,7 @@ exports.removeFacilityLineSettings = onCall(async request => {
     return { removed: true };
 });
 
-exports.sendLineRecordNotification = onCall({
-    secrets: [FACILITY_LINE_ENCRYPTION_KEY, LINE_CHANNEL_ACCESS_TOKEN]
-}, async request => {
+exports.sendLineRecordNotification = onCall(async request => {
     const facilityId = requireFacilityId(request);
     await verifyFacilityIsActive(facilityId);
     const { userName, date, serviceType } = request.data || {};
@@ -815,40 +818,73 @@ exports.sendLineRecordNotification = onCall({
     if (!userSnapshot.exists || !recordSnapshot.exists) {
         throw new HttpsError("not-found", "利用者または連絡帳が見つかりません。");
     }
+    const record = recordSnapshot.data();
+    if (record.facilityId !== facilityId || record.userName !== userName ||
+        record.date !== date || record.serviceType !== serviceType) {
+        throw new HttpsError("permission-denied", "連絡帳を確認できません。");
+    }
     const lineUserIds = Array.isArray(userSnapshot.data().lineUserIds) ? userSnapshot.data().lineUserIds : [];
     if (!lineUserIds.length) {
         throw new HttpsError("failed-precondition", "保護者のLINE連携がまだ完了していません。");
     }
 
-    const facilityLineCredentials = await getFacilityLineCredentials(facilityId);
-    const channelAccessToken = facilityLineCredentials?.channelAccessToken || LINE_CHANNEL_ACCESS_TOKEN.value();
-
-    const token = crypto.randomBytes(32).toString("hex");
-    await db.collection("lineRecordLinks").doc(hashLineCode(token)).set({
-        facilityId,
-        userName,
-        date,
-        serviceType,
-        createdAt: FieldValue.serverTimestamp(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    await recordSnapshot.ref.update({
+        familyPublished: true,
+        familyPublishedAt: FieldValue.serverTimestamp()
     });
-    const recordUrl = `${LINE_RECORD_BASE_URL}?token=${token}`;
-    const message = `${userName} 様の ${date} の連絡帳をお届けします。\n次のリンクからご確認ください（7日間有効）：\n${recordUrl}`;
-    const results = await Promise.allSettled(lineUserIds.map(lineUserId => fetch("https://api.line.me/v2/bot/message/push", {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${channelAccessToken}`,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ to: lineUserId, messages: [{ type: "text", text: message }] })
-    })));
-    const failures = results.filter(result => result.status === "rejected" || !result.value.ok);
-    if (failures.length) {
-        logger.error("LINE record notification failed", { facilityId, failedCount: failures.length, recipientCount: lineUserIds.length });
-        throw new HttpsError("unavailable", `LINE通知に失敗しました（${lineUserIds.length - failures.length}/${lineUserIds.length}件送信）。記録自体は保存されています。`);
-    }
-    return { recipientCount: lineUserIds.length, expiresInDays: 7 };
+    return { recipientCount: lineUserIds.length, published: true };
 });
+
+async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
+    const db = getFirestore();
+    const facilities = expectedFacilityId
+        ? [await db.collection("facilities").doc(expectedFacilityId).get()]
+        : (await db.collection("facilities").where("status", "==", "active").get()).docs;
+    const today = dateKey(getTokyoDateParts(new Date()));
+    const available = [];
+    let linked = false;
+    for (const facilityDocument of facilities) {
+        if (!facilityDocument.exists) continue;
+        const facility = facilityDocument.data();
+        if (facility.status === "locked") continue;
+        if (facility.subscriptionStatus === "trial" &&
+            !(Date.parse(facility.trialEndsAt || "") > Date.now())) continue;
+        if (!expectedFacilityId &&
+            (await db.collection("facilityLineSettings").doc(facilityDocument.id).get()).exists) continue;
+        const users = await facilityDocument.ref.collection("users")
+            .where("lineUserIds", "array-contains", lineUserId).get();
+        if (!users.empty) linked = true;
+        for (const userDocument of users.docs) {
+            const records = await facilityDocument.ref.collection("daily_records")
+                .where("userName", "==", userDocument.id).get();
+            const matching = records.docs.filter(document => {
+                const record = document.data();
+                return record.facilityId === facilityDocument.id && record.userName === userDocument.id &&
+                    typeof record.serviceType === "string" && record.serviceType.length <= 100 &&
+                    document.id === `${record.date}_${record.serviceType}_${record.userName}`;
+            }).map(document => document.data());
+            for (const record of latestPublishedRecords(matching, today)) {
+                available.push({ ...record, facilityName: facility.facilityName || facilityDocument.id });
+            }
+        }
+    }
+    if (!linked) return "LINE連携が確認できません。施設から案内された連携コードを送信してください。";
+    if (!available.length) return "公開済みの連絡帳はまだありません。時間をおいて再度ご確認ください。";
+    const selected = available.sort((first, second) => second.date.localeCompare(first.date)).slice(0, 5);
+    const links = await Promise.all(selected.map(async record => {
+        const token = crypto.randomBytes(32).toString("hex");
+        await db.collection("lineRecordLinks").doc(hashLineCode(token)).set({
+            facilityId: record.facilityId,
+            userName: record.userName,
+            date: record.date,
+            serviceType: record.serviceType,
+            createdAt: FieldValue.serverTimestamp(),
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        });
+        return `${record.facilityName}\n${record.userName} 様・${record.date}（${record.serviceType}）\n${LINE_RECORD_BASE_URL}?token=${token}`;
+    }));
+    return `最新の公開連絡帳です（最大5件・閲覧リンクは7日間有効）。\n\n${links.join("\n\n")}`;
+}
 
 exports.deleteExpiredLineLinks = onSchedule({
     schedule: "every day 04:30",
@@ -885,13 +921,23 @@ async function handleLineMessagingWebhook(request, response, credentials, expect
 
     const events = Array.isArray(request.body?.events) ? request.body.events : [];
     for (const event of events) {
+        if (event.replyToken && event.source?.userId && isFamilyRecordRequest(event)) {
+            try {
+                const reply = await getFamilyRecordReply(event.source.userId, expectedFacilityId);
+                await replyToLine(event.replyToken, reply, credentials.channelAccessToken);
+            } catch (error) {
+                logger.error("LINE family record reply failed", { error });
+                await replyToLine(event.replyToken, "連絡帳を取得できませんでした。時間をおいて再度お試しください。", credentials.channelAccessToken).catch(() => {});
+            }
+            continue;
+        }
         if (event.type !== "message" || event.message?.type !== "text" || !event.replyToken || !event.source?.userId) continue;
         const code = event.message.text.trim().toUpperCase();
         if (!/^[A-F0-9]{12}$/.test(code)) continue;
         try {
             const result = await connectLineUser(code, event.source.userId, expectedFacilityId);
             const reply = result.status === "linked"
-                ? `${result.userName} 様の連絡帳を受け取るLINE連携が完了しました。`
+                ? `${result.userName} 様のLINE連携が完了しました。下の「連絡帳を見る」を押すと、公開済みの最新連絡帳を確認できます。施設からの自動通知はありません。`
                 : "連携コードが無効か、有効期限が切れています。施設へ新しいコードをお申し付けください。";
             await replyToLine(event.replyToken, reply, credentials.channelAccessToken);
         } catch (error) {

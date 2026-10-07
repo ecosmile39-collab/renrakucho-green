@@ -1656,7 +1656,7 @@
             try {
                 const createCode = httpsCallable(functions, "createLinePairingCode");
                 const result = await createCode({ userName });
-                alert(`公式LINE「${result.data.officialAccountName}」（${result.data.officialAccountId}）を友だち追加し、トークに次のコードを送ってもらってください。\n\n${result.data.code}\n\nコードの有効期限は24時間です。保護者本人へ個別にお伝えください。`);
+                alert(`公式LINE「${result.data.officialAccountName}」（${result.data.officialAccountId}）を友だち追加し、トークに次のコードを送ってもらってください。\n\n${result.data.code}\n\nコードの有効期限は24時間です。保護者本人へ個別にお伝えください。連携後は、LINEの「連絡帳を見る」を押すと最新の公開連絡帳が届きます。施設からの自動通知はありません。`);
                 refreshLineRecipientStatus(userName);
             } catch (error) {
                 alert("LINE連携コードを発行できませんでした: " + getErrorMessage(error));
@@ -2648,7 +2648,7 @@
                 if (!linkedRecords.length) return "";
 
                 const linkedNames = linkedRecords.map(record => `${record.userName} 様`).join("、");
-                if (!confirm(`${linkedNames} の保護者LINEへ、連絡帳の閲覧リンクを送信しますか？\nリンクは7日間有効です。`)) return "";
+                if (!confirm(`${linkedNames} の連絡帳を家族向けに公開しますか？\n家族がLINEで「連絡帳を見る」を押すと確認できます。自動通知は送りません。`)) return "記録を保存しました。家族向けには公開していません。";
 
                 const sendNotification = httpsCallable(functions, "sendLineRecordNotification");
                 const results = await Promise.allSettled(linkedRecords.map(record => sendNotification({
@@ -2657,10 +2657,10 @@
                     serviceType: record.serviceType
                 })));
                 const successCount = results.filter(result => result.status === "fulfilled").length;
-                if (successCount === linkedRecords.length) return `保護者LINE ${successCount}件へ閲覧リンクを送信しました。`;
-                return `記録は保存済みですが、LINE通知は${successCount}/${linkedRecords.length}件です。未送信分は連絡帳を再送してください。`;
+                if (successCount === linkedRecords.length) return `${successCount}件の連絡帳を家族向けに公開しました。家族がLINEの「連絡帳を見る」を押すと確認できます。自動通知はありません。`;
+                return `記録は保存済みですが、家族向け公開は${successCount}/${linkedRecords.length}件です。公開できなかった記録は再保存して公開してください。`;
             } catch (error) {
-                return `記録は保存済みですが、LINE通知の確認に失敗しました: ${getErrorMessage(error)}`;
+                return `記録は保存済みですが、家族向け公開の確認に失敗しました: ${getErrorMessage(error)}`;
             }
         }
 
