@@ -101,7 +101,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { initializeAuth, browserSessionPersistence, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { initializeFirestore, collection, getDocs, getDocsFromServer, getDoc, doc, documentId, updateDoc, deleteDoc, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
@@ -115,8 +115,8 @@
             appId: "1:63418706991:web:43085ce485d2a3d6302ada"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
+        const app = initializeApp(firebaseConfig, "admin-control-panel");
+        const auth = initializeAuth(app, { persistence: browserSessionPersistence });
         const db = initializeFirestore(app, { experimentalForceLongPolling: true });
         const storage = getStorage(app);
         const functions = getFunctions(app);
@@ -696,7 +696,10 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                 facility.commonLineEnabled = enabled;
                 renderFacilities();
             } catch (error) {
-                const message = "共通LINEの設定変更に失敗しました: " + error.message;
+                const permissionError = error.code === "permission-denied";
+                const message = permissionError
+                    ? "管理者権限を確認できず、共通LINEの設定は変更していません。Ctrl + F5で管理画面を再読み込みし、管理者として認証し直してください。"
+                    : "共通LINEの設定変更に失敗しました: " + error.message;
                 document.getElementById("facilityError").textContent = message;
                 alert(message);
             } finally {
