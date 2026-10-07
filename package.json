@@ -1,0 +1,11 @@
+{
+  "name": "renrakucho-green",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:csv": "node --test csv-export.test.js"
+  },
+  "devDependencies": {
+    "papaparse": "5.5.3"
+  }
+}

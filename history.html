@@ -38,6 +38,21 @@
         table.history-table tr:nth-child(even) { background-color: #fdfdfd; }
         
         .empty-msg { text-align: center; color: red; font-weight: bold; padding: 20px; }
+
+        .csv-export-panel { margin: 24px 0; padding: 20px 0; border-top: 1px solid #ced4da; border-bottom: 1px solid #ced4da; }
+        .csv-export-panel h3 { margin: 0 0 16px; color: #2b8a3e; font-size: 18px; }
+        .csv-export-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .csv-export-fields label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: bold; min-width: 0; }
+        .csv-export-fields input, .csv-export-fields select { width: 100%; box-sizing: border-box; min-width: 0; padding: 9px; font-size: 16px; border: 1px solid #adb5bd; border-radius: 4px; }
+        .csv-export-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+        .csv-export-actions button { padding: 10px 14px; border: 0; border-radius: 4px; background: #2b8a3e; color: white; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .csv-export-actions button:disabled { opacity: 0.55; cursor: wait; }
+        #csvExportStatus { min-height: 24px; margin: 12px 0 0; color: #495057; font-size: 14px; overflow-wrap: anywhere; }
+        @media (max-width: 520px) {
+            .csv-export-panel { padding-right: 60px; }
+            .csv-export-fields { grid-template-columns: minmax(0, 1fr); }
+            .csv-export-actions button { flex: 1 1 100%; }
+        }
         
         .scroll-btn-group { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
         .scroll-btn { background-color: #2b8a3e; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; opacity: 0.8; }
@@ -66,6 +81,29 @@
             <button class="btn-search" onclick="searchData()">この月のデータを探す</button>
             <button class="btn-show" id="auditResultsBtn" onclick="showAuditResults()" style="display: none; background-color: #7950f2;">📚 月別監査保存用一覧を表示</button>
         </div>
+
+        <section class="csv-export-panel" aria-labelledby="csvExportTitle">
+            <h3 id="csvExportTitle">CSV出力</h3>
+            <div class="csv-export-fields">
+                <label>施設<select id="csvFacility" disabled><option value="">施設確認中...</option></select></label>
+                <label>利用者<select id="csvUser"><option value="">すべての利用者</option></select></label>
+                <label>開始日<input type="date" id="csvStartDate" required></label>
+                <label>終了日<input type="date" id="csvEndDate" required></label>
+                <label>サービス<select id="csvService">
+                    <option value="">すべてのサービス</option>
+                    <option value="デイサービス">デイサービス</option>
+                    <option value="ショートステイ">ショートステイ</option>
+                    <option value="放課後等デイサービス">放課後等デイサービス</option>
+                    <option value="児童発達支援">児童発達支援</option>
+                    <option value="生活介護">生活介護</option>
+                </select></label>
+            </div>
+            <div class="csv-export-actions">
+                <button type="button" id="exportRosterButton" onclick="exportRosterCsv()" disabled>📥 利用者名簿CSV</button>
+                <button type="button" id="exportRecordsButton" onclick="exportRecordsCsv()" disabled>📥 指定期間の記録CSV</button>
+            </div>
+            <p id="csvExportStatus" role="status" aria-live="polite"></p>
+        </section>
 
         <div class="user-select-box" id="userSelectBox" style="display: none;">
             <div style="font-weight: bold; color: #1c7ed6; margin-bottom: 10px;">☑ まとめを作成するお客様を選んでください</div>
@@ -98,11 +136,15 @@
         <button class="scroll-btn" onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})">▼</button>
     </div>
 
+    <script type="importmap">
+        { "imports": { "papaparse": "https://cdn.jsdelivr.net/npm/papaparse@5.5.3/+esm" } }
+    </script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { hasFacilitySession } from "./facility-auth.js";
-        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { createCsv, rosterTable, selectRecords, recordsTable } from "./csv-export.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -139,6 +181,121 @@
             let savedServiceType = localStorage.getItem('currentServiceType');
             if (savedServiceType) {
                 document.getElementById("selectServiceType").value = savedServiceType;
+            }
+            document.getElementById("csvStartDate").value = `${year}-${month}-01`;
+            document.getElementById("csvEndDate").value = `${year}-${month}-${String(today.getDate()).padStart(2, "0")}`;
+            try {
+                const facility = await requireExportFacility();
+                document.getElementById("csvFacility").replaceChildren(new Option(facility.name, facility.id));
+                const users = await getExportUsers(facility.id);
+                refreshExportUsers(users);
+                setExportBusy(false);
+            } catch (error) {
+                document.getElementById("csvExportStatus").textContent = `CSV出力の準備に失敗しました。再読み込みしてください：${error.message}`;
+            }
+        };
+
+        function setExportBusy(busy) {
+            document.getElementById("exportRosterButton").disabled = busy;
+            document.getElementById("exportRecordsButton").disabled = busy;
+            for (const id of ["csvUser", "csvStartDate", "csvEndDate", "csvService"]) {
+                document.getElementById(id).disabled = busy;
+            }
+        }
+
+        async function requireExportFacility() {
+            const facilityId = localStorage.getItem("currentFacilityId");
+            if (!facilityId || !(await hasFacilitySession(auth, facilityId))) {
+                throw new Error("施設にログインし直してください。");
+            }
+            const snapshot = await getDoc(doc(db, "facilities", facilityId));
+            const data = snapshot.exists() ? snapshot.data() : null;
+            if (!data || data.status === "locked" || (data.subscriptionStatus === "trial" &&
+                !(Date.parse(data.trialEndsAt || "") > Date.now()))) {
+                throw new Error("この施設は現在利用できません。");
+            }
+            return { id: facilityId, name: data.facilityName || facilityId };
+        }
+
+        async function getExportUsers(facilityId) {
+            const snapshot = await getDocs(collection(db, "facilities", facilityId, "users"));
+            return snapshot.docs.map(document => ({ ...document.data(), name: document.id }));
+        }
+
+        function refreshExportUsers(users) {
+            const select = document.getElementById("csvUser");
+            const selected = select.value;
+            select.replaceChildren(new Option("すべての利用者", ""));
+            [...users].sort((first, second) => first.name.localeCompare(second.name, "ja")).forEach(user => {
+                select.add(new Option(`${user.name}${user.active === false ? "（利用終了）" : ""}`, user.name));
+            });
+            select.value = Array.from(select.options).some(option => option.value === selected) ? selected : "";
+        }
+
+        function downloadCsv(table, filename) {
+            const blob = new Blob([createCsv(table)], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = filename.replace(/[\\/:*?"<>|\u0000-\u001F]/g, "_");
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        window.exportRosterCsv = async function() {
+            const status = document.getElementById("csvExportStatus");
+            setExportBusy(true);
+            status.textContent = "利用者名簿を取得しています...";
+            try {
+                const facility = await requireExportFacility();
+                const users = await getExportUsers(facility.id);
+                refreshExportUsers(users);
+                if (!users.length) { status.textContent = "利用者名簿がありません。"; return; }
+                if (!confirm(`${facility.name} の全利用者名簿（${users.length}名・利用終了者を含む）をCSV出力しますか？\n氏名・生年月日を含むため、保存先と取り扱いにご注意ください。`)) {
+                    status.textContent = "CSV出力をキャンセルしました。";
+                    return;
+                }
+                downloadCsv(rosterTable(users, facility), `${facility.name}_利用者名簿.csv`);
+                status.textContent = `利用者名簿 ${users.length}名分のCSVを作成しました。`;
+            } catch (error) {
+                status.textContent = `CSV出力に失敗しました：${error.message}`;
+            } finally {
+                setExportBusy(false);
+            }
+        };
+
+        window.exportRecordsCsv = async function() {
+            const status = document.getElementById("csvExportStatus");
+            const filters = {
+                facilityId: localStorage.getItem("currentFacilityId"),
+                startDate: document.getElementById("csvStartDate").value,
+                endDate: document.getElementById("csvEndDate").value,
+                userName: document.getElementById("csvUser").value,
+                serviceType: document.getElementById("csvService").value
+            };
+            setExportBusy(true);
+            status.textContent = "指定期間の記録を取得しています...";
+            try {
+                selectRecords([], filters);
+                const facility = await requireExportFacility();
+                if (facility.id !== filters.facilityId) throw new Error("施設を再確認してから出力してください。");
+                const recordsQuery = query(collection(db, "facilities", facility.id, "daily_records"),
+                    where("date", ">=", filters.startDate), where("date", "<=", filters.endDate));
+                const snapshot = await getDocs(recordsQuery);
+                const records = selectRecords(snapshot.docs.map(document => document.data()), filters);
+                if (!records.length) { status.textContent = "指定条件の記録はありません。"; return; }
+                if (!confirm(`${facility.name} の ${filters.startDate} ～ ${filters.endDate} の記録（${records.length}件）をCSV出力しますか？\n健康情報・職員間申し送りを含むため、保存先と取り扱いにご注意ください。`)) {
+                    status.textContent = "CSV出力をキャンセルしました。";
+                    return;
+                }
+                downloadCsv(recordsTable(records, facility), `${facility.name}_${filters.userName || "全利用者"}_${filters.serviceType || "全サービス"}_${filters.startDate}_${filters.endDate}_記録.csv`);
+                status.textContent = `記録 ${records.length}件のCSVを作成しました。`;
+            } catch (error) {
+                status.textContent = `CSV出力に失敗しました：${error.message}`;
+            } finally {
+                setExportBusy(false);
             }
         };
 
