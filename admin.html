@@ -103,7 +103,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-        import { getFirestore, collection, getDocs, getDoc, doc, updateDoc, deleteDoc, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { initializeFirestore, collection, getDocs, getDocsFromServer, getDoc, doc, documentId, updateDoc, deleteDoc, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
         const firebaseConfig = {
@@ -117,7 +117,7 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        const db = initializeFirestore(app, { experimentalForceLongPolling: true });
         const storage = getStorage(app);
         const functions = getFunctions(app);
         const sendTestInvoiceEmail = httpsCallable(functions, "sendTestInvoiceEmail");
@@ -683,21 +683,22 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                 button.setAttribute("aria-busy", "true");
             }
             try {
-                let [usersSnapshot, recordsSnapshot, invoiceHistorySnapshot, pairingCodesSnapshot, lineLinksSnapshot, lineSettingsSnapshot] = await Promise.all([
-                    getDocs(collection(db, "facilities", facilityId, "users")),
-                    getDocs(collection(db, "facilities", facilityId, "daily_records")),
-                    getDocs(collection(db, "facilities", facilityId, "invoiceHistory")),
-                    getDocs(query(collection(db, "linePairingCodes"), where("facilityId", "==", facilityId))),
-                    getDocs(query(collection(db, "lineRecordLinks"), where("facilityId", "==", facilityId))),
-                    getDoc(doc(db, "facilityLineSettings", facilityId))
+                let [usersSnapshot, recordsSnapshot, invoiceHistorySnapshot, pairingCodesSnapshot, lineLinksSnapshot, lineSettingsQuerySnapshot] = await Promise.all([
+                    getDocsFromServer(collection(db, "facilities", facilityId, "users")),
+                    getDocsFromServer(collection(db, "facilities", facilityId, "daily_records")),
+                    getDocsFromServer(collection(db, "facilities", facilityId, "invoiceHistory")),
+                    getDocsFromServer(query(collection(db, "linePairingCodes"), where("facilityId", "==", facilityId))),
+                    getDocsFromServer(query(collection(db, "lineRecordLinks"), where("facilityId", "==", facilityId))),
+                    getDocsFromServer(query(collection(db, "facilityLineSettings"), where(documentId(), "==", facilityId)))
                 ]);
+                const lineSettingsSnapshot = lineSettingsQuerySnapshot.docs[0];
                 let scopedLists = await Promise.all([
                     listAllStorageFiles(ref(storage, `images/${facilityId}`)),
                     listAllStorageFiles(ref(storage, `videos/${facilityId}`)),
                     listAllStorageFiles(ref(storage, `faces/${facilityId}`))
                 ]);
                 let scopedFiles = scopedLists.flat();
-                let preview = `削除対象を確認してください。\n\n施設：${facilityName}\n利用者名簿：${usersSnapshot.size}件\n連絡帳・介護日誌：${recordsSnapshot.size}件\n請求書履歴：${invoiceHistorySnapshot.size}件\nLINE連携コード：${pairingCodesSnapshot.size}件\nLINE閲覧リンク：${lineLinksSnapshot.size}件\n施設専用LINE設定：${lineSettingsSnapshot.exists() ? "あり" : "なし"}\n施設ID付きメディア：${scopedFiles.length}ファイル\n\n施設情報と関連データを削除します。Soft Delete設定によっては物理削除が遅れる場合があります。続けますか？`;
+                let preview = `削除対象を確認してください。\n\n施設：${facilityName}\n利用者名簿：${usersSnapshot.size}件\n連絡帳・介護日誌：${recordsSnapshot.size}件\n請求書履歴：${invoiceHistorySnapshot.size}件\nLINE連携コード：${pairingCodesSnapshot.size}件\nLINE閲覧リンク：${lineLinksSnapshot.size}件\n施設専用LINE設定：${lineSettingsSnapshot ? "あり" : "なし"}\n施設ID付きメディア：${scopedFiles.length}ファイル\n\n施設情報と関連データを削除します。Soft Delete設定によっては物理削除が遅れる場合があります。続けますか？`;
                 if (!confirm(preview)) return;
                 if (prompt(`最終確認：施設名「${facilityName}」を入力してください。`) !== facilityName) return;
                 if (button) button.textContent = "削除中...";
@@ -709,7 +710,7 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                     ...invoiceHistorySnapshot.docs.map(document => deleteDoc(document.ref)),
                     ...pairingCodesSnapshot.docs.map(document => deleteDoc(document.ref)),
                     ...lineLinksSnapshot.docs.map(document => deleteDoc(document.ref)),
-                    lineSettingsSnapshot.exists() ? deleteDoc(lineSettingsSnapshot.ref) : Promise.resolve()
+                    lineSettingsSnapshot ? deleteDoc(lineSettingsSnapshot.ref) : Promise.resolve()
                 ]);
                 await deleteDoc(doc(db, "facilities", facilityId));
 
@@ -718,7 +719,10 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                 document.getElementById("facilityError").textContent = "";
                 alert(`${facilityName} を削除しました。`);
             } catch (error) {
-                const message = "施設の削除に失敗しました: " + error.message;
+                const connectionError = error.code === "unavailable" || /offline|failed to fetch|network/i.test(error.message || "");
+                const message = connectionError
+                    ? "サーバーへの接続を確認できず、削除処理を中止しました。インターネット接続を確認し、Ctrl + F5で画面を再読み込みして管理者として認証し直してください。施設内ネットワークで接続できない場合は、別のネットワークでお試しください。"
+                    : "施設の削除に失敗しました: " + error.message;
                 errorArea.textContent = message;
                 alert(message);
             } finally {
