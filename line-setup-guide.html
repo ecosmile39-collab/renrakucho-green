@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>施設のLINE設定・動画ガイド</title>
+    <style>
+        :root { --green: #2b8a3e; --ink: #263238; --border: #d6dde0; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #f0f8ff; color: var(--ink); font-family: "Yu Gothic", "Meiryo", sans-serif; line-height: 1.7; }
+        main { max-width: 1040px; margin: 0 auto; padding: 24px 20px 48px; }
+        a { color: #1765a5; overflow-wrap: anywhere; }
+        h1 { font-size: 26px; margin: 12px 0; color: var(--green); }
+        h2 { font-size: 19px; margin: 24px 0 12px; }
+        p { margin: 12px 0; }
+        video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #111; margin: 16px 0; }
+        .notice { padding: 12px 16px; background: #fff4d4; border-left: 4px solid #d06a13; }
+        .links { display: flex; gap: 16px; flex-wrap: wrap; }
+        .chapters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+        .chapters button { width: 100%; min-height: 48px; padding: 12px 0; border: 0; border-bottom: 1px solid var(--border); text-align: left; background: transparent; color: var(--ink); font: inherit; cursor: pointer; overflow-wrap: anywhere; }
+        .chapters button:hover, .chapters button:focus-visible { color: var(--green); background: #e6f2ed; }
+        .chapters time { display: inline-block; min-width: 52px; color: #1765a5; font-variant-numeric: tabular-nums; }
+        details { border-top: 1px solid var(--border); padding: 10px 0; }
+        summary { cursor: pointer; font-weight: bold; }
+        #videoStatus { min-height: 26px; }
+        @media (max-width: 600px) { main { padding: 16px 12px 32px; } h1 { font-size: 22px; } .chapters { grid-template-columns: minmax(0, 1fr); } }
+    </style>
+</head>
+<body>
+    <main>
+        <a href="index.html">入力画面へ戻る</a>
+        <h1>施設のLINE設定・動画ガイド</h1>
+        <p>チャネルアクセストークンとChannel secretの取得から、連絡帳アプリへの保存・接続確認まで。</p>
+        <div class="notice">説明用に再現した画面です。実際の秘密情報は表示していません。画面名・配置はLINE側の更新で変わる場合があります。他社システムのWebhook URLがある場合は、上書きせず担当者へ相談してください。</div>
+        <video id="guideVideo" controls playsinline preload="metadata" poster="assets/line-setup-guide.jpg" aria-label="施設のLINE設定手順・日本語ナレーションと字幕付き">
+            <source src="assets/line-setup-guide.mp4" type="video/mp4">
+            <track kind="captions" src="assets/line-setup-guide.vtt" srclang="ja" label="日本語字幕">
+            お使いのブラウザーで動画を再生できない場合は、下のMP4をダウンロードしてください。
+        </video>
+        <p id="videoStatus" role="status" aria-live="polite">音声・字幕付き。わからないところでは一時停止して、画面を確認してください。</p>
+        <div class="links">
+            <a href="assets/line-setup-guide.mp4" download>動画をダウンロード（MP4）</a>
+            <a href="https://manager.line.biz/" target="_blank" rel="noopener noreferrer">LINE公式アカウント管理画面</a>
+            <a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer">LINE Developers</a>
+        </div>
+        <h2>見たい手順から再生</h2>
+        <div id="chapters" class="chapters"></div>
+        <h2>文字で確認する</h2>
+        <div id="transcript"></div>
+        <h2>公式の説明</h2>
+        <p><a href="https://developers.line.biz/ja/docs/messaging-api/getting-started/" target="_blank" rel="noopener noreferrer">Messaging APIの利用開始</a> / <a href="https://developers.line.biz/ja/docs/messaging-api/building-bot/" target="_blank" rel="noopener noreferrer">アクセストークンとWebhookの設定</a></p>
+        <p>作成日：2026年10月7日。トークンやChannel secretをメール・チャットで第三者へ送らないでください。</p>
+    </main>
+    <script>
+        const video = document.getElementById("guideVideo");
+        const status = document.getElementById("videoStatus");
+        function formatTime(seconds) {
+            return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
+        }
+        video.addEventListener("error", () => {
+            status.textContent = "動画を読み込めませんでした。再読み込みするか、MP4をダウンロードして再生してください。";
+        });
+        fetch("assets/line-setup-guide.json").then(response => {
+            if (!response.ok) throw new Error("Guide metadata unavailable");
+            return response.json();
+        }).then(guide => {
+            status.textContent = `日本語音声・字幕付き（約${Math.ceil(guide.duration / 60)}分）。一時停止・全画面表示ができます。`;
+            guide.chapters.forEach((chapter, index) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                const time = document.createElement("time");
+                time.textContent = formatTime(chapter.start);
+                const label = document.createElement("span");
+                label.textContent = `${index + 1}. ${chapter.title}`;
+                button.append(time, label);
+                button.addEventListener("click", async () => {
+                    video.currentTime = chapter.start;
+                    video.scrollIntoView({ behavior: "smooth", block: "center" });
+                    try { await video.play(); } catch { status.textContent = "動画の再生ボタンを押してください。"; }
+                });
+                document.getElementById("chapters").appendChild(button);
+                const details = document.createElement("details");
+                const summary = document.createElement("summary");
+                summary.textContent = `${index + 1}. ${chapter.title}`;
+                const text = document.createElement("p");
+                text.textContent = chapter.narration;
+                details.append(summary, text);
+                document.getElementById("transcript").appendChild(details);
+            });
+        }).catch(() => { status.textContent = "目次を読み込めませんでした。動画は再生ボタンからご覧いただけます。"; });
+    </script>
+</body>
+</html>
