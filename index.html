@@ -58,6 +58,11 @@
         .pending-list { margin-top: 10px; font-weight: bold; color: #333; }
         .pending-list span { display: inline-flex; align-items: center; gap: 8px; background-color: white; padding: 5px 8px 5px 10px; border-radius: 20px; border: 1px solid #ccc; margin: 3px; }
         .pending-remove-btn { border: 0; border-radius: 50%; background: #fa5252; color: white; width: 22px; height: 22px; line-height: 1; padding: 0; font-size: 14px; font-weight: bold; cursor: pointer; }
+        .line-publication-control { margin: 16px 0 10px; padding: 12px; background: #f1f8f2; border: 1px solid #a5d6a7; border-radius: 6px; }
+        .line-publication-control label { display: flex; align-items: center; gap: 8px; font-weight: bold; }
+        .line-publication-control input, .pending-publish-toggle input { width: auto; margin: 0; }
+        .line-publication-control p { margin: 5px 0 0 26px; color: #495057; font-size: 13px; }
+        .pending-publish-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal; white-space: nowrap; }
 
         .scroll-btn-group { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
         .scroll-btn { background-color: #2b8a3e; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; opacity: 0.8; }
@@ -821,6 +826,11 @@
             <button type="button" id="cancelPreUploadBtn" class="cancel-upload-btn" onclick="clearPreUploadedMedia()">🗑️ 当日分の写真・動画をStorageから削除</button>
         </div>
         <div id="previewArea"></div>
+
+        <div class="line-publication-control">
+            <label><input type="checkbox" id="publishToFamilyCheckbox" checked> LINEで家族に公開する</label>
+            <p>チェックを外すと施設内への保存のみになります。自動通知は送られません。</p>
+        </div>
         
         <div class="btn-group-bottom">
             <button type="button" id="saveToBatchBtn" class="temp-save-btn" onclick="saveToBatch()">📥 この方のデータを一時保存し、次の方を入力する（上に戻る）</button>
@@ -2464,6 +2474,7 @@
                 message: document.getElementById("message").value,
                 familyMessage: document.getElementById("familyMessage").value,
                 facilityPR: isChildService || isLifeCare ? "" : (document.getElementById("facilityPR") ? document.getElementById("facilityPR").value : ""),
+                publishToFamily: document.getElementById("publishToFamilyCheckbox").checked,
                 imageCount: finalImageCount, videoCount: window.currentVideoCount,
                 imageFiles: imageFiles, videoFiles: videoFiles
             };
@@ -2686,8 +2697,10 @@
 
         async function notifyRecordsViaLine(records) {
             try {
+                const selectedRecords = records.filter(record => record.publishToFamily !== false);
+                if (!selectedRecords.length) return "記録を保存しました。LINEでの家族公開は選択されていません。";
                 const getStatus = httpsCallable(functions, "getLineRecipientStatus");
-                const recordsWithRecipients = await Promise.all(records.map(async record => {
+                const recordsWithRecipients = await Promise.all(selectedRecords.map(async record => {
                     const result = await getStatus({ userName: record.userName });
                     return { ...record, recipientCount: result.data.recipientCount || 0, lineEnabled: result.data.lineEnabled !== false };
                 }));
@@ -2695,9 +2708,6 @@
                 if (!linkedRecords.length) return recordsWithRecipients.some(record => !record.lineEnabled)
                     ? "記録を保存しました。共通LINEは管理者により停止中のため、家族向けには公開していません。"
                     : "";
-
-                const linkedNames = linkedRecords.map(record => `${record.userName} 様`).join("、");
-                if (!confirm(`${linkedNames} の連絡帳を家族向けに公開しますか？\n家族がLINEで「連絡帳を見る」を押すと確認できます。自動通知は送りません。`)) return "記録を保存しました。家族向けには公開していません。";
 
                 const sendNotification = httpsCallable(functions, "sendLineRecordNotification");
                 const results = await Promise.allSettled(linkedRecords.map(record => sendNotification({
@@ -2709,7 +2719,7 @@
                 if (successCount === linkedRecords.length) return `${successCount}件の連絡帳を家族向けに公開しました。家族がLINEの「連絡帳を見る」を押すと確認できます。自動通知はありません。`;
                 return `記録は保存済みですが、家族向け公開は${successCount}/${linkedRecords.length}件です。公開できなかった記録は再保存して公開してください。`;
             } catch (error) {
-                return `記録は保存済みですが、家族向け公開の確認に失敗しました: ${getErrorMessage(error)}`;
+                return `記録は保存済みですが、LINEでの家族向け公開に失敗しました: ${getErrorMessage(error)}`;
             }
         }
 
@@ -2728,6 +2738,7 @@
                 let docRef = doc(db, "facilities", recordData.facilityId, "daily_records", `${date}_${sType}_${userName}`);
                 let saveObj = { ...recordData };
                 delete saveObj.imageFiles; delete saveObj.videoFiles;
+                delete saveObj.publishToFamily;
                 let uploadVideoFiles = await prepareVideoFiles(recordData.videoFiles);
                 if (uploadVideoFiles.length) {
                     saveObj.videoCount = uploadVideoFiles.length;
@@ -2778,6 +2789,13 @@
                     let span = document.createElement("span");
                     let name = document.createElement("span");
                     name.textContent = `${data.userName} 様 (${serviceLabel})${videoCount ? ` / 動画${videoCount}本・処理済み` : ""}`;
+                    let publishLabel = document.createElement("label");
+                    publishLabel.className = "pending-publish-toggle";
+                    let publishCheckbox = document.createElement("input");
+                    publishCheckbox.type = "checkbox";
+                    publishCheckbox.checked = data.publishToFamily !== false;
+                    publishCheckbox.onchange = () => { data.publishToFamily = publishCheckbox.checked; };
+                    publishLabel.append(publishCheckbox, document.createTextNode("LINE公開"));
                     let removeButton = document.createElement("button");
                     removeButton.type = "button";
                     removeButton.className = "pending-remove-btn";
@@ -2785,7 +2803,7 @@
                     removeButton.title = `${data.userName} 様の一時保存を取り消す`;
                     removeButton.setAttribute("aria-label", removeButton.title);
                     removeButton.onclick = () => removePendingData(index);
-                    span.append(name, removeButton);
+                    span.append(name, publishLabel, removeButton);
                     pendingList.appendChild(span);
                 });
             } else {
@@ -2813,6 +2831,7 @@
                     let docRef = doc(db, "facilities", data.facilityId, "daily_records", `${data.date}_${data.serviceType}_${data.userName}`);
                     let saveObj = { ...data };
                     delete saveObj.imageFiles; delete saveObj.videoFiles;
+                    delete saveObj.publishToFamily;
                     let uploadVideoFiles = await prepareVideoFiles(data.videoFiles || []);
                     if (uploadVideoFiles.length) {
                         saveObj.videoCount = uploadVideoFiles.length;
@@ -2854,6 +2873,7 @@
 
         function resetFormInputs() {
             accumulatedFiles = []; 
+            document.getElementById("publishToFamilyCheckbox").checked = true;
             document.getElementById("previewArea").innerHTML = "";
             document.getElementById("imageCameraInput").value = "";
             document.getElementById("videoCameraInput").value = "";
