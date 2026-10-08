@@ -517,8 +517,9 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { hasFacilitySession } from "./facility-auth.js";
-        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+        import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -552,6 +553,11 @@
                 window.location.replace("login.html");
                 return;
             }
+
+            const facilitySnapshot = await getDoc(doc(db, "facilities", facilityId));
+            const enabledServiceTypes = normalizeServiceTypes(
+                facilitySnapshot.exists() ? facilitySnapshot.data().enabledServiceTypes : undefined
+            );
             
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
             let nameEl = document.getElementById("displayFacilityName");
@@ -568,9 +574,12 @@
             document.getElementById("endDate").value = todayStr;
 
             let savedServiceType = localStorage.getItem('currentServiceType');
-            if (savedServiceType) {
-                document.getElementById("selectServiceType").value = savedServiceType;
-            }
+            const selectedServiceType = populateServiceTypeSelect(
+                document.getElementById("selectServiceType"),
+                enabledServiceTypes,
+                savedServiceType
+            );
+            localStorage.setItem("currentServiceType", selectedServiceType);
             updateCardPhotoCountVisibility();
             
             await loadUserNames(facilityId);

@@ -13,6 +13,7 @@ const nodemailer = require("nodemailer");
 const { GoogleAuth } = require("google-auth-library");
 const { decryptCredentials, encryptCredentials } = require("./line-credential-crypto");
 const { isFamilyRecordRequest, latestPublishedRecords } = require("./line-family-records");
+const { validateFacilityServiceTypes } = require("./service-types");
 
 initializeApp();
 
@@ -737,6 +738,20 @@ exports.getFacilityAccessStatus = onCall(async request => {
     const facilityId = requireFacilityId(request);
     const snapshot = await getFirestore().collection("facilities").doc(facilityId).get();
     return { status: !snapshot.exists ? "missing" : snapshot.data().status === "locked" ? "locked" : "active" };
+});
+
+exports.updateFacilityServiceTypes = onCall(async request => {
+    const facilityId = requireFacilityId(request);
+    await verifyFacilityIsActive(facilityId);
+    const serviceTypes = validateFacilityServiceTypes(request.data?.serviceTypes);
+    if (!serviceTypes) {
+        throw new HttpsError("invalid-argument", "使用するサービスを1つ以上選択してください。");
+    }
+    await getFirestore().collection("facilities").doc(facilityId).update({
+        enabledServiceTypes: serviceTypes,
+        serviceTypesUpdatedAt: new Date().toISOString()
+    });
+    return { serviceTypes };
 });
 
 exports.getLineRecipientStatus = onCall(async request => {

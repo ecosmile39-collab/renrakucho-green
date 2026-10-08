@@ -144,6 +144,7 @@
         import { hasFacilitySession } from "./facility-auth.js";
         import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { createCsv, rosterTable, selectUsers, selectRecords, recordsTable } from "./csv-export.js";
+        import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -178,15 +179,22 @@
             let month = String(today.getMonth() + 1).padStart(2, '0');
             document.getElementById("targetMonth").value = `${year}-${month}`;
             
-            let savedServiceType = localStorage.getItem('currentServiceType');
-            if (Array.from(document.getElementById("selectServiceType").options).some(option => option.value === savedServiceType)) {
-                document.getElementById("selectServiceType").value = savedServiceType;
-            }
-            document.getElementById("csvService").value = document.getElementById("selectServiceType").value;
             document.getElementById("csvStartDate").value = `${year}-${month}-01`;
             document.getElementById("csvEndDate").value = `${year}-${month}-${String(today.getDate()).padStart(2, "0")}`;
             try {
                 const facility = await requireExportFacility();
+                const savedServiceType = localStorage.getItem("currentServiceType");
+                const selectedServiceType = populateServiceTypeSelect(
+                    document.getElementById("selectServiceType"),
+                    facility.enabledServiceTypes,
+                    savedServiceType
+                );
+                populateServiceTypeSelect(
+                    document.getElementById("csvService"),
+                    facility.enabledServiceTypes,
+                    selectedServiceType
+                );
+                localStorage.setItem("currentServiceType", selectedServiceType);
                 document.getElementById("csvFacility").replaceChildren(new Option(facility.name, facility.id));
                 const users = await getExportUsers(facility.id);
                 refreshExportUsers(users);
@@ -215,7 +223,11 @@
                 !(Date.parse(data.trialEndsAt || "") > Date.now()))) {
                 throw new Error("この施設は現在利用できません。");
             }
-            return { id: facilityId, name: data.facilityName || facilityId };
+            return {
+                id: facilityId,
+                name: data.facilityName || facilityId,
+                enabledServiceTypes: normalizeServiceTypes(data.enabledServiceTypes)
+            };
         }
 
         async function getExportUsers(facilityId) {
