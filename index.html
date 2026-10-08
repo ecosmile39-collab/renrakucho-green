@@ -808,11 +808,7 @@
             
             <label>🎥 その場で動画を撮影する</label>
             <input type="file" id="videoCameraInput" accept="video/*" capture="environment" onclick="checkPrivacy(event)" onchange="previewMedia(event)">
-            <label style="display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 14px; cursor: pointer;">
-                <input type="checkbox" id="autoCompressVideos" style="width: auto; margin: 0;" checked>
-                動画を端末内で480pに自動圧縮して保存する
-            </label>
-            <p style="font-size: 12px; color: #555; margin-top: 4px;">チェックを外すと圧縮せず元動画を保存します（通信量・保存容量が増えます）。初回の圧縮時は変換プログラム約31MBを読み込みます。</p>
+            <p style="font-size: 13px; color: #495057; margin: 6px 0;">動画はアップロード前に自動処理します。1本ごとに先頭30秒まで、480p以下・5MB以下に圧縮して保存します。1分の動画も先頭30秒に短縮されます。初回のみ変換プログラム約31MBを読み込みます。</p>
             
             <label>📁 アルバムから写真・動画を選ぶ（複数回選んでも蓄積されます）</label>
             <input type="file" id="mediaFileMultiple" accept="image/*,video/*" multiple onchange="previewMedia(event)">
@@ -827,7 +823,7 @@
         <div id="previewArea"></div>
         
         <div class="btn-group-bottom">
-            <button type="button" class="temp-save-btn" onclick="saveToBatch()">📥 この方のデータを一時保存し、次の方を入力する（上に戻る）</button>
+            <button type="button" id="saveToBatchBtn" class="temp-save-btn" onclick="saveToBatch()">📥 この方のデータを一時保存し、次の方を入力する（上に戻る）</button>
             <button class="single-send-btn" onclick="sendSingleData()">📤 この方だけのデータを今すぐ送信して完了する（一人用）</button>
         </div>
     </div>
@@ -844,6 +840,7 @@
         import { getStorage, ref, uploadBytes, getDownloadURL, getMetadata, deleteObject, listAll } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
+        import { MAX_VIDEO_SOURCE_BYTES, VIDEO_ENCODING_PROFILES, getVideoEncodingArguments, isVideoOutputWithinLimit } from "./video-processing-policy.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -874,11 +871,8 @@
         let ffmpegClassWorkerURL = null;
         let ffmpegDependencyUrls = [];
         let videoCompressionQueue = Promise.resolve();
-        const autoCompressVideosCheckbox = document.getElementById("autoCompressVideos");
-        autoCompressVideosCheckbox.checked = localStorage.getItem("autoCompressVideos") !== "false";
-        autoCompressVideosCheckbox.addEventListener("change", () => {
-            localStorage.setItem("autoCompressVideos", String(autoCompressVideosCheckbox.checked));
-        });
+        const preparedVideoFiles = new WeakSet();
+        let batchPreparationInProgress = false;
 
         window.showToast = function(message, duration = 3000) {
             let toast = document.getElementById("toast");
@@ -991,11 +985,11 @@
 
         async function compressVideoFile(file, index, total) {
             const runCompression = async () => {
-                if (file.size > 250 * 1024 * 1024) {
+                if (file.size > MAX_VIDEO_SOURCE_BYTES) {
                     throw new Error(`${file.name} は250MBを超えているため、スマートフォン内で圧縮できません。短く撮影するか、画質を下げてください。`);
                 }
                 document.getElementById("loadingOverlay").style.display = "flex";
-                document.getElementById("loadingText").textContent = `動画を端末内で480pに圧縮中です... (${index}/${total})`;
+                document.getElementById("loadingText").textContent = `動画を先頭30秒・5MB以下に自動調整中です... (${index}/${total})`;
                 const ffmpeg = await getVideoCompressor();
                 const suffix = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
                 const inputName = `input_${suffix}.video`;
@@ -1006,24 +1000,34 @@
                 try {
                     const { fetchFile } = await import("https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js");
                     await ffmpeg.writeFile(inputName, await fetchFile(file));
-                    const exitCode = await ffmpeg.exec([
-                        "-i", inputName,
-                        "-vf", "scale=854:480:force_original_aspect_ratio=decrease:force_divisible_by=2",
-                        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "27",
-                        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k",
-                        "-movflags", "+faststart", outputName
-                    ]);
-                    if (exitCode !== 0) {
-                        throw new Error(`FFmpeg終了コード ${exitCode}: ${latestFfmpegLog || "対応していない動画形式の可能性があります。"}`);
+                    let outputData = null;
+                    for (const [profileIndex, profile] of VIDEO_ENCODING_PROFILES.entries()) {
+                        await ffmpeg.deleteFile(outputName).catch(() => {});
+                        const exitCode = await ffmpeg.exec(getVideoEncodingArguments(inputName, outputName, profile));
+                        if (exitCode !== 0) {
+                            throw new Error(`FFmpeg終了コード ${exitCode}: ${latestFfmpegLog || "対応していない動画形式の可能性があります。"}`);
+                        }
+                        const candidate = await ffmpeg.readFile(outputName);
+                        if (!(candidate instanceof Uint8Array) || candidate.length === 0) {
+                            throw new Error("圧縮後の動画データが空です。");
+                        }
+                        if (isVideoOutputWithinLimit(candidate.length)) {
+                            outputData = candidate;
+                            break;
+                        }
+                        if (profileIndex === VIDEO_ENCODING_PROFILES.length - 1) {
+                            throw new Error(`${file.name} は先頭30秒に短縮しても5MB以下になりませんでした。さらに短く撮影して、もう一度お試しください。`);
+                        }
                     }
-                    const outputData = await ffmpeg.readFile(outputName);
-                    if (!(outputData instanceof Uint8Array) || outputData.length === 0) {
-                        throw new Error("圧縮後の動画データが空です。");
+                    if (!isVideoOutputWithinLimit(outputData?.length)) {
+                        throw new Error(`${file.name} を5MB以下にできませんでした。短く撮影して、もう一度お試しください。`);
                     }
-                    return new File([outputData], file.name.replace(/\.[^.]+$/, "") + "_480p.mp4", {
+                    const preparedFile = new File([outputData], file.name.replace(/\.[^.]+$/, "") + "_30s_5MB.mp4", {
                         type: "video/mp4",
                         lastModified: Date.now()
                     });
+                    preparedVideoFiles.add(preparedFile);
+                    return preparedFile;
                 } catch (error) {
                     throw new Error(getErrorMessage(error, `${file.name} の圧縮に失敗しました。`));
                 } finally {
@@ -1041,14 +1045,15 @@
         async function compressVideoFiles(files) {
             const compressedFiles = [];
             for (let index = 0; index < files.length; index++) {
-                compressedFiles.push(await compressVideoFile(files[index], index + 1, files.length));
+                const file = files[index];
+                compressedFiles.push(preparedVideoFiles.has(file) ? file : await compressVideoFile(file, index + 1, files.length));
             }
             return compressedFiles;
         }
 
         async function prepareVideoFiles(files) {
             if (!files.length) return [];
-            return autoCompressVideosCheckbox.checked ? compressVideoFiles(files) : files;
+            return compressVideoFiles(files);
         }
 
         async function saveLatestPhotos(facilityId, userName, imageFiles, uploadDate) {
@@ -2335,7 +2340,7 @@
             }
 
             let currentFormData = getFormData();
-            showToast(`⏳ ${userName} 様の写真・動画を金庫へ預けています...`, 4000);
+            showToast(`⏳ ${userName} 様の写真・動画を準備しています。動画は先頭30秒・5MB以下に自動調整します...`, 5000);
             
             try {
                 let uploadVideoFiles = await prepareVideoFiles(videoFiles);
@@ -2629,15 +2634,31 @@
             return data;
         }
 
-        window.saveToBatch = function() {
+        window.saveToBatch = async function() {
+            if (batchPreparationInProgress) return;
             let userName = document.getElementById("userName").value;
             let date = document.getElementById("date").value;
             let sType = document.getElementById("serviceType").value;
             if (!userName) { showToast("⚠️ お名前を選択してください。"); return; }
             if (!date) { showToast("⚠️ 日付を選択してください。"); return; }
 
+            const saveButton = document.getElementById("saveToBatchBtn");
+            batchPreparationInProgress = true;
+            saveButton.disabled = true;
+            const selectedVideos = accumulatedFiles.filter(file => file.type.startsWith("video/"));
+            const selectedImages = accumulatedFiles.filter(file => file.type.startsWith("image/"));
+            if (selectedVideos.length) {
+                document.getElementById("loadingOverlay").style.display = "flex";
+                document.getElementById("loadingText").textContent = `${userName} 様の動画を30秒・5MB以内に処理しています...`;
+            }
             try {
                 let recordData = getFormData();
+                if (selectedVideos.length) {
+                    recordData.videoFiles = await prepareVideoFiles(selectedVideos);
+                    recordData.imageFiles = selectedImages;
+                    accumulatedFiles = [...selectedImages, ...recordData.videoFiles];
+                    renderPreviewArea();
+                }
                 let existingIndex = batchDataList.findIndex(d => d.userName === userName);
                 if (existingIndex >= 0) batchDataList[existingIndex] = recordData;
                 else batchDataList.push(recordData);
@@ -2646,13 +2667,20 @@
                 resetFormInputs();
                 localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${sType}_${userName}`);
 
-                showToast(`✅ ${userName} 様（${sType}）のデータを一時保存しました。`, 3000);
+                const videoNotice = recordData.videoFiles.length
+                    ? `動画${recordData.videoFiles.length}本は30秒以内・各5MB以下で準備済みです。`
+                    : "";
+                showToast(`✅ ${userName} 様（${sType}）のデータを一時保存しました。${videoNotice}`, 5000);
                 document.getElementById("userName").value = "";
                 onUserSelected();
                 window.scrollTo({top: 0, behavior: 'smooth'});
             } catch (error) {
                 console.error("一時保存に失敗しました:", error);
-                showToast("❌ 一時保存エラー: " + getErrorMessage(error), 8000);
+                showToast(`❌ ${userName} 様の今回の内容は送信待ちに追加できませんでした。動画を短くするか、画質を下げて再選択してください。${getErrorMessage(error)}`, 10000);
+            } finally {
+                document.getElementById("loadingOverlay").style.display = "none";
+                saveButton.disabled = false;
+                batchPreparationInProgress = false;
             }
         };
 
@@ -2691,7 +2719,7 @@
             let sType = document.getElementById("serviceType").value;
             if (!userName || !date) { showToast("⚠️ お名前と日付をご確認ください。"); return; }
 
-            if (!confirm(`⚠️【確認】\n${userName} 様（${sType}）1名分のデータを今すぐ送信します。\nよろしいですか？`)) return;
+            if (!confirm(`⚠️【確認】\n${userName} 様（${sType}）1名分のデータを今すぐ送信します。\n選択した動画は1本ごとに先頭30秒・5MB以下へ自動調整します。\nよろしいですか？`)) return;
 
             let recordData = getFormData();
             document.getElementById("loadingOverlay").style.display = "flex";
@@ -2746,9 +2774,10 @@
                 pendingList.innerHTML = "";
                 batchDataList.forEach((data, index) => {
                     let serviceLabel = data.serviceType === "デイサービス" ? "デイ" : data.serviceType === "放課後等デイサービス" ? "放デイ" : data.serviceType === "児童発達支援" ? "児発" : data.serviceType === "生活介護" ? "生活介護" : "ショート";
+                    const videoCount = Array.isArray(data.videoFiles) ? data.videoFiles.length : 0;
                     let span = document.createElement("span");
                     let name = document.createElement("span");
-                    name.textContent = data.userName + " 様 (" + serviceLabel + ")";
+                    name.textContent = `${data.userName} 様 (${serviceLabel})${videoCount ? ` / 動画${videoCount}本・処理済み` : ""}`;
                     let removeButton = document.createElement("button");
                     removeButton.type = "button";
                     removeButton.className = "pending-remove-btn";
@@ -2776,7 +2805,7 @@
         window.sendBatchData = async function() {
             if (batchDataList.length === 0) return;
             let names = batchDataList.map(d => d.userName).join("、");
-            if (!confirm(`以下の ${batchDataList.length} 名様のデータをまとめて送信します。\n【 ${names} 】\nよろしいですか？`)) return;
+            if (!confirm(`以下の ${batchDataList.length} 名様のデータをまとめて送信します。\n【 ${names} 】\n選択した動画は1本ごとに先頭30秒・5MB以下へ自動調整します。\nよろしいですか？`)) return;
 
             document.getElementById("loadingOverlay").style.display = "flex";
             try {
