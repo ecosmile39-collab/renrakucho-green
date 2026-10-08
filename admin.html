@@ -40,11 +40,15 @@
             <strong>管理者認証</strong>
             <input type="password" id="adminKey" placeholder="管理者キーを入力">
             <label style="display: block; margin-top: 6px; font-size: 13px; cursor: pointer;"><input type="checkbox" id="showAdminKey" style="width: auto; margin-right: 6px;"> 管理者キーを表示する</label>
+            <label style="display: block; margin-top: 8px; font-size: 13px; cursor: pointer;"><input type="checkbox" id="rememberAdminAuth" style="width: auto; margin-right: 6px;"> この端末で管理者認証を記憶する（自分専用の端末のみ）</label>
             <button class="primary" onclick="authenticateAdmin()">管理者として認証する</button>
             <p id="authError" class="error"></p>
         </section>
 
         <section id="facilitySection" class="hidden">
+            <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+                <button type="button" onclick="logoutAdmin()" style="background: #495057;">管理者からログアウト</button>
+            </div>
             <div style="margin-top: 20px; padding: 16px; border: 2px dashed #40a94d; background: #eaf7eb; border-radius: 8px;">
                 <h2 style="margin-top: 0; color: #237032;">➕ 新規施設の登録（アカウント発行）</h2>
                 <p>施設名・初期パスワード・請求書の送付先メールを登録します。施設IDは自動発行され、施設名を変更しても変わりません。</p>
@@ -101,7 +105,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { initializeAuth, browserSessionPersistence, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { initializeAuth, browserLocalPersistence, browserSessionPersistence, signInWithCustomToken, setPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { initializeFirestore, collection, getDocs, getDocsFromServer, getDoc, doc, documentId, updateDoc, deleteDoc, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
@@ -117,7 +121,7 @@
         };
 
         const app = initializeApp(firebaseConfig, "admin-control-panel");
-        const auth = initializeAuth(app, { persistence: browserSessionPersistence });
+        const auth = initializeAuth(app, { persistence: [browserLocalPersistence, browserSessionPersistence] });
         const db = initializeFirestore(app, { experimentalForceLongPolling: true });
         const storage = getStorage(app);
         const functions = getFunctions(app);
@@ -128,6 +132,31 @@
         let latestInvoiceByFacility = new Map();
         let currentInvoiceHistory = [];
         let currentInvoiceFacilityId = "";
+
+        const rememberAdminAuth = document.getElementById("rememberAdminAuth");
+        rememberAdminAuth.checked = localStorage.getItem("rememberAdminAuth") === "true";
+
+        function setAdminPanelVisible(isVisible) {
+            document.getElementById("authSection").classList.toggle("hidden", isVisible);
+            document.getElementById("facilitySection").classList.toggle("hidden", !isVisible);
+        }
+
+        auth.authStateReady().then(async () => {
+            const user = auth.currentUser;
+            if (!user || user.uid !== "admin-control-panel") return;
+            try {
+                const token = await user.getIdTokenResult();
+                if (token.claims.role !== "admin") {
+                    await signOut(auth);
+                    return;
+                }
+                setAdminPanelVisible(true);
+                await loadFacilities();
+            } catch (error) {
+                await signOut(auth);
+                document.getElementById("authError").textContent = "管理者認証を復元できませんでした。再度ログインしてください。";
+            }
+        });
 
         document.getElementById("showAdminKey").addEventListener("change", function() {
             document.getElementById("adminKey").type = this.checked ? "text" : "password";
@@ -143,10 +172,12 @@
             error.textContent = "";
             try {
                 const result = await createAdminSession({ adminKey: key });
+                const remember = rememberAdminAuth.checked;
+                await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
+                localStorage.setItem("rememberAdminAuth", String(remember));
                 await signInWithCustomToken(auth, result.data.customToken);
                 document.getElementById("adminKey").value = "";
-                document.getElementById("authSection").classList.add("hidden");
-                document.getElementById("facilitySection").classList.remove("hidden");
+                setAdminPanelVisible(true);
                 await loadFacilities();
             } catch (authError) {
                 error.textContent = "管理者キーが正しくないか、認証に失敗しました。";
@@ -154,6 +185,11 @@
                     ? "管理者キーが正しくないか、認証に失敗しました。"
                     : "認証に失敗しました。";
             }
+        };
+
+        window.logoutAdmin = async function() {
+            await signOut(auth);
+            setAdminPanelVisible(false);
         };
 
         window.prepareLegacyStorageAccess = async function() {
