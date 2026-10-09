@@ -151,19 +151,19 @@
             <a id="unsubscribeActionLink" href="unsubscribe.html" style="display: none; margin-right: 12px; color: #c92a2a; font-weight: bold;">🗑️ システムを退会する</a>
             <a id="changeFacilityNameActionLink" href="change_facility_name.html" style="display: none; margin-right: 12px; color: #2b8a3e; font-weight: bold;">🏢 施設名変更</a>
             <a id="changePasswordActionLink" href="change_password.html" style="display: none; margin-right: 12px; color: #4682b4; font-weight: bold;">🔑 パスワード変更画面を開く</a>
+            <button type="button" id="toggleFacilityLineSettingsButton" onclick="toggleFacilityLineSettings()" style="padding: 5px 8px; margin-right: 12px; background: #495057; color: white; border: 0; border-radius: 4px; font-weight: bold; cursor: pointer;">🏢 施設のLINE公式アカウント設定</button>
             <a href="print.html" style="margin-right: 12px; color: #2b8a3e; font-weight: bold;">➡ 印刷画面へ</a>
             <a href="history.html" style="color: #2b8a3e; font-weight: bold;">➡ 過去データ一覧へ</a>
         </div>
 
-        <section style="margin: 12px 0; padding: 12px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 6px;">
+        <section id="facilityLineSettingsSection" hidden style="margin: 12px 0; padding: 12px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 6px;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <div>
                     <strong>施設のLINE公式アカウント</strong>
                     <div id="facilityLineSettingsStatus" style="margin-top: 4px; font-size: 13px; color: #526158;">設定を確認しています...</div>
                 </div>
-                <button type="button" onclick="toggleFacilityLineSettings()" style="padding: 8px 12px; background: #495057; color: white; border: 0; border-radius: 4px; cursor: pointer;">設定を開く</button>
             </div>
-            <div id="facilityLineSettingsForm" hidden style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #dee2e6;">
+            <div id="facilityLineSettingsForm" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #dee2e6;">
                 <p style="font-size: 14px;"><a href="line-setup-guide.html" target="_blank" rel="noopener noreferrer" style="color: #1765a5; font-weight: bold;">動画でLINE設定の手順を見る（音声・字幕付き）</a></p>
                 <p style="font-size: 13px; line-height: 1.6;">この施設専用のLINE公式アカウントを設定します。LINE Developersで次の値を確認してください。</p>
                 <ol style="font-size: 13px; line-height: 1.7; padding-left: 22px;">
@@ -1626,8 +1626,11 @@
         }
 
         window.toggleFacilityLineSettings = function() {
-            const form = document.getElementById("facilityLineSettingsForm");
-            form.hidden = !form.hidden;
+            const section = document.getElementById("facilityLineSettingsSection");
+            section.hidden = !section.hidden;
+            document.getElementById("toggleFacilityLineSettingsButton").textContent = section.hidden
+                ? "🏢 施設のLINE公式アカウント設定"
+                : "LINE設定を閉じる";
         };
 
         async function loadFacilityLineSettingsStatus() {
