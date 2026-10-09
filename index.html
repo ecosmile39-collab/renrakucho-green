@@ -243,6 +243,11 @@
                 <label style="display: block; margin-top: 8px; font-size: 13px; cursor: pointer;">
                     <input type="checkbox" id="showInactiveUsers" onchange="loadUserNames(localStorage.getItem('currentFacilityId'))" style="width: auto; margin-right: 5px;"> 利用終了者も表示する
                 </label>
+                <div id="customFacilityFields" hidden style="margin: 12px 0 0; padding: 12px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 6px;">
+                    <div id="customFacilityFieldInputs"></div>
+                    <button type="button" id="saveCustomFacilityFieldsButton" onclick="saveCustomFacilityFields()" style="margin-top: 8px; padding: 7px 10px; background: #1c7ed6; color: white; border: 0; border-radius: 4px; cursor: pointer;">利用者情報に保存</button>
+                    <span id="customFacilityFieldsStatus" role="status" style="display: block; margin-top: 5px; font-size: 12px; color: #526158;"></span>
+                </div>
             </div>
             <div style="display: flex; flex-direction: column; align-items: center; width: 115px; flex-shrink: 0;">
                 <img id="userFace" src="" alt="顔写真">
@@ -813,8 +818,6 @@
         </div>
         </div>
 
-        <div id="customFacilityFields" hidden style="margin: 12px 0; padding: 12px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 6px;"></div>
-
         <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">📷 施設でのご様子 (写真・動画)</h3>
         <div class="camera-btn-area" id="mediaSection">
             <label>📸 その場で写真を撮影する</label>
@@ -921,16 +924,20 @@
                 if (element) element.classList.toggle("facility-custom-hidden", hiddenSections.has(section.id));
             }
 
+            renderCustomFacilityProfileFields(window.globalUsersData[document.getElementById("userName")?.value] || {});
+        }
+
+        function renderCustomFacilityProfileFields(userData = {}) {
             const container = document.getElementById("customFacilityFields");
-            if (!container) return;
-            container.replaceChildren(...facilityFormCustomization.customFields.map(field => {
+            const inputsContainer = document.getElementById("customFacilityFieldInputs");
+            if (!container || !inputsContainer) return;
+            inputsContainer.replaceChildren(...facilityFormCustomization.customFields.map(field => {
                 const wrapper = document.createElement("div");
                 wrapper.style.marginBottom = "10px";
-                wrapper.dataset.customFieldRow = field.id;
 
                 const label = document.createElement("label");
                 label.textContent = field.label;
-                label.htmlFor = `customField_${field.id}`;
+                label.htmlFor = `profileCustomField_${field.id}`;
                 let input;
                 if (field.type === "textarea") {
                     input = document.createElement("textarea");
@@ -943,35 +950,45 @@
                     input = document.createElement("input");
                     input.type = field.type;
                 }
-                input.id = `customField_${field.id}`;
-                input.dataset.customFieldId = field.id;
+                input.id = `profileCustomField_${field.id}`;
+                input.dataset.profileCustomFieldId = field.id;
+                const savedValue = userData.customProfileFields?.[field.id];
+                if (field.type === "checkbox") input.checked = savedValue === true;
+                else input.value = String(savedValue ?? "");
                 if (field.type !== "checkbox") input.style.marginTop = "4px";
                 wrapper.append(label, input);
                 return wrapper;
             }));
-            container.hidden = facilityFormCustomization.customFields.length === 0;
+            container.hidden = !document.getElementById("userName")?.value || facilityFormCustomization.customFields.length === 0;
         }
 
-        function getCustomFieldValues() {
-            return facilityFormCustomization.customFields.map(field => {
-                const input = document.querySelector(`[data-custom-field-id="${field.id}"]`);
-                return {
-                    id: field.id,
-                    label: field.label,
-                    type: field.type,
-                    familyVisible: field.familyVisible,
-                    value: field.type === "checkbox" ? Boolean(input?.checked) : input?.value || ""
-                };
-            });
+        function getCustomProfileFieldValues() {
+            return Object.fromEntries(facilityFormCustomization.customFields.map(field => {
+                const input = document.querySelector(`[data-profile-custom-field-id="${field.id}"]`);
+                return [field.id, field.type === "checkbox" ? Boolean(input?.checked) : input?.value || ""];
+            }));
         }
 
-        function restoreCustomFieldValues(values) {
-            const valuesById = new Map((Array.isArray(values) ? values : []).map(field => [field.id, field.value]));
-            for (const field of facilityFormCustomization.customFields) {
-                const input = document.querySelector(`[data-custom-field-id="${field.id}"]`);
-                if (!input) continue;
-                if (field.type === "checkbox") input.checked = valuesById.get(field.id) === true;
-                else input.value = String(valuesById.get(field.id) ?? "");
+        window.saveCustomFacilityFields = async function() {
+            const userName = document.getElementById("userName").value;
+            const facilityId = localStorage.getItem("currentFacilityId");
+            const status = document.getElementById("customFacilityFieldsStatus");
+            const button = document.getElementById("saveCustomFacilityFieldsButton");
+            if (!userName || !facilityId) {
+                status.textContent = "先に利用者を選択してください。";
+                return;
+            }
+            button.disabled = true;
+            status.textContent = "保存中...";
+            try {
+                const customProfileFields = getCustomProfileFieldValues();
+                await setDoc(doc(db, "facilities", facilityId, "users", userName), { customProfileFields }, { merge: true });
+                window.globalUsersData[userName] = { ...(window.globalUsersData[userName] || {}), customProfileFields };
+                status.textContent = "利用者情報に保存しました。次回選択時にも表示されます。";
+            } catch (error) {
+                status.textContent = "保存できませんでした: " + getErrorMessage(error);
+            } finally {
+                button.disabled = false;
             }
         }
 
@@ -1633,6 +1650,7 @@
             if(!userName) {
                 document.getElementById("userFace").style.display = "none";
                 document.getElementById("ageDisplay").textContent = "";
+                renderCustomFacilityProfileFields({});
                 userSettingsArea.style.display = "none";
                 userActionBtns.style.display = "none";
                 linePairingArea.style.display = "none";
@@ -1643,6 +1661,7 @@
             }
             
             let userData = window.globalUsersData[userName];
+            renderCustomFacilityProfileFields(userData || {});
             let ageDisplay = document.getElementById("ageDisplay");
             let statusButton = document.getElementById("toggleUserStatusBtn");
             let isActive = !userData || userData.active !== false;
@@ -2132,7 +2151,6 @@
                         document.getElementById("togglePRBtn").innerHTML = "📢 施設からのお知らせ・PRを隠す";
                     }
                 }
-                restoreCustomFieldValues(d.customFields);
             }
             window.checkTemp('temp1', 'temp1Alert');
             window.checkTemp('stTempIn', 'stTempInAlert');
@@ -2358,7 +2376,6 @@
                                 document.getElementById("togglePRBtn").innerHTML = "📢 施設からのお知らせ・PRを隠す";
                             }
                         }
-                        restoreCustomFieldValues(data.customFields);
                     }
                 }
                 window.checkTemp('temp1', 'temp1Alert');
@@ -2579,6 +2596,7 @@
             let imageFiles = accumulatedFiles.filter(f => f.type.startsWith('image/'));
             let videoFiles = accumulatedFiles.filter(f => f.type.startsWith('video/'));
             let finalImageCount = (imageFiles.length > 0) ? imageFiles.length : window.currentImageCount;
+            const customProfileValues = getCustomProfileFieldValues();
 
             let data = {
                 facilityId: facilityId, userName: userName, date: date, serviceType: sType,
@@ -2591,8 +2609,11 @@
                 message: document.getElementById("message").value,
                 familyMessage: document.getElementById("familyMessage").value,
                 facilityPR: isChildService || isLifeCare ? "" : (document.getElementById("facilityPR") ? document.getElementById("facilityPR").value : ""),
+                customFields: facilityFormCustomization.customFields.map(field => ({
+                    ...field,
+                    value: customProfileValues[field.id]
+                })),
                 hiddenFormSections: [...facilityFormCustomization.hiddenSections],
-                customFields: getCustomFieldValues(),
                 publishToFamily: familyLinePublicationEnabled && document.getElementById("publishToFamilyCheckbox").checked,
                 imageCount: finalImageCount, videoCount: window.currentVideoCount,
                 imageFiles: imageFiles, videoFiles: videoFiles
@@ -2994,7 +3015,6 @@
         function resetFormInputs() {
             accumulatedFiles = []; 
             document.getElementById("publishToFamilyCheckbox").checked = true;
-            restoreCustomFieldValues([]);
             document.getElementById("previewArea").innerHTML = "";
             document.getElementById("imageCameraInput").value = "";
             document.getElementById("videoCameraInput").value = "";
