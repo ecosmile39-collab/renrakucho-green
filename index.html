@@ -2863,6 +2863,7 @@
             if (!confirm(`以下の ${batchDataList.length} 名様のデータをまとめて送信します。\n【 ${names} 】\n選択した動画は1本ごとに先頭30秒・5MB以下へ自動調整します。\nよろしいですか？`)) return;
 
             document.getElementById("loadingOverlay").style.display = "flex";
+            document.getElementById("loadingText").textContent = "送信待ちの連絡帳を保存しています...";
             try {
                 const uploadPromises = batchDataList.map(async (data) => {
                     let docRef = doc(db, "facilities", data.facilityId, "daily_records", `${data.date}_${data.serviceType}_${data.userName}`);
