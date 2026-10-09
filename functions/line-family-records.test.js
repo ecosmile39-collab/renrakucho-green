@@ -233,6 +233,57 @@ test("@805xgtzu is the common LINE account even if it exists in facility setting
     assert.equal(linkedUsers[0], "family-a");
 });
 
+test("LINE family record includes only custom fields marked for family display", async () => {
+    const token = "d".repeat(64);
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const context = loadHandlers({
+        "facilities/facility-a": {
+            status: "active", commonLineEnabled: true,
+            formCustomization: { customFields: [
+                { id: "mood", label: "今日の気分", type: "text", familyVisible: true },
+                { id: "staff", label: "職員メモ", type: "text", familyVisible: false }
+            ] }
+        },
+        "facilities/facility-a/users/User": { lineUserIds: ["family-a"] },
+        "facilities/facility-a/daily_records/2026-10-06_service_User": {
+            facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "service",
+            familyPublished: true,
+            customFields: [
+                { id: "mood", label: "今日の気分", type: "text", familyVisible: true, value: "元気" },
+                { id: "staff", label: "職員メモ", type: "text", familyVisible: false, value: "内部のみ" }
+            ]
+        }
+    });
+    await sendFamilyEvent(context, "family-a");
+    const reply = context.requests[0].body.messages[0].text;
+    const viewerToken = reply.match(/token=([a-f0-9]{64})/)[1];
+    const sharedRecord = await context.handlers.getLineSharedRecord({ data: { token: viewerToken } });
+    assert.equal(sharedRecord.fields.some(field => field.label === "今日の気分" && field.value === "元気"), true);
+    assert.equal(sharedRecord.fields.some(field => field.label === "職員メモ" || field.value === "内部のみ"), false);
+});
+
+test("LINE family record omits standard fields and media from hidden sections", async () => {
+    const token = "e".repeat(64);
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", commonLineEnabled: true },
+        "facilities/facility-a/users/User": { lineUserIds: ["family-a"] },
+        "facilities/facility-a/daily_records/2026-10-06_service_User": {
+            facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "service",
+            familyPublished: true, message: "施設内だけの連絡", familyMessage: "家庭連絡",
+            hiddenFormSections: ["facilityMessageSection", "familyMessageSection", "mediaSection"], imageCount: 1
+        },
+        [`lineRecordLinks/${hash}`]: {
+            facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "service",
+            expiresAt: new Date(Date.now() + 60000)
+        }
+    });
+    const sharedRecord = await context.handlers.getLineSharedRecord({ data: { token } });
+    assert.equal(sharedRecord.fields.some(field => field.value === "施設内だけの連絡" || field.value === "家庭連絡"), false);
+    assert.equal(sharedRecord.attachments.images.length, 0);
+    assert.equal(sharedRecord.attachments.videos.length, 0);
+});
+
 test("removing a facility-specific copy of @805xgtzu preserves existing family links", async () => {
     const context = loadHandlers({
         "facilities/facility-a": { status: "active", commonLineEnabled: true },

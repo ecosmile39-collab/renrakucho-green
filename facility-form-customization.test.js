@@ -1,0 +1,43 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { readFileSync } from "node:fs";
+import {
+    FORM_CUSTOMIZATION_SECTIONS,
+    normalizeFacilityFormCustomization
+} from "./facility-form-customization.js";
+
+test("unconfigured facilities keep the original form and have no custom fields", () => {
+    assert.deepEqual(normalizeFacilityFormCustomization(undefined), { hiddenSections: [], customFields: [] });
+});
+
+test("customization accepts only known sections and valid bounded custom fields", () => {
+    const result = normalizeFacilityFormCustomization({
+        hiddenSections: ["careJournalArea", "unknown", "careJournalArea"],
+        customFields: [
+            { id: "mood", label: "  今日の気分  ", type: "select", familyVisible: true },
+            { id: "support-note", label: "支援メモ", type: "textarea", familyVisible: true },
+            { id: "invalid id", label: "不正ID", type: "text" },
+            { id: "blank", label: "   ", type: "text" }
+        ]
+    });
+    assert.deepEqual(result.hiddenSections, ["careJournalArea"]);
+    assert.deepEqual(result.customFields, [
+        { id: "mood", label: "今日の気分", type: "text", familyVisible: true },
+        { id: "support-note", label: "支援メモ", type: "textarea", familyVisible: true }
+    ]);
+});
+
+test("custom field definitions are limited to twenty", () => {
+    const customFields = Array.from({ length: 25 }, (_, index) => ({
+        id: `field-${index}`, label: `項目${index}`, type: "text"
+    }));
+    assert.equal(normalizeFacilityFormCustomization({ customFields }).customFields.length, 20);
+    assert.equal(FORM_CUSTOMIZATION_SECTIONS.length > 0, true);
+});
+
+test("every customizable standard section exists in the facility input page", () => {
+    const inputPage = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+    for (const section of FORM_CUSTOMIZATION_SECTIONS) {
+        assert.ok(inputPage.includes(`id="${section.id}"`), `missing input section ${section.id}`);
+    }
+});

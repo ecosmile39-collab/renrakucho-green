@@ -601,9 +601,24 @@ async function replyToLine(replyToken, text, channelAccessToken) {
     }
 }
 
-function getFamilyVisibleFields(record) {
+function getFamilyVisibleFields(record, formCustomization) {
     const fields = [];
+    const hiddenSections = new Set(Array.isArray(record.hiddenFormSections) ? record.hiddenFormSections : []);
+    const allowedFamilyFieldIds = new Set((Array.isArray(formCustomization?.customFields) ? formCustomization.customFields : [])
+        .filter(field => field && field.familyVisible === true && typeof field.id === "string")
+        .map(field => field.id));
+    const hiddenFieldGroups = {
+        careJournalArea: new Set(["careStaff", "careJournal", "handoverRequired", "medicalVisit", "conditionChange", "handoverNote"]),
+        dayServiceSection: new Set(["careStaff", "temp1", "temp2", "pulse", "spo2", "bpHigh", "bpLow", "mealMain", "mealSub", "water", "medication", "oralCare", "bath", "bathReason", "training", "activity", "bowel", "bowel1", "bowel2", "bowel3"]),
+        facilityMessageSection: new Set(["message"]),
+        familyMessageSection: new Set(["familyMessage"]),
+        facilityPRSection: new Set(["facilityPR"])
+    };
     const add = (label, key) => {
+        if (Object.entries(hiddenFieldGroups).some(([section, keys]) => hiddenSections.has(section) && keys.has(key))) return;
+        if (hiddenSections.has("afterSchoolSection") && key.startsWith("afterSchool")) return;
+        if (hiddenSections.has("lifeCareSection") && key.startsWith("lifeCare")) return;
+        if (hiddenSections.has("shortStaySection") && (key.startsWith("st") || key.startsWith("num_") || key.startsWith("free_item_"))) return;
         const value = record[key];
         if (Array.isArray(value)) {
             if (value.length) fields.push({ label, value: value.join("、") });
@@ -667,6 +682,13 @@ function getFamilyVisibleFields(record) {
     add("施設からの連絡", "message");
     add("ご家族からの連絡", "familyMessage");
     add("施設からのお知らせ", "facilityPR");
+    for (const field of Array.isArray(record.customFields) ? record.customFields : []) {
+        if (!field || field.familyVisible !== true || !allowedFamilyFieldIds.has(field.id) || typeof field.label !== "string") continue;
+        const value = field.type === "checkbox"
+            ? field.value === true ? "はい" : "いいえ"
+            : String(field.value ?? "");
+        if (value.trim()) fields.push({ label: field.label, value });
+    }
     return fields;
 }
 
@@ -719,7 +741,8 @@ exports.getLineSharedRecord = onCall(async request => {
         .collection("users").doc(link.userName).get();
     const facilitySnapshot = await getFirestore().collection("facilities").doc(link.facilityId).get();
     const attachments = { images: [], videos: [] };
-    if (userSnapshot.exists && userSnapshot.data().photoNg !== true) {
+    if (userSnapshot.exists && userSnapshot.data().photoNg !== true &&
+        !record.hiddenFormSections?.includes("mediaSection")) {
         const imageCount = Number.isInteger(record.imageCount) ? Math.min(record.imageCount, 20) : 0;
         const videoCount = Number.isInteger(record.videoCount) ? Math.min(record.videoCount, 10) : 0;
         const imageAttachments = await Promise.all(Array.from({ length: imageCount }, (_, index) =>
@@ -746,7 +769,7 @@ exports.getLineSharedRecord = onCall(async request => {
         userName: link.userName,
         date: link.date,
         serviceType: link.serviceType,
-        fields: getFamilyVisibleFields(record),
+        fields: getFamilyVisibleFields(record, facilitySnapshot.exists ? facilitySnapshot.data().formCustomization : undefined),
         attachments
     };
 });

@@ -63,6 +63,7 @@
         .line-publication-control input, .pending-publish-toggle input { width: auto; margin: 0; }
         .line-publication-control p { margin: 5px 0 0 26px; color: #495057; font-size: 13px; }
         .pending-publish-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal; white-space: nowrap; }
+        .facility-custom-hidden { display: none !important; }
 
         .scroll-btn-group { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
         .scroll-btn { background-color: #2b8a3e; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; opacity: 0.8; }
@@ -784,18 +785,23 @@
 
         <h3 id="familyContactSectionTitle" style="color: #2b8a3e; border-bottom-color: #2b8a3e;">ご利用いただきありがとうございます（連絡事項）</h3>
         
-        <label id="facilityMessageLabel" style="margin-top: 15px;">施設からの御連絡事項</label>
-        <select id="messageTemplate" onchange="insertTemplate()" style="margin-bottom: 8px;">
-            <option value="">📝 定型文を選ぶ</option>
-            <option value="終始おだやかな表情で過ごされていました。">1. 終始おだやかな表情で過ごされていました。</option>
-            <option value="お食事もしっかりと召し上がり、活気がありました。">2. お食事もしっかりと召し上がり、活気がありました。</option>
-            <option value="他のお客様とも楽しくお話しされ、にこやかに過ごされていました。">3. 他のお客様とも楽しくお話しされ、にこやかに過ごされていました。</option>
-        </select>
-        <textarea id="message" rows="4"></textarea>
+        <div id="facilityMessageSection">
+            <label id="facilityMessageLabel" style="margin-top: 15px;">施設からの御連絡事項</label>
+            <select id="messageTemplate" onchange="insertTemplate()" style="margin-bottom: 8px;">
+                <option value="">📝 定型文を選ぶ</option>
+                <option value="終始おだやかな表情で過ごされていました。">1. 終始おだやかな表情で過ごされていました。</option>
+                <option value="お食事もしっかりと召し上がり、活気がありました。">2. お食事もしっかりと召し上がり、活気がありました。</option>
+                <option value="他のお客様とも楽しくお話しされ、にこやかに過ごされていました。">3. 他のお客様とも楽しくお話しされ、にこやかに過ごされていました。</option>
+            </select>
+            <textarea id="message" rows="4"></textarea>
+        </div>
 
-        <label id="familyMessageLabel" style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項（ご家庭でのご様子など）</label>
-        <textarea id="familyMessage" rows="3" placeholder="ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。"></textarea>
+        <div id="familyMessageSection">
+            <label id="familyMessageLabel" style="margin-top: 15px; color: #e67700;">お客様からの御連絡事項（ご家庭でのご様子など）</label>
+            <textarea id="familyMessage" rows="3" placeholder="ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。"></textarea>
+        </div>
 
+        <div id="facilityPRSection">
         <div id="facilityPRControl" style="margin-top: 15px;">
             <button type="button" id="togglePRBtn" onclick="togglePRField()" style="background-color: #f8f9fa; color: #2b8a3e; border: 1px solid #2b8a3e; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px;">
                 📢 施設からのお知らせ・PRを追加する
@@ -805,9 +811,12 @@
             <label style="margin-top: 0; color: #2b8a3e; font-weight: bold; font-size: 14px;">📢 施設からのお知らせ・PR <span style="font-size: 12px; font-weight: normal; color: #666;">（「お客様への御連絡事項」の枠内に表示されます）</span></label>
             <textarea id="facilityPR" rows="2" placeholder="例：季節の行事や日々の活動の様子は、施設内でも掲示しております。見学やご相談など、いつでもお気軽にお声がけください。"></textarea>
         </div>
+        </div>
+
+        <div id="customFacilityFields" hidden style="margin: 12px 0; padding: 12px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 6px;"></div>
 
         <h3 style="color: #2b8a3e; border-bottom-color: #2b8a3e;">📷 施設でのご様子 (写真・動画)</h3>
-        <div class="camera-btn-area">
+        <div class="camera-btn-area" id="mediaSection">
             <label>📸 その場で写真を撮影する</label>
             <input type="file" id="imageCameraInput" accept="image/*" capture="environment" onclick="checkPrivacy(event)" onchange="previewMedia(event)">
             
@@ -852,9 +861,11 @@
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { MAX_VIDEO_SOURCE_BYTES, VIDEO_ENCODING_PROFILES, getVideoEncodingArguments, isVideoOutputWithinLimit } from "./video-processing-policy.js";
         import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
+        import { FORM_CUSTOMIZATION_SECTIONS, normalizeFacilityFormCustomization } from "./facility-form-customization.js";
 
         let familyLinePublicationEnabled = true;
         let facilityLineStatusSignature = "";
+        let facilityFormCustomization = normalizeFacilityFormCustomization(null);
         const COMMON_LINE_BASIC_ID = "@805xgtzu";
 
         const firebaseConfig = {
@@ -901,6 +912,67 @@
             if (typeof error === "string") return error;
             if (error.message) return error.message;
             return String(error);
+        }
+
+        function applyFacilityFormCustomization() {
+            const hiddenSections = new Set(facilityFormCustomization.hiddenSections);
+            for (const section of FORM_CUSTOMIZATION_SECTIONS) {
+                const element = document.getElementById(section.id);
+                if (element) element.classList.toggle("facility-custom-hidden", hiddenSections.has(section.id));
+            }
+
+            const container = document.getElementById("customFacilityFields");
+            if (!container) return;
+            container.replaceChildren(...facilityFormCustomization.customFields.map(field => {
+                const wrapper = document.createElement("div");
+                wrapper.style.marginBottom = "10px";
+                wrapper.dataset.customFieldRow = field.id;
+
+                const label = document.createElement("label");
+                label.textContent = field.label;
+                label.htmlFor = `customField_${field.id}`;
+                let input;
+                if (field.type === "textarea") {
+                    input = document.createElement("textarea");
+                    input.rows = 3;
+                } else if (field.type === "checkbox") {
+                    input = document.createElement("input");
+                    input.type = "checkbox";
+                    input.style.width = "auto";
+                } else {
+                    input = document.createElement("input");
+                    input.type = field.type;
+                }
+                input.id = `customField_${field.id}`;
+                input.dataset.customFieldId = field.id;
+                if (field.type !== "checkbox") input.style.marginTop = "4px";
+                wrapper.append(label, input);
+                return wrapper;
+            }));
+            container.hidden = facilityFormCustomization.customFields.length === 0;
+        }
+
+        function getCustomFieldValues() {
+            return facilityFormCustomization.customFields.map(field => {
+                const input = document.querySelector(`[data-custom-field-id="${field.id}"]`);
+                return {
+                    id: field.id,
+                    label: field.label,
+                    type: field.type,
+                    familyVisible: field.familyVisible,
+                    value: field.type === "checkbox" ? Boolean(input?.checked) : input?.value || ""
+                };
+            });
+        }
+
+        function restoreCustomFieldValues(values) {
+            const valuesById = new Map((Array.isArray(values) ? values : []).map(field => [field.id, field.value]));
+            for (const field of facilityFormCustomization.customFields) {
+                const input = document.querySelector(`[data-custom-field-id="${field.id}"]`);
+                if (!input) continue;
+                if (field.type === "checkbox") input.checked = valuesById.get(field.id) === true;
+                else input.value = String(valuesById.get(field.id) ?? "");
+            }
         }
 
         async function compressImage(file) {
@@ -1218,6 +1290,8 @@
             familyLinePublicationEnabled = facilityData.familyLinePublicationEnabled !== false;
             document.getElementById("linePublicationControl").style.display = familyLinePublicationEnabled ? "block" : "none";
             facilityLineStatusSignature = `${facilityData.lineServiceEnabled !== false}:${facilityData.commonLineEnabled !== false}`;
+            facilityFormCustomization = normalizeFacilityFormCustomization(facilityData.formCustomization);
+            applyFacilityFormCustomization();
             const enabledServiceTypes = normalizeServiceTypes(facilityData.enabledServiceTypes);
             const selectedService = populateServiceTypeSelect(
                 document.getElementById("serviceType"),
@@ -1441,6 +1515,7 @@
                     <option value="お食事もしっかりと召し上がり、活気がありました。">2. お食事もしっかりと召し上がり、活気がありました。</option>
                     <option value="他のお客様とも楽しくお話しされ、にこやかに過ごされていました。">3. 他のお客様とも楽しくお話しされ、にこやかに過ごされていました。</option>`;
             }
+                    applyFacilityFormCustomization();
             regTitle.textContent = `➕ 【${sType}】の名簿に新しく登録する`;
 
             let facilityId = localStorage.getItem("currentFacilityId");
@@ -2057,6 +2132,7 @@
                         document.getElementById("togglePRBtn").innerHTML = "📢 施設からのお知らせ・PRを隠す";
                     }
                 }
+                restoreCustomFieldValues(d.customFields);
             }
             window.checkTemp('temp1', 'temp1Alert');
             window.checkTemp('stTempIn', 'stTempInAlert');
@@ -2282,6 +2358,7 @@
                                 document.getElementById("togglePRBtn").innerHTML = "📢 施設からのお知らせ・PRを隠す";
                             }
                         }
+                        restoreCustomFieldValues(data.customFields);
                     }
                 }
                 window.checkTemp('temp1', 'temp1Alert');
@@ -2514,6 +2591,8 @@
                 message: document.getElementById("message").value,
                 familyMessage: document.getElementById("familyMessage").value,
                 facilityPR: isChildService || isLifeCare ? "" : (document.getElementById("facilityPR") ? document.getElementById("facilityPR").value : ""),
+                hiddenFormSections: [...facilityFormCustomization.hiddenSections],
+                customFields: getCustomFieldValues(),
                 publishToFamily: familyLinePublicationEnabled && document.getElementById("publishToFamilyCheckbox").checked,
                 imageCount: finalImageCount, videoCount: window.currentVideoCount,
                 imageFiles: imageFiles, videoFiles: videoFiles
@@ -2915,6 +2994,7 @@
         function resetFormInputs() {
             accumulatedFiles = []; 
             document.getElementById("publishToFamilyCheckbox").checked = true;
+            restoreCustomFieldValues([]);
             document.getElementById("previewArea").innerHTML = "";
             document.getElementById("imageCameraInput").value = "";
             document.getElementById("videoCameraInput").value = "";

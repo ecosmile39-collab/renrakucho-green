@@ -543,6 +543,24 @@
         
         const defaultIcon = "data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
 
+        function renderCustomFieldPrintHtml(record) {
+            const fields = (Array.isArray(record.customFields) ? record.customFields : []).filter(field =>
+                field && typeof field.label === "string" && field.value !== "" && field.value !== undefined && field.value !== null
+            );
+            if (!fields.length) return "";
+            const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+            }[character]));
+            return `<div class="custom-record-fields"><div class="section-title">■ 施設独自項目</div>${fields.map(field => {
+                const value = field.type === "checkbox" ? (field.value === true ? "はい" : "いいえ") : String(field.value);
+                return `<div class="text-box"><strong>${escapeHtml(field.label)}</strong>：${escapeHtml(value).replace(/\n/g, "<br>")}</div>`;
+            }).join("")}</div>`;
+        }
+
+        function isFormSectionVisible(record, sectionId) {
+            return !Array.isArray(record.hiddenFormSections) || !record.hiddenFormSections.includes(sectionId);
+        }
+
         window.onload = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             if (!facilityId) { window.location.replace("login.html"); return; }
@@ -983,6 +1001,8 @@
 
                 let firstData = periodRecords[0] || {};
                 let lastData = periodRecords[periodRecords.length - 1] || {};
+                let customFieldsHtml = renderCustomFieldPrintHtml(lastData);
+                let showShortStaySection = isFormSectionVisible(lastData, "shortStaySection");
 
                 let tableRows = "";
                 let commentsHtml = "";
@@ -1179,7 +1199,7 @@
                 }
 
                 let prPart = "";
-                if (lastData.facilityPR && lastData.facilityPR.trim() !== "") {
+                if (isFormSectionVisible(lastData, "facilityPRSection") && lastData.facilityPR && lastData.facilityPR.trim() !== "") {
                     let prText = lastData.facilityPR.trim().replace(/\n+/g, '<br>');
                     prPart = `
                         <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #999; color: #2b8a3e; font-size: 12px; line-height: 1.25;">
@@ -1204,6 +1224,9 @@
                         <h2 style="font-size: 18px; margin: 0;">お名前： ${userName} 様</h2>
                         <div class="print-date" style="margin: 0;">ご利用期間： ${startDate} ～ ${endDate}</div>
                     </div>
+
+                    ${customFieldsHtml}
+                    <div style="${showShortStaySection ? "" : "display: none;"}">
 
                     <table class="compact-table admission-vitals-table" style="margin-bottom: 8px;">
                         <tr>
@@ -1273,6 +1296,7 @@
 
                     <div class="section-title">■ 施設でのご様子 (写真・動画)</div>
                     <div class="media-print-area">${mediaHtml}</div>
+                    </div>
                 `;
 
                 container.appendChild(pageDiv);
@@ -1349,6 +1373,14 @@
 
         async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard, cardMessage = "", printTarget = "both", cardPhotoCount = 1) {
             let chartCanvasId = `chart_${index}`;
+            let customFieldsHtml = renderCustomFieldPrintHtml(data);
+            let showDayServiceSection = isFormSectionVisible(data, "dayServiceSection");
+            let showAfterSchoolSection = isFormSectionVisible(data, "afterSchoolSection");
+            let showLifeCareSection = isFormSectionVisible(data, "lifeCareSection");
+            let showFacilityMessageSection = isFormSectionVisible(data, "facilityMessageSection");
+            let showFamilyMessageSection = isFormSectionVisible(data, "familyMessageSection");
+            let showFacilityPRSection = isFormSectionVisible(data, "facilityPRSection");
+            let showMediaSection = isFormSectionVisible(data, "mediaSection");
             let uData = window.globalUsersData[data.userName];
             let bData = getBirthdayData(uData ? uData.birthday : null, data.date, false, null, null, printTarget === "card_only");
 
@@ -1451,7 +1483,7 @@
                 let mainMessage = data.message ? data.message.replace(/\n/g, '<br>') : '特になし';
 
                 let prPart = "";
-                if (data.facilityPR && data.facilityPR.trim() !== "") {
+                if (showFacilityPRSection && data.facilityPR && data.facilityPR.trim() !== "") {
                     let prText = data.facilityPR.trim().replace(/\n+/g, '<br>');
                     prPart = `
                         <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #999; color: #2b8a3e; font-size: 12px; line-height: 1.25;">
@@ -1460,7 +1492,7 @@
                     `;
                 }
                 
-                let finalMessageHtml = `<div class="text-box">${mainMessage}${prPart}</div>`;
+                let finalMessageHtml = showFacilityMessageSection ? `<div class="text-box">${mainMessage}${prPart}</div>` : "";
                 let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
                 let isChildService = ["放課後等デイサービス", "児童発達支援"].includes(data.serviceType);
                 let isLifeCare = data.serviceType === "生活介護";
@@ -1468,15 +1500,15 @@
                 let childDepartureLabel = data.serviceType === "児童発達支援" ? "事業所からの退所" : "事業所からの出発";
                 let facilityMessageTitle = isChildService ? "施設からのお知らせ・次回利用など" : isLifeCare ? "施設からのお知らせ・生活介護の連絡" : "お客様への御連絡事項";
                 let familyMessageTitle = isChildService ? "保護者記入欄（家庭からの連絡・体調）" : isLifeCare ? "ご家族からの連絡事項" : "お客様からの御連絡事項";
-                let familyMessageHtml = isChildService || isLifeCare ? "" : `
+                let familyMessageHtml = isChildService || isLifeCare || !showFamilyMessageSection ? "" : `
                     <div class="section-title">■ ${familyMessageTitle} <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
                     <div class="text-box family-box">${familyMessageText}</div>
                 `;
-                let familyMessageBottomHtml = isChildService || isLifeCare ? `
+                let familyMessageBottomHtml = isChildService || isLifeCare ? (showFamilyMessageSection ? `
                     <div class="section-title">■ 家族からの連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
                     <div class="text-box family-box">${familyMessageText}</div>
-                ` : "";
-                let adultDataHtml = isChildService || isLifeCare ? "" : `
+                ` : "") : "";
+                let adultDataHtml = isChildService || isLifeCare || !showDayServiceSection ? "" : `
                     <table class="compact-table">
                         <tr><th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td><th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td><th width="16%">血圧</th><td width="18%">${bpStrDay}</td></tr>
                         <tr><th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td><th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td></tr>
@@ -1490,7 +1522,7 @@
                     <div class="chart-container ds-chart"><canvas id="${chartCanvasId}"></canvas><img id="${chartCanvasId}_print_img" class="chart-print-image" style="display:none;width:100%;height:120px;object-fit:contain;"></div>
                     <div class="section-title">■ 機能訓練・活動の様子</div><div class="text-box">${trainAct || '特になし'}</div>
                 `;
-                let childServiceHtml = isChildService ? `
+                let childServiceHtml = isChildService && showAfterSchoolSection ? `
                     <div class="section-title">■ ${data.serviceType}記録</div>
                     <table class="compact-table">
                         <tr><th>利用日・提供時間</th><td>${data.date}</td><th>提供時間</th><td>${data.afterSchoolProvideStart || '未入力'}〜${data.afterSchoolProvideEnd || '未入力'}</td><th>担当指導員</th><td>${data.careStaff || '未入力'}</td></tr>
@@ -1505,7 +1537,7 @@
                     <div class="section-title">■ 活動の具体的内容</div><div class="text-box">${(data.afterSchoolSupport || '未入力').replace(/\n/g, '<br>')}</div>
                     <div class="section-title">■ 保護者への申し送り</div><div class="text-box">${(data.afterSchoolHandover || '未入力').replace(/\n/g, '<br>')}</div>
                 ` : "";
-                let lifeCareHtml = isLifeCare ? `
+                let lifeCareHtml = isLifeCare && showLifeCareSection ? `
                     <div class="section-title">■ 生活介護記録</div>
                     <table class="compact-table">
                         <tr><th>利用状況</th><td>${data.lifeCareAttendance || '未入力'}</td><th>提供時間</th><td>${data.lifeCareStartTime || '未入力'}〜${data.lifeCareEndTime || '未入力'}</td><th>担当職員</th><td>${data.lifeCareStaff || '未入力'}</td></tr>
@@ -1533,16 +1565,16 @@
                         <div class="print-date" style="margin: 0;">📓 記録日： ${data.date}</div>
                     </div>
 
+                    ${customFieldsHtml}
+
                     ${adultDataHtml}
                     ${childServiceHtml}
                     ${lifeCareHtml}
-                    <div class="section-title">■ ${facilityMessageTitle} <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>
-                    ${finalMessageHtml}
+                    ${showFacilityMessageSection ? `<div class="section-title">■ ${facilityMessageTitle} <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>${finalMessageHtml}` : ""}
                     
                     ${familyMessageHtml}
 
-                    <div class="section-title">■ 本日のご様子 (写真・動画)</div>
-                    <div class="media-print-area">${mediaHtml}</div>
+                    ${showMediaSection ? `<div class="section-title">■ 本日のご様子 (写真・動画)</div><div class="media-print-area">${mediaHtml}</div>` : ""}
                     ${familyMessageBottomHtml}
                 `;
 

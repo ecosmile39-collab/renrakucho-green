@@ -28,6 +28,13 @@
         .muted { color: #868e96; font-size: 13px; }
         .error { color: #c92a2a; font-weight: bold; margin: 10px 0 0; }
         .hidden { display: none; }
+        #facilityCustomizationDialog { width: min(760px, calc(100% - 32px)); max-height: 85vh; border: 1px solid #adb5bd; border-radius: 8px; padding: 20px; }
+        #facilityCustomizationDialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+        .customization-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px 12px; }
+        .customization-grid label, .custom-field-row label { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; }
+        .customization-grid input, .custom-field-row input, .custom-field-row select { width: auto; margin: 0; }
+        .custom-field-row { display: grid; grid-template-columns: minmax(130px, 1fr) 120px auto auto; gap: 8px; align-items: center; margin: 8px 0; }
+        @media (max-width: 560px) { .custom-field-row { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 600px) { .panel { margin: 0; min-height: 100vh; border-radius: 0; padding: 22px 18px; } .facility { align-items: flex-start; flex-direction: column; } button.lock, button.unlock { width: 100%; } }
     </style>
 </head>
@@ -85,6 +92,23 @@
             <h2>施設一覧</h2>
             <p id="loadingMessage" class="muted">施設一覧を読み込んでいます...</p>
             <div id="facilityList"></div>
+            <dialog id="facilityCustomizationDialog">
+                <form onsubmit="return false;">
+                    <h2 id="facilityCustomizationTitle" style="margin-top: 0;">施設の入力画面をカスタマイズ</h2>
+                    <p class="muted">設定はこの施設だけに適用されます。設定のない施設は初期画面のままです。</p>
+                    <h3>標準項目の表示</h3>
+                    <div id="facilityCustomizationSections" class="customization-grid"></div>
+                    <h3>施設独自の項目</h3>
+                    <p class="muted">追加項目は連絡帳に保存されます。「家族にも表示」を選んだ項目だけLINE閲覧画面に表示されます。</p>
+                    <div id="facilityCustomFields"></div>
+                    <button type="button" onclick="addFacilityCustomField()" style="background: #1c7ed6;">＋ 独自項目を追加</button>
+                    <p id="facilityCustomizationMessage" role="status" class="error"></p>
+                    <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                        <button type="button" onclick="document.getElementById('facilityCustomizationDialog').close()" style="background: #868e96;">キャンセル</button>
+                        <button type="button" id="saveFacilityCustomizationButton" onclick="saveFacilityCustomization()" style="background: #2b8a3e;">カスタマイズを保存</button>
+                    </div>
+                </form>
+            </dialog>
             <section id="invoiceHistoryPanel" class="hidden" style="margin-top: 20px; padding: 16px; border: 1px solid #adb5bd; border-radius: 6px; background: #f8f9fa;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
                     <h2 id="invoiceHistoryTitle" style="margin: 0;">請求書履歴</h2>
@@ -110,6 +134,7 @@
         import { initializeFirestore, collection, getDocs, getDocsFromServer, getDoc, doc, documentId, updateDoc, deleteDoc, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { ALL_SERVICE_TYPE_VALUES, SERVICE_TYPES, normalizeServiceTypes } from "./service-types.js";
+        import { CUSTOM_FORM_FIELD_TYPES, FORM_CUSTOMIZATION_SECTIONS, normalizeFacilityFormCustomization } from "./facility-form-customization.js";
 
         const COMMON_LINE_BASIC_ID = "@805xgtzu";
 
@@ -135,6 +160,8 @@
         let currentInvoiceHistory = [];
         let currentInvoiceFacilityId = "";
         let dedicatedLineFacilityIds = new Set();
+        let customizingFacilityId = "";
+        let facilityCustomizationDraft = { hiddenSections: [], customFields: [] };
 
         const rememberAdminAuth = document.getElementById("rememberAdminAuth");
         rememberAdminAuth.checked = localStorage.getItem("rememberAdminAuth") === "true";
@@ -444,6 +471,7 @@
                         <button type="button" style="background: #2b8a3e;" onclick="saveAdminFacilityServiceTypes('${encodeURIComponent(facility.id)}', this)">サービス設定を保存</button>
                     </details>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+                        <button type="button" style="background: #7048e8;" onclick="openFacilityCustomization('${encodeURIComponent(facility.id)}')">🎛️ カスタマイズ</button>
                         <button type="button" style="background: #1971c2;" onclick="previewTestInvoice('${encodeURIComponent(facility.id)}')">🧾 テスト請求書PDFプレビュー</button>
                         <button type="button" style="background: #2f9e44;" onclick="sendTestInvoiceFromPreview('${encodeURIComponent(facility.id)}', this)">📧 テスト請求書メールを送信</button>
                         <button type="button" style="background: #495057;" onclick="showFacilityInvoiceHistory('${encodeURIComponent(facility.id)}')">📚 請求書履歴</button>
@@ -834,6 +862,136 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
             } finally {
                 button.disabled = false;
                 button.textContent = originalText;
+            }
+        };
+
+        function renderFacilityCustomizationSections() {
+            const container = document.getElementById("facilityCustomizationSections");
+            const hiddenSections = new Set(facilityCustomizationDraft.hiddenSections);
+            container.replaceChildren(...FORM_CUSTOMIZATION_SECTIONS.map(section => {
+                const label = document.createElement("label");
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.dataset.formSectionId = section.id;
+                checkbox.checked = !hiddenSections.has(section.id);
+                label.append(checkbox, document.createTextNode(section.label));
+                return label;
+            }));
+        }
+
+        function renderFacilityCustomFieldRows() {
+            const container = document.getElementById("facilityCustomFields");
+            container.replaceChildren(...facilityCustomizationDraft.customFields.map(field => {
+                const row = document.createElement("div");
+                row.className = "custom-field-row";
+                row.dataset.customFieldId = field.id;
+
+                const nameLabel = document.createElement("label");
+                nameLabel.textContent = "項目名";
+                const nameInput = document.createElement("input");
+                nameInput.type = "text";
+                nameInput.maxLength = 60;
+                nameInput.value = field.label;
+                nameInput.dataset.customFieldLabel = "true";
+                nameLabel.append(nameInput);
+
+                const typeSelect = document.createElement("select");
+                typeSelect.dataset.customFieldType = "true";
+                const typeLabels = { text: "1行入力", textarea: "複数行入力", number: "数値", date: "日付", checkbox: "チェック" };
+                for (const type of CUSTOM_FORM_FIELD_TYPES) {
+                    const option = new Option(typeLabels[type], type, false, field.type === type);
+                    typeSelect.add(option);
+                }
+
+                const familyLabel = document.createElement("label");
+                const familyCheckbox = document.createElement("input");
+                familyCheckbox.type = "checkbox";
+                familyCheckbox.checked = field.familyVisible;
+                familyCheckbox.dataset.customFieldFamilyVisible = "true";
+                familyLabel.append(familyCheckbox, document.createTextNode("家族にも表示"));
+
+                const removeButton = document.createElement("button");
+                removeButton.type = "button";
+                removeButton.textContent = "削除";
+                removeButton.style.background = "#c92a2a";
+                removeButton.onclick = () => window.removeFacilityCustomField(field.id);
+                row.append(nameLabel, typeSelect, familyLabel, removeButton);
+                return row;
+            }));
+        }
+
+        window.openFacilityCustomization = function(encodedId) {
+            const facilityId = decodeURIComponent(encodedId);
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) { alert("施設一覧を更新してから操作してください。"); return; }
+            customizingFacilityId = facilityId;
+            facilityCustomizationDraft = normalizeFacilityFormCustomization(facility.formCustomization);
+            document.getElementById("facilityCustomizationTitle").textContent = `${facility.facilityName || facilityId} の入力画面カスタマイズ`;
+            document.getElementById("facilityCustomizationMessage").textContent = "";
+            renderFacilityCustomizationSections();
+            renderFacilityCustomFieldRows();
+            document.getElementById("facilityCustomizationDialog").showModal();
+        };
+
+        window.addFacilityCustomField = function() {
+            if (facilityCustomizationDraft.customFields.length >= 20) {
+                document.getElementById("facilityCustomizationMessage").textContent = "独自項目は20件まで追加できます。";
+                return;
+            }
+            facilityCustomizationDraft.customFields.push({
+                id: `field-${crypto.randomUUID()}`,
+                label: "新しい項目",
+                type: "text",
+                familyVisible: false
+            });
+            document.getElementById("facilityCustomizationMessage").textContent = "";
+            renderFacilityCustomFieldRows();
+        };
+
+        window.removeFacilityCustomField = function(fieldId) {
+            facilityCustomizationDraft.customFields = facilityCustomizationDraft.customFields.filter(field => field.id !== fieldId);
+            renderFacilityCustomFieldRows();
+        };
+
+        window.saveFacilityCustomization = async function() {
+            const facility = facilities.find(item => item.id === customizingFacilityId);
+            const button = document.getElementById("saveFacilityCustomizationButton");
+            const message = document.getElementById("facilityCustomizationMessage");
+            if (!facility) { message.textContent = "施設一覧を更新してから保存してください。"; return; }
+
+            const hiddenSections = Array.from(document.querySelectorAll("#facilityCustomizationSections input[data-form-section-id]"))
+                .filter(checkbox => !checkbox.checked)
+                .map(checkbox => checkbox.dataset.formSectionId);
+            const customFields = Array.from(document.querySelectorAll("#facilityCustomFields .custom-field-row")).map(row => ({
+                id: row.dataset.customFieldId,
+                label: row.querySelector("[data-custom-field-label]").value.trim(),
+                type: row.querySelector("[data-custom-field-type]").value,
+                familyVisible: row.querySelector("[data-custom-field-family-visible]").checked
+            }));
+            if (customFields.some(field => !field.label)) {
+                message.textContent = "独自項目の項目名を入力してください。";
+                return;
+            }
+            const formCustomization = normalizeFacilityFormCustomization({ hiddenSections, customFields });
+            button.disabled = true;
+            button.textContent = "保存中...";
+            message.textContent = "";
+            try {
+                await updateDoc(doc(db, "facilities", customizingFacilityId), {
+                    formCustomization,
+                    formCustomizationUpdatedAt: new Date().toISOString()
+                });
+                facility.formCustomization = formCustomization;
+                document.getElementById("facilityCustomizationDialog").close();
+                document.getElementById("facilityError").textContent = `${facility.facilityName || facility.id} のカスタマイズを保存しました。`;
+                renderFacilities();
+            } catch (error) {
+                message.textContent = error.code === "permission-denied"
+                    ? "管理者権限が確認できず、カスタマイズを保存できませんでした。管理者として再ログインしてください。"
+                    : "カスタマイズを保存できませんでした: " + error.message;
+            } finally {
+                button.disabled = false;
+                button.textContent = "カスタマイズを保存";
             }
         };
 
