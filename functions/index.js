@@ -741,13 +741,18 @@ exports.getFacilityAccessStatus = onCall(async request => {
 });
 
 exports.updateFacilityServiceTypes = onCall(async request => {
-    const facilityId = requireFacilityId(request);
-    await verifyFacilityIsActive(facilityId);
-    const serviceTypes = validateFacilityServiceTypes(request.data?.serviceTypes);
-    if (!serviceTypes) {
-        throw new HttpsError("invalid-argument", "使用するサービスを1つ以上選択してください。");
+    if (request.auth?.token.role !== "admin") {
+        throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
     }
-    await getFirestore().collection("facilities").doc(facilityId).update({
+    const facilityId = typeof request.data?.facilityId === "string" ? request.data.facilityId : "";
+    const serviceTypes = validateFacilityServiceTypes(request.data?.serviceTypes);
+    if (!facilityId || facilityId.length > 200 || !serviceTypes) {
+        throw new HttpsError("invalid-argument", "施設と使用するサービスを確認してください。");
+    }
+    const facilityRef = getFirestore().collection("facilities").doc(facilityId);
+    const facilitySnapshot = await facilityRef.get();
+    if (!facilitySnapshot.exists) throw new HttpsError("not-found", "施設が見つかりません。");
+    await facilityRef.update({
         enabledServiceTypes: serviceTypes,
         serviceTypesUpdatedAt: new Date().toISOString()
     });

@@ -189,13 +189,6 @@
         </section>
 
         <div class="service-select-card">
-            <details style="margin-bottom: 12px; padding: 10px 12px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 6px;">
-                <summary style="cursor: pointer; font-weight: bold;">この施設で使用するサービスを設定</summary>
-                <p style="font-size: 13px; margin: 8px 0;">チェックしたサービスだけが入力・印刷・履歴画面に表示されます。最低1つ選択してください。</p>
-                <div id="facilityServiceTypeOptions" style="display: flex; flex-wrap: wrap; gap: 8px 14px;"></div>
-                <button type="button" id="saveFacilityServiceTypesButton" onclick="saveFacilityServiceTypes()" style="margin-top: 10px; padding: 8px 12px; background: #2b8a3e; color: white; border: 0; border-radius: 4px; cursor: pointer;">使用サービスを保存</button>
-                <span id="facilityServiceTypesStatus" role="status" style="margin-left: 8px; font-size: 13px;"></span>
-            </details>
             <label>📌 ご入力するサービス種別を選択してください：</label>
             <select id="serviceType" onchange="onServiceTypeChanged()">
                 <option value="デイサービス">☀️ デイサービス（通所介護・日帰り）</option>
@@ -858,10 +851,9 @@
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { MAX_VIDEO_SOURCE_BYTES, VIDEO_ENCODING_PROFILES, getVideoEncodingArguments, isVideoOutputWithinLimit } from "./video-processing-policy.js";
-        import { ALL_SERVICE_TYPE_VALUES, SERVICE_TYPES, normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
+        import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
 
         let familyLinePublicationEnabled = true;
-        let enabledServiceTypes = [...ALL_SERVICE_TYPE_VALUES];
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -876,52 +868,6 @@
         const storage = getStorage(app); 
         const db = getFirestore(app);   
         const functions = getFunctions(app);
-
-        function renderFacilityServiceTypeOptions() {
-            const container = document.getElementById("facilityServiceTypeOptions");
-            if (!container) return;
-            container.replaceChildren(...SERVICE_TYPES.map(service => {
-                const label = document.createElement("label");
-                label.style.cssText = "display: inline-flex; align-items: center; gap: 5px; margin: 0; font-size: 13px;";
-                const checkbox = document.createElement("input");
-                checkbox.type = "checkbox";
-                checkbox.value = service.value;
-                checkbox.checked = enabledServiceTypes.includes(service.value);
-                checkbox.style.width = "auto";
-                label.append(checkbox, document.createTextNode(service.label));
-                return label;
-            }));
-        }
-
-        window.saveFacilityServiceTypes = async function() {
-            const status = document.getElementById("facilityServiceTypesStatus");
-            const button = document.getElementById("saveFacilityServiceTypesButton");
-            const selectedTypes = Array.from(document.querySelectorAll("#facilityServiceTypeOptions input:checked"))
-                .map(checkbox => checkbox.value);
-            if (!selectedTypes.length) {
-                status.textContent = "少なくとも1つのサービスを選んでください。";
-                return;
-            }
-            button.disabled = true;
-            status.textContent = "保存中...";
-            try {
-                const saveSettings = httpsCallable(functions, "updateFacilityServiceTypes");
-                const result = await saveSettings({ serviceTypes: selectedTypes });
-                enabledServiceTypes = normalizeServiceTypes(result.data.serviceTypes);
-                const selectedService = populateServiceTypeSelect(
-                    document.getElementById("serviceType"),
-                    enabledServiceTypes
-                );
-                localStorage.setItem("currentServiceType", selectedService);
-                renderFacilityServiceTypeOptions();
-                window.onServiceTypeChanged();
-                status.textContent = "この施設のサービス設定を保存しました。";
-            } catch (error) {
-                status.textContent = "保存できませんでした: " + getErrorMessage(error);
-            } finally {
-                button.disabled = false;
-            }
-        };
 
         let batchDataList = [];
         let serverDataLoadSequence = 0;
@@ -1269,8 +1215,7 @@
             const facilityData = facilitySnapshot.data();
             familyLinePublicationEnabled = facilityData.familyLinePublicationEnabled !== false;
             document.getElementById("linePublicationControl").style.display = familyLinePublicationEnabled ? "block" : "none";
-            enabledServiceTypes = normalizeServiceTypes(facilityData.enabledServiceTypes);
-            renderFacilityServiceTypeOptions();
+            const enabledServiceTypes = normalizeServiceTypes(facilityData.enabledServiceTypes);
             const selectedService = populateServiceTypeSelect(
                 document.getElementById("serviceType"),
                 enabledServiceTypes,

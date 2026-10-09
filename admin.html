@@ -426,7 +426,8 @@
                     <span class="status ${statusClass}">${statusLabel}</span>
                     <div style="margin-top: 6px; font-size: 13px; font-weight: bold; color: ${commonLineEnabled ? "#237032" : "#c92a2a"};">共通LINE：${commonLineEnabled ? "許可中" : "停止中"}</div></div>
                     <details style="margin-top: 8px; padding: 8px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 5px;">
-                        <summary style="cursor: pointer; font-size: 13px; font-weight: bold;">使用サービスを設定（${enabledServiceTypes.length}/${ALL_SERVICE_TYPE_VALUES.length}）</summary>
+                        <summary style="cursor: pointer; font-size: 13px; font-weight: bold;">管理者専用 コントロールパネルで使用できるサービスを設定します（${enabledServiceTypes.length}/${ALL_SERVICE_TYPE_VALUES.length}）</summary>
+                        <p style="margin: 6px 0; font-size: 12px; color: #495057;">選択したサービスだけが、この施設の入力・印刷・履歴・CSV画面に表示されます。</p>
                         <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 8px 0;">${SERVICE_TYPES.map(service => `<label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; font-size: 12px;"><input type="checkbox" data-facility-service-id="${encodeURIComponent(facility.id)}" value="${service.value}" ${enabledServiceTypes.includes(service.value) ? "checked" : ""} style="width: auto; margin: 0;">${service.label}</label>`).join("")}</div>
                         <button type="button" style="background: #2b8a3e;" onclick="saveAdminFacilityServiceTypes('${encodeURIComponent(facility.id)}', this)">サービス設定を保存</button>
                     </details>
@@ -801,10 +802,8 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
             button.textContent = "保存中...";
             document.getElementById("facilityError").textContent = "";
             try {
-                await updateDoc(doc(db, "facilities", facilityId), {
-                    enabledServiceTypes: serviceTypes,
-                    serviceTypesUpdatedAt: new Date().toISOString()
-                });
+                const saveServiceTypes = httpsCallable(functions, "updateFacilityServiceTypes");
+                await saveServiceTypes({ facilityId, serviceTypes });
                 facility.enabledServiceTypes = serviceTypes;
                 renderFacilities();
             } catch (error) {
