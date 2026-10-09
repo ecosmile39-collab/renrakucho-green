@@ -19,7 +19,8 @@ function loadHandlers(entries) {
                     data: () => documents.get(referencePath) };
             },
             async update(fields) { documents.set(referencePath, { ...documents.get(referencePath), ...fields }); },
-            async set(fields, options) { documents.set(referencePath, options?.merge ? { ...documents.get(referencePath), ...fields } : fields); }
+            async set(fields, options) { documents.set(referencePath, options?.merge ? { ...documents.get(referencePath), ...fields } : fields); },
+            async delete() { documents.delete(referencePath); }
         };
     }
     function collection(collectionPath, conditions = []) {
@@ -190,6 +191,82 @@ test("dedicated LINE remains available when common LINE is disabled", async () =
     assert.equal(status.lineEnabled, true);
     assert.equal((await context.handlers.createLinePairingCode(request)).officialAccountId, "@dedicated");
     assert.equal((await context.handlers.sendLineRecordNotification(request)).published, true);
+});
+
+test("dedicated account receives pairing codes while the common account cannot link the facility", async () => {
+    const code = "ABCDEF123456";
+    const codeHash = crypto.createHash("sha256").update(code).digest("hex");
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", commonLineEnabled: true },
+        "facilityLineSettings/facility-a": { displayName: "Facility LINE", basicId: "@facilityonly" },
+        "facilities/facility-a/users/User": { lineUserIds: [] },
+        [`linePairingCodes/${codeHash}`]: { facilityId: "facility-a", userName: "User", expiresAt: new Date(Date.now() + 60000) }
+    });
+    const request = { auth: { uid: "facility-a", token: { role: "facility" } }, data: { userName: "User" } };
+    const pairing = await context.handlers.createLinePairingCode(request);
+    assert.equal(pairing.officialAccountName, "Facility LINE");
+    assert.equal(pairing.officialAccountId, "@facilityonly");
+    await sendFamilyEvent(context, "family-a", code);
+    assert.deepEqual(context.documents.get("facilities/facility-a/users/User").lineUserIds, []);
+});
+
+test("@805xgtzu is the common LINE account even if it exists in facility settings", async () => {
+    const code = "ABCDEF123456";
+    const codeHash = crypto.createHash("sha256").update(code).digest("hex");
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", commonLineEnabled: true },
+        "facilityLineSettings/facility-a": { displayName: "えこすまいる連絡帳", basicId: "@805xgtzu" },
+        "facilities/facility-a/users/User": { lineUserIds: [] },
+        [`linePairingCodes/${codeHash}`]: { facilityId: "facility-a", userName: "User", expiresAt: new Date(Date.now() + 60000) }
+    });
+    const request = { auth: { uid: "facility-a", token: { role: "facility" } }, data: { userName: "User" } };
+    const pairing = await context.handlers.createLinePairingCode(request);
+    const status = await context.handlers.getFacilityLineSettingsStatus(request);
+    assert.equal(pairing.officialAccountName, "えこすまいる連絡帳");
+    assert.equal(pairing.officialAccountId, "@805xgtzu");
+    assert.equal(status.configured, false);
+    assert.equal(status.commonAccountConfiguredInFacility, true);
+    assert.equal(status.webhookUrl, "https://us-central1-renrakucho-app-6b157.cloudfunctions.net/lineMessagingWebhook");
+    await sendFamilyEvent(context, "family-a", code);
+    const linkedUsers = context.documents.get("facilities/facility-a/users/User").lineUserIds;
+    assert.equal(linkedUsers.length, 1);
+    assert.equal(linkedUsers[0], "family-a");
+});
+
+test("removing a facility-specific copy of @805xgtzu preserves existing family links", async () => {
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", commonLineEnabled: true },
+        "facilityLineSettings/facility-a": { displayName: "えこすまいる連絡帳", basicId: "@805xgtzu" },
+        "facilities/facility-a/users/User": { lineUserIds: ["family-a"] }
+    });
+    const result = await context.handlers.removeFacilityLineSettings({
+        auth: { uid: "facility-a", token: { role: "facility" } }, data: {}
+    });
+    assert.equal(result.familyLinksPreserved, true);
+    assert.equal(context.documents.has("facilityLineSettings/facility-a"), false);
+    assert.equal(context.documents.get("facilities/facility-a/users/User").lineUserIds[0], "family-a");
+});
+
+test("administrator LINE stop blocks a dedicated account without deleting its links", async () => {
+    const token = "c".repeat(64);
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", commonLineEnabled: false, lineServiceEnabled: false },
+        "facilityLineSettings/facility-a": { displayName: "Dedicated", basicId: "@dedicated" },
+        "facilities/facility-a/users/User": { lineUserIds: ["family-a"] },
+        [`lineRecordLinks/${hash}`]: { facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "service", lineAccountType: "dedicated", expiresAt: new Date(Date.now() + 60000) }
+    });
+    const request = { auth: { uid: "facility-a", token: { role: "facility" } }, data: { userName: "User", date: "2026-10-06", serviceType: "service" } };
+    const status = await context.handlers.getFacilityLineSettingsStatus(request);
+    assert.equal(status.configured, true);
+    assert.equal(status.lineEnabled, false);
+    const recipientStatus = await context.handlers.getLineRecipientStatus({ auth: request.auth, data: { userName: "User" } });
+    assert.equal(recipientStatus.recipientCount, 1);
+    assert.equal(recipientStatus.lineEnabled, false);
+    await assert.rejects(context.handlers.createLinePairingCode(request), { code: "failed-precondition" });
+    await assert.rejects(context.handlers.sendLineRecordNotification(request), { code: "failed-precondition" });
+    await assert.rejects(context.handlers.getLineSharedRecord({ data: { token } }), { code: "permission-denied" });
+    assert.equal(context.documents.has(`lineRecordLinks/${hash}`), true);
 });
 
 test("previously issued pairing code cannot bypass disabled common LINE", async () => {

@@ -111,6 +111,8 @@
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { ALL_SERVICE_TYPE_VALUES, SERVICE_TYPES, normalizeServiceTypes } from "./service-types.js";
 
+        const COMMON_LINE_BASIC_ID = "@805xgtzu";
+
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
             authDomain: "renrakucho-app-6b157.firebaseapp.com",
@@ -132,6 +134,7 @@
         let latestInvoiceByFacility = new Map();
         let currentInvoiceHistory = [];
         let currentInvoiceFacilityId = "";
+        let dedicatedLineFacilityIds = new Set();
 
         const rememberAdminAuth = document.getElementById("rememberAdminAuth");
         rememberAdminAuth.checked = localStorage.getItem("rememberAdminAuth") === "true";
@@ -274,12 +277,17 @@
             let loading = document.getElementById("loadingMessage");
             let error = document.getElementById("facilityError");
             try {
-                let [snapshot, cancellationsSnapshot] = await Promise.all([
+                let [snapshot, cancellationsSnapshot, lineSettingsSnapshot] = await Promise.all([
                     getDocs(collection(db, "facilities")),
-                    getDocs(collection(db, "facilityCancellations"))
+                    getDocs(collection(db, "facilityCancellations")),
+                    getDocs(collection(db, "facilityLineSettings"))
                 ]);
                 facilities = [];
                 snapshot.forEach(docSnap => facilities.push({ id: docSnap.id, ...docSnap.data() }));
+                dedicatedLineFacilityIds = new Set(lineSettingsSnapshot.docs
+                    .filter(docSnap => docSnap.data().basicId !== COMMON_LINE_BASIC_ID)
+                    .map(docSnap => docSnap.id));
+                facilities.forEach(facility => { facility.dedicatedLineConfigured = dedicatedLineFacilityIds.has(facility.id); });
                 facilities.sort((a, b) => a.id.localeCompare(b.id));
                 const invoiceEntries = await Promise.all(facilities.map(async facility => {
                     try {
@@ -409,6 +417,10 @@
                 let invoiceSent = Boolean(invoice);
                 let invoicePaid = invoice?.paymentStatus === "paid";
                 const commonLineEnabled = facility.commonLineEnabled !== false;
+                const dedicatedLineConfigured = facility.dedicatedLineConfigured === true;
+                const lineServiceEnabled = facility.lineServiceEnabled !== false;
+                const lineEnabled = lineServiceEnabled && (dedicatedLineConfigured || commonLineEnabled);
+                const lineAccountLabel = dedicatedLineConfigured ? "施設専用LINE" : "共通LINE";
                 const familyLinePublicationEnabled = facility.familyLinePublicationEnabled !== false;
                 const enabledServiceTypes = normalizeServiceTypes(facility.enabledServiceTypes);
                 return `<div class="facility">
@@ -424,7 +436,7 @@
                         ${invoiceSent ? "" : "<span style=\"color:#868e96;\">請求書未発送</span>"}
                     </div>
                     <span class="status ${statusClass}">${statusLabel}</span>
-                    <div style="margin-top: 6px; font-size: 13px; font-weight: bold; color: ${commonLineEnabled ? "#237032" : "#c92a2a"};">共通LINE：${commonLineEnabled ? "許可中" : "停止中"}</div></div>
+                    <div style="margin-top: 6px; font-size: 13px; font-weight: bold; color: ${lineEnabled ? "#237032" : "#c92a2a"};">${lineAccountLabel}：${lineEnabled ? "許可中" : "停止中"}</div></div>
                     <details style="margin-top: 8px; padding: 8px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 5px;">
                         <summary style="cursor: pointer; font-size: 13px; font-weight: bold;">管理者専用 コントロールパネルで使用できるサービスを設定します（${enabledServiceTypes.length}/${ALL_SERVICE_TYPE_VALUES.length}）</summary>
                         <p style="margin: 6px 0; font-size: 12px; color: #495057;">選択したサービスだけが、この施設の入力・印刷・履歴・CSV画面に表示されます。</p>
@@ -436,7 +448,7 @@
                         <button type="button" style="background: #2f9e44;" onclick="sendTestInvoiceFromPreview('${encodeURIComponent(facility.id)}', this)">📧 テスト請求書メールを送信</button>
                         <button type="button" style="background: #495057;" onclick="showFacilityInvoiceHistory('${encodeURIComponent(facility.id)}')">📚 請求書履歴</button>
                         ${isTrial ? `<button type="button" style="background: #087f23;" onclick="activateFacilitySubscription('${encodeURIComponent(facility.id)}')">✅ 購入後の本利用へ切替</button>` : ""}
-                        <button type="button" style="background: ${commonLineEnabled ? "#c92a2a" : "#237032"};" title="この施設の共通LINEのみを切り替えます。施設専用LINEや入力・印刷には影響しません。" onclick="toggleCommonLine('${encodeURIComponent(facility.id)}', this)">${commonLineEnabled ? "⏸ 共通LINEを停止" : "▶ 共通LINEを許可"}</button>
+                        <button type="button" style="background: ${lineEnabled ? "#c92a2a" : "#237032"};" title="この施設で使用中の${lineAccountLabel}を停止・許可します。停止すると連携、返信、家族向け閲覧を停止します。連携情報は削除しません。" onclick="toggleFacilityLine('${encodeURIComponent(facility.id)}', this)">${lineEnabled ? `⏸ ${lineAccountLabel}を停止` : `▶ ${lineAccountLabel}を許可`}</button>
                         <button type="button" style="background: ${familyLinePublicationEnabled ? "#c92a2a" : "#237032"};" title="非表示にすると入力画面のLINE公開チェックを隠し、新しい連絡帳は家族向けに公開しません。公開済み記録は変更しません。" onclick="toggleFamilyLinePublication('${encodeURIComponent(facility.id)}', this)">${familyLinePublicationEnabled ? "LINE公開チェックを非表示" : "LINE公開チェックを表示"}</button>
                         <button class="${isLocked ? "unlock" : "lock"}" onclick="toggleFacility('${encodeURIComponent(facility.id)}', ${isLocked})">${isLocked ? "🔓 解除する" : "🔒 ロックする"}</button>
                         <button type="button" class="delete" onclick="deleteFacility('${encodeURIComponent(facility.id)}', this)">🗑️ 登録施設を削除</button>
@@ -720,32 +732,39 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
             }
         };
 
-        window.toggleCommonLine = async function(encodedId, button) {
+        window.toggleFacilityLine = async function(encodedId, button) {
             const facilityId = decodeURIComponent(encodedId);
             const facility = facilities.find(item => item.id === facilityId);
             if (!facility) { alert("施設一覧を更新してから操作してください。"); return; }
-            const enabled = facility.commonLineEnabled === false;
+            const dedicatedLineConfigured = facility.dedicatedLineConfigured === true;
+            const lineEnabled = facility.lineServiceEnabled !== false &&
+                (dedicatedLineConfigured || facility.commonLineEnabled !== false);
+            const enabled = !lineEnabled;
             const facilityName = facility.facilityName || facilityId;
+            const lineAccountLabel = dedicatedLineConfigured ? "施設専用LINE" : "共通LINE";
             const description = enabled
-                ? "この施設が共通のえこすまいる公式LINEを利用できるようにします。"
-                : "この施設の新しいLINE連携と、共通LINE経由の連絡帳取得を停止します。";
-            if (!confirm(`${facilityName} の共通LINEを${enabled ? "許可" : "停止"}しますか？\n${description}\n保存済みの記録・LINE連携情報は削除しません。施設専用LINEや入力・印刷には影響しません。`)) return;
+                ? `この施設の${lineAccountLabel}を利用できるようにします。`
+                : `この施設の${lineAccountLabel}の連携、返信、家族向け閲覧を停止します。`;
+            if (!confirm(`${facilityName} の${lineAccountLabel}を${enabled ? "許可" : "停止"}しますか？\n${description}\n保護者の連携情報・保存済み記録は削除しません。`)) return;
             const originalText = button.textContent;
             button.disabled = true;
             button.textContent = "変更中...";
             document.getElementById("facilityError").textContent = "";
             try {
-                await updateDoc(doc(db, "facilities", facilityId), {
-                    commonLineEnabled: enabled,
-                    commonLineUpdatedAt: new Date().toISOString()
-                });
-                facility.commonLineEnabled = enabled;
+                const updates = {
+                    lineServiceEnabled: enabled,
+                    lineServiceUpdatedAt: new Date().toISOString()
+                };
+                if (!dedicatedLineConfigured) updates.commonLineEnabled = enabled;
+                await updateDoc(doc(db, "facilities", facilityId), updates);
+                facility.lineServiceEnabled = enabled;
+                if (!dedicatedLineConfigured) facility.commonLineEnabled = enabled;
                 renderFacilities();
             } catch (error) {
                 const permissionError = error.code === "permission-denied";
                 const message = permissionError
-                    ? "管理者権限を確認できず、共通LINEの設定は変更していません。Ctrl + F5で管理画面を再読み込みし、管理者として認証し直してください。"
-                    : "共通LINEの設定変更に失敗しました: " + error.message;
+                    ? "管理者権限を確認できず、LINEの設定は変更していません。Ctrl + F5で管理画面を再読み込みし、管理者として認証し直してください。"
+                    : "LINEの設定変更に失敗しました: " + error.message;
                 document.getElementById("facilityError").textContent = message;
                 alert(message);
             } finally {

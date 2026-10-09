@@ -848,12 +848,14 @@
         import { getAuth, signInWithCustomToken, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { hasFacilitySession } from "./facility-auth.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, getMetadata, deleteObject, listAll } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { MAX_VIDEO_SOURCE_BYTES, VIDEO_ENCODING_PROFILES, getVideoEncodingArguments, isVideoOutputWithinLimit } from "./video-processing-policy.js";
         import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
 
         let familyLinePublicationEnabled = true;
+        let facilityLineStatusSignature = "";
+        const COMMON_LINE_BASIC_ID = "@805xgtzu";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -1215,6 +1217,7 @@
             const facilityData = facilitySnapshot.data();
             familyLinePublicationEnabled = facilityData.familyLinePublicationEnabled !== false;
             document.getElementById("linePublicationControl").style.display = familyLinePublicationEnabled ? "block" : "none";
+            facilityLineStatusSignature = `${facilityData.lineServiceEnabled !== false}:${facilityData.commonLineEnabled !== false}`;
             const enabledServiceTypes = normalizeServiceTypes(facilityData.enabledServiceTypes);
             const selectedService = populateServiceTypeSelect(
                 document.getElementById("serviceType"),
@@ -1252,6 +1255,16 @@
             document.getElementById("scrollGroup").style.display = "flex";
             document.getElementById("newFacePreview").src = defaultIcon;
             loadFacilityLineSettingsStatus();
+            onSnapshot(doc(db, "facilities", facilityId), snapshot => {
+                if (!snapshot.exists()) return;
+                const data = snapshot.data();
+                const signature = `${data.lineServiceEnabled !== false}:${data.commonLineEnabled !== false}`;
+                if (signature === facilityLineStatusSignature) return;
+                facilityLineStatusSignature = signature;
+                loadFacilityLineSettingsStatus();
+                const selectedUser = document.getElementById("userName").value;
+                if (selectedUser) refreshLineRecipientStatus(selectedUser);
+            }, error => console.warn("LINEの停止状態を更新できませんでした:", error));
 
             let today = new Date();
             let year = today.getFullYear();
@@ -1604,7 +1617,7 @@
                 if (document.getElementById("userName").value !== userName) return;
                 const count = result.data.recipientCount || 0;
                 status.textContent = count > 0 ? `保護者LINE：${count}件連携済み` : "保護者LINE：未連携";
-                if (result.data.lineEnabled === false) status.textContent += "（共通LINE停止中）";
+                if (result.data.lineEnabled === false) status.textContent += "（LINE停止中）";
             } catch (error) {
                 if (document.getElementById("userName").value === userName) {
                     status.textContent = "LINE連携状況を取得できません。ログインし直してください。";
@@ -1624,12 +1637,17 @@
                 const getStatus = httpsCallable(functions, "getFacilityLineSettingsStatus");
                 const result = await getStatus({});
                 const settings = result.data;
-                status.textContent = settings.configured
-                    ? `設定済み：${settings.displayName}（${settings.basicId}）`
-                    : settings.commonLineEnabled === false
-                        ? "未設定：共通LINEは停止中です。施設専用のLINEを設定するか、管理者へお問い合わせください。"
-                        : "未設定：管理者の許可により共通のえこすまいる公式LINEを使用中";
-                details.hidden = !settings.configured;
+                const stoppedNote = settings.lineEnabled === false ? "（LINE停止中）" : "";
+                status.textContent = settings.commonAccountConfiguredInFacility
+                    ? `共通LINE設定済み：${settings.displayName}（${settings.basicId}）${stoppedNote}。施設個別設定から共通設定へ移行してください。`
+                    : settings.configured
+                    ? `設定済み：${settings.displayName}（${settings.basicId}）${stoppedNote}`
+                    : settings.lineEnabled === false
+                        ? "未設定：管理者によりLINEは停止中です。"
+                        : settings.commonLineEnabled === false
+                        ? "未設定：共通LINE（@805xgtzu）は停止中です。管理者へお問い合わせください。"
+                        : "未設定：共通LINE えこすまいる連絡帳（@805xgtzu）を使用中";
+                details.hidden = !settings.facilitySettingsPresent;
                 document.getElementById("facilityLineWebhookUrl").value = settings.webhookUrl;
             } catch (error) {
                 status.textContent = "LINE設定を確認できませんでした。再読み込みしてください。";
@@ -1653,11 +1671,11 @@
                 const result = await saveSettings({ channelAccessToken, channelSecret });
                 document.getElementById("facilityLineAccessToken").value = "";
                 document.getElementById("facilityLineChannelSecret").value = "";
-                document.getElementById("facilityLineWebhookUrl").value = result.data.webhookUrl;
                 document.getElementById("facilityLineWebhookDetails").hidden = false;
-                document.getElementById("facilityLineSettingsStatus").textContent =
-                    `設定済み：${result.data.displayName}（${result.data.basicId}）`;
-                message.textContent = result.data.accountChanged
+                await loadFacilityLineSettingsStatus();
+                message.textContent = result.data.basicId === COMMON_LINE_BASIC_ID
+                    ? "@805xgtzu は共通LINEとして扱います。LINE Developers のWebhook URLには上に表示された共通URLを登録してください。"
+                    : result.data.accountChanged
                     ? "保存しました。新しい公式LINEにWebhook URLを登録し、旧アカウントのWebhookをオフにしてください。保護者の再連携も必要です。"
                     : "保存しました。LINE Developers にWebhook URLを登録してください。";
             } catch (error) {
@@ -1683,12 +1701,19 @@
         };
 
         window.removeFacilityLineSettings = async function() {
-            if (!confirm("施設専用LINE設定を解除しますか？保護者のLINE連携も解除されます。先にLINE Developersで施設専用Webhookの利用をオフにしてください。解除後は共通LINEへ戻ります。")) return;
             const message = document.getElementById("facilityLineSettingsMessage");
             try {
+                const getStatus = httpsCallable(functions, "getFacilityLineSettingsStatus");
+                const status = await getStatus({});
+                const confirmation = status.data.commonAccountConfiguredInFacility
+                    ? "共通LINE（@805xgtzu）が施設個別設定にも登録されています。この個別設定を解除して共通LINEとして扱います。保護者の連携情報は保持されます。続けますか？"
+                    : "施設専用LINE設定を解除しますか？保護者のLINE連携も解除されます。先にLINE Developersで施設専用Webhookの利用をオフにしてください。解除後は共通LINEへ戻ります。";
+                if (!confirm(confirmation)) return;
                 const removeSettings = httpsCallable(functions, "removeFacilityLineSettings");
-                await removeSettings({});
-                message.textContent = "施設専用LINE設定を解除しました。";
+                const result = await removeSettings({});
+                message.textContent = result.data.familyLinksPreserved
+                    ? "共通LINEを施設個別設定から外しました。保護者の連携情報は保持されています。"
+                    : "施設専用LINE設定を解除しました。保護者に共通LINEで再連携コードを送ってください。";
                 await loadFacilityLineSettingsStatus();
             } catch {
                 message.textContent = "設定を解除できませんでした。時間をおいて再試行してください。";

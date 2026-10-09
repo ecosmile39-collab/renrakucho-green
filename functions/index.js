@@ -30,9 +30,12 @@ const FACILITY_REGISTRATION_KEY = defineSecret("FACILITY_REGISTRATION_KEY");
 const LINE_CHANNEL_ACCESS_TOKEN = defineSecret("LINE_CHANNEL_ACCESS_TOKEN");
 const LINE_CHANNEL_SECRET = defineSecret("LINE_CHANNEL_SECRET");
 const FACILITY_LINE_ENCRYPTION_KEY = defineSecret("FACILITY_LINE_ENCRYPTION_KEY");
+const COMMON_LINE_DISPLAY_NAME = "えこすまいる連絡帳";
+const COMMON_LINE_BASIC_ID = "@805xgtzu";
 const CURRENT_TERMS_VERSION = "2026-10-07-v1";
 const LINE_RECORD_BASE_URL = "https://renrakucho-green.vercel.app/line-record.html";
 const LINE_WEBHOOK_BASE_URL = "https://us-central1-renrakucho-app-6b157.cloudfunctions.net/facilityLineMessagingWebhook";
+const COMMON_LINE_WEBHOOK_URL = "https://us-central1-renrakucho-app-6b157.cloudfunctions.net/lineMessagingWebhook";
 const companyStampPng = readFileSync(path.join(__dirname, "company_stamp.png"));
 const companyStampDataUrl = `data:image/png;base64,${companyStampPng.toString("base64")}`;
 
@@ -476,19 +479,28 @@ async function getFacilityLineAccess(facilityId) {
         db.collection("facilities").doc(facilityId).get(),
         db.collection("facilityLineSettings").doc(facilityId).get()
     ]);
-    const commonLineEnabled = facilitySnapshot.exists && facilitySnapshot.data().commonLineEnabled !== false;
+    const facility = facilitySnapshot.exists ? facilitySnapshot.data() : {};
+    const settings = settingsSnapshot.exists ? settingsSnapshot.data() : {};
+    const dedicatedConfigured = settingsSnapshot.exists && settings.basicId !== COMMON_LINE_BASIC_ID;
+    const commonLineEnabled = facilitySnapshot.exists && facility.commonLineEnabled !== false;
+    const lineServiceEnabled = facilitySnapshot.exists && facility.lineServiceEnabled !== false;
     return {
-        configured: settingsSnapshot.exists,
-        settings: settingsSnapshot.exists ? settingsSnapshot.data() : {},
+        configured: dedicatedConfigured,
+        facilitySettingsPresent: settingsSnapshot.exists,
+        commonAccountConfiguredInFacility: settingsSnapshot.exists && !dedicatedConfigured,
+        settings: dedicatedConfigured ? settings : {},
         commonLineEnabled,
-        lineEnabled: settingsSnapshot.exists || commonLineEnabled
+        lineServiceEnabled,
+        lineEnabled: lineServiceEnabled && (dedicatedConfigured || commonLineEnabled)
     };
 }
 
 async function requireFacilityLineAccess(facilityId) {
     const access = await getFacilityLineAccess(facilityId);
     if (!access.lineEnabled) {
-        throw new HttpsError("failed-precondition", "共通LINEの利用は管理者により停止されています。施設専用のLINEを設定するか、管理者へお問い合わせください。");
+        throw new HttpsError("failed-precondition", access.lineServiceEnabled
+            ? "共通LINEの利用は停止されています。施設専用LINEを設定するか、管理者へお問い合わせください。"
+            : "この施設のLINE連携は管理者により停止されています。管理者へお問い合わせください。");
     }
     return access;
 }
@@ -519,8 +531,8 @@ exports.createLinePairingCode = onCall(async request => {
     return {
         code,
         expiresInHours: 24,
-        officialAccountName: lineSettings.displayName || "ecosmile39",
-        officialAccountId: lineSettings.basicId || "@108nturw"
+        officialAccountName: lineAccess.configured ? lineSettings.displayName : COMMON_LINE_DISPLAY_NAME,
+        officialAccountId: lineAccess.configured ? lineSettings.basicId : COMMON_LINE_BASIC_ID
     };
 });
 
@@ -532,14 +544,19 @@ async function connectLineUser(code, lineUserId, expectedFacilityId = "") {
         if (!codeSnapshot.exists) return { status: "invalid" };
         const pairing = codeSnapshot.data();
         if (expectedFacilityId && pairing.facilityId !== expectedFacilityId) return { status: "invalid" };
+        const facilitySnapshot = await transaction.get(db.collection("facilities").doc(pairing.facilityId));
+        if (!facilitySnapshot.exists || facilitySnapshot.data().lineServiceEnabled === false) {
+            return { status: "disabled" };
+        }
         if (!expectedFacilityId) {
-            const [facilitySnapshot, settingsSnapshot] = await Promise.all([
-                transaction.get(db.collection("facilities").doc(pairing.facilityId)),
-                transaction.get(db.collection("facilityLineSettings").doc(pairing.facilityId))
-            ]);
-            if (!facilitySnapshot.exists || facilitySnapshot.data().commonLineEnabled === false || settingsSnapshot.exists) {
+            const settingsSnapshot = await transaction.get(db.collection("facilityLineSettings").doc(pairing.facilityId));
+            const hasDedicatedSettings = settingsSnapshot.exists && settingsSnapshot.data().basicId !== COMMON_LINE_BASIC_ID;
+            if (facilitySnapshot.data().commonLineEnabled === false || hasDedicatedSettings) {
                 return { status: "disabled" };
             }
+        } else {
+            const settingsSnapshot = await transaction.get(db.collection("facilityLineSettings").doc(pairing.facilityId));
+            if (!settingsSnapshot.exists || settingsSnapshot.data().basicId === COMMON_LINE_BASIC_ID) return { status: "disabled" };
         }
         const expiration = pairing.expiresAt?.toDate ? pairing.expiresAt.toDate() : new Date(pairing.expiresAt);
         if (!Number.isFinite(expiration.getTime()) || expiration.getTime() <= Date.now()) {
@@ -685,8 +702,8 @@ exports.getLineSharedRecord = onCall(async request => {
     }
     const lineAccess = await getFacilityLineAccess(link.facilityId);
     const sharedLink = link.lineAccountType === "shared" || (!link.lineAccountType && !lineAccess.configured);
-    if (sharedLink && !lineAccess.commonLineEnabled) {
-        throw new HttpsError("permission-denied", "この施設の共通LINEによる閲覧は停止されています。施設へお問い合わせください。");
+    if (!lineAccess.lineEnabled || (sharedLink && !lineAccess.commonLineEnabled)) {
+        throw new HttpsError("permission-denied", "この施設のLINEによる閲覧は停止されています。施設へお問い合わせください。");
     }
 
     const recordRef = getFirestore().collection("facilities").doc(link.facilityId)
@@ -781,11 +798,15 @@ exports.getFacilityLineSettingsStatus = onCall(async request => {
     const settings = access.settings;
     return {
         configured: access.configured,
+        facilitySettingsPresent: access.facilitySettingsPresent,
+        commonAccountConfiguredInFacility: access.commonAccountConfiguredInFacility,
         commonLineEnabled: access.commonLineEnabled,
         lineEnabled: access.lineEnabled,
-        displayName: settings.displayName || "",
-        basicId: settings.basicId || "",
-        webhookUrl: `${LINE_WEBHOOK_BASE_URL}/${encodeURIComponent(facilityId)}`
+        displayName: access.commonAccountConfiguredInFacility ? COMMON_LINE_DISPLAY_NAME : settings.displayName || COMMON_LINE_DISPLAY_NAME,
+        basicId: access.commonAccountConfiguredInFacility ? COMMON_LINE_BASIC_ID : settings.basicId || COMMON_LINE_BASIC_ID,
+        webhookUrl: access.commonAccountConfiguredInFacility
+            ? COMMON_LINE_WEBHOOK_URL
+            : `${LINE_WEBHOOK_BASE_URL}/${encodeURIComponent(facilityId)}`
     };
 });
 
@@ -817,10 +838,13 @@ exports.saveFacilityLineSettings = onCall({ secrets: [FACILITY_LINE_ENCRYPTION_K
     if (typeof botInfo.basicId !== "string" || typeof botInfo.displayName !== "string") {
         throw new HttpsError("invalid-argument", "LINE公式アカウント情報を確認できませんでした。");
     }
+    if (botInfo.basicId === COMMON_LINE_BASIC_ID) {
+        throw new HttpsError("failed-precondition", "共通LINEアカウントは施設専用設定に登録できません。管理者へお問い合わせください。");
+    }
 
     const settingsRef = getFirestore().collection("facilityLineSettings").doc(facilityId);
     const currentSnapshot = await settingsRef.get();
-    const previousBasicId = currentSnapshot.exists ? currentSnapshot.data().basicId : "@108nturw";
+    const previousBasicId = currentSnapshot.exists ? currentSnapshot.data().basicId : COMMON_LINE_BASIC_ID;
     const accountChanged = previousBasicId !== botInfo.basicId;
     await settingsRef.set({
         encryptedCredentials: encryptFacilityLineCredentials(facilityId, { channelAccessToken, channelSecret }),
@@ -853,17 +877,23 @@ exports.saveFacilityLineSettings = onCall({ secrets: [FACILITY_LINE_ENCRYPTION_K
 exports.removeFacilityLineSettings = onCall(async request => {
     const facilityId = requireFacilityId(request);
     await verifyFacilityIsActive(facilityId);
-    await getFirestore().collection("facilityLineSettings").doc(facilityId).delete();
-    const users = await getFirestore().collection("facilities").doc(facilityId).collection("users").get();
-    for (let offset = 0; offset < users.docs.length; offset += 400) {
-        const batch = getFirestore().batch();
-        users.docs.slice(offset, offset + 400).forEach(user => batch.update(user.ref, {
-            lineUserIds: [],
-            lineLinkedAt: FieldValue.delete()
-        }));
-        await batch.commit();
+    const db = getFirestore();
+    const settingsRef = db.collection("facilityLineSettings").doc(facilityId);
+    const settingsSnapshot = await settingsRef.get();
+    const preserveFamilyLinks = settingsSnapshot.exists && settingsSnapshot.data().basicId === COMMON_LINE_BASIC_ID;
+    await settingsRef.delete();
+    if (!preserveFamilyLinks) {
+        const users = await db.collection("facilities").doc(facilityId).collection("users").get();
+        for (let offset = 0; offset < users.docs.length; offset += 400) {
+            const batch = db.batch();
+            users.docs.slice(offset, offset + 400).forEach(user => batch.update(user.ref, {
+                lineUserIds: [],
+                lineLinkedAt: FieldValue.delete()
+            }));
+            await batch.commit();
+        }
     }
-    return { removed: true };
+    return { removed: true, familyLinksPreserved: preserveFamilyLinks };
 });
 
 exports.sendLineRecordNotification = onCall(async request => {
@@ -918,10 +948,16 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
         if (facility.status === "locked") continue;
         if (facility.subscriptionStatus === "trial" &&
             !(Date.parse(facility.trialEndsAt || "") > Date.now())) continue;
-        if (!expectedFacilityId &&
-            (await db.collection("facilityLineSettings").doc(facilityDocument.id).get()).exists) continue;
         const users = await facilityDocument.ref.collection("users")
             .where("lineUserIds", "array-contains", lineUserId).get();
+        if (facility.lineServiceEnabled === false) {
+            if (!users.empty) blocked = true;
+            continue;
+        }
+        if (!expectedFacilityId) {
+            const settingsSnapshot = await db.collection("facilityLineSettings").doc(facilityDocument.id).get();
+            if (settingsSnapshot.exists && settingsSnapshot.data().basicId !== COMMON_LINE_BASIC_ID) continue;
+        }
         if (!expectedFacilityId && facility.commonLineEnabled === false) {
             if (!users.empty) blocked = true;
             continue;
@@ -1051,6 +1087,7 @@ exports.facilityLineMessagingWebhook = onRequest({
     if (!facilitySnapshot.exists || facilitySnapshot.data().status === "locked") {
         return response.status(404).send("Not found");
     }
+    if (facilitySnapshot.data().lineServiceEnabled === false) return response.status(200).send("OK");
     const credentials = await getFacilityLineCredentials(facilityId);
     if (!credentials) return response.status(404).send("Not found");
     return handleLineMessagingWebhook(request, response, credentials, facilityId);
