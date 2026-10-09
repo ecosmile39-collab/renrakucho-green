@@ -25,7 +25,7 @@ export function normalizeFacilityFormCustomization(value) {
             const id = typeof field.id === "string" ? field.id : "";
             const label = typeof field.label === "string" ? field.label.trim().slice(0, 60) : "";
             const type = CUSTOM_FORM_FIELD_TYPES.includes(field.type) ? field.type : "text";
-            if (!/^[a-zA-Z0-9_-]{1,40}$/.test(id) || !label) return [];
+            if (!/^[a-zA-Z0-9_-]{1,64}$/.test(id) || !label) return [];
             return [{ id, label, type, familyVisible: field.familyVisible === true }];
         })
         : [];
