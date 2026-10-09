@@ -1639,7 +1639,7 @@
                 const settings = result.data;
                 const stoppedNote = settings.lineEnabled === false ? "（LINE停止中）" : "";
                 status.textContent = settings.commonAccountConfiguredInFacility
-                    ? `共通LINE設定済み：${settings.displayName}（${settings.basicId}）${stoppedNote}。施設個別設定から共通設定へ移行してください。`
+                    ? `共通LINE設定済み：${settings.displayName}（${settings.basicId}）${stoppedNote}。通常は管理者が許可した共通設定で利用します。施設専用に切り替える場合は、共通設定から施設個別設定へ移行してください。`
                     : settings.configured
                     ? `設定済み：${settings.displayName}（${settings.basicId}）${stoppedNote}`
                     : settings.lineEnabled === false
