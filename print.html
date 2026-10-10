@@ -615,11 +615,16 @@
                 const getStatus = httpsCallable(functions, "getFacilityLineSettingsStatus");
                 const result = await getStatus({});
                 const settings = result.data;
-                if (!settings.configured || !settings.lineEnabled || !settings.basicId) return "";
+                const isDedicatedLine = settings.configured === true;
+                const isLineEnabled = isDedicatedLine
+                    ? settings.lineEnabled === true
+                    : settings.commonLineEnabled === true && settings.lineEnabled === true;
+                if (!isLineEnabled || !settings.basicId) return "";
 
                 const addFriendUrl = `https://line.me/R/ti/p/${encodeURIComponent(settings.basicId)}`;
                 const qr = new QRious({ value: addFriendUrl, size: 180 });
-                return `<div class="media-print-box"><div class="media-label">LINE友だち追加</div><img src="${qr.toDataURL()}" class="qr" alt="施設LINE友だち追加QRコード"><div class="line-friend-note">スマートフォンで読み取って友だち追加</div></div>`;
+                const accountLabel = isDedicatedLine ? "施設LINE" : "共通LINE";
+                return `<div class="media-print-box"><div class="media-label">LINE友だち追加</div><img src="${qr.toDataURL()}" class="qr" alt="${accountLabel}友だち追加QRコード"><div class="line-friend-note"><strong>${accountLabel}許可中</strong><br>スマートフォンで読み取って友だち追加</div></div>`;
             } catch (error) {
                 console.warn("施設LINEの友だち追加QRを表示できませんでした:", error);
                 return "";
