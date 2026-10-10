@@ -518,7 +518,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { hasFacilitySession } from "./facility-auth.js";
-        import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
@@ -544,6 +544,10 @@
         window.matchedRecordsGlobal = [];
         const mediaUrlCache = new Map();
         let facilityLineFriendQrHtml = "";
+        let facilityLineEnabled = false;
+        const pairingCodesByUser = new Map();
+        const pairingCodeUnsubscribers = new Map();
+        const lineLinkedUsers = new Set();
         
         const defaultIcon = "data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
 
@@ -563,6 +567,80 @@
 
         function isFormSectionVisible(record, sectionId) {
             return !Array.isArray(record.hiddenFormSections) || !record.hiddenFormSections.includes(sectionId);
+        }
+
+        function escapePrintHtml(value) {
+            return String(value).replace(/[&<>"']/g, character => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+            }[character]));
+        }
+
+        function renderFacilityLinePrintHtml(userName) {
+            const friendQrHtml = !lineLinkedUsers.has(userName) && facilityLineFriendQrHtml
+                ? facilityLineFriendQrHtml.replace(
+                    'class="media-print-box"',
+                    `class="media-print-box line-friend-qr" data-line-friend-user="${escapePrintHtml(userName)}"`
+                )
+                : "";
+            const pairing = pairingCodesByUser.get(userName);
+            const pairingCodeHtml = !lineLinkedUsers.has(userName) && pairing && pairing.expiresAt > Date.now()
+                ? `<div class="media-print-box line-pairing-code" data-line-pairing-user="${escapePrintHtml(userName)}"><div class="media-label">保護者LINE連携コード</div><strong>${escapePrintHtml(pairing.code)}</strong><div class="line-friend-note">この利用者専用・24時間以内に保護者へお伝えください</div></div>`
+                : "";
+            return friendQrHtml + pairingCodeHtml;
+        }
+
+        function clearPairingCodeListeners() {
+            pairingCodeUnsubscribers.forEach(unsubscribe => unsubscribe());
+            pairingCodeUnsubscribers.clear();
+        }
+
+        async function preparePairingCodes(userNames, printTarget) {
+            clearPairingCodeListeners();
+            if (!facilityLineEnabled || printTarget === "card_only") return;
+
+            const createPairingCode = httpsCallable(functions, "createLinePairingCode");
+            await Promise.all(userNames.map(async userName => {
+                if (lineLinkedUsers.has(userName)) return;
+                const userRef = doc(db, "facilities", facilityId, "users", userName);
+                try {
+                    const userSnapshot = await getDoc(userRef);
+                    if (!userSnapshot.exists()) return;
+                    if ((userSnapshot.data().lineUserIds || []).length > 0) {
+                        lineLinkedUsers.add(userName);
+                        pairingCodesByUser.delete(userName);
+                        return;
+                    }
+
+                    let pairing = pairingCodesByUser.get(userName);
+                    if (!pairing || pairing.expiresAt <= Date.now()) {
+                        const result = await createPairingCode({ userName });
+                        pairing = {
+                            code: result.data.code,
+                            expiresAt: Date.now() + result.data.expiresInHours * 60 * 60 * 1000
+                        };
+                        pairingCodesByUser.set(userName, pairing);
+                    }
+
+                    if (!pairingCodeUnsubscribers.has(userName)) {
+                        const unsubscribe = onSnapshot(userRef, snapshot => {
+                            if (!snapshot.exists() || (snapshot.data().lineUserIds || []).length === 0) return;
+                            lineLinkedUsers.add(userName);
+                            pairingCodesByUser.delete(userName);
+                            document.querySelectorAll(".line-pairing-code").forEach(element => {
+                                if (element.dataset.linePairingUser === userName) element.remove();
+                            });
+                            document.querySelectorAll(".line-friend-qr").forEach(element => {
+                                if (element.dataset.lineFriendUser === userName) element.remove();
+                            });
+                            pairingCodeUnsubscribers.get(userName)?.();
+                            pairingCodeUnsubscribers.delete(userName);
+                        }, error => console.warn("LINE連携状態を更新できませんでした:", error));
+                        pairingCodeUnsubscribers.set(userName, unsubscribe);
+                    }
+                } catch (error) {
+                    console.warn(`${userName} 様のLINE連携コードを発行できませんでした:`, error);
+                }
+            }));
         }
 
         window.onload = async function() {
@@ -619,6 +697,7 @@
                 const isLineEnabled = isDedicatedLine
                     ? settings.lineEnabled === true
                     : settings.commonLineEnabled === true && settings.lineEnabled === true;
+                facilityLineEnabled = isLineEnabled;
                 if (!isLineEnabled || !settings.basicId) return "";
 
                 const addFriendUrl = `https://line.me/R/ti/p/${encodeURIComponent(settings.basicId)}`;
@@ -626,6 +705,7 @@
                 const accountLabel = isDedicatedLine ? "施設LINE" : "共通LINE";
                 return `<div class="media-print-box"><div class="media-label">LINE友だち追加</div><img src="${qr.toDataURL()}" class="qr" alt="${accountLabel}友だち追加QRコード"><div class="line-friend-note"><strong>${accountLabel}許可中</strong><br>スマートフォンで読み取って友だち追加</div></div>`;
             } catch (error) {
+                facilityLineEnabled = false;
                 console.warn("施設LINEの友だち追加QRを表示できませんでした:", error);
                 return "";
             }
@@ -657,6 +737,7 @@
         };
 
         window.onDateChanged = async function() {
+            clearPairingCodeListeners();
             let facilityId = localStorage.getItem("currentFacilityId");
             let sType = document.getElementById("selectServiceType").value;
             
@@ -866,6 +947,8 @@
                     if (!monthlyDataByUser[d.userName]) monthlyDataByUser[d.userName] = [];
                     monthlyDataByUser[d.userName].push(d);
                 });
+
+                await preparePairingCodes(selectedUserNames, printTarget);
 
                 printArea.innerHTML = "";
                 document.getElementById("batchPrintExecBtn").style.display = "none";
@@ -1200,7 +1283,7 @@
                     }
                 });
                 let mediaResults = await Promise.all(mediaPromises);
-                let mediaHtml = mediaResults.join("") + facilityLineFriendQrHtml;
+                let mediaHtml = mediaResults.join("") + renderFacilityLinePrintHtml(userName);
 
                 let bpIn = '--';
                 if (firstData.stBpHighIn || firstData.stBpLowIn) {
@@ -1474,7 +1557,7 @@
                 }
 
                 let mediaResults = await Promise.all(mediaPromises);
-                let mediaHtml = mediaResults.join("") + facilityLineFriendQrHtml;
+                let mediaHtml = mediaResults.join("") + renderFacilityLinePrintHtml(data.userName);
 
                 let excretionRow = "";
                 if (uData && uData.needExcretion) {
