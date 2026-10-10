@@ -111,6 +111,7 @@
         .media-print-box img.photo { max-height: 150px; max-width: 200px; object-fit: contain; border: 1px solid #ccc; padding: 2px; }
         .media-print-box img.qr { width: 110px; height: 110px; border: 1px solid #ccc; padding: 2px; margin-bottom: 2px; }
         .media-print-box .media-label { font-size: 12px; font-weight: bold; margin-bottom: 4px; }
+        .media-print-box .line-friend-note { max-width: 130px; font-size: 10px; line-height: 1.35; }
 
         /* ==========================================
            🎉 誕生日カードの共通スタイル
@@ -518,6 +519,7 @@
         import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { hasFacilitySession } from "./facility-auth.js";
         import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
 
@@ -533,6 +535,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const functions = getFunctions(app);
         const storage = getStorage(app);
         const facilityId = localStorage.getItem("currentFacilityId");
 
@@ -540,6 +543,7 @@
         window.globalUsersData = {};
         window.matchedRecordsGlobal = [];
         const mediaUrlCache = new Map();
+        let facilityLineFriendQrHtml = "";
         
         const defaultIcon = "data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
 
@@ -572,6 +576,8 @@
                 return;
             }
 
+            facilityLineFriendQrHtml = await loadFacilityLineFriendQr();
+
             const facilitySnapshot = await getDoc(doc(db, "facilities", facilityId));
             const enabledServiceTypes = normalizeServiceTypes(
                 facilitySnapshot.exists() ? facilitySnapshot.data().enabledServiceTypes : undefined
@@ -603,6 +609,22 @@
             await loadUserNames(facilityId);
             onServiceTypeChanged();
         };
+
+        async function loadFacilityLineFriendQr() {
+            try {
+                const getStatus = httpsCallable(functions, "getFacilityLineSettingsStatus");
+                const result = await getStatus({});
+                const settings = result.data;
+                if (!settings.configured || !settings.lineEnabled || !settings.basicId) return "";
+
+                const addFriendUrl = `https://line.me/R/ti/p/${encodeURIComponent(settings.basicId)}`;
+                const qr = new QRious({ value: addFriendUrl, size: 180 });
+                return `<div class="media-print-box"><div class="media-label">LINE友だち追加</div><img src="${qr.toDataURL()}" class="qr" alt="施設LINE友だち追加QRコード"><div class="line-friend-note">スマートフォンで読み取って友だち追加</div></div>`;
+            } catch (error) {
+                console.warn("施設LINEの友だち追加QRを表示できませんでした:", error);
+                return "";
+            }
+        }
 
         async function loadUserNames(facilityId) {
             try {
@@ -1173,7 +1195,7 @@
                     }
                 });
                 let mediaResults = await Promise.all(mediaPromises);
-                let mediaHtml = mediaResults.join("");
+                let mediaHtml = mediaResults.join("") + facilityLineFriendQrHtml;
 
                 let bpIn = '--';
                 if (firstData.stBpHighIn || firstData.stBpLowIn) {
@@ -1447,7 +1469,7 @@
                 }
 
                 let mediaResults = await Promise.all(mediaPromises);
-                let mediaHtml = mediaResults.join("");
+                let mediaHtml = mediaResults.join("") + facilityLineFriendQrHtml;
 
                 let excretionRow = "";
                 if (uData && uData.needExcretion) {
