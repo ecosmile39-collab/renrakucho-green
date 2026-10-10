@@ -584,7 +584,7 @@
                 : "";
             const pairing = pairingCodesByUser.get(userName);
             const pairingCodeHtml = !lineLinkedUsers.has(userName) && pairing && pairing.expiresAt > Date.now()
-                ? `<div class="media-print-box line-pairing-code" data-line-pairing-user="${escapePrintHtml(userName)}"><div class="media-label">保護者LINE連携コード</div><strong>${escapePrintHtml(pairing.code)}</strong><div class="line-friend-note">この利用者専用・24時間以内に保護者へお伝えください</div></div>`
+                ? `<div class="media-print-box line-pairing-code" data-line-pairing-user="${escapePrintHtml(userName)}"><div class="media-label">保護者LINE連携コード</div><strong>${escapePrintHtml(pairing.code)}</strong><div class="line-friend-note">この利用者専用・24時間以内に左のQRから施設LINEを友だち追加し、このコードをトークに送信してください。送信すると連携が完了します。</div></div>`
                 : "";
             return friendQrHtml + pairingCodeHtml;
         }
