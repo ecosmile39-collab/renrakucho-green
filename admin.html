@@ -448,6 +448,7 @@
                 const lineServiceEnabled = facility.lineServiceEnabled !== false;
                 const lineEnabled = lineServiceEnabled && (dedicatedLineConfigured || commonLineEnabled);
                 const lineAccountLabel = dedicatedLineConfigured ? "施設専用LINE" : "共通LINE";
+                const facilityLineSettingsButtonVisible = facility.facilityLineSettingsButtonVisible !== false;
                 const familyLinePublicationEnabled = facility.familyLinePublicationEnabled !== false;
                 const enabledServiceTypes = normalizeServiceTypes(facility.enabledServiceTypes);
                 return `<div class="facility">
@@ -477,6 +478,7 @@
                         <button type="button" style="background: #495057;" onclick="showFacilityInvoiceHistory('${encodeURIComponent(facility.id)}')">📚 請求書履歴</button>
                         ${isTrial ? `<button type="button" style="background: #087f23;" onclick="activateFacilitySubscription('${encodeURIComponent(facility.id)}')">✅ 購入後の本利用へ切替</button>` : ""}
                         <button type="button" style="background: ${lineEnabled ? "#c92a2a" : "#237032"};" title="この施設で使用中の${lineAccountLabel}を停止・許可します。停止すると連携、返信、家族向け閲覧を停止します。連携情報は削除しません。" onclick="toggleFacilityLine('${encodeURIComponent(facility.id)}', this)">${lineEnabled ? `⏸ ${lineAccountLabel}を停止` : `▶ ${lineAccountLabel}を許可`}</button>
+                        <button type="button" style="background: ${facilityLineSettingsButtonVisible ? "#c92a2a" : "#237032"};" title="この施設の入力画面で施設LINE設定ボタンの表示だけを切り替えます。" onclick="toggleFacilityLineSettingsButton('${encodeURIComponent(facility.id)}', this)">${facilityLineSettingsButtonVisible ? "施設LINE設定ボタンを非表示" : "施設LINE設定ボタンを表示"}</button>
                         <button type="button" style="background: ${familyLinePublicationEnabled ? "#c92a2a" : "#237032"};" title="非表示にすると入力画面のLINE公開チェックを隠し、新しい連絡帳は家族向けに公開しません。公開済み記録は変更しません。" onclick="toggleFamilyLinePublication('${encodeURIComponent(facility.id)}', this)">${familyLinePublicationEnabled ? "LINE公開チェックを非表示" : "LINE公開チェックを表示"}</button>
                         <button class="${isLocked ? "unlock" : "lock"}" onclick="toggleFacility('${encodeURIComponent(facility.id)}', ${isLocked})">${isLocked ? "🔓 解除する" : "🔒 ロックする"}</button>
                         <button type="button" class="delete" onclick="deleteFacility('${encodeURIComponent(facility.id)}', this)">🗑️ 登録施設を削除</button>
@@ -824,6 +826,37 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                 const message = error.code === "permission-denied"
                     ? "管理者権限を確認できず、LINE公開チェックの設定は変更していません。Ctrl + F5で管理画面を再読み込みし、管理者として認証し直してください。"
                     : "LINE公開チェックの設定変更に失敗しました: " + error.message;
+                document.getElementById("facilityError").textContent = message;
+                alert(message);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        };
+
+        window.toggleFacilityLineSettingsButton = async function(encodedId, button) {
+            const facilityId = decodeURIComponent(encodedId);
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) { alert("施設一覧を更新してから操作してください。"); return; }
+            const visible = facility.facilityLineSettingsButtonVisible === false;
+            const facilityName = facility.facilityName || facilityId;
+            const action = visible ? "表示" : "非表示";
+            if (!confirm(`${facilityName} の入力画面で施設LINE設定ボタンを${action}にしますか？\nこれはボタン表示のみを切り替えます。LINEの接続状態は変更しません。`)) return;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = "変更中...";
+            document.getElementById("facilityError").textContent = "";
+            try {
+                await updateDoc(doc(db, "facilities", facilityId), {
+                    facilityLineSettingsButtonVisible: visible,
+                    facilityLineSettingsButtonUpdatedAt: new Date().toISOString()
+                });
+                facility.facilityLineSettingsButtonVisible = visible;
+                renderFacilities();
+            } catch (error) {
+                const message = error.code === "permission-denied"
+                    ? "管理者権限を確認できず、表示設定は変更していません。管理者として再ログインしてください。"
+                    : "施設LINE設定ボタンの表示変更に失敗しました: " + error.message;
                 document.getElementById("facilityError").textContent = message;
                 alert(message);
             } finally {

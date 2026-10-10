@@ -868,6 +868,7 @@
 
         let familyLinePublicationEnabled = true;
         let facilityLineStatusSignature = "";
+        let facilityLineSettingsButtonVisible = true;
         let facilityFormCustomization = normalizeFacilityFormCustomization(null);
         const COMMON_LINE_BASIC_ID = "@805xgtzu";
 
@@ -1306,7 +1307,9 @@
             const facilityData = facilitySnapshot.data();
             familyLinePublicationEnabled = facilityData.familyLinePublicationEnabled !== false;
             document.getElementById("linePublicationControl").style.display = familyLinePublicationEnabled ? "block" : "none";
-            facilityLineStatusSignature = `${facilityData.lineServiceEnabled !== false}:${facilityData.commonLineEnabled !== false}`;
+            facilityLineSettingsButtonVisible = facilityData.facilityLineSettingsButtonVisible !== false;
+            document.getElementById("toggleFacilityLineSettingsButton").hidden = !facilityLineSettingsButtonVisible;
+            facilityLineStatusSignature = `${facilityData.lineServiceEnabled !== false}:${facilityData.commonLineEnabled !== false}:${facilityLineSettingsButtonVisible}`;
             facilityFormCustomization = normalizeFacilityFormCustomization(facilityData.formCustomization);
             applyFacilityFormCustomization();
             const enabledServiceTypes = normalizeServiceTypes(facilityData.enabledServiceTypes);
@@ -1349,7 +1352,9 @@
             onSnapshot(doc(db, "facilities", facilityId), snapshot => {
                 if (!snapshot.exists()) return;
                 const data = snapshot.data();
-                const signature = `${data.lineServiceEnabled !== false}:${data.commonLineEnabled !== false}`;
+                facilityLineSettingsButtonVisible = data.facilityLineSettingsButtonVisible !== false;
+                document.getElementById("toggleFacilityLineSettingsButton").hidden = !facilityLineSettingsButtonVisible;
+                const signature = `${data.lineServiceEnabled !== false}:${data.commonLineEnabled !== false}:${facilityLineSettingsButtonVisible}`;
                 if (signature === facilityLineStatusSignature) return;
                 facilityLineStatusSignature = signature;
                 loadFacilityLineSettingsStatus();
