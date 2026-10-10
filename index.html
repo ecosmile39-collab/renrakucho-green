@@ -266,7 +266,8 @@
             </button>
         </div>
         <div id="linePairingArea" style="display: none; margin-top: 10px; padding: 12px; background: #f3f8f4; border: 1px solid #b2dfbf; border-radius: 6px;">
-            <div id="lineLinkStatus" style="font-size: 13px; color: #495057; margin-bottom: 8px;">LINE連携状況を確認しています...</div>
+            <div id="lineAccountStatus" style="font-size: 13px; font-weight: bold; color: #237032; margin-bottom: 5px;">施設LINEの利用状況を確認しています...</div>
+            <div id="lineLinkStatus" style="font-size: 13px; color: #495057; margin-bottom: 8px;">保護者LINE連携状況を確認しています...</div>
             <button type="button" onclick="generateLinePairingCode()" style="padding: 9px 12px; background: #06c755; color: white; border: 0; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">保護者のLINE連携コードを発行</button>
         </div>
 
@@ -1734,12 +1735,18 @@
 
         async function loadFacilityLineSettingsStatus() {
             const status = document.getElementById("facilityLineSettingsStatus");
+            const accountStatus = document.getElementById("lineAccountStatus");
             const details = document.getElementById("facilityLineWebhookDetails");
             try {
                 const getStatus = httpsCallable(functions, "getFacilityLineSettingsStatus");
                 const result = await getStatus({});
                 const settings = result.data;
                 const stoppedNote = settings.lineEnabled === false ? "（LINE停止中）" : "";
+                const accountLabel = settings.configured ? "施設LINE" : "共通LINE";
+                if (accountStatus) {
+                    accountStatus.textContent = `${accountLabel}：${settings.lineEnabled ? "許可中" : "停止中"}`;
+                    accountStatus.style.color = settings.lineEnabled ? "#237032" : "#c92a2a";
+                }
                 status.textContent = settings.commonAccountConfiguredInFacility
                     ? `共通LINE設定済み：${settings.displayName}（${settings.basicId}）${stoppedNote}。通常は管理者が許可した共通設定で利用します。施設専用に切り替える場合は、共通設定から施設個別設定へ移行してください。`
                     : settings.configured
@@ -1752,6 +1759,10 @@
                 details.hidden = !settings.facilitySettingsPresent;
                 document.getElementById("facilityLineWebhookUrl").value = settings.webhookUrl;
             } catch (error) {
+                if (accountStatus) {
+                    accountStatus.textContent = "施設LINEの利用状況を確認できません。";
+                    accountStatus.style.color = "#c92a2a";
+                }
                 status.textContent = "LINE設定を確認できませんでした。再読み込みしてください。";
             }
         }
