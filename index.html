@@ -254,6 +254,9 @@
                 <label class="face-camera-btn">📸 写真 登録/変更
                     <input type="file" accept="image/*" capture="environment" onclick="checkPrivacy(event)" onchange="previewFace(event)" style="display: none;">
                 </label>
+                <label class="face-camera-btn">📁 アルバムから写真を選ぶ
+                    <input type="file" accept="image/*" onclick="checkPrivacy(event)" onchange="previewFace(event)" style="display: none;">
+                </label>
             </div>
         </div>
 
@@ -3214,7 +3217,7 @@
                 ngMessage = `\n\n🚨【絶対注意】\n以下の利用者様は映り込みNGです！\n▶ ${nameList}\n`;
             }
             
-            let isConfirm = confirm(`⚠️【確認】\n背景に他のお客様が写り込んでいませんか？\nもう一度周りをご確認ください。${ngMessage}\nよろしければカメラを起動します。`);
+            let isConfirm = confirm(`⚠️【確認】\n背景に他のお客様が写り込んでいませんか？\nもう一度周りをご確認ください。${ngMessage}\nよろしければ写真・動画の撮影または選択を続けてください。`);
             if (!isConfirm) { event.preventDefault(); }
         };
 
