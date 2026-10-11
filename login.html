@@ -85,6 +85,9 @@
         }
 
         window.onload = async function() {
+            if (new URLSearchParams(window.location.search).get("form") === "register") {
+                toggleForm("register");
+            }
             if (new URLSearchParams(window.location.search).get("notice") === "stopped") {
                 const errorMsg = document.getElementById("loginError");
                 errorMsg.textContent = FACILITY_PAUSE_MESSAGE;
