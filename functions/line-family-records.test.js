@@ -350,6 +350,25 @@ test("issued shared viewing links are blocked after common LINE is stopped", asy
     await assert.rejects(context.handlers.getLineSharedRecord({ data: { token } }), { code: "permission-denied" });
 });
 
+test("previously issued viewing links expire no later than three days after creation", async () => {
+    const token = "e".repeat(64);
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", facilityName: "Facility", commonLineEnabled: true },
+        "facilities/facility-a/users/User": { photoNg: true },
+        [`lineRecordLinks/${hash}`]: {
+            facilityId: "facility-a",
+            userName: "User",
+            date: "2026-10-06",
+            serviceType: "service",
+            lineAccountType: "shared",
+            createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+            expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+        }
+    });
+    await assert.rejects(context.handlers.getLineSharedRecord({ data: { token } }), { code: "unauthenticated" });
+});
+
 test("new trial registrations disable common LINE by default", async () => {
     const context = loadHandlers({});
     const result = await context.handlers.registerTrialFacility({ data: {

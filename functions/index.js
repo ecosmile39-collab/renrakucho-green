@@ -718,7 +718,11 @@ exports.getLineSharedRecord = onCall(async request => {
     const linkSnapshot = await getFirestore().collection("lineRecordLinks").doc(hashLineCode(token)).get();
     if (!linkSnapshot.exists) throw new HttpsError("unauthenticated", "閲覧リンクが無効か、有効期限が切れています。");
     const link = linkSnapshot.data();
-    const expiration = link.expiresAt?.toDate ? link.expiresAt.toDate() : new Date(link.expiresAt);
+    const expirationDate = link.expiresAt?.toDate ? link.expiresAt.toDate() : new Date(link.expiresAt);
+    const createdAt = link.createdAt?.toDate ? link.createdAt.toDate() : new Date(link.createdAt);
+    const expiration = Number.isFinite(createdAt.getTime())
+        ? new Date(Math.min(expirationDate.getTime(), createdAt.getTime() + 3 * 24 * 60 * 60 * 1000))
+        : expirationDate;
     if (!Number.isFinite(expiration.getTime()) || expiration.getTime() <= Date.now()) {
         throw new HttpsError("unauthenticated", "閲覧リンクが無効か、有効期限が切れています。");
     }
@@ -1013,11 +1017,11 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
             serviceType: record.serviceType,
             lineAccountType: expectedFacilityId ? "dedicated" : "shared",
             createdAt: FieldValue.serverTimestamp(),
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
         });
         return `${record.facilityName}\n${record.userName} 様・${record.date}（${record.serviceType}）\n${LINE_RECORD_BASE_URL}?token=${token}`;
     }));
-    return `最新の公開連絡帳です（最大5件・閲覧リンクは7日間有効）。\n\n${links.join("\n\n")}`;
+    return `最新の公開連絡帳です（最大5件・閲覧リンクは3日間有効）。\n\n${links.join("\n\n")}`;
 }
 
 exports.deleteExpiredLineLinks = onSchedule({
