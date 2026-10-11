@@ -1744,6 +1744,7 @@
                 const stoppedNote = settings.lineEnabled === false ? "（LINE停止中）" : "";
                 const accountLabel = settings.configured ? "施設LINE" : "共通LINE";
                 if (accountStatus) {
+                    accountStatus.hidden = settings.configured;
                     accountStatus.textContent = `${accountLabel}：${settings.lineEnabled ? "許可中" : "停止中"}`;
                     accountStatus.style.color = settings.lineEnabled ? "#237032" : "#c92a2a";
                 }
