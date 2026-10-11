@@ -255,6 +255,23 @@ exports.changeFacilityPassword = onCall(async request => {
     return { success: true };
 });
 
+exports.changeFacilityEmail = onCall(async request => {
+    const facilityId = requireFacilityId(request);
+    await verifyFacilityIsActive(facilityId);
+    const currentPassword = typeof request.data?.currentPassword === "string" ? request.data.currentPassword : "";
+    const newEmail = typeof request.data?.newEmail === "string" ? request.data.newEmail.trim() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail) || newEmail.length > 254) {
+        throw new HttpsError("invalid-argument", "正しいメールアドレスを入力してください。");
+    }
+    const facilityRef = getFirestore().collection("facilities").doc(facilityId);
+    const facilitySnapshot = await facilityRef.get();
+    if (!facilitySnapshot.exists || !currentPassword || facilitySnapshot.data().password !== currentPassword) {
+        throw new HttpsError("unauthenticated", "現在の施設パスワードが違います。");
+    }
+    await facilityRef.update({ email: newEmail });
+    return { email: newEmail };
+});
+
 exports.renameFacility = onCall(async request => {
     const facilityId = requireFacilityId(request);
     await verifyFacilityIsActive(facilityId);

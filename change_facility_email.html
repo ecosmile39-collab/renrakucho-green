@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メールアドレス変更 - 連絡帳アプリ</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f8ff; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .box { width: 100%; max-width: 460px; padding: 32px; background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,.1); box-sizing: border-box; }
+        h1 { color: #1c7ed6; font-size: 24px; text-align: center; margin: 0 0 12px; }
+        p { color: #495057; line-height: 1.6; }
+        label { display: block; margin-top: 16px; font-weight: bold; }
+        input { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 6px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        button { width: 100%; padding: 13px; margin-top: 20px; border: 0; border-radius: 5px; color: white; background: #1c7ed6; font-size: 16px; font-weight: bold; cursor: pointer; }
+        button:disabled { opacity: .6; cursor: wait; }
+        .message { display: none; font-weight: bold; }
+        .error { color: #c92a2a; }
+        .success { color: #2b8a3e; }
+        a { display: block; margin-top: 18px; text-align: center; color: #4682b4; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <main class="box">
+        <h1>メールアドレスを変更する</h1>
+        <p>請求書や施設への連絡に使用するメールアドレスを変更します。施設IDや保存済みの名簿・記録は変わりません。</p>
+        <label for="currentPassword">現在の施設パスワード</label>
+        <input id="currentPassword" type="password" autocomplete="current-password">
+        <label for="newEmail">新しいメールアドレス</label>
+        <input id="newEmail" type="email" autocomplete="email" placeholder="office@example.jp">
+        <button id="changeEmailButton" type="button" onclick="changeFacilityEmail()">メールアドレスを変更する</button>
+        <p id="message" class="message" role="status"></p>
+        <a href="index.html">入力画面へ戻る</a>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
+            authDomain: "renrakucho-app-6b157.firebaseapp.com",
+            projectId: "renrakucho-app-6b157",
+            storageBucket: "renrakucho-app-6b157.firebasestorage.app",
+            messagingSenderId: "63418706991",
+            appId: "1:63418706991:web:43085ce485d2a3d6302ada"
+        };
+        const functions = getFunctions(initializeApp(firebaseConfig));
+        if (!localStorage.getItem("currentFacilityId") || localStorage.getItem("isStaffAuthenticated") !== "true") {
+            window.location.replace("login.html");
+        }
+
+        function showMessage(text, type) {
+            const message = document.getElementById("message");
+            message.textContent = text;
+            message.className = `message ${type}`;
+            message.style.display = "block";
+        }
+
+        window.changeFacilityEmail = async function() {
+            const currentPassword = document.getElementById("currentPassword").value;
+            const newEmail = document.getElementById("newEmail").value.trim();
+            const button = document.getElementById("changeEmailButton");
+            if (!currentPassword || !newEmail) {
+                showMessage("現在の施設パスワードと新しいメールアドレスを入力してください。", "error");
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const updateEmail = httpsCallable(functions, "changeFacilityEmail");
+                const result = await updateEmail({ currentPassword, newEmail });
+                document.getElementById("currentPassword").value = "";
+                document.getElementById("newEmail").value = result.data.email;
+                showMessage("メールアドレスを変更しました。今後の請求書送信先に適用されます。", "success");
+            } catch (error) {
+                const text = error.code === "functions/unauthenticated" || error.code === "functions/invalid-argument"
+                    ? error.message
+                    : "変更できませんでした。通信環境を確認して、もう一度お試しください。";
+                showMessage(text, "error");
+            } finally {
+                button.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>

@@ -123,6 +123,20 @@ test("staff publication never sends a LINE message", async () => {
     assert.equal(context.requests.length, 0);
 });
 
+test("facility can update its contact email with its current password without changing other data", async () => {
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", password: "current-password", email: "old@example.com", facilityName: "Facility" }
+    });
+    const result = await context.handlers.changeFacilityEmail({
+        auth: { uid: "facility-a", token: { role: "facility" } },
+        data: { currentPassword: "current-password", newEmail: "new@example.com" }
+    });
+    assert.equal(result.email, "new@example.com");
+    assert.deepEqual(context.documents.get("facilities/facility-a"), {
+        status: "active", password: "current-password", email: "new@example.com", facilityName: "Facility"
+    });
+});
+
 test("family request uses only Reply API and returns only linked published records", async () => {
     const record = { facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "service", familyPublished: true };
     const context = loadHandlers({
