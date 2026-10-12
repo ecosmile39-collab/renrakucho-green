@@ -15,6 +15,14 @@
         .nav-links { text-align: right; margin-bottom: 15px; }
         .nav-links a { color: #2b8a3e; font-weight: bold; text-decoration: none; margin-left: 15px; }
         .nav-links a:hover { text-decoration: underline; }
+        .print-guide-toggle { width: 100%; margin: 0 0 12px; padding: 11px 14px; background: #1c7ed6; color: white; border: 0; border-radius: 5px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .print-guide-toggle:hover { background: #1864ab; }
+        .print-guide-panel { margin: 0 0 16px; padding: 16px; border: 1px solid #b6d4fe; border-radius: 6px; background: #f4f8ff; line-height: 1.65; }
+        .print-guide-panel h3 { margin: 0 0 12px; color: #1c7ed6; font-size: 18px; }
+        .print-guide-panel ol { margin: 0; padding-left: 24px; }
+        .print-guide-panel li { margin-bottom: 12px; }
+        .print-guide-panel p { margin: 4px 0; }
+        .print-guide-panel ul { margin: 5px 0; padding-left: 20px; }
 
         .btn { padding: 10px 20px; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; }
         
@@ -422,6 +430,24 @@
             <a href="index.html">⬅ 入力画面へ戻る</a>
             <a href="history.html">➡ 過去データ一覧へ</a>
         </div>
+
+        <button type="button" id="printGuideToggleButton" class="print-guide-toggle" aria-expanded="false" aria-controls="printGuidePanel" onclick="togglePrintGuide()">📖 印刷・確認画面の使い方を見る</button>
+        <section id="printGuidePanel" class="print-guide-panel" hidden>
+            <h3>印刷・確認画面の使い方</h3>
+            <ol>
+                <li><strong>画面を開く</strong><p>入力画面上部の「印刷画面へ」を押します。施設名が表示されていることを確認します。「入力画面へ戻る」「過去データ一覧へ」は、それぞれの画面に戻るリンクです。</p></li>
+                <li><strong>サービス種別を選ぶ</strong><p>「サービス種別」で、印刷したい記録のサービスを選びます。デイサービスなどを選ぶと、対象日の記録を検索します。</p></li>
+                <li><strong>日付を選ぶ</strong><p>ショートステイ以外は「ご利用日」を1日選びます。ショートステイは「ご宿泊期間」の開始日と終了日を選びます。開始日は終了日より後にできません。</p></li>
+                <li><strong>印刷する内容を選ぶ</strong><p>「印刷する内容」から選びます。</p><ul><li>「連絡帳＋誕生日カード」：連絡帳と、選択した方の誕生日カード</li><li>「連絡帳のみ」：連絡帳だけ</li><li>「誕生日カードのみ」：誕生日カードだけ。カードだけを別の用紙に印刷する場合に使います。</li></ul></li>
+                <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
+                <li><strong>印刷する利用者を選ぶ</strong><p>記録がある利用者が「LINE未連携」「LINE連携済み」に分かれて表示されます。LINE連携済みでも印刷できます。「すべて選択／解除」ですべてのチェックをまとめて切り替えられます。印刷しない方はチェックを外します。</p></li>
+                <li><strong>誕生日カードを選ぶ</strong><p>誕生日カードを付けられる方には「誕生日カードも印刷」が表示されます。必要な方にチェックし、必要なら任意のメッセージを入力します。</p></li>
+                <li><strong>確認用画面を作る</strong><p>「選んだ人の連絡帳を画面に表示する（確認用）」を押します。作成中は少し待ちます。選んだ人数や写真の数によって時間がかかることがあります。</p></li>
+                <li><strong>表示内容を確認する</strong><p>利用者名、日付、記録内容、写真などを確認します。LINE未連携の方は、保護者用の友だち追加QRコードや連携コードが表示される場合があります。連携コードの有効期限は24時間です。すでに連携済みの方には、QRコードやコードは表示されません。</p></li>
+                <li><strong>プリンターで印刷する</strong><p>内容に問題がなければ「確認OK！表示されている連絡帳をプリンターで一括印刷する」を押します。ブラウザーの印刷画面で、プリンター、用紙、部数などを確認して印刷します。</p></li>
+            </ol>
+            <p><strong>対象日に記録がない場合</strong>は、利用者の選択肢が表示されません。その場合は、サービス種別と日付を確認してください。</p>
+        </section>
 
         <div class="filter-panel">
             <div class="filter-row">
@@ -872,6 +898,15 @@
         window.toggleAllUsers = function() {
             let isChecked = document.getElementById("checkAll").checked;
             document.querySelectorAll(".user-chk").forEach(chk => chk.checked = isChecked);
+        };
+
+        window.togglePrintGuide = function() {
+            const panel = document.getElementById("printGuidePanel");
+            const button = document.getElementById("printGuideToggleButton");
+            const isOpening = panel.hidden;
+            panel.hidden = !isOpening;
+            button.setAttribute("aria-expanded", String(isOpening));
+            button.textContent = isOpening ? "📖 印刷・確認画面の使い方を閉じる" : "📖 印刷・確認画面の使い方を見る";
         };
 
         window.updateCardPhotoCountVisibility = function() {
