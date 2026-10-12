@@ -28,6 +28,14 @@
         .service-select-card { background: linear-gradient(135deg, #ebfbee 0%, #d3f9d8 100%); padding: 16px; border-radius: 8px; border: 2px solid #40c057; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .service-select-card label { margin-top: 0; color: #2b8a3e; font-size: 16px; }
         .service-select-card select { font-size: 18px; font-weight: bold; border: 2px solid #2b8a3e; background-color: #fff; cursor: pointer; }
+        .usage-guide-toggle { margin: 0 0 10px; padding: 10px 14px; background: #1c7ed6; border-radius: 5px; font-size: 14px; }
+        .usage-guide-toggle:hover { background: #1864ab; }
+        .usage-guide-panel { margin: 0 0 16px; padding: 16px; border: 1px solid #b6d4fe; border-radius: 6px; background: #f4f8ff; line-height: 1.65; }
+        .usage-guide-panel h3 { margin: 0 0 12px; font-size: 18px; }
+        .usage-guide-panel ol { margin: 0; padding-left: 24px; }
+        .usage-guide-panel li { margin: 0 0 12px; }
+        .usage-guide-panel p { margin: 4px 0; }
+        .usage-guide-panel .guide-note { margin-top: 12px; font-weight: bold; }
 
         .register-box { background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 12px; border: 1px dashed #adb5bd; }
         .register-grid { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
@@ -188,6 +196,27 @@
                     <button type="button" id="removeFacilityLineSettingsButton" onclick="removeFacilityLineSettings()" style="padding: 8px 12px; margin-left: 6px; background: #e03131; color: white; border: 0; border-radius: 4px; cursor: pointer;">設定を解除</button>
                 </div>
             </div>
+        </section>
+
+        <button type="button" id="usageGuideToggleButton" class="usage-guide-toggle" aria-expanded="false" aria-controls="usageGuidePanel" onclick="toggleUsageGuide()">📖 連絡帳の使い方を見る</button>
+        <section id="usageGuidePanel" class="usage-guide-panel" hidden>
+            <h3>連絡帳の使い方</h3>
+            <ol>
+                <li><strong>ログインする</strong><p>ログイン画面で施設名とパスワードを入力し、「ログインする」を押します。</p></li>
+                <li><strong>画面上部を見る</strong><p>上部に施設名が表示されます。「印刷画面へ」は入力済み記録の確認・印刷、「過去データ一覧へ」は以前の記録を見るときに使います。「施設のLINE公式アカウント設定」は設定を変更するとき以外は操作しなくて大丈夫です。</p></li>
+                <li><strong>サービス種別を選ぶ</strong><p>「ご入力するサービス種別を選択してください」で、今回の記録に合うものを選びます。デイサービス、ショートステイ、放課後等デイサービス、児童発達支援、生活介護があります。選ぶと、そのサービスに合った入力欄に切り替わります。</p></li>
+                <li><strong>送信待ちや申し送りを確認する</strong><p>上部に「送信待ちのお客様」が表示されていたら、前に一時保存した記録があります。画面を再読み込みすると消えることがあるので、作業を続けて最後にまとめて送信してください。「前日の重要申し送り一覧」が表示された場合は、内容を確認します。</p></li>
+                <li><strong>利用者を選ぶ</strong><p>「お名前」から記録する方を選びます。年齢や顔写真、保存済み記録が表示されます。「利用終了者も表示する」は、以前利用していた方を選ぶ場合に使います。</p><p>顔写真は「写真 登録/変更」で撮影、「アルバムから写真を選ぶ」で保存済み写真を選べます。緊急連絡先や持病歴などの欄がある場合、入力後に「利用者情報に保存」を押すと名簿に保存されます。</p></li>
+                <li><strong>新しい利用者を登録する</strong><p>名簿にいない方は、画面下の新規登録欄に名前を入力します。生年月日は任意です。必要なら顔写真や排泄記録の設定を選び、「お名前・生年月日・各種設定をまとめて名簿に登録」を押します。</p></li>
+                <li><strong>日付を選ぶ</strong><p>「日付」で、記録する日を選びます。利用者と日付を間違えていないか、この時点で確認してください。入力途中の内容は使用中のブラウザーに下書き保存されますが、まだ正式な保存ではありません。</p></li>
+                <li><strong>記録を入力する</strong><p>表示された欄を上から入力します。デイサービスでは、担当スタッフ、介護日誌、バイタル、食事・水分・服薬・入浴、活動などを記録します。放課後等デイサービス・児童発達支援では、出欠、送迎、活動、おやつ、支援の様子などを記録します。生活介護とショートステイでは、それぞれの専用欄に健康状態、生活支援、持ち物、夜間の様子などを入力します。</p><p>分からない欄は無理に埋めず、施設の記録方法に合わせてください。「要申し送り」「受診対応あり」「体調変化」は、該当するときにチェックし、申し送り内容も入力します。</p></li>
+                <li><strong>ご家族への連絡を入力する</strong><p>「施設からの御連絡事項」には施設から伝えることを入力します。定型文がある場合は選んで編集できます。「お客様からの御連絡事項／保護者記入欄」には家庭からの連絡事項を入力します。「施設からのお知らせ・PRを追加する」は必要なときだけ開いて使います。</p></li>
+                <li><strong>写真・動画を選ぶ</strong><p>「施設でのご様子」で撮影するか、アルバムから写真・動画を選びます。プレビューで内容を確認し、他の利用者が写っていないか確認してください。動画は先頭30秒まで、5MB以下に自動調整されます。</p><p>「今すぐ預ける」は任意です。押さなくても、最後の送信時に記録と一緒に保存できます。選んだものを外す場合は、プレビューの「取消」を使います。</p></li>
+                <li><strong>家族向け公開を選ぶ</strong><p>「LINEで家族に公開する」は初期状態ではチェックされています。チェックありなら、記録を保存した後、連携済みの家族がLINEから閲覧できます。<strong>自動でLINE通知が送られるわけではありません。</strong>施設内だけに保存したい場合はチェックを外します。</p></li>
+                <li><strong>保存・送信する</strong><p>1名分をすぐ確定するなら「この方だけのデータを今すぐ送信して完了する」を押します。複数人分をまとめるなら、各利用者の入力後に「一時保存し、次の方を入力する」を押し、最後に「上記のお客様のデータをまとめて送信する」を押します。</p><p>一時保存だけでは正式保存されません。最後に必ず送信し、完了メッセージが表示されたことを確認してください。送信中は画面を閉じないでください。</p></li>
+                <li><strong>印刷・過去記録を見る</strong><p>保存した記録は、上部の「印刷画面へ」で確認・印刷できます。「過去データ一覧へ」では以前の記録を確認できます。</p></li>
+            </ol>
+            <p class="guide-note">まずは「サービス種別」「利用者」「日付」の3つを正しく選んでから入力を始めると、記録違いを防ぎやすくなります。</p>
         </section>
 
         <div class="service-select-card">
@@ -1736,6 +1765,15 @@
             document.getElementById("toggleFacilityLineSettingsButton").textContent = section.hidden
                 ? "🏢 施設のLINE公式アカウント設定"
                 : "LINE設定を閉じる";
+        };
+
+        window.toggleUsageGuide = function() {
+            const panel = document.getElementById("usageGuidePanel");
+            const button = document.getElementById("usageGuideToggleButton");
+            const isOpening = panel.hidden;
+            panel.hidden = !isOpening;
+            button.setAttribute("aria-expanded", String(isOpening));
+            button.textContent = isOpening ? "📖 連絡帳の使い方を閉じる" : "📖 連絡帳の使い方を見る";
         };
 
         async function loadFacilityLineSettingsStatus() {
