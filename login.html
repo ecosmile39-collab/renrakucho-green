@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>施設ログイン - 連絡帳アプリ</title>
     <style>
-        body { font-family: sans-serif; background-color: #f0f8ff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        body { font-family: sans-serif; background-color: #f0f8ff; display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; margin: 0; padding: 16px 0; box-sizing: border-box; }
         .login-box { background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 440px; box-sizing: border-box; }
         h2 { color: #4682b4; margin-bottom: 20px; margin-top: 0; }
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 15px; }
@@ -28,6 +28,7 @@
         .link:hover { text-decoration: underline; }
         .error { color: red; margin-top: 15px; font-weight: bold; display: none; }
         .description { font-size: 13px; color: #555; margin-bottom: 15px; text-align: left; background-color: #f9f9f9; padding: 10px; border-radius: 5px; border-left: 4px solid #4caf50; line-height: 1.5; }
+        @media (max-height: 720px) { body { align-items: flex-start; } }
     </style>
 </head>
 <body>
