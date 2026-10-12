@@ -16,6 +16,13 @@
         button:hover { background-color: #ff6347; }
         .btn-register { background-color: #4caf50; }
         .btn-register:hover { background-color: #388e3c; }
+        .registration-guide-button { background-color: #1c7ed6; font-size: 14px; padding: 11px; }
+        .registration-guide-button:hover { background-color: #1864ab; }
+        .registration-guide { margin-top: 10px; padding: 12px; border: 1px solid #b6d4fe; border-radius: 5px; background: #f4f8ff; text-align: left; font-size: 13px; line-height: 1.6; }
+        .registration-guide p { margin: 0 0 8px; }
+        .registration-guide ol { margin: 0; padding-left: 22px; }
+        .registration-guide li { margin: 0 0 6px; }
+        .registration-guide .guide-closing { margin: 10px 0 0; }
         
         .link { margin-top: 25px; display: block; color: #4682b4; text-decoration: none; font-size: 15px; font-weight: bold; cursor: pointer; }
         .link:hover { text-decoration: underline; }
@@ -36,6 +43,23 @@
             <a onclick="toggleForm('register')" class="link">🌱 はじめて利用する方（新規登録）はこちら</a>
             <a href="change_password.html" class="link" style="font-size: 13px; margin-top: 15px; color: #888;">🔑 パスワードを変更する場合</a>
         </div>
+
+        <button type="button" id="registrationGuideToggle" class="registration-guide-button" aria-expanded="false" aria-controls="registrationGuide" onclick="toggleRegistrationGuide()">📘 新規登録の手順を見る</button>
+        <section id="registrationGuide" class="registration-guide" hidden>
+            <p>画面にある「🌱 はじめて利用する方（新規登録）はこちら」から始めます。順番に進めてください。</p>
+            <ol>
+                <li>ログイン画面の「🌱 はじめて利用する方（新規登録）はこちら」を押します。</li>
+                <li>「🔑 秘密の合言葉」を入力します。アプリを入手したときに案内された合言葉を入力してください。わからない場合は、販売元に確認してください。</li>
+                <li>「📛 好きな施設名」に施設名を入力します。この名前が、次回ログイン時のログインIDになります。他の施設がすでに使っている名前は登録できません。</li>
+                <li>「🔐 好きなパスワード」を入力します。6文字以上で決めてください。忘れないように控えておき、次回ログインでも同じものを使います。</li>
+                <li>「✉️ 連絡先メールアドレス」を入力します。こちらは必須です。</li>
+                <li>「📞 ご連絡先お電話番号」を入力します。任意なので、入力しなくても登録できます。</li>
+                <li>「利用規約を開いて確認」を押して内容を読みます。確認後、「内容に同意します」のチェックを入れてください。</li>
+                <li>「7日間無料で登録する」を押します。</li>
+                <li>登録完了のメッセージが表示されたら、登録完了です。その後、自動的にログインして連絡帳の画面へ移動します。</li>
+            </ol>
+            <p class="guide-closing">登録した「施設名」と「パスワード」は、次回からログイン画面で使います。秘密の合言葉は登録時に必要なもので、普段のログインには使いません。無料期間は登録から7日間です。</p>
+        </section>
 
         <div id="registerFormArea" style="display: none;">
             <h2 style="color: #2e7d32;">新規利用登録</h2>
@@ -159,6 +183,15 @@
                 document.getElementById('registerFormArea').style.display = 'none';
                 document.getElementById('loginFormArea').style.display = 'block';
             }
+        };
+
+        window.toggleRegistrationGuide = function() {
+            const guide = document.getElementById("registrationGuide");
+            const button = document.getElementById("registrationGuideToggle");
+            const isOpening = guide.hidden;
+            guide.hidden = !isOpening;
+            button.setAttribute("aria-expanded", String(isOpening));
+            button.textContent = isOpening ? "📘 新規登録の手順を閉じる" : "📘 新規登録の手順を見る";
         };
 
         window.handleLogin = async function() {
