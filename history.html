@@ -13,6 +13,14 @@
         .nav-links { text-align: center; margin-bottom: 20px; }
         .nav-links a { color: #2b8a3e; font-weight: bold; text-decoration: none; margin: 0 15px; font-size: 16px; }
         .nav-links a:hover { text-decoration: underline; }
+        .history-guide-toggle { width: 100%; margin: 0 0 12px; padding: 11px 14px; background: #1c7ed6; color: white; border: 0; border-radius: 5px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .history-guide-toggle:hover { background: #1864ab; }
+        .history-guide-panel { margin: 0 0 16px; padding: 16px; border: 1px solid #b6d4fe; border-radius: 6px; background: #f4f8ff; line-height: 1.65; text-align: left; }
+        .history-guide-panel h3 { margin: 0 0 12px; color: #1c7ed6; font-size: 18px; }
+        .history-guide-panel ol { margin: 0; padding-left: 24px; }
+        .history-guide-panel li { margin-bottom: 12px; }
+        .history-guide-panel p { margin: 4px 0; }
+        .history-guide-panel .guide-note { margin: 12px 0 0; font-weight: bold; }
 
         .filter-panel { background-color: #ebfbee; padding: 20px; border-radius: 8px; border: 2px solid #40c057; margin-bottom: 20px; text-align: center; }
         .filter-select { font-size: 16px; padding: 8px 12px; border-radius: 5px; border: 1px solid #40c057; font-weight: bold; margin-right: 15px; }
@@ -68,6 +76,24 @@
         <h2 style="justify-content: center; background-color: #4682b4; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
             📊 過去データ一覧（1ヶ月のまとめ）
         </h2>
+
+        <button type="button" id="historyGuideToggleButton" class="history-guide-toggle" aria-expanded="false" aria-controls="historyGuidePanel" onclick="toggleHistoryGuide()">📖 過去データ一覧の使い方を見る</button>
+        <section id="historyGuidePanel" class="history-guide-panel" hidden>
+            <h3>過去データ一覧（1ヶ月のまとめ）の使い方</h3>
+            <ol>
+                <li><strong>画面上部のリンク</strong><p>「入力画面へ戻る」は記録入力画面へ、「印刷画面へ」は通常の印刷・確認画面へ戻るリンクです。</p></li>
+                <li><strong>サービス種別を選ぶ</strong><p>「デイサービス」「ショートステイ」「放課後等デイサービス」「児童発達支援」「生活介護」から、確認したい記録の種類を選びます。複数サービスの記録を一度に混ぜて表示する画面ではありません。</p></li>
+                <li><strong>確認したい月を選ぶ</strong><p>月の欄で対象年月を選びます。通常は今月が初期表示されています。</p></li>
+                <li><strong>「この月のデータを探す」を押す</strong><p>選んだサービス・月の記録を検索します。正式に保存された記録が対象です。入力画面で一時保存しただけのデータは表示されません。</p></li>
+                <li><strong>利用者を選ぶ</strong><p>検索結果があれば、記録がある利用者の一覧が表示されます。「すべて選択／解除」でまとめて切り替えるか、利用者ごとにチェックします。</p></li>
+                <li><strong>利用者別のまとめを見る</strong><p>「選んだ人のまとめを画面に表示する」を押すと、チェックした利用者の月内の記録が表示されます。サービスによって表示項目は変わります。</p></li>
+                <li><strong>利用者別のまとめを印刷する</strong><p>内容を確認したら「選んだ人のまとめを印刷する」を押します。印刷画面でプリンターや部数を確認してください。</p></li>
+                <li><strong>担当スタッフ別に見る</strong><p>「担当スタッフ別の介護日誌」で担当者を選び、「担当者別に介護日誌を表示する」を押すと、その担当者の記録を確認できます。「担当者別の介護日誌を印刷する」から印刷できます。</p></li>
+                <li><strong>月別監査保存用一覧を見る</strong><p>検索後に表示される「月別監査保存用一覧を表示」を押すと、その月の利用記録と介護日誌を一覧で確認できます。「印刷・PDF保存」から保存できます。</p></li>
+                <li><strong>CSV出力を使う場合</strong><p>月別の画面表示とは別の機能です。施設とサービスを確認し、必要なら利用者を選びます。「利用者名簿CSV」は名簿の出力、「指定期間の記録CSV」は開始日・終了日を指定した記録の出力です。CSVには氏名や健康情報などが含まれるため、保存先や共有先に注意してください。</p></li>
+            </ol>
+            <p class="guide-note">対象のデータがないと表示されたときは、サービス種別と月を確認してください。なお、利用者別・担当者別の表示やCSV出力は、必要な方・期間だけに絞ると探しやすくなります。</p>
+        </section>
 
         <div class="filter-panel">
             <select id="selectServiceType" class="filter-select" onchange="clearResults()">
@@ -338,6 +364,15 @@
             document.getElementById("resultArea").innerHTML = "";
             window.matchedRecordsGlobal = [];
             currentHistoryView = "";
+        };
+
+        window.toggleHistoryGuide = function() {
+            const panel = document.getElementById("historyGuidePanel");
+            const button = document.getElementById("historyGuideToggleButton");
+            const isOpening = panel.hidden;
+            panel.hidden = !isOpening;
+            button.setAttribute("aria-expanded", String(isOpening));
+            button.textContent = isOpening ? "📖 過去データ一覧の使い方を閉じる" : "📖 過去データ一覧の使い方を見る";
         };
 
         window.searchData = async function() {
