@@ -14,6 +14,7 @@ const { GoogleAuth } = require("google-auth-library");
 const { decryptCredentials, encryptCredentials } = require("./line-credential-crypto");
 const { isFamilyRecordRequest, latestPublishedRecords } = require("./line-family-records");
 const { validateFacilityServiceTypes } = require("./service-types");
+const { generateInvoicePdf } = require("./invoice-pdf");
 
 initializeApp();
 
@@ -1316,13 +1317,27 @@ exports.requestFacilitySubscription = onCall({
         <tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">4,400円</th></tr></tbody></table>
         <div style="display:flex;justify-content:flex-start;align-items:flex-start;gap:16px;margin-top:28px"><div><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div><img src="cid:company-stamp" alt="株式会社えこすまいる会社印" width="92" height="92" style="width:92px;height:92px;object-fit:contain;margin-top:90px"></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
+        <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能な請求書PDF（<code>請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。印刷して保管される際などにご活用ください。</p>
         <p style="margin-top:28px">このたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。</p>
     </body></html>`;
-    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n初回システム利用料：4,000円\n消費税（10%）：400円\n税込合計：4,400円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。`;
+    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n初回システム利用料：4,000円\n消費税（10%）：400円\n税込合計：4,400円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。`;
 
     let emailResult = null;
     const archivedHtml = html.replace('src="cid:company-stamp"', `src="${companyStampDataUrl}"`);
     try {
+        const pdfBuffer = await generateInvoicePdf({
+            facilityName,
+            invoiceNumber,
+            issueDate: formatJapaneseDateKey(issueDate),
+            dueDate: formatJapaneseDateKey(dueDate),
+            billingPeriod: formattedPeriod,
+            itemTitle: "初回システム利用料",
+            subtotal: 4000,
+            tax: 400,
+            total: 4400,
+            issuerEmail: gmailUser,
+            note: "このたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。"
+        });
         const transporter = nodemailer.createTransport({
             service: "gmail",
             auth: { user: gmailUser, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
@@ -1333,7 +1348,10 @@ exports.requestFacilitySubscription = onCall({
             subject: `【初回請求書】${facilityName} 御中 / ${invoiceNumber}`,
             text,
             html,
-            attachments: [{ filename: "company_stamp.png", content: companyStampPng, contentType: "image/png", cid: "company-stamp" }]
+            attachments: [
+                { filename: `請求書_${invoiceNumber}.pdf`, content: pdfBuffer, contentType: "application/pdf" },
+                { filename: "company_stamp.png", content: companyStampPng, contentType: "image/png", cid: "company-stamp" }
+            ]
         });
         await Promise.all([
             invoiceRef.set({ status: "sent", invoiceHtml: archivedHtml, messageId: emailResult.messageId, sentAt: FieldValue.serverTimestamp() }, { merge: true }),
@@ -1422,12 +1440,26 @@ exports.sendTestInvoiceEmail = onCall({
         <tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">5,500円</th></tr></tbody></table>
         <div style="display:flex;justify-content:flex-start;align-items:flex-start;gap:16px;margin-top:28px"><div><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div><img src="cid:company-stamp" alt="株式会社えこすまいる会社印" width="92" height="92" style="width:92px;height:92px;object-fit:contain;margin-top:90px"></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
+        <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能なテスト請求書PDF（<code>テスト請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。</p>
         <p style="background:#fff4e6;padding:12px">これは送信テストです。実際の請求・お支払いは発生しません。</p>
         <p>平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。</p>
     </body></html>`;
-    const text = `${facilityName} 御中\nテスト請求書（実請求ではありません）\n請求書番号：${invoiceNumber}\n発行日：${formatJapaneseDate(dateParts)}\n支払期限：${formatJapaneseDate(dueParts)}\nシステム利用料（${billingMonth}分）：5,000円\n消費税（10%）：500円\n税込合計：5,500円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\nこれは送信テストです。実際の請求・お支払いは発生しません。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
+    const text = `${facilityName} 御中\nテスト請求書（実請求ではありません）\n請求書番号：${invoiceNumber}\n発行日：${formatJapaneseDate(dateParts)}\n支払期限：${formatJapaneseDate(dueParts)}\nシステム利用料（${billingMonth}分）：5,000円\n消費税（10%）：500円\n税込合計：5,500円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDFを本メールに添付しております。\n\nこれは送信テストです。実際の請求・お支払いは発生しません。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
 
     try {
+        const pdfBuffer = await generateInvoicePdf({
+            facilityName,
+            invoiceNumber,
+            issueDate: formatJapaneseDate(dateParts),
+            dueDate: formatJapaneseDate(dueParts),
+            billingPeriod: `${billingMonth}分`,
+            itemTitle: "システム利用料",
+            subtotal: 5000,
+            tax: 500,
+            total: 5500,
+            issuerEmail: gmailUser,
+            note: "これは送信テストです。実際の請求・お支払いは発生しません。"
+        });
         const transporter = nodemailer.createTransport({
             service: "gmail",
             auth: {
@@ -1441,12 +1473,19 @@ exports.sendTestInvoiceEmail = onCall({
             subject: `【テスト請求書】${facilityName} 御中 / ${invoiceNumber}`,
             text,
             html,
-            attachments: [{
-                filename: "company_stamp.png",
-                content: companyStampPng,
-                contentType: "image/png",
-                cid: "company-stamp"
-            }]
+            attachments: [
+                {
+                    filename: `テスト請求書_${invoiceNumber}.pdf`,
+                    content: pdfBuffer,
+                    contentType: "application/pdf"
+                },
+                {
+                    filename: "company_stamp.png",
+                    content: companyStampPng,
+                    contentType: "image/png",
+                    cid: "company-stamp"
+                }
+            ]
         });
 
         const invoiceHistoryEntry = {
@@ -1572,18 +1611,35 @@ exports.sendMonthlyInvoices = onSchedule({
             <tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">5,500円</th></tr></tbody></table>
             <div style="display:flex;justify-content:flex-start;align-items:flex-start;gap:16px;margin-top:28px"><div><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div><img src="cid:company-stamp" alt="株式会社えこすまいる会社印" width="92" height="92" style="width:92px;height:92px;object-fit:contain;margin-top:90px"></div>
             <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
+            <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能な請求書PDF（<code>請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。印刷して保管される際などにご活用ください。</p>
             <p style="margin-top:28px">平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。</p>
         </body></html>`;
-        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(invoiceDueDate)}\nシステム利用料：5,000円\n消費税（10%）：500円\n税込合計：5,500円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
+        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(invoiceDueDate)}\nシステム利用料：5,000円\n消費税（10%）：500円\n税込合計：5,500円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
 
         try {
+            const pdfBuffer = await generateInvoicePdf({
+                facilityName,
+                invoiceNumber,
+                issueDate: formatJapaneseDateKey(issueDate),
+                dueDate: formatJapaneseDateKey(invoiceDueDate),
+                billingPeriod: formattedPeriod,
+                itemTitle: "システム利用料",
+                subtotal: 5000,
+                tax: 500,
+                total: 5500,
+                issuerEmail: gmailUser,
+                note: "平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。"
+            });
             const result = await transporter.sendMail({
                 from: { name: "株式会社えこすまいる", address: gmailUser },
                 to: recipient,
                 subject: `【請求書】${facilityName} 御中 / ${invoiceNumber}`,
                 text,
                 html,
-                attachments: [{ filename: "company_stamp.png", content: companyStampPng, contentType: "image/png", cid: "company-stamp" }]
+                attachments: [
+                    { filename: `請求書_${invoiceNumber}.pdf`, content: pdfBuffer, contentType: "application/pdf" },
+                    { filename: "company_stamp.png", content: companyStampPng, contentType: "image/png", cid: "company-stamp" }
+                ]
             });
             const archivedHtml = html.replace('src="cid:company-stamp"', `src="${companyStampDataUrl}"`);
             await historyRef.set({
