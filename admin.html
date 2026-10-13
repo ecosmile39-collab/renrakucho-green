@@ -464,6 +464,19 @@
                         <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; ${invoiceSent ? "cursor: pointer;" : "color: #868e96;"}"><input type="checkbox" data-facility-payment-id="${encodeURIComponent(facility.id)}" data-payment-status="unpaid" ${invoiceSent && !invoicePaid ? "checked" : ""} ${invoiceSent ? "" : "disabled"} style="width: auto; margin: 0;">未入金</label>
                         ${invoiceSent ? "" : "<span style=\"color:#868e96;\">請求書未発送</span>"}
                     </div>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; font-size: 13px; background: #eef2f6; padding: 6px 10px; border-radius: 4px; border: 1px solid #d0d7de;">
+                        <strong>LINE連携代行：</strong>
+                        <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer;">
+                            <input type="checkbox" data-facility-agency-id="${encodeURIComponent(facility.id)}" data-agency-field="accepted" ${facility.lineAgencyStatus ? "checked" : ""} style="width: auto; margin: 0;">受付済み
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer;">
+                            <input type="checkbox" data-facility-agency-id="${encodeURIComponent(facility.id)}" data-agency-field="completed" ${facility.lineAgencyStatus === "completed" ? "checked" : ""} style="width: auto; margin: 0;">完了
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer;">
+                            <input type="checkbox" data-facility-agency-id="${encodeURIComponent(facility.id)}" data-agency-field="uncompleted" ${facility.lineAgencyStatus === "pending" ? "checked" : ""} style="width: auto; margin: 0;">未完了
+                        </label>
+                        ${facility.lineAgencyContactPerson ? `<span style="font-size: 12px; color: #555;">（担当: ${escapeHtml(facility.lineAgencyContactPerson)}様）</span>` : ""}
+                    </div>
                     <span class="status ${statusClass}">${statusLabel}</span>
                     <div style="margin-top: 6px; font-size: 13px; font-weight: bold; color: ${lineEnabled ? "#237032" : "#c92a2a"};">${lineAccountLabel}：${lineEnabled ? "許可中" : "停止中"}</div></div>
                     <details style="margin-top: 8px; padding: 8px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 5px;">
@@ -489,6 +502,43 @@
             list.querySelectorAll("[data-facility-payment-id]").forEach(checkbox => {
                 checkbox.addEventListener("change", () => updateFacilityInvoicePaymentStatus(checkbox));
             });
+            list.querySelectorAll("[data-facility-agency-id]").forEach(checkbox => {
+                checkbox.addEventListener("change", () => updateFacilityLineAgencyStatus(checkbox));
+            });
+        }
+
+        async function updateFacilityLineAgencyStatus(checkbox) {
+            const facilityId = decodeURIComponent(checkbox.dataset.facilityAgencyId);
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) return;
+
+            const field = checkbox.dataset.agencyField;
+            let nextStatus = facility.lineAgencyStatus || null;
+
+            if (field === "accepted") {
+                nextStatus = checkbox.checked ? (facility.lineAgencyStatus || "pending") : null;
+            } else if (field === "completed") {
+                nextStatus = checkbox.checked ? "completed" : "pending";
+            } else if (field === "uncompleted") {
+                nextStatus = checkbox.checked ? "pending" : "completed";
+            }
+
+            const previousStatus = facility.lineAgencyStatus || null;
+            const agencyCheckboxes = Array.from(checkbox.closest(".facility").querySelectorAll("[data-facility-agency-id]"));
+            agencyCheckboxes.forEach(item => { item.disabled = true; });
+
+            try {
+                await updateDoc(doc(db, "facilities", facilityId), {
+                    lineAgencyStatus: nextStatus,
+                    lineAgencyStatusUpdatedAt: new Date().toISOString()
+                });
+                facility.lineAgencyStatus = nextStatus;
+                renderFacilities();
+            } catch (error) {
+                facility.lineAgencyStatus = previousStatus;
+                renderFacilities();
+                document.getElementById("facilityError").textContent = "LINE連携代行の状況を保存できませんでした: " + (error.message || error);
+            }
         }
 
         async function updateFacilityInvoicePaymentStatus(checkbox) {

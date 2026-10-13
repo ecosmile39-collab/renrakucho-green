@@ -674,6 +674,13 @@ async function connectLineUser(code, lineUserId, expectedFacilityId = "") {
                 lineLinkedAt: FieldValue.serverTimestamp()
             }, { merge: true });
         }
+        // LINE連携代行が受付中の施設の場合、連携完了ステータスへ自動更新
+        const facilityRef = db.collection("facilities").doc(pairing.facilityId);
+        transaction.set(facilityRef, {
+            lineAgencyStatus: "completed",
+            lineAgencyCompletedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+
         transaction.delete(codeRef);
         return { status: "linked", userName: pairing.userName };
     });
@@ -1278,6 +1285,75 @@ function formatJapaneseDateKey(value) {
     const [year, month, day] = value.split("-").map(Number);
     return `${year}年${month}月${day}日`;
 }
+
+exports.requestLineAgencySetup = onCall({
+    secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
+}, async request => {
+    const facilityId = requireFacilityId(request);
+    await verifyFacilityIsActive(facilityId);
+
+    const facilityName = typeof request.data?.facilityName === "string" ? request.data.facilityName.trim() : "";
+    const email = typeof request.data?.email === "string" ? request.data.email.trim() : "";
+    const contactPerson = typeof request.data?.contactPerson === "string" ? request.data.contactPerson.trim() : "";
+
+    if (!facilityName || facilityName.length > 200) {
+        throw new HttpsError("invalid-argument", "施設名を入力してください。");
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new HttpsError("invalid-argument", "正しいメールアドレスを入力してください。");
+    }
+    if (!contactPerson || contactPerson.length > 100) {
+        throw new HttpsError("invalid-argument", "ご担当者名を入力してください。");
+    }
+
+    const db = getFirestore();
+    const facilityRef = db.collection("facilities").doc(facilityId);
+    const facilitySnapshot = await facilityRef.get();
+    if (!facilitySnapshot.exists) {
+        throw new HttpsError("not-found", "施設情報が見つかりません。");
+    }
+
+    const requestedAt = new Date().toISOString();
+    await facilityRef.set({
+        lineAgencyStatus: "pending",
+        lineAgencyRequestedAt: requestedAt,
+        lineAgencyContactPerson: contactPerson,
+        lineAgencyEmail: email
+    }, { merge: true });
+
+    // 管理者および施設側へメール通知
+    try {
+        const gmailUser = INVOICE_GMAIL_USER.value();
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: { user: gmailUser, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
+        });
+
+        const adminMailText = `施設よりLINE連携代行の申込みがありました。\n\n施設名：${facilityName}\n施設ID：${facilityId}\n担当者名：${contactPerson} 様\n連絡先メール：${email}\n申込日時：${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\n管理者コントロールパネルにてご確認の上、連携設定またはサポートを行ってください。`;
+        const facilityMailText = `${facilityName}\n${contactPerson} 様\n\nこのたびは「LINE連携代行申込み」をいただき、誠にありがとうございます。\n初回無料にて施設様とご家族様のLINE連携設定をサポート・設定代行させていただきます。\n\n■ お申込み内容\n施設名：${facilityName}\nご担当者名：${contactPerson} 様\nメールアドレス：${email}\n\n担当者より順次ご連絡、または設定作業を進めさせていただきます。\nLINE連携が完了すると、連絡帳画面で利用者様のお名前を選択した際に「保護者LINE：1件連携済み」と表示され、ご家族様がLINEから連絡帳を閲覧できるようになります。\n\n今しばらくお待ちくださいますようお願い申し上げます。\n\n株式会社えこすまいる\n連絡先：${gmailUser}`;
+
+        await Promise.all([
+            // 管理者宛て
+            transporter.sendMail({
+                from: { name: "えこすまいる連絡帳システム", address: gmailUser },
+                to: gmailUser,
+                subject: `【LINE連携代行申込み】${facilityName}（${contactPerson}様）`,
+                text: adminMailText
+            }),
+            // 施設宛て自動返信
+            transporter.sendMail({
+                from: { name: "株式会社えこすまいる", address: gmailUser },
+                to: email,
+                subject: `【えこすまいる連絡帳】LINE連携代行のお申込みを受け付けました（${facilityName} 御中）`,
+                text: facilityMailText
+            })
+        ]);
+    } catch (mailError) {
+        logger.error("Failed to send line agency request notification emails", { facilityId, error: mailError });
+    }
+
+    return { success: true, status: "pending" };
+});
 
 exports.requestFacilitySubscription = onCall({
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]

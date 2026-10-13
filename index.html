@@ -170,6 +170,32 @@
         </div>
     </div>
 
+    <!-- 🤝 LINE連携代行申込みモーダルウィンドウ -->
+    <div id="lineAgencyModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10003; justify-content: center; align-items: center; padding: 16px; box-sizing: border-box;">
+        <div style="background: white; padding: 24px; border-radius: 10px; width: 100%; max-width: 480px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); box-sizing: border-box;">
+            <h3 style="margin-top: 0; color: #087f23; border-bottom: 2px solid #087f23; padding-bottom: 8px; font-size: 17px;">🤝 LINE連携代行申込み（初回無料）</h3>
+            <div style="background: #f1f8f2; border: 1px solid #b2dfbf; border-radius: 6px; padding: 12px; margin-bottom: 14px; font-size: 13px; line-height: 1.6; color: #222;">
+                <strong>初回のみ無料</strong>にて施設と家族様のLINE連携設定をさせて頂きます。<br>
+                連携が完了すると、連絡帳でお名前を選択した際に<strong>「保護者LINE：1件連携済み」</strong>と表示され、ご家族様がLINEで連絡帳を見られるようになります。
+            </div>
+            <label style="margin-top: 10px; font-size: 14px;">施設名</label>
+            <input type="text" id="lineAgencyFacilityName" style="font-size: 15px; padding: 8px;">
+
+            <label style="margin-top: 10px; font-size: 14px;">ご連絡先メールアドレス</label>
+            <input type="email" id="lineAgencyEmail" style="font-size: 15px; padding: 8px;">
+
+            <label style="margin-top: 10px; font-size: 14px;">ご担当者名</label>
+            <input type="text" id="lineAgencyContactPerson" placeholder="例：山田 太郎" style="font-size: 15px; padding: 8px;">
+
+            <p id="lineAgencyMessage" role="status" style="font-size: 13px; margin: 10px 0 0; color: #c92a2a; font-weight: bold;"></p>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="closeLineAgencyModal()" style="flex: 1; padding: 11px; background-color: #adb5bd; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px;">キャンセル</button>
+                <button type="button" id="submitLineAgencyButton" onclick="submitLineAgencyRequest()" style="flex: 1; padding: 11px; background-color: #087f23; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px;">申込みを送信する</button>
+            </div>
+        </div>
+    </div>
+
     <div class="form-box" id="mainForm" style="display: none;">
         
         <h2 id="secretTitle" style="user-select: none; cursor: pointer; margin-top: 0; color: #2b8a3e;">🌿 <span id="displayFacilityName">施設名読込中...</span> 連絡帳</h2>
@@ -221,7 +247,10 @@
         </section>
 
         <div id="usageGuideActionRow" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
-            <button type="button" id="usageGuideToggleButton" class="usage-guide-toggle" aria-expanded="false" aria-controls="usageGuidePanel" onclick="toggleUsageGuide()" style="margin: 0;">📖 連絡帳の使い方を見る</button>
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <button type="button" id="usageGuideToggleButton" class="usage-guide-toggle" aria-expanded="false" aria-controls="usageGuidePanel" onclick="toggleUsageGuide()" style="margin: 0;">📖 連絡帳の使い方を見る</button>
+                <button type="button" id="openLineAgencyModalButton" onclick="openLineAgencyModal()" style="margin: 0; padding: 10px 14px; background: #087f23; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">🤝 LINE連携代行を申込む（初回無料）</button>
+            </div>
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <div id="trialNotice" hidden style="padding: 8px 10px; background: #fff4e6; border-left: 4px solid #f08c00; color: #7c4a03; font-size: 13px; font-weight: bold;"></div>
                 <button type="button" id="trialRegistrationButton" onclick="requestFacilitySubscription()" hidden style="padding: 9px 12px; background: #2b8a3e; color: white; border-radius: 4px; font-size: 14px; font-weight: bold; white-space: nowrap;">📝 本登録を申し込む</button>
@@ -1797,6 +1826,74 @@
                 : "📝 本登録を申し込む";
             registrationButton.hidden = false;
         }
+
+        window.openLineAgencyModal = async function() {
+            const modal = document.getElementById("lineAgencyModal");
+            const facilityNameInput = document.getElementById("lineAgencyFacilityName");
+            const emailInput = document.getElementById("lineAgencyEmail");
+            const contactPersonInput = document.getElementById("lineAgencyContactPerson");
+            const msg = document.getElementById("lineAgencyMessage");
+            msg.textContent = "";
+
+            const currentFacilityName = localStorage.getItem("currentFacilityName") || "";
+            facilityNameInput.value = currentFacilityName;
+
+            const facilityId = localStorage.getItem("currentFacilityId");
+            if (facilityId) {
+                try {
+                    const snap = await getDoc(doc(db, "facilities", facilityId));
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        if (data.email) emailInput.value = data.email;
+                        if (data.lineAgencyContactPerson) contactPersonInput.value = data.lineAgencyContactPerson;
+                    }
+                } catch (e) {
+                    console.warn("施設情報の事前取得に失敗しました:", e);
+                }
+            }
+            modal.style.display = "flex";
+        };
+
+        window.closeLineAgencyModal = function() {
+            document.getElementById("lineAgencyModal").style.display = "none";
+        };
+
+        window.submitLineAgencyRequest = async function() {
+            const facilityName = document.getElementById("lineAgencyFacilityName").value.trim();
+            const email = document.getElementById("lineAgencyEmail").value.trim();
+            const contactPerson = document.getElementById("lineAgencyContactPerson").value.trim();
+            const msg = document.getElementById("lineAgencyMessage");
+            const btn = document.getElementById("submitLineAgencyButton");
+
+            if (!facilityName) {
+                msg.textContent = "施設名を入力してください。";
+                return;
+            }
+            if (!email || !email.includes("@")) {
+                msg.textContent = "正しいメールアドレスを入力してください。";
+                return;
+            }
+            if (!contactPerson) {
+                msg.textContent = "ご担当者名を入力してください。";
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = "申込みを送信しています...";
+            msg.textContent = "";
+
+            try {
+                const requestAgency = httpsCallable(functions, "requestLineAgencySetup");
+                await requestAgency({ facilityName, email, contactPerson });
+                closeLineAgencyModal();
+                alert(`🎉 LINE連携代行のお申込みを受け付けました。\n\nご登録メールアドレス（${email}）へ確認メールをお送りしました。\n担当者より順次ご連絡・連携設定のサポートをさせていただきます。\n連携が完了すると、連絡帳画面で利用者名を選択した際に「保護者LINE：1件連携済み」と自動的に表示されます。`);
+            } catch (err) {
+                msg.textContent = err.message || "申込みを送信できませんでした。通信環境を確認して再試行してください。";
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "申込みを送信する";
+            }
+        };
 
         window.requestFacilitySubscription = async function() {
             const button = document.getElementById("trialRegistrationButton");
