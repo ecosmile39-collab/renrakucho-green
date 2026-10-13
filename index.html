@@ -100,6 +100,25 @@
         <div class="spinner"></div>
         <div id="loadingText">データを送信しています...<br>画面を閉じずにお待ちください</div>
     </div>
+    <div id="appStartupStatus" role="status" style="max-width: 650px; margin: 10px auto; padding: 18px; background: white; border: 1px solid #ced4da; border-radius: 6px; text-align: center; color: #495057;">
+        <p id="appStartupMessage" style="margin: 0;">ログイン状態と施設情報を確認しています...</p>
+        <button type="button" id="appStartupReloadButton" hidden onclick="window.location.reload()" style="margin-top: 12px; background: #1c7ed6;">画面を再読み込み</button>
+    </div>
+    <script>
+        (() => {
+            const startupStatus = document.getElementById("appStartupStatus");
+            const startupMessage = document.getElementById("appStartupMessage");
+            const reloadButton = document.getElementById("appStartupReloadButton");
+            const showStartupError = () => {
+                if (document.getElementById("mainForm")?.style.display === "block") return;
+                startupMessage.textContent = "画面を読み込めませんでした。通信環境を確認し、再読み込みしてください。";
+                reloadButton.hidden = false;
+            };
+            window.addEventListener("error", showStartupError);
+            window.addEventListener("unhandledrejection", showStartupError);
+            window.setTimeout(showStartupError, 15000);
+        })();
+    </script>
 
     <!-- ✏️ 利用者情報 編集モーダルウィンドウ -->
     <div id="editUserModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10001; justify-content: center; align-items: center;">
@@ -1385,6 +1404,7 @@
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
             document.getElementById("displayFacilityName").textContent = facilityName;
 
+            document.getElementById("appStartupStatus").hidden = true;
             document.getElementById("mainForm").style.display = "block";
             document.getElementById("scrollGroup").style.display = "flex";
             document.getElementById("newFacePreview").src = defaultIcon;
@@ -1749,6 +1769,27 @@
             return fetchServerData(userName, dateStr);
         };
 
+        function updateTrialRegistrationControls(facilityData) {
+            const notice = document.getElementById("trialNotice");
+            const registrationButton = document.getElementById("trialRegistrationButton");
+            const isTrial = facilityData.subscriptionStatus === "trial";
+            const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
+            if (!isTrial || !Number.isFinite(trialEndsAt) || trialEndsAt <= Date.now()) {
+                notice.hidden = true;
+                registrationButton.hidden = true;
+                return;
+            }
+
+            const trialDaysRemaining = Math.ceil((trialEndsAt - Date.now()) / (24 * 60 * 60 * 1000));
+            const facilityName = facilityData.facilityName || localStorage.getItem("currentFacilityName") || "";
+            const subject = `${facilityName}：本登録の申し込み`;
+            const body = `施設名：${facilityName}\n連絡先メールアドレス：${facilityData.email || "未登録"}\n\n本登録を希望します。手続き方法をご案内ください。`;
+            notice.textContent = `無料お試し期間中：残り${trialDaysRemaining}日（${new Date(trialEndsAt).toLocaleDateString("ja-JP")}まで）`;
+            notice.hidden = false;
+            registrationButton.href = `mailto:ecosmile39@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            registrationButton.hidden = false;
+        }
+
         async function refreshLineRecipientStatus(userName) {
             const status = document.getElementById("lineLinkStatus");
             status.textContent = "LINE連携状況を確認しています...";
@@ -1763,27 +1804,6 @@
                 if (document.getElementById("userName").value === userName) {
                     status.textContent = "LINE連携状況を取得できません。ログインし直してください。";
                 }
-            }
-
-            function updateTrialRegistrationControls(facilityData) {
-                const notice = document.getElementById("trialNotice");
-                const registrationButton = document.getElementById("trialRegistrationButton");
-                const isTrial = facilityData.subscriptionStatus === "trial";
-                const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
-                if (!isTrial || !Number.isFinite(trialEndsAt) || trialEndsAt <= Date.now()) {
-                    notice.hidden = true;
-                    registrationButton.hidden = true;
-                    return;
-                }
-
-                const trialDaysRemaining = Math.ceil((trialEndsAt - Date.now()) / (24 * 60 * 60 * 1000));
-                const facilityName = facilityData.facilityName || localStorage.getItem("currentFacilityName") || "";
-                const subject = `${facilityName}：本登録の申し込み`;
-                const body = `施設名：${facilityName}\n連絡先メールアドレス：${facilityData.email || "未登録"}\n\n本登録を希望します。手続き方法をご案内ください。`;
-                notice.textContent = `無料お試し期間中：残り${trialDaysRemaining}日（${new Date(trialEndsAt).toLocaleDateString("ja-JP")}まで）`;
-                notice.hidden = false;
-                registrationButton.href = `mailto:ecosmile39@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                registrationButton.hidden = false;
             }
         }
 
