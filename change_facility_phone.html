@@ -34,7 +34,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
+        import { hasFacilitySession } from "./facility-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -44,10 +46,20 @@
             messagingSenderId: "63418706991",
             appId: "1:63418706991:web:43085ce485d2a3d6302ada"
         };
-        const functions = getFunctions(initializeApp(firebaseConfig));
-        if (!localStorage.getItem("currentFacilityId") || localStorage.getItem("isStaffAuthenticated") !== "true") {
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const functions = getFunctions(app);
+
+        const currentFacilityId = localStorage.getItem("currentFacilityId");
+        if (!currentFacilityId || localStorage.getItem("isStaffAuthenticated") !== "true") {
             window.location.replace("login.html");
         }
+
+        hasFacilitySession(auth, currentFacilityId).then(valid => {
+            if (!valid) {
+                window.location.replace("login.html");
+            }
+        });
 
         function showMessage(text, type) {
             const message = document.getElementById("message");

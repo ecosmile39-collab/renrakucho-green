@@ -35,7 +35,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
+        import { hasFacilitySession } from "./facility-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -46,11 +48,18 @@
             appId: "1:63418706991:web:43085ce485d2a3d6302ada"
         };
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const functions = getFunctions(app);
         const facilityId = localStorage.getItem("currentFacilityId");
 
         document.getElementById("facilityId").textContent = facilityId || "ログインが必要です";
         if (!facilityId) window.location.replace("login.html");
+
+        hasFacilitySession(auth, facilityId).then(valid => {
+            if (!valid) {
+                window.location.replace("login.html");
+            }
+        });
 
         function showMessage(text, type) {
             const message = document.getElementById("message");
