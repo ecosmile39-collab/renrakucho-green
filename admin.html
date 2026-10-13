@@ -20,6 +20,8 @@
         .unlock { background: #2f9e44; }
         .facility { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 0; border-bottom: 1px solid #e9ecef; }
         .facility-name { font-size: 18px; font-weight: bold; }
+        .facility-name-link { color: #1864ab; text-decoration: underline; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+        .facility-name-link:hover { color: #0b4b8a; }
         .status { display: inline-block; margin-top: 7px; padding: 4px 10px; border-radius: 14px; font-size: 13px; font-weight: bold; }
         .active { color: #087f23; background: #d3f9d8; border: 1px solid #2f9e44; }
         .locked { color: #c92a2a; background: #ffe3e3; border: 1px solid #fa5252; }
@@ -154,6 +156,7 @@
         const functions = getFunctions(app);
         const sendTestInvoiceEmail = httpsCallable(functions, "sendTestInvoiceEmail");
         const createAdminSession = httpsCallable(functions, "createAdminSession");
+        const createFacilitySessionForAdmin = httpsCallable(functions, "createFacilitySessionForAdmin");
         let facilities = [];
         let cancellationRecords = [];
         let latestInvoiceByFacility = new Map();
@@ -453,7 +456,7 @@
                 const familyLinePublicationEnabled = facility.familyLinePublicationEnabled !== false;
                 const enabledServiceTypes = normalizeServiceTypes(facility.enabledServiceTypes);
                 return `<div class="facility">
-                    <div><div class="facility-name">${escapeHtml(facility.facilityName || facility.id)}</div>
+                    <div><div class="facility-name"><a class="facility-name-link" href="#" onclick="openFacilityDailyRecord('${encodeURIComponent(facility.id)}'); return false;" title="この施設の連絡帳入力画面を開く">🔗 ${escapeHtml(facility.facilityName || facility.id)}</a></div>
                     <div style="margin-top: 6px; color: #1971c2; font-size: 14px; font-weight: bold;">🔑 パスワード：${escapeHtml(facility.password || "未設定")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">✉️ メールアドレス：${escapeHtml(facility.email || "未登録")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">📞 電話番号：${escapeHtml(facility.phone || "未登録")}</div>
@@ -565,6 +568,24 @@
                 document.getElementById("facilityError").textContent = "入金状況を保存できませんでした: " + (error.message || error);
             }
         }
+
+        window.openFacilityDailyRecord = async function(encodedFacilityId) {
+            const facilityId = decodeURIComponent(encodedFacilityId);
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) return;
+            const facilityName = facility.facilityName || facilityId;
+
+            try {
+                const sessionResult = await createFacilitySessionForAdmin({ facilityId });
+                const customToken = sessionResult.data.customToken;
+                sessionStorage.setItem("adminTransferCustomToken", customToken);
+                sessionStorage.setItem("adminTransferFacilityId", facilityId);
+                sessionStorage.setItem("adminTransferFacilityName", facilityName);
+                window.open(`login.html?adminTransfer=true`, "_blank");
+            } catch (err) {
+                alert(`「${facilityName}」の連絡帳画面を開けませんでした: ` + (err.message || err));
+            }
+        };
 
         window.activateFacilitySubscription = async function(encodedFacilityId) {
             const facilityId = decodeURIComponent(encodedFacilityId);

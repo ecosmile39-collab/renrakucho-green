@@ -110,7 +110,26 @@
         }
 
         window.onload = async function() {
-            const isExplicitRegister = new URLSearchParams(window.location.search).get("form") === "register";
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("adminTransfer") === "true") {
+                const transferToken = sessionStorage.getItem("adminTransferCustomToken");
+                const transferId = sessionStorage.getItem("adminTransferFacilityId");
+                const transferName = sessionStorage.getItem("adminTransferFacilityName");
+                sessionStorage.removeItem("adminTransferCustomToken");
+                sessionStorage.removeItem("adminTransferFacilityId");
+                sessionStorage.removeItem("adminTransferFacilityName");
+
+                if (transferToken && transferId) {
+                    try {
+                        await loginSuccess(transferId, transferName || transferId, transferToken);
+                        return;
+                    } catch (e) {
+                        console.error("管理者代理ログインに失敗しました:", e);
+                    }
+                }
+            }
+
+            const isExplicitRegister = params.get("form") === "register";
             if (isExplicitRegister) {
                 toggleForm("register");
                 localStorage.removeItem("currentFacilityId");
@@ -118,7 +137,7 @@
                 localStorage.removeItem("isStaffAuthenticated");
                 return;
             }
-            if (new URLSearchParams(window.location.search).get("notice") === "stopped") {
+            if (params.get("notice") === "stopped") {
                 const errorMsg = document.getElementById("loginError");
                 errorMsg.textContent = FACILITY_PAUSE_MESSAGE;
                 errorMsg.style.display = "block";

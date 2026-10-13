@@ -87,6 +87,28 @@ exports.createFacilitySession = onCall(async request => {
     };
 });
 
+exports.createFacilitySessionForAdmin = onCall(async request => {
+    if (request.auth?.token.role !== "admin") {
+        throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
+    }
+    const facilityId = typeof request.data?.facilityId === "string" ? request.data.facilityId.trim() : "";
+    if (!facilityId || facilityId.length > 200) {
+        throw new HttpsError("invalid-argument", "施設IDが正しくありません。");
+    }
+
+    const facilitySnapshot = await getFirestore().collection("facilities").doc(facilityId).get();
+    if (!facilitySnapshot.exists) {
+        throw new HttpsError("not-found", "施設が見つかりません。");
+    }
+    const data = facilitySnapshot.data();
+
+    return {
+        facilityId: facilitySnapshot.id,
+        facilityName: data.facilityName || facilitySnapshot.id,
+        customToken: await getAuth().createCustomToken(facilitySnapshot.id, { role: "facility" })
+    };
+});
+
 exports.createFacilityDeletionSession = onCall(async request => {
     const facilityName = typeof request.data?.facilityName === "string" ? request.data.facilityName.trim() : "";
     const password = typeof request.data?.password === "string" ? request.data.password : "";
