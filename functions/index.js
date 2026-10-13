@@ -1160,7 +1160,7 @@ function addMonthsToAnchor(anchor, monthOffset) {
     };
 }
 
-function getLatestMaturedBillingPeriod(createdAt, now) {
+function getLatestMaturedBillingPeriod(createdAt, now, advanceDays = 10) {
     const registrationDate = createdAt && typeof createdAt.toDate === "function"
         ? createdAt.toDate()
         : new Date(createdAt);
@@ -1170,20 +1170,26 @@ function getLatestMaturedBillingPeriod(createdAt, now) {
     const todayKey = dateKey(getTokyoDateParts(now));
     let latestPeriod = null;
     for (let monthOffset = 1; monthOffset <= 1200; monthOffset++) {
-        const dueParts = addMonthsToAnchor(anchor, monthOffset);
-        if (dateKey(dueParts) > todayKey) break;
-
         const startParts = addMonthsToAnchor(anchor, monthOffset - 1);
-        const endDate = new Date(Date.UTC(Number(dueParts.year), Number(dueParts.month) - 1, Number(dueParts.day) - 1));
+        const nextStartParts = addMonthsToAnchor(anchor, monthOffset);
+
+        const startDateKey = dateKey(startParts);
+        const sendTriggerDate = new Date(`${startDateKey}T00:00:00+09:00`);
+        sendTriggerDate.setDate(sendTriggerDate.getDate() - advanceDays);
+        const sendTriggerDateKey = dateKey(getTokyoDateParts(sendTriggerDate));
+
+        if (sendTriggerDateKey > todayKey) break;
+
+        const endDate = new Date(Date.UTC(Number(nextStartParts.year), Number(nextStartParts.month) - 1, Number(nextStartParts.day) - 1));
         const endParts = {
             year: String(endDate.getUTCFullYear()),
             month: String(endDate.getUTCMonth() + 1).padStart(2, "0"),
             day: String(endDate.getUTCDate()).padStart(2, "0")
         };
         latestPeriod = {
-            startDate: dateKey(startParts),
+            startDate: startDateKey,
             endDate: dateKey(endParts),
-            dueDate: dateKey(dueParts)
+            dueDate: startDateKey
         };
     }
     return latestPeriod;
