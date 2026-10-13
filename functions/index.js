@@ -1194,6 +1194,181 @@ function formatJapaneseDateKey(value) {
     return `${year}年${month}月${day}日`;
 }
 
+exports.requestFacilitySubscription = onCall({
+    secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
+}, async request => {
+    const facilityId = requireFacilityId(request);
+    const db = getFirestore();
+    const facilityRef = db.collection("facilities").doc(facilityId);
+    const invoiceRef = facilityRef.collection("invoiceHistory").doc("INITIAL");
+    const initialFacilitySnapshot = await facilityRef.get();
+    if (!initialFacilitySnapshot.exists) {
+        throw new HttpsError("not-found", "施設情報が見つかりません。");
+    }
+
+    const initialFacility = initialFacilitySnapshot.data();
+    if (initialFacility.status === "locked" || initialFacility.subscriptionStatus !== "trial") {
+        throw new HttpsError("failed-precondition", "この施設はトライアル中ではありません。");
+    }
+    const trialEndsAt = Date.parse(initialFacility.trialEndsAt || "");
+    if (!Number.isFinite(trialEndsAt) || trialEndsAt <= Date.now()) {
+        throw new HttpsError("failed-precondition", "無料お試し期間が終了しています。販売元へお問い合わせください。");
+    }
+
+    const recipient = typeof initialFacility.email === "string" ? initialFacility.email.trim() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+        throw new HttpsError("failed-precondition", "施設の登録メールアドレスが確認できません。販売元へお問い合わせください。");
+    }
+
+    const requestedAt = initialFacility.subscriptionRequestedAt
+        ? new Date(initialFacility.subscriptionRequestedAt)
+        : new Date();
+    const requestDateParts = getTokyoDateParts(requestedAt);
+    const billingPeriodStart = dateKey(requestDateParts);
+    const nextPeriodStartParts = addMonthsToAnchor(requestDateParts, 1);
+    const billingPeriodEndDate = new Date(Date.UTC(
+        Number(nextPeriodStartParts.year), Number(nextPeriodStartParts.month) - 1, Number(nextPeriodStartParts.day) - 1
+    ));
+    const billingPeriodEnd = dateKey({
+        year: String(billingPeriodEndDate.getUTCFullYear()),
+        month: String(billingPeriodEndDate.getUTCMonth() + 1).padStart(2, "0"),
+        day: String(billingPeriodEndDate.getUTCDate()).padStart(2, "0")
+    });
+    const billingAnchorAt = new Date(`${dateKey(nextPeriodStartParts)}T00:00:00+09:00`).toISOString();
+    const issueDate = dateKey(getTokyoDateParts(new Date()));
+    const dueDateValue = new Date(`${issueDate}T00:00:00+09:00`);
+    dueDateValue.setDate(dueDateValue.getDate() + 30);
+    const dueDate = dateKey(getTokyoDateParts(dueDateValue));
+    const invoiceNumber = `INIT-${billingPeriodStart.replace(/-/g, "")}-${facilityId.toUpperCase()}`;
+
+    const reservation = await db.runTransaction(async transaction => {
+        const [facilitySnapshot, invoiceSnapshot] = await Promise.all([
+            transaction.get(facilityRef),
+            transaction.get(invoiceRef)
+        ]);
+        if (!facilitySnapshot.exists || facilitySnapshot.data().subscriptionStatus !== "trial") {
+            throw new HttpsError("failed-precondition", "この施設はトライアル中ではありません。");
+        }
+        const facility = facilitySnapshot.data();
+        if (invoiceSnapshot.exists) {
+            const invoice = invoiceSnapshot.data();
+            if (invoice.status === "sent") {
+                transaction.set(facilityRef, {
+                    subscriptionApplicationStatus: "pending_payment",
+                    subscriptionRequestedAt: facility.subscriptionRequestedAt || requestedAt.toISOString(),
+                    billingAnchorAt: facility.billingAnchorAt || billingAnchorAt
+                }, { merge: true });
+                return { shouldSend: false };
+            }
+            const attemptStartedAt = invoice.attemptStartedAt && typeof invoice.attemptStartedAt.toDate === "function"
+                ? invoice.attemptStartedAt.toDate().getTime()
+                : 0;
+            if (invoice.status === "sending" && Date.now() - attemptStartedAt < 60 * 60 * 1000) {
+                return { shouldSend: false };
+            }
+        }
+
+        transaction.set(invoiceRef, {
+            test: false,
+            type: "initial",
+            status: "sending",
+            facilityId,
+            facilityName: facility.facilityName || facilityId,
+            recipient,
+            invoiceNumber,
+            issueDate,
+            dueDate,
+            billingPeriodStart,
+            billingPeriodEnd,
+            subtotal: 4000,
+            tax: 400,
+            total: 4400,
+            attemptStartedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+        transaction.set(facilityRef, {
+            subscriptionApplicationStatus: "invoice_sending",
+            subscriptionRequestedAt: facility.subscriptionRequestedAt || requestedAt.toISOString(),
+            billingAnchorAt: facility.billingAnchorAt || billingAnchorAt
+        }, { merge: true });
+        return { shouldSend: true };
+    });
+
+    if (!reservation.shouldSend) {
+        return { status: "pending_payment", invoiceNumber };
+    }
+
+    const facilityName = initialFacility.facilityName || facilityId;
+    const formattedPeriod = `${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}`;
+    const gmailUser = INVOICE_GMAIL_USER.value();
+    const html = `<!doctype html><html lang="ja"><body style="font-family:sans-serif;color:#222;line-height:1.7;max-width:720px;margin:auto;padding:24px">
+        <p>${escapeHtml(facilityName)} 御中</p><h1 style="text-align:center">請求書</h1>
+        <p>請求書番号：${escapeHtml(invoiceNumber)}<br>請求対象期間：${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}<br>発行日：${formatJapaneseDateKey(issueDate)}<br>お支払期限：${formatJapaneseDateKey(dueDate)}</p>
+        <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　4,400円</p>
+        <table style="width:100%;border-collapse:collapse"><thead><tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">内容</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">金額</th></tr></thead><tbody>
+        <tr><td style="border:1px solid #adb5bd;padding:10px">初回システム利用料（${formattedPeriod}分）</td><td style="border:1px solid #adb5bd;padding:10px">4,000円</td></tr>
+        <tr><td style="border:1px solid #adb5bd;padding:10px">消費税（10%）</td><td style="border:1px solid #adb5bd;padding:10px">400円</td></tr>
+        <tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">4,400円</th></tr></tbody></table>
+        <div style="display:flex;justify-content:flex-start;align-items:flex-start;gap:16px;margin-top:28px"><div><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div><img src="cid:company-stamp" alt="株式会社えこすまいる会社印" width="92" height="92" style="width:92px;height:92px;object-fit:contain;margin-top:90px"></div>
+        <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
+        <p style="margin-top:28px">このたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。</p>
+    </body></html>`;
+    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n初回システム利用料：4,000円\n消費税（10%）：400円\n税込合計：4,400円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。`;
+
+    let emailResult = null;
+    const archivedHtml = html.replace('src="cid:company-stamp"', `src="${companyStampDataUrl}"`);
+    try {
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: { user: gmailUser, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
+        });
+        emailResult = await transporter.sendMail({
+            from: { name: "株式会社えこすまいる", address: gmailUser },
+            to: recipient,
+            subject: `【初回請求書】${facilityName} 御中 / ${invoiceNumber}`,
+            text,
+            html,
+            attachments: [{ filename: "company_stamp.png", content: companyStampPng, contentType: "image/png", cid: "company-stamp" }]
+        });
+        await Promise.all([
+            invoiceRef.set({ status: "sent", invoiceHtml: archivedHtml, messageId: emailResult.messageId, sentAt: FieldValue.serverTimestamp() }, { merge: true }),
+            facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true }),
+            db.collection("invoiceEmailLogs").add({
+                test: false,
+                type: "initial",
+                facilityId,
+                facilityName,
+                recipient,
+                invoiceNumber,
+                issueDate,
+                dueDate,
+                billingPeriodStart,
+                billingPeriodEnd,
+                subtotal: 4000,
+                tax: 400,
+                total: 4400,
+                sentAt: FieldValue.serverTimestamp(),
+                messageId: emailResult.messageId
+            })
+        ]);
+        return { status: "pending_payment", invoiceNumber, recipient };
+    } catch (error) {
+        if (emailResult) {
+            await Promise.all([
+                invoiceRef.set({ status: "sent", invoiceHtml: archivedHtml, messageId: emailResult.messageId, sentAt: FieldValue.serverTimestamp() }, { merge: true }),
+                facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true })
+            ]).catch(logError => logger.error("Failed to finalize sent initial invoice", logError));
+            logger.error("Initial invoice email was sent but finalization failed", { facilityId, recipient, error });
+            return { status: "pending_payment", invoiceNumber, recipient };
+        }
+        await Promise.all([
+            invoiceRef.set({ status: "failed", failedAt: FieldValue.serverTimestamp(), failureMessage: String(error.message || error).slice(0, 500) }, { merge: true }),
+            facilityRef.set({ subscriptionApplicationStatus: "invoice_failed" }, { merge: true })
+        ]).catch(logError => logger.error("Failed to record initial invoice failure", logError));
+        logger.error("Failed to send initial subscription invoice", { facilityId, recipient, error });
+        throw new HttpsError("internal", "初回請求書を送信できませんでした。販売元へお問い合わせください。");
+    }
+});
+
 exports.sendTestInvoiceEmail = onCall({
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async request => {
@@ -1334,7 +1509,10 @@ exports.sendMonthlyInvoices = onSchedule({
             continue;
         }
 
-        const period = getLatestMaturedBillingPeriod(facility.createdAt, now);
+        const period = getLatestMaturedBillingPeriod(
+            facility.billingAnchorAt || facility.planActivatedAt || facility.createdAt,
+            now
+        );
         if (!period) {
             skippedCount++;
             logger.warn("Skipping monthly invoice: facility registration date is missing or invalid", { facilityId });

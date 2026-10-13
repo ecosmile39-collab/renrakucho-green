@@ -224,7 +224,7 @@
             <button type="button" id="usageGuideToggleButton" class="usage-guide-toggle" aria-expanded="false" aria-controls="usageGuidePanel" onclick="toggleUsageGuide()" style="margin: 0;">📖 連絡帳の使い方を見る</button>
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <div id="trialNotice" hidden style="padding: 8px 10px; background: #fff4e6; border-left: 4px solid #f08c00; color: #7c4a03; font-size: 13px; font-weight: bold;"></div>
-                <a id="trialRegistrationButton" href="#" hidden title="販売元への本登録申し込みメールを作成します" style="padding: 9px 12px; background: #2b8a3e; color: white; border-radius: 4px; font-size: 14px; font-weight: bold; text-decoration: none; white-space: nowrap;">📝 本登録を申し込む</a>
+                <button type="button" id="trialRegistrationButton" onclick="requestFacilitySubscription()" hidden style="padding: 9px 12px; background: #2b8a3e; color: white; border-radius: 4px; font-size: 14px; font-weight: bold; white-space: nowrap;">📝 本登録を申し込む</button>
             </div>
         </div>
         <section id="usageGuidePanel" class="usage-guide-panel" hidden>
@@ -1780,15 +1780,47 @@
                 return;
             }
 
+            if (["invoice_sending", "pending_payment"].includes(facilityData.subscriptionApplicationStatus)) {
+                notice.textContent = "本登録を受け付けました。初回請求書を登録メールへ送信しています。入金確認後に本利用へ切り替わります。";
+                notice.hidden = false;
+                registrationButton.hidden = true;
+                return;
+            }
+
             const trialDaysRemaining = Math.ceil((trialEndsAt - Date.now()) / (24 * 60 * 60 * 1000));
-            const facilityName = facilityData.facilityName || localStorage.getItem("currentFacilityName") || "";
-            const subject = `${facilityName}：本登録の申し込み`;
-            const body = `施設名：${facilityName}\n連絡先メールアドレス：${facilityData.email || "未登録"}\n\n本登録を希望します。手続き方法をご案内ください。`;
-            notice.textContent = `無料お試し期間中：残り${trialDaysRemaining}日（${new Date(trialEndsAt).toLocaleDateString("ja-JP")}まで）`;
+            notice.textContent = facilityData.subscriptionApplicationStatus === "invoice_failed"
+                ? `初回請求書を送信できませんでした。無料お試し期間中：残り${trialDaysRemaining}日（${new Date(trialEndsAt).toLocaleDateString("ja-JP")}まで）`
+                : `無料お試し期間中：残り${trialDaysRemaining}日（${new Date(trialEndsAt).toLocaleDateString("ja-JP")}まで）`;
             notice.hidden = false;
-            registrationButton.href = `mailto:ecosmile39@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            registrationButton.textContent = facilityData.subscriptionApplicationStatus === "invoice_failed"
+                ? "📨 初回請求書を再送する"
+                : "📝 本登録を申し込む";
             registrationButton.hidden = false;
         }
+
+        window.requestFacilitySubscription = async function() {
+            const button = document.getElementById("trialRegistrationButton");
+            const notice = document.getElementById("trialNotice");
+            const facilityId = localStorage.getItem("currentFacilityId");
+            if (!facilityId || button.disabled) return;
+            if (!confirm("本登録を申し込み、登録メールアドレスへ初回請求書を発行しますか？\n\n初回利用料は税抜4,000円（税込4,400円）です。2か月目以降は税抜5,000円（税込5,500円）です。入金確認後に本利用へ切り替わります。")) return;
+
+            button.disabled = true;
+            button.textContent = "請求書を発行しています...";
+            try {
+                const requestSubscription = httpsCallable(functions, "requestFacilitySubscription");
+                await requestSubscription({});
+                const facilitySnapshot = await getDoc(doc(db, "facilities", facilityId));
+                if (facilitySnapshot.exists()) updateTrialRegistrationControls(facilitySnapshot.data());
+                alert("本登録のお申し込みを受け付けました。初回請求書を施設の登録メールアドレスへ送信しました。入金確認後に本利用へ切り替わります。\n\nこのたびはお申し込みいただき、ありがとうございます。");
+            } catch (error) {
+                notice.textContent = error.message || "請求書を発行できませんでした。通信環境を確認して再試行してください。";
+                notice.hidden = false;
+                button.disabled = false;
+                button.textContent = "📨 初回請求書を再送する";
+                button.hidden = false;
+            }
+        };
 
         async function refreshLineRecipientStatus(userName) {
             const status = document.getElementById("lineLinkStatus");

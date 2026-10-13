@@ -439,7 +439,8 @@
                 let isTrialExpired = isTrial && (!Number.isFinite(trialEndTime) || Date.now() >= trialEndTime);
                 let trialDaysRemaining = isTrial && !isTrialExpired ? Math.ceil((trialEndTime - Date.now()) / (24 * 60 * 60 * 1000)) : 0;
                 let statusClass = isLocked ? "locked" : isTrialExpired ? "trial-expired" : isTrial ? "trial" : "active";
-                let statusLabel = isLocked ? "🔴 利用停止中" : isTrialExpired ? "⏰ 無料期間終了" : isTrial ? `🟠 無料お試し中（残り${trialDaysRemaining}日）` : "🟢 利用中";
+                const subscriptionApplicationPending = ["invoice_sending", "pending_payment", "invoice_failed"].includes(facility.subscriptionApplicationStatus);
+                let statusLabel = isLocked ? "🔴 利用停止中" : subscriptionApplicationPending ? "🧾 本登録申込済み・入金待ち" : isTrialExpired ? "⏰ 無料期間終了" : isTrial ? `🟠 無料お試し中（残り${trialDaysRemaining}日）` : "🟢 利用中";
                 let invoice = latestInvoiceByFacility.get(facility.id);
                 let invoiceSent = Boolean(invoice);
                 let invoicePaid = invoice?.paymentStatus === "paid";
@@ -526,6 +527,7 @@
                 await updateDoc(doc(db, "facilities", facilityId), {
                     subscriptionStatus: "active",
                     status: "active",
+                    subscriptionApplicationStatus: "activated",
                     planActivatedAt: new Date().toISOString()
                 });
                 facility.subscriptionStatus = "active";
