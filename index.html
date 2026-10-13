@@ -154,8 +154,6 @@
     <div class="form-box" id="mainForm" style="display: none;">
         
         <h2 id="secretTitle" style="user-select: none; cursor: pointer; margin-top: 0; color: #2b8a3e;">🌿 <span id="displayFacilityName">施設名読込中...</span> 連絡帳</h2>
-        <div id="trialNotice" style="display: none; margin: 0 0 14px; padding: 10px 12px; background: #fff4e6; border-left: 4px solid #f08c00; color: #7c4a03; font-weight: bold;"></div>
-        
         <div style="text-align: right; margin-bottom: 15px;">
             <a id="unsubscribeActionLink" href="unsubscribe.html" style="display: none; margin-right: 12px; color: #c92a2a; font-weight: bold;">🗑️ システムを退会する</a>
             <a id="changeFacilityNameActionLink" href="change_facility_name.html" style="display: none; margin-right: 12px; color: #2b8a3e; font-weight: bold;">🏢 施設名変更</a>
@@ -203,7 +201,13 @@
             </div>
         </section>
 
-        <button type="button" id="usageGuideToggleButton" class="usage-guide-toggle" aria-expanded="false" aria-controls="usageGuidePanel" onclick="toggleUsageGuide()">📖 連絡帳の使い方を見る</button>
+        <div id="usageGuideActionRow" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+            <button type="button" id="usageGuideToggleButton" class="usage-guide-toggle" aria-expanded="false" aria-controls="usageGuidePanel" onclick="toggleUsageGuide()" style="margin: 0;">📖 連絡帳の使い方を見る</button>
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div id="trialNotice" hidden style="padding: 8px 10px; background: #fff4e6; border-left: 4px solid #f08c00; color: #7c4a03; font-size: 13px; font-weight: bold;"></div>
+                <a id="trialRegistrationButton" href="#" hidden title="販売元への本登録申し込みメールを作成します" style="padding: 9px 12px; background: #2b8a3e; color: white; border-radius: 4px; font-size: 14px; font-weight: bold; text-decoration: none; white-space: nowrap;">📝 本登録を申し込む</a>
+            </div>
+        </div>
         <section id="usageGuidePanel" class="usage-guide-panel" hidden>
             <h3>連絡帳の使い方</h3>
             <ol>
@@ -1368,10 +1372,7 @@
                     window.location.replace("login.html");
                     return;
                 }
-                const trialDaysRemaining = Math.ceil((trialEndsAt - Date.now()) / (24 * 60 * 60 * 1000));
-                const trialNotice = document.getElementById("trialNotice");
-                trialNotice.textContent = `無料お試し期間中：残り${trialDaysRemaining}日（${new Date(trialEndsAt).toLocaleDateString("ja-JP")}まで）`;
-                trialNotice.style.display = "block";
+                updateTrialRegistrationControls(facilityData);
                 window.setTimeout(() => {
                     localStorage.removeItem("currentFacilityId");
                     localStorage.removeItem("currentFacilityName");
@@ -1391,6 +1392,7 @@
             onSnapshot(doc(db, "facilities", facilityId), snapshot => {
                 if (!snapshot.exists()) return;
                 const data = snapshot.data();
+                updateTrialRegistrationControls(data);
                 facilityLineSettingsButtonVisible = data.facilityLineSettingsButtonVisible !== false;
                 document.getElementById("toggleFacilityLineSettingsButton").hidden = !facilityLineSettingsButtonVisible;
                 const signature = `${data.lineServiceEnabled !== false}:${data.commonLineEnabled !== false}:${facilityLineSettingsButtonVisible}`;
@@ -1761,6 +1763,27 @@
                 if (document.getElementById("userName").value === userName) {
                     status.textContent = "LINE連携状況を取得できません。ログインし直してください。";
                 }
+            }
+
+            function updateTrialRegistrationControls(facilityData) {
+                const notice = document.getElementById("trialNotice");
+                const registrationButton = document.getElementById("trialRegistrationButton");
+                const isTrial = facilityData.subscriptionStatus === "trial";
+                const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
+                if (!isTrial || !Number.isFinite(trialEndsAt) || trialEndsAt <= Date.now()) {
+                    notice.hidden = true;
+                    registrationButton.hidden = true;
+                    return;
+                }
+
+                const trialDaysRemaining = Math.ceil((trialEndsAt - Date.now()) / (24 * 60 * 60 * 1000));
+                const facilityName = facilityData.facilityName || localStorage.getItem("currentFacilityName") || "";
+                const subject = `${facilityName}：本登録の申し込み`;
+                const body = `施設名：${facilityName}\n連絡先メールアドレス：${facilityData.email || "未登録"}\n\n本登録を希望します。手続き方法をご案内ください。`;
+                notice.textContent = `無料お試し期間中：残り${trialDaysRemaining}日（${new Date(trialEndsAt).toLocaleDateString("ja-JP")}まで）`;
+                notice.hidden = false;
+                registrationButton.href = `mailto:ecosmile39@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                registrationButton.hidden = false;
             }
         }
 
