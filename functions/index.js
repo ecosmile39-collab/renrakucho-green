@@ -1243,7 +1243,7 @@ exports.requestFacilitySubscription = onCall({
     const billingAnchorAt = new Date(`${dateKey(nextPeriodStartParts)}T00:00:00+09:00`).toISOString();
     const issueDate = dateKey(getTokyoDateParts(new Date()));
     const dueDateValue = new Date(`${issueDate}T00:00:00+09:00`);
-    dueDateValue.setDate(dueDateValue.getDate() + 30);
+    dueDateValue.setDate(dueDateValue.getDate() + 10);
     const dueDate = dateKey(getTokyoDateParts(dueDateValue));
     const invoiceNumber = `INIT-${billingPeriodStart.replace(/-/g, "")}-${facilityId.toUpperCase()}`;
 
@@ -1527,6 +1527,7 @@ exports.sendMonthlyInvoices = onSchedule({
 
         const historyRef = db.collection("facilities").doc(facilityId)
             .collection("invoiceHistory").doc(`AUTO-${period.startDate.replace(/-/g, "")}`);
+        const invoiceDueDate = period.dueDate || dueDate;
         const reservedForSending = await db.runTransaction(async transaction => {
             const historySnapshot = await transaction.get(historyRef);
             if (historySnapshot.exists) {
@@ -1544,7 +1545,7 @@ exports.sendMonthlyInvoices = onSchedule({
                 facilityName,
                 recipient,
                 issueDate,
-                dueDate,
+                dueDate: invoiceDueDate,
                 billingPeriodStart: period.startDate,
                 billingPeriodEnd: period.endDate,
                 subtotal: 5000,
@@ -1563,7 +1564,7 @@ exports.sendMonthlyInvoices = onSchedule({
         const formattedPeriod = `${formatJapaneseDateKey(period.startDate)}〜${formatJapaneseDateKey(period.endDate)}`;
         const html = `<!doctype html><html lang="ja"><body style="font-family:sans-serif;color:#222;line-height:1.7;max-width:720px;margin:auto;padding:24px">
             <p>${escapeHtml(facilityName)} 御中</p><h1 style="text-align:center">請求書</h1>
-            <p>請求書番号：${escapeHtml(invoiceNumber)}<br>発行日：${formatJapaneseDateKey(issueDate)}<br>お支払期限：${formatJapaneseDateKey(dueDate)}</p>
+            <p>請求書番号：${escapeHtml(invoiceNumber)}<br>発行日：${formatJapaneseDateKey(issueDate)}<br>お支払期限：${formatJapaneseDateKey(invoiceDueDate)}</p>
             <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　5,500円</p>
             <table style="width:100%;border-collapse:collapse"><thead><tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">内容</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">金額</th></tr></thead><tbody>
             <tr><td style="border:1px solid #adb5bd;padding:10px">システム利用料（${formattedPeriod}分）</td><td style="border:1px solid #adb5bd;padding:10px">5,000円</td></tr>
@@ -1573,7 +1574,7 @@ exports.sendMonthlyInvoices = onSchedule({
             <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
             <p style="margin-top:28px">平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。</p>
         </body></html>`;
-        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\nシステム利用料：5,000円\n消費税（10%）：500円\n税込合計：5,500円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
+        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(invoiceDueDate)}\nシステム利用料：5,000円\n消費税（10%）：500円\n税込合計：5,500円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
 
         try {
             const result = await transporter.sendMail({
@@ -1601,7 +1602,7 @@ exports.sendMonthlyInvoices = onSchedule({
                 recipient,
                 invoiceNumber,
                 issueDate,
-                dueDate,
+                dueDate: invoiceDueDate,
                 billingPeriodStart: period.startDate,
                 billingPeriodEnd: period.endDate,
                 subtotal: 5000,
