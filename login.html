@@ -50,8 +50,7 @@
             <p>画面にある「🌱 はじめて利用する方（新規登録）はこちら」から始めます。順番に進めてください。</p>
             <ol>
                 <li>ログイン画面の「🌱 はじめて利用する方（新規登録）はこちら」を押します。</li>
-                <li>「🔑 秘密の合言葉」を入力します。アプリを入手したときに案内された合言葉を入力してください。わからない場合は、販売元に確認してください。</li>
-                <li>「📛 好きな施設名」に施設名を入力します。この名前が、次回ログイン時のログインIDになります。他の施設がすでに使っている名前は登録できません。</li>
+                <li>「� 好きな施設名」に施設名を入力します。この名前が、次回ログイン時のログインIDになります。他の施設がすでに使っている名前は登録できません。</li>
                 <li>「🔐 好きなパスワード」を入力します。6文字以上で決めてください。忘れないように控えておき、次回ログインでも同じものを使います。</li>
                 <li>「✉️ 連絡先メールアドレス」を入力します。こちらは必須です。</li>
                 <li>「📞 ご連絡先お電話番号」を入力します。任意なので、入力しなくても登録できます。</li>
@@ -59,15 +58,14 @@
                 <li>「7日間無料で登録する」を押します。</li>
                 <li>登録完了のメッセージが表示されたら、登録完了です。その後、自動的にログインして連絡帳の画面へ移動します。</li>
             </ol>
-            <p class="guide-closing">登録した「施設名」と「パスワード」は、次回からログイン画面で使います。秘密の合言葉は登録時に必要なもので、普段のログインには使いません。無料期間は登録から7日間です。</p>
+            <p class="guide-closing">登録した「施設名」と「パスワード」は、次回からログイン画面で使います。無料期間は登録から7日間です。</p>
         </section>
 
         <div id="registerFormArea" style="display: none;">
             <h2 style="color: #2e7d32;">新規利用登録</h2>
             <div class="description">
-                まずは<b>7日間無料</b>でお試しいただけます。ダウンロード時にお渡しした<b>「秘密の合言葉」</b>、お好きな施設名・パスワード、および<b>緊急時のサポート連絡先</b>を入力してください。無料期間終了後も利用を続ける場合は、販売元へお問い合わせください。
+                まずは<b>7日間無料</b>でお試しいただけます。お好きな施設名・パスワード、および<b>緊急時のサポート連絡先</b>を入力してください。無料期間終了後も利用を続ける場合は、販売元へお問い合わせください。
             </div>
-            <input type="text" id="secretKey" placeholder="🔑 秘密の合言葉">
             <input type="text" id="regFacilityName" placeholder="📛 好きな施設名（ログインIDになります）">
             <input type="password" id="regPassword" placeholder="🔐 好きなパスワード">
             <input type="email" id="regEmail" placeholder="✉️ 連絡先メールアドレス（必須・緊急時連絡用）">
@@ -244,7 +242,6 @@
         };
 
         window.handleRegister = async function() {
-            const secretInput = document.getElementById("secretKey").value.trim();
             const newName = document.getElementById("regFacilityName").value.trim();
             const newPass = document.getElementById("regPassword").value.trim();
             const email = document.getElementById("regEmail").value.trim();
@@ -252,8 +249,8 @@
             const termsAccepted = document.getElementById("termsAgreement").checked;
             const errorMsg = document.getElementById("registerError");
             errorMsg.style.display = "none";
-            if (!secretInput || !newName || !newPass || !email) {
-                errorMsg.textContent = "合言葉、施設名、パスワード、メールアドレスは必須です。";
+            if (!newName || !newPass || !email) {
+                errorMsg.textContent = "施設名、パスワード、メールアドレスは必須です。";
                 errorMsg.style.display = "block";
                 return;
             }
@@ -270,7 +267,6 @@
             try {
                 const registerFacility = httpsCallable(functions, "registerTrialFacility");
                 const result = await registerFacility({
-                    registrationKey: secretInput,
                     facilityName: newName,
                     password: newPass,
                     email,

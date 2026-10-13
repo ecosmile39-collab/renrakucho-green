@@ -214,17 +214,13 @@ exports.prepareLegacyStorageOwnership = onCall(async request => {
 });
 
 exports.registerTrialFacility = onCall({
-    secrets: [FACILITY_REGISTRATION_KEY, INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
+    secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async request => {
-    const registrationKey = request.data?.registrationKey;
     const acceptedTermsVersion = request.data?.acceptedTermsVersion;
     const facilityName = typeof request.data?.facilityName === "string" ? request.data.facilityName.trim() : "";
     const password = typeof request.data?.password === "string" ? request.data.password : "";
     const email = typeof request.data?.email === "string" ? request.data.email.trim() : "";
     const phone = typeof request.data?.phone === "string" ? request.data.phone.trim() : "";
-    if (!secretsMatch(registrationKey, FACILITY_REGISTRATION_KEY.value())) {
-        throw new HttpsError("permission-denied", "秘密の合言葉が違います。");
-    }
     if (acceptedTermsVersion !== CURRENT_TERMS_VERSION) {
         throw new HttpsError("failed-precondition", "最新の利用規約を確認し、同意してから登録してください。");
     }
