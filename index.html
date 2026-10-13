@@ -1441,11 +1441,13 @@
             document.getElementById("mainForm").style.display = "block";
             document.getElementById("scrollGroup").style.display = "flex";
             document.getElementById("newFacePreview").src = defaultIcon;
+            updateLineAgencyButton(facilityData);
             loadFacilityLineSettingsStatus();
             onSnapshot(doc(db, "facilities", facilityId), snapshot => {
                 if (!snapshot.exists()) return;
                 const data = snapshot.data();
                 updateTrialRegistrationControls(data);
+                updateLineAgencyButton(data);
                 facilityLineSettingsButtonVisible = data.facilityLineSettingsButtonVisible !== false;
                 document.getElementById("toggleFacilityLineSettingsButton").hidden = !facilityLineSettingsButtonVisible;
                 const signature = `${data.lineServiceEnabled !== false}:${data.commonLineEnabled !== false}:${facilityLineSettingsButtonVisible}`;
@@ -1830,6 +1832,14 @@
                 ? "📨 初回請求書を再送する"
                 : "📝 本登録を申し込む";
             registrationButton.hidden = false;
+        }
+
+        function updateLineAgencyButton(facilityData) {
+            const button = document.getElementById("openLineAgencyModalButton");
+            if (!button) return;
+            const isCompleted = facilityData?.lineAgencyStatus === "completed";
+            button.hidden = isCompleted;
+            button.style.display = isCompleted ? "none" : "";
         }
 
         window.openLineAgencyModal = async function() {
