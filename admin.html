@@ -454,6 +454,7 @@
                 const lineAccountLabel = dedicatedLineConfigured ? "施設専用LINE" : "共通LINE";
                 const facilityLineSettingsButtonVisible = facility.facilityLineSettingsButtonVisible !== false;
                 const familyLinePublicationEnabled = facility.familyLinePublicationEnabled !== false;
+                const basicInfoMenuEnabled = facility.basicInfoMenuEnabled !== false;
                 const enabledServiceTypes = normalizeServiceTypes(facility.enabledServiceTypes);
                 return `<div class="facility">
                     <div><div class="facility-name"><a class="facility-name-link" href="#" onclick="openFacilityDailyRecord('${encodeURIComponent(facility.id)}'); return false;" title="この施設の連絡帳入力画面を開く">🔗 ${escapeHtml(facility.facilityName || facility.id)}</a></div>
@@ -480,6 +481,15 @@
                         </label>
                         ${facility.lineAgencyContactPerson ? `<span style="font-size: 12px; color: #555;">（担当: ${escapeHtml(facility.lineAgencyContactPerson)}様）</span>` : ""}
                         ${facility.lineAgencyPhone ? `<span style="font-size: 12px; color: #087f23; font-weight: bold;">（認証用TEL: ${escapeHtml(facility.lineAgencyPhone)}）</span>` : ""}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; font-size: 13px; background: #fff8e1; padding: 6px 10px; border-radius: 4px; border: 1px solid #ffe082;">
+                        <strong>基本情報クリックの管理リンク：</strong>
+                        <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer;">
+                            <input type="checkbox" data-facility-basicinfo-id="${encodeURIComponent(facility.id)}" data-menu-status="allowed" ${basicInfoMenuEnabled ? "checked" : ""} style="width: auto; margin: 0;">許可
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer;">
+                            <input type="checkbox" data-facility-basicinfo-id="${encodeURIComponent(facility.id)}" data-menu-status="disallowed" ${!basicInfoMenuEnabled ? "checked" : ""} style="width: auto; margin: 0;">許可しない
+                        </label>
                     </div>
                     <span class="status ${statusClass}">${statusLabel}</span>
                     <div style="margin-top: 6px; font-size: 13px; font-weight: bold; color: ${lineEnabled ? "#237032" : "#c92a2a"};">${lineAccountLabel}：${lineEnabled ? "許可中" : "停止中"}</div></div>
@@ -509,6 +519,34 @@
             list.querySelectorAll("[data-facility-agency-id]").forEach(checkbox => {
                 checkbox.addEventListener("change", () => updateFacilityLineAgencyStatus(checkbox));
             });
+            list.querySelectorAll("[data-facility-basicinfo-id]").forEach(checkbox => {
+                checkbox.addEventListener("change", () => updateFacilityBasicInfoMenuStatus(checkbox));
+            });
+        }
+
+        async function updateFacilityBasicInfoMenuStatus(checkbox) {
+            const facilityId = decodeURIComponent(checkbox.dataset.facilityBasicinfoId);
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) return;
+
+            const status = checkbox.dataset.menuStatus;
+            const nextAllowed = status === "allowed" ? checkbox.checked : !checkbox.checked;
+            const previousAllowed = facility.basicInfoMenuEnabled !== false;
+            const checkboxes = Array.from(checkbox.closest(".facility").querySelectorAll("[data-facility-basicinfo-id]"));
+            checkboxes.forEach(item => { item.disabled = true; });
+
+            try {
+                await updateDoc(doc(db, "facilities", facilityId), {
+                    basicInfoMenuEnabled: nextAllowed,
+                    basicInfoMenuUpdatedAt: new Date().toISOString()
+                });
+                facility.basicInfoMenuEnabled = nextAllowed;
+                renderFacilities();
+            } catch (error) {
+                facility.basicInfoMenuEnabled = previousAllowed;
+                renderFacilities();
+                document.getElementById("facilityError").textContent = "管理リンク設定を保存できませんでした: " + (error.message || error);
+            }
         }
 
         async function updateFacilityLineAgencyStatus(checkbox) {

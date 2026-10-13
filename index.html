@@ -964,6 +964,7 @@
         let familyLinePublicationEnabled = true;
         let facilityLineStatusSignature = "";
         let facilityLineSettingsButtonVisible = true;
+        let basicInfoMenuEnabled = true;
         let facilityFormCustomization = normalizeFacilityFormCustomization(null);
         const COMMON_LINE_BASIC_ID = "@805xgtzu";
 
@@ -1400,6 +1401,7 @@
             }
 
             const facilityData = facilitySnapshot.data();
+            basicInfoMenuEnabled = facilityData.basicInfoMenuEnabled !== false;
             familyLinePublicationEnabled = facilityData.familyLinePublicationEnabled !== false;
             document.getElementById("linePublicationControl").style.display = familyLinePublicationEnabled ? "block" : "none";
             facilityLineSettingsButtonVisible = facilityData.facilityLineSettingsButtonVisible !== false;
@@ -1446,6 +1448,14 @@
             onSnapshot(doc(db, "facilities", facilityId), snapshot => {
                 if (!snapshot.exists()) return;
                 const data = snapshot.data();
+                basicInfoMenuEnabled = data.basicInfoMenuEnabled !== false;
+                if (!basicInfoMenuEnabled) {
+                    document.getElementById("unsubscribeActionLink").style.display = "none";
+                    document.getElementById("changePasswordActionLink").style.display = "none";
+                    document.getElementById("changeFacilityNameActionLink").style.display = "none";
+                    document.getElementById("changeFacilityEmailActionLink").style.display = "none";
+                    document.getElementById("changeFacilityPhoneActionLink").style.display = "none";
+                }
                 updateTrialRegistrationControls(data);
                 updateLineAgencyButton(data);
                 facilityLineSettingsButtonVisible = data.facilityLineSettingsButtonVisible !== false;
@@ -1493,6 +1503,7 @@
             });
 
             document.getElementById("basicInfoTitle").addEventListener("click", function() {
+                if (!basicInfoMenuEnabled) return;
                 unsubscribeClickCount++;
                 clearTimeout(unsubscribeClickTimer);
                 unsubscribeClickTimer = setTimeout(() => { unsubscribeClickCount = 0; }, 3000);
