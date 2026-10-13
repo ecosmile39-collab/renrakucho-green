@@ -1316,6 +1316,7 @@ exports.requestLineAgencySetup = onCall({
 
     const facilityName = typeof request.data?.facilityName === "string" ? request.data.facilityName.trim() : "";
     const email = typeof request.data?.email === "string" ? request.data.email.trim() : "";
+    const phone = typeof request.data?.phone === "string" ? request.data.phone.trim() : "";
     const contactPerson = typeof request.data?.contactPerson === "string" ? request.data.contactPerson.trim() : "";
 
     if (!facilityName || facilityName.length > 200) {
@@ -1323,6 +1324,9 @@ exports.requestLineAgencySetup = onCall({
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         throw new HttpsError("invalid-argument", "正しいメールアドレスを入力してください。");
+    }
+    if (!phone || phone.length > 50) {
+        throw new HttpsError("invalid-argument", "LINEビジネスアカウント用で使用する電話番号を入力してください。");
     }
     if (!contactPerson || contactPerson.length > 100) {
         throw new HttpsError("invalid-argument", "ご担当者名を入力してください。");
@@ -1340,7 +1344,8 @@ exports.requestLineAgencySetup = onCall({
         lineAgencyStatus: "pending",
         lineAgencyRequestedAt: requestedAt,
         lineAgencyContactPerson: contactPerson,
-        lineAgencyEmail: email
+        lineAgencyEmail: email,
+        lineAgencyPhone: phone
     }, { merge: true });
 
     // 管理者および施設側へメール通知
@@ -1351,8 +1356,8 @@ exports.requestLineAgencySetup = onCall({
             auth: { user: gmailUser, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
         });
 
-        const adminMailText = `施設よりLINE連携代行の申込みがありました。\n\n施設名：${facilityName}\n施設ID：${facilityId}\n担当者名：${contactPerson} 様\n連絡先メール：${email}\n申込日時：${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\n管理者コントロールパネルにてご確認の上、連携設定またはサポートを行ってください。`;
-        const facilityMailText = `${facilityName}\n${contactPerson} 様\n\nこのたびは「LINE連携代行申込み」をいただき、誠にありがとうございます。\n初回無料にて施設様とご家族様のLINE連携設定をサポート・設定代行させていただきます。\n\n■ お申込み内容\n施設名：${facilityName}\nご担当者名：${contactPerson} 様\nメールアドレス：${email}\n\n担当者より順次ご連絡、または設定作業を進めさせていただきます。\nLINE連携が完了すると、連絡帳画面で利用者様のお名前を選択した際に「保護者LINE：1件連携済み」と表示され、ご家族様がLINEから連絡帳を閲覧できるようになります。\n\n今しばらくお待ちくださいますようお願い申し上げます。\n\n株式会社えこすまいる\n連絡先：${gmailUser}`;
+        const adminMailText = `施設よりLINE連携代行の申込みがありました。\n\n施設名：${facilityName}\n施設ID：${facilityId}\n担当者名：${contactPerson} 様\n連絡先メール：${email}\nLINEビジネスアカウント用電話番号（認証用）：${phone}\n申込日時：${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\n管理者コントロールパネルにてご確認の上、連携設定またはサポートを行ってください。`;
+        const facilityMailText = `${facilityName}\n${contactPerson} 様\n\nこのたびは「LINE連携代行申込み」をいただき、誠にありがとうございます。\n初回無料にて施設様とご家族様のLINE連携設定をサポート・設定代行させていただきます。\n\n■ お申込み内容\n施設名：${facilityName}\nご担当者名：${contactPerson} 様\nメールアドレス：${email}\n認証用電話番号：${phone}\n\n担当者より順次ご連絡、または設定作業を進めさせていただきます。\nLINE連携が完了すると、連絡帳画面で利用者様のお名前を選択した際に「保護者LINE：1件連携済み」と表示され、ご家族様がLINEから連絡帳を閲覧できるようになります。\n\n今しばらくお待ちくださいますようお願い申し上げます。\n\n株式会社えこすまいる\n連絡先：${gmailUser}`;
 
         await Promise.all([
             // 管理者宛て

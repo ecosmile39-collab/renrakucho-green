@@ -479,6 +479,7 @@
                             <input type="checkbox" data-facility-agency-id="${encodeURIComponent(facility.id)}" data-agency-field="uncompleted" ${facility.lineAgencyStatus === "pending" ? "checked" : ""} style="width: auto; margin: 0;">未完了
                         </label>
                         ${facility.lineAgencyContactPerson ? `<span style="font-size: 12px; color: #555;">（担当: ${escapeHtml(facility.lineAgencyContactPerson)}様）</span>` : ""}
+                        ${facility.lineAgencyPhone ? `<span style="font-size: 12px; color: #087f23; font-weight: bold;">（認証用TEL: ${escapeHtml(facility.lineAgencyPhone)}）</span>` : ""}
                     </div>
                     <span class="status ${statusClass}">${statusLabel}</span>
                     <div style="margin-top: 6px; font-size: 13px; font-weight: bold; color: ${lineEnabled ? "#237032" : "#c92a2a"};">${lineAccountLabel}：${lineEnabled ? "許可中" : "停止中"}</div></div>

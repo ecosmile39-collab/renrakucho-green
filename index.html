@@ -184,6 +184,9 @@
             <label style="margin-top: 10px; font-size: 14px;">ご連絡先メールアドレス</label>
             <input type="email" id="lineAgencyEmail" style="font-size: 15px; padding: 8px;">
 
+            <label style="margin-top: 10px; font-size: 14px;">LINEビジネスアカウント用で使用する電話番号（認証用）</label>
+            <input type="tel" id="lineAgencyPhone" placeholder="例：090-1234-5678 または 086-xxx-xxxx" style="font-size: 15px; padding: 8px;">
+
             <label style="margin-top: 10px; font-size: 14px;">ご担当者名</label>
             <input type="text" id="lineAgencyContactPerson" placeholder="例：山田 太郎" style="font-size: 15px; padding: 8px;">
 
@@ -1831,6 +1834,7 @@
             const modal = document.getElementById("lineAgencyModal");
             const facilityNameInput = document.getElementById("lineAgencyFacilityName");
             const emailInput = document.getElementById("lineAgencyEmail");
+            const phoneInput = document.getElementById("lineAgencyPhone");
             const contactPersonInput = document.getElementById("lineAgencyContactPerson");
             const msg = document.getElementById("lineAgencyMessage");
             msg.textContent = "";
@@ -1845,6 +1849,9 @@
                     if (snap.exists()) {
                         const data = snap.data();
                         if (data.email) emailInput.value = data.email;
+                        if (data.lineAgencyPhone || (data.phone && data.phone !== "未登録")) {
+                            phoneInput.value = data.lineAgencyPhone || data.phone;
+                        }
                         if (data.lineAgencyContactPerson) contactPersonInput.value = data.lineAgencyContactPerson;
                     }
                 } catch (e) {
@@ -1861,6 +1868,7 @@
         window.submitLineAgencyRequest = async function() {
             const facilityName = document.getElementById("lineAgencyFacilityName").value.trim();
             const email = document.getElementById("lineAgencyEmail").value.trim();
+            const phone = document.getElementById("lineAgencyPhone").value.trim();
             const contactPerson = document.getElementById("lineAgencyContactPerson").value.trim();
             const msg = document.getElementById("lineAgencyMessage");
             const btn = document.getElementById("submitLineAgencyButton");
@@ -1871,6 +1879,10 @@
             }
             if (!email || !email.includes("@")) {
                 msg.textContent = "正しいメールアドレスを入力してください。";
+                return;
+            }
+            if (!phone) {
+                msg.textContent = "LINEビジネスアカウント用で使用する電話番号を入力してください。";
                 return;
             }
             if (!contactPerson) {
@@ -1884,7 +1896,7 @@
 
             try {
                 const requestAgency = httpsCallable(functions, "requestLineAgencySetup");
-                await requestAgency({ facilityName, email, contactPerson });
+                await requestAgency({ facilityName, email, phone, contactPerson });
                 closeLineAgencyModal();
                 alert(`🎉 LINE連携代行のお申込みを受け付けました。\n\nご登録メールアドレス（${email}）へ確認メールをお送りしました。\n担当者より順次ご連絡・連携設定のサポートをさせていただきます。\n連携が完了すると、連絡帳画面で利用者名を選択した際に「保護者LINE：1件連携済み」と自動的に表示されます。`);
             } catch (err) {
