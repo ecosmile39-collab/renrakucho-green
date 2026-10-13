@@ -63,55 +63,68 @@ function generateInvoicePdf({
             doc.moveTo(margin, 75).lineTo(pageWidth - margin, 75).lineWidth(1.5).stroke("#2b8a3e");
 
             // Facility name (left)
-            doc.fontSize(14)
-                .text(`${facilityName}  御中`, margin, 95, { width: 280 });
+            doc.fontSize(13)
+                .text(`${facilityName}  御中`, margin, 90, { width: 235 });
 
-            doc.fontSize(10)
-                .fillColor("#444444")
-                .text("下記のとおりご請求申し上げます。", margin, 120);
+            doc.fontSize(9.5)
+                .fillColor("#555555")
+                .text("下記のとおりご請求申し上げます。", margin, 114);
 
             // Total amount box (left side)
-            doc.rect(margin, 140, 260, 42).fillAndStroke("#f1f8f2", "#2b8a3e");
+            doc.rect(margin, 136, 235, 42).fillAndStroke("#f1f8f2", "#2b8a3e");
             doc.fillColor("#222222")
-                .fontSize(11)
-                .text("ご請求金額（税込）", margin + 12, 148);
-            doc.fontSize(16)
+                .fontSize(10)
+                .text("ご請求金額（税込）", margin + 10, 144);
+            doc.fontSize(15)
                 .fillColor("#1e6b2e")
-                .text(`¥ ${total.toLocaleString()}-`, margin + 120, 153, { width: 135, align: "right" });
+                .text(`¥ ${total.toLocaleString()}-`, margin + 105, 149, { width: 120, align: "right" });
 
-            // Invoice details & Issuer info (right side)
-            const rightColX = 330;
-            const rightColWidth = contentWidth - (rightColX - margin);
+            // Invoice details (right side, top)
+            const rightColX = 295;
+            const rightColWidth = pageWidth - margin - rightColX; // ~255pt
 
-            doc.fillColor("#222222").fontSize(9);
-            let rightY = 92;
-            doc.text(`請求書番号：${invoiceNumber}`, rightColX, rightY);
+            doc.fillColor("#222222").fontSize(8.5);
+            let rightY = 88;
+            doc.text(`請求書番号：${invoiceNumber}`, rightColX, rightY, { width: rightColWidth });
             rightY += 15;
-            doc.text(`発行日：${issueDate}`, rightColX, rightY);
+            doc.text(`発行日：${issueDate}`, rightColX, rightY, { width: rightColWidth });
             rightY += 15;
-            doc.text(`お支払期限：${dueDate}`, rightColX, rightY);
+            doc.text(`お支払期限：${dueDate}`, rightColX, rightY, { width: rightColWidth });
             rightY += 15;
-            doc.text(`請求対象期間：${billingPeriod}`, rightColX, rightY);
+            doc.text(`請求対象期間：${billingPeriod}`, rightColX, rightY, { width: rightColWidth });
 
-            // Issuer block
-            rightY += 22;
-            doc.fontSize(10).text("【発行元】", rightColX, rightY);
+            // Issuer block (right side, lower)
+            rightY += 20;
+            doc.fontSize(9.5).text("【発行元】", rightColX, rightY);
             rightY += 14;
-            doc.fontSize(9)
-                .text("株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\n適格請求書発行事業者登録番号：なし", rightColX, rightY, {
+
+            // Constrain issuer text width so it never overlaps with stamp
+            const issuerTextWidth = rightColWidth - 68; // ~187pt
+            const issuerLines = [
+                "株式会社えこすまいる",
+                "〒719-1164 岡山県総社市西郡430-2",
+                "適格請求書発行事業者登録番号：なし"
+            ];
+            if (issuerEmail) {
+                issuerLines.push(`連絡先：${issuerEmail}`);
+            }
+            doc.fontSize(8.5)
+                .fillColor("#333333")
+                .text(issuerLines.join("\n"), rightColX, rightY, {
+                    width: issuerTextWidth,
                     lineGap: 3
                 });
-            if (issuerEmail) {
-                doc.text(`連絡先：${issuerEmail}`, rightColX, rightY + 38);
-            }
 
-            // Stamp image
+            // Stamp image (placed to the right of issuer details, without overlapping text or table)
             if (fs.existsSync(STAMP_PATH)) {
-                doc.image(STAMP_PATH, pageWidth - margin - 65, rightY + 2, { width: 62, height: 62 });
+                const stampSize = 56;
+                const stampX = pageWidth - margin - stampSize;
+                const stampY = rightY - 2;
+                doc.image(STAMP_PATH, stampX, stampY, { width: stampSize, height: stampSize });
             }
 
-            // Table of items
-            const tableTop = 225;
+            // Table of items (start below the issuer and stamp area)
+            const tableTop = 245;
             const colDescX = margin;
             const colDescW = 345;
             const colAmountX = margin + colDescW;
@@ -145,7 +158,7 @@ function generateInvoicePdf({
                 .text(`¥ ${total.toLocaleString()}`, colAmountX, rowY + 8, { width: colAmountW - 10, align: "right" });
 
             // Bank details block
-            let bankY = rowY + 45;
+            let bankY = rowY + 38;
             doc.rect(margin, bankY, contentWidth, 75).fillAndStroke("#fdfdfd", "#ced4da");
             doc.fillColor("#1e6b2e").fontSize(11).text("【お振込先】", margin + 15, bankY + 12);
             doc.fillColor("#222222").fontSize(10).text(
@@ -157,7 +170,7 @@ function generateInvoicePdf({
 
             // Note / Appreciation block
             if (note) {
-                let noteY = bankY + 95;
+                let noteY = bankY + 90;
                 doc.rect(margin, noteY, contentWidth, 70).fillAndStroke("#fffbf5", "#f08c00");
                 doc.fillColor("#7c4a03").fontSize(10).text("【ご案内・備考】", margin + 15, noteY + 10);
                 doc.fillColor("#333333").fontSize(9).text(note, margin + 15, noteY + 28, {

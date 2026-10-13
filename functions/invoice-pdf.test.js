@@ -2,10 +2,10 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { generateInvoicePdf } = require("./invoice-pdf");
 
-test("generateInvoicePdf generates a valid A4 PDF buffer with Japanese text and stamp", async () => {
+test("generateInvoicePdf generates a valid A4 PDF buffer with long invoice number and stamp without overlap", async () => {
     const pdfBuffer = await generateInvoicePdf({
-        facilityName: "デイサービスひまわり",
-        invoiceNumber: "INIT-20261013-DEMO",
+        facilityName: "みらいくらぶ",
+        invoiceNumber: "INIT-20261013-N092FXAN6DWHQBYNRFP0",
         issueDate: "2026年10月13日",
         dueDate: "2026年10月23日",
         billingPeriod: "2026年10月13日〜2026年11月12日",
@@ -14,11 +14,10 @@ test("generateInvoicePdf generates a valid A4 PDF buffer with Japanese text and 
         tax: 400,
         total: 4400,
         issuerEmail: "ecosmile39@gmail.com",
-        note: "このたびは本登録をお申し込みいただき、誠にありがとうございます。入金確認後、本利用へ切り替えいたします。"
+        note: "このたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。"
     });
 
     assert.ok(Buffer.isBuffer(pdfBuffer));
     assert.ok(pdfBuffer.length > 5000, "PDF buffer should contain font, stamp and content");
-    // Verify PDF header magic bytes %PDF-
     assert.equal(pdfBuffer.subarray(0, 4).toString(), "%PDF");
 });
