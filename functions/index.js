@@ -191,7 +191,9 @@ exports.prepareLegacyStorageOwnership = onCall(async request => {
     return { facilities: facilities.size, uniqueOwners, ambiguousNames };
 });
 
-exports.registerTrialFacility = onCall({ secrets: [FACILITY_REGISTRATION_KEY] }, async request => {
+exports.registerTrialFacility = onCall({
+    secrets: [FACILITY_REGISTRATION_KEY, INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
+}, async request => {
     const registrationKey = request.data?.registrationKey;
     const acceptedTermsVersion = request.data?.acceptedTermsVersion;
     const facilityName = typeof request.data?.facilityName === "string" ? request.data.facilityName.trim() : "";
@@ -217,6 +219,8 @@ exports.registerTrialFacility = onCall({ secrets: [FACILITY_REGISTRATION_KEY] },
     }
     const trialStartedAt = new Date();
     const trialEndsAt = new Date(trialStartedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const trialEndDateFormatted = formatJapaneseDateKey(dateKey(getTokyoDateParts(trialEndsAt)));
+
     const facilityRef = await db.collection("facilities").add({
         facilityName,
         password,
@@ -231,6 +235,80 @@ exports.registerTrialFacility = onCall({ secrets: [FACILITY_REGISTRATION_KEY] },
         acceptedTermsVersion: CURRENT_TERMS_VERSION,
         termsAcceptedAt: new Date().toISOString()
     });
+
+    // トライアル申込施設への御礼とご利用案内のメールを即時送信
+    try {
+        const gmailUser = INVOICE_GMAIL_USER.value();
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: { user: gmailUser, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
+        });
+
+        const subject = `【えこすまいる連絡帳】無料お試し登録ありがとうございます（${facilityName} 御中）`;
+        const text = `${facilityName} 御中\n\nこのたびは「えこすまいる連絡帳」の無料お試し（トライアル）にお申し込みいただき、誠にありがとうございます。\n心より御礼申し上げます。\n\n本日から7日間の無料お試し期間がスタートいたしました。\n実際の業務に合わせて、連絡帳の作成やLINE連携の利便性をぜひご体験ください。\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n■ ご登録内容・お試し期間\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n施設名（ログインID）：${facilityName}\n無料お試し終了日　　：${trialEndDateFormatted}\nシステムログインURL ：https://renrakucho-green.vercel.app/login.html\n\n※ ログイン時はご登録いただいた「施設名」と「パスワード」を使用します。\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n■ 無料お試し終了後の進め方（本登録について）\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n無料お試し終了後も引き続きシステムをご利用いただく場合の手順は以下のとおりです。\n\n【ステップ1】画面から本登録をお申し込み\nお試し期間中、連絡帳画面上部に表示される「📝 本登録を申し込む」ボタンを押してください。\nボタンを押すと、本メールアドレス宛に初回利用分（1か月分）の請求書が自動発行されます。\n\n・初回ご請求金額：4,000円（税抜）／ 税込4,400円\n・2か月目以降　 ：月額5,000円（税抜）／ 税込5,500円\n・初回お支払期限：請求書発行から10日後\n※ A4印刷可能な請求書PDFがメールに添付されます。\n\n【ステップ2】ご利用料金のお振込み\n請求書に記載の振込先（PayPay銀行）へ利用料金をお振込みください。\n\n【ステップ3】本利用への自動継続\n弊社にて入金を確認次第、本利用へ切り替えいたします。\nお試し期間中に入力された利用者名簿や過去の連絡帳データはそのまま引き継がれ、中断することなく継続してご利用いただけます。\n\n※ 無料期間終了までにお申し込みがなかった場合、システムは自動的に停止し、費用が発生することはございません。\n\nご不明な点やお困りのことがございましたら、本メールへのご返信、または販売元までお気軽にお問い合わせください。\n今後とも「えこすまいる連絡帳」をどうぞよろしくお願い申し上げます。\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\n連絡先：${gmailUser}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+        const html = `<!doctype html><html lang="ja"><body style="font-family:sans-serif;color:#333;line-height:1.8;max-width:680px;margin:auto;padding:20px">
+            <h2 style="color:#2b8a3e;border-bottom:2px solid #2b8a3e;padding-bottom:8px">無料お試し登録ありがとうございます</h2>
+            <p><strong>${escapeHtml(facilityName)} 御中</strong></p>
+            <p>このたびは「えこすまいる連絡帳」の無料お試し（トライアル）にお申し込みいただき、誠にありがとうございます。<br>心より御礼申し上げます。</p>
+            <p>本日から7日間の無料お試し期間がスタートいたしました。<br>日々の連絡帳作成やご家族との連携など、実際の業務に合わせてぜひ使い心地をご体験ください。</p>
+
+            <div style="background:#f1f8f2;border:1px solid #a5d6a7;border-radius:6px;padding:16px;margin:20px 0">
+                <h3 style="margin-top:0;color:#2b8a3e;font-size:16px">■ ご登録内容・お試し期間</h3>
+                <ul style="margin:0;padding-left:20px">
+                    <li><strong>施設名（ログインID）：</strong>${escapeHtml(facilityName)}</li>
+                    <li><strong>無料お試し終了日：</strong>${trialEndDateFormatted}</li>
+                    <li><strong>ログイン画面：</strong><a href="https://renrakucho-green.vercel.app/login.html" target="_blank" rel="noopener noreferrer">https://renrakucho-green.vercel.app/login.html</a></li>
+                </ul>
+                <p style="margin:8px 0 0;font-size:13px;color:#555">※ ログインにはご登録の「施設名」と「パスワード」を使用します。</p>
+            </div>
+
+            <h3 style="color:#1864ab;border-left:4px solid #1864ab;padding-left:8px;margin-top:28px">■ トライアル終了後の進め方（本登録の流れ）</h3>
+            <p>お試し期間終了後も継続してシステムをご利用いただく場合の手順をご案内いたします。</p>
+
+            <div style="background:#f8f9fa;border:1px solid #ced4da;border-radius:6px;padding:16px;margin:15px 0">
+                <h4 style="margin:0 0 8px;color:#222">① 画面上部から本登録を申し込む</h4>
+                <p style="margin:0 0 8px;font-size:14px">連絡帳画面上部に表示されている「<strong>📝 本登録を申し込む</strong>」ボタンを押してください。<br>お申し込み後、本メールアドレス宛に初回利用分（1か月分）の請求書が即時発行・送信されます。</p>
+                <ul style="margin:0;padding-left:20px;font-size:13px;color:#444">
+                    <li>初回利用料金：<strong>4,000円（税抜）／ 税込4,400円</strong></li>
+                    <li>2か月目以降：<strong>月額5,000円（税抜）／ 税込5,500円</strong></li>
+                    <li>初回お支払期限：請求書発行から10日後（A4印刷用PDFをメールに添付）</li>
+                </ul>
+            </div>
+
+            <div style="background:#f8f9fa;border:1px solid #ced4da;border-radius:6px;padding:16px;margin:15px 0">
+                <h4 style="margin:0 0 8px;color:#222">② ご利用料金のお振込み</h4>
+                <p style="margin:0;font-size:14px">請求書に記載されている振込先（PayPay銀行）へ利用料金をお振込みください。</p>
+            </div>
+
+            <div style="background:#f8f9fa;border:1px solid #ced4da;border-radius:6px;padding:16px;margin:15px 0">
+                <h4 style="margin:0 0 8px;color:#222">③ 本利用への切り替え（データ引き継ぎ）</h4>
+                <p style="margin:0;font-size:14px">入金を確認後、管理者側で本利用へ切り替えいたします。<br><strong>お試し期間中に入力された利用者名簿や連絡帳の記録はすべて保持され、そのまま継続してご利用いただけます。</strong></p>
+            </div>
+
+            <p style="font-size:13px;color:#666">※ 無料お試し期間中に本登録のお申し込みがなかった場合、期間終了後に自動的に利用停止となります。勝手に課金されることは一切ございませんのでご安心ください。</p>
+
+            <p style="margin-top:24px">ご不明な点やお困りのことがございましたら、本メールへのご返信、またはお気軽にお問い合わせください。<br>今後ともどうぞよろしくお願い申し上げます。</p>
+
+            <hr style="border:none;border-top:1px solid #dee2e6;margin:28px 0">
+            <div style="font-size:12px;color:#666">
+                <strong>株式会社えこすまいる</strong><br>
+                〒719-1164 岡山県総社市西郡430-2<br>
+                連絡先：${escapeHtml(gmailUser)}
+            </div>
+        </body></html>`;
+
+        await transporter.sendMail({
+            from: { name: "株式会社えこすまいる", address: gmailUser },
+            to: email,
+            subject,
+            text,
+            html
+        });
+    } catch (mailError) {
+        logger.error("Failed to send trial welcome email", { facilityId: facilityRef.id, email, error: mailError });
+    }
+
     return {
         facilityId: facilityRef.id,
         facilityName,
