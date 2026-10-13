@@ -110,8 +110,13 @@
         }
 
         window.onload = async function() {
-            if (new URLSearchParams(window.location.search).get("form") === "register") {
+            const isExplicitRegister = new URLSearchParams(window.location.search).get("form") === "register";
+            if (isExplicitRegister) {
                 toggleForm("register");
+                localStorage.removeItem("currentFacilityId");
+                localStorage.removeItem("currentFacilityName");
+                localStorage.removeItem("isStaffAuthenticated");
+                return;
             }
             if (new URLSearchParams(window.location.search).get("notice") === "stopped") {
                 const errorMsg = document.getElementById("loginError");
