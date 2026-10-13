@@ -373,6 +373,23 @@ exports.changeFacilityEmail = onCall(async request => {
     return { email: newEmail };
 });
 
+exports.changeFacilityPhone = onCall(async request => {
+    const facilityId = requireFacilityId(request);
+    await verifyFacilityIsActive(facilityId);
+    const currentPassword = typeof request.data?.currentPassword === "string" ? request.data.currentPassword : "";
+    const newPhone = typeof request.data?.newPhone === "string" ? request.data.newPhone.trim() : "";
+    if (!newPhone || newPhone.length > 50) {
+        throw new HttpsError("invalid-argument", "電話番号を入力してください。");
+    }
+    const facilityRef = getFirestore().collection("facilities").doc(facilityId);
+    const facilitySnapshot = await facilityRef.get();
+    if (!facilitySnapshot.exists || !currentPassword || facilitySnapshot.data().password !== currentPassword) {
+        throw new HttpsError("unauthenticated", "現在の施設パスワードが違います。");
+    }
+    await facilityRef.update({ phone: newPhone });
+    return { phone: newPhone };
+});
+
 exports.renameFacility = onCall(async request => {
     const facilityId = requireFacilityId(request);
     await verifyFacilityIsActive(facilityId);
