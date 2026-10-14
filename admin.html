@@ -53,6 +53,14 @@
                 <div style="font-size: 13px;">🟢 本登録済み</div>
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryActiveCount">0</span> 件</div>
             </div>
+            <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #fff9db; border: 1px solid #fab005; border-radius: 8px; font-weight: bold; color: #8a5b00;">
+                <div style="font-size: 13px;">📅 本日のトライアル申込</div>
+                <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTodayTrialCount">0</span> 件</div>
+            </div>
+            <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #ebfbee; border: 1px solid #69db7c; border-radius: 8px; font-weight: bold; color: #087f23;">
+                <div style="font-size: 13px;">📅 本日の本登録</div>
+                <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTodayActiveCount">0</span> 件</div>
+            </div>
             <div style="flex: 1; min-width: 140px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 8px; font-weight: bold; color: #495057;">
                 <div style="font-size: 13px;">🏢 全登録施設</div>
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTotalCount">0</span> 件</div>
@@ -447,9 +455,25 @@
         function renderFacilities() {
             let list = document.getElementById("facilityList");
 
-            // トライアル中・本登録済みの件数集計
+            // 現在の契約状況と本日分の申込・本登録件数を集計
             let trialCount = 0;
             let activeCount = 0;
+            let todayTrialCount = 0;
+            let todayActiveCount = 0;
+            const tokyoDateFormatter = new Intl.DateTimeFormat("en", {
+                timeZone: "Asia/Tokyo",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit"
+            });
+            const getTokyoDateKey = value => {
+                const date = value && typeof value.toDate === "function" ? value.toDate() : new Date(value);
+                if (!Number.isFinite(date.getTime())) return null;
+                const parts = tokyoDateFormatter.formatToParts(date);
+                const part = type => parts.find(item => item.type === type)?.value;
+                return `${part("year")}-${part("month")}-${part("day")}`;
+            };
+            const todayKey = getTokyoDateKey(new Date());
             facilities.forEach(facility => {
                 if (facility.subscriptionStatus === "active" || facility.status === "active" && facility.subscriptionStatus !== "trial") {
                     activeCount++;
@@ -459,12 +483,19 @@
                         trialCount++;
                     }
                 }
+                const trialApplicationAt = facility.trialStartedAt || (facility.subscriptionStatus === "trial" ? facility.createdAt : null);
+                if (trialApplicationAt && getTokyoDateKey(trialApplicationAt) === todayKey) todayTrialCount++;
+                if (facility.planActivatedAt && getTokyoDateKey(facility.planActivatedAt) === todayKey) todayActiveCount++;
             });
             const summaryTrialEl = document.getElementById("summaryTrialCount");
             const summaryActiveEl = document.getElementById("summaryActiveCount");
+            const summaryTodayTrialEl = document.getElementById("summaryTodayTrialCount");
+            const summaryTodayActiveEl = document.getElementById("summaryTodayActiveCount");
             const summaryTotalEl = document.getElementById("summaryTotalCount");
             if (summaryTrialEl) summaryTrialEl.textContent = trialCount;
             if (summaryActiveEl) summaryActiveEl.textContent = activeCount;
+            if (summaryTodayTrialEl) summaryTodayTrialEl.textContent = todayTrialCount;
+            if (summaryTodayActiveEl) summaryTodayActiveEl.textContent = todayActiveCount;
             if (summaryTotalEl) summaryTotalEl.textContent = facilities.length;
 
             if (facilities.length === 0) {
