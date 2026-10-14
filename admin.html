@@ -206,6 +206,7 @@
         const storage = getStorage(app);
         const functions = getFunctions(app);
         const sendTestInvoiceEmail = httpsCallable(functions, "sendTestInvoiceEmail");
+        const issueFacilityInvoice = httpsCallable(functions, "issueFacilityInvoiceForAdmin");
         const createAdminSession = httpsCallable(functions, "createAdminSession");
         const createFacilitySessionForAdmin = httpsCallable(functions, "createFacilitySessionForAdmin");
         let facilities = [];
@@ -652,6 +653,7 @@
                     </details>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                         <button type="button" style="background: #7048e8;" onclick="openFacilityCustomization('${encodeURIComponent(facility.id)}')">🎛️ カスタマイズ</button>
+                        <button type="button" style="background: #c67700;" onclick="issueFacilityInvoiceFromAdmin('${encodeURIComponent(facility.id)}', this)">🧾 請求書を発行</button>
                         <button type="button" style="background: #1971c2;" onclick="previewTestInvoice('${encodeURIComponent(facility.id)}')">🧾 テスト請求書PDFプレビュー</button>
                         <button type="button" style="background: #2f9e44;" onclick="sendTestInvoiceFromPreview('${encodeURIComponent(facility.id)}', this)">📧 テスト請求書メールを送信</button>
                         <button type="button" style="background: #495057;" onclick="showFacilityInvoiceHistory('${encodeURIComponent(facility.id)}')">📚 請求書履歴</button>
@@ -966,6 +968,33 @@
             } finally {
                 button.disabled = false;
                 button.textContent = "📧 テスト請求書メールを送信";
+            }
+        };
+
+        window.issueFacilityInvoiceFromAdmin = async function(encodedFacilityId, button) {
+            const facilityId = decodeURIComponent(encodedFacilityId);
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) {
+                alert("施設情報が見つかりません。施設一覧を更新してください。");
+                return;
+            }
+            const isInitialInvoice = facility.subscriptionStatus === "trial";
+            const invoiceKind = isInitialInvoice ? "初回請求書（4,400円・税込）" : "月額請求書（5,500円・税込）";
+            const recipient = facility.email || "登録メールアドレス";
+            if (!confirm(`${facility.facilityName || facilityId} に${invoiceKind}を発行し、${recipient}へ実際の請求書メールを送信します。\n同じ対象期間の請求書が発行済みの場合は重複発行されません。続けますか？`)) return;
+
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = "請求書を発行中...";
+            try {
+                const result = await issueFacilityInvoice({ facilityId });
+                alert(`請求書を発行し、メールを送信しました。\n宛先：${result.data.recipient}\n請求書番号：${result.data.invoiceNumber}`);
+                await loadFacilities();
+            } catch (error) {
+                alert("請求書を発行できませんでした: " + (error.message || error));
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
             }
         };
 

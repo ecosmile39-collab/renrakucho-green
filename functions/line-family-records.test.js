@@ -401,6 +401,53 @@ test("trial registration requires a contact phone number", async () => {
     } }), { code: "invalid-argument" });
 });
 
+test("manual invoice issuance is restricted to administrators", async () => {
+    const context = loadHandlers({});
+    await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin({
+        auth: { uid: "facility-a", token: { role: "facility" } },
+        data: { facilityId: "facility-a" }
+    }), { code: "unauthenticated" });
+});
+
+test("manual invoice issuance rejects a missing facility identifier", async () => {
+    const context = loadHandlers({});
+    await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin({
+        auth: { uid: "admin-control-panel", token: { role: "admin" } }, data: {}
+    }), { code: "invalid-argument" });
+});
+
+test("manual initial invoice issuance prevents duplicate sent invoices", async () => {
+    const context = loadHandlers({
+        "facilities/facility-a": {
+            facilityName: "Facility", email: "facility@example.invalid", subscriptionStatus: "trial"
+        },
+        "facilities/facility-a/invoiceHistory/INITIAL": { status: "sent", invoiceNumber: "INIT-20261015-FACILITY-A" }
+    });
+    await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin({
+        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        data: { facilityId: "facility-a" }
+    }), { code: "already-exists" });
+});
+
+test("manual monthly invoice issuance prevents duplicate automatic invoices", async () => {
+    const activationDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(activationDate).map(part => [part.type, part.value]));
+    const periodStart = `${parts.year}-${parts.month}-${parts.day}`;
+    const context = loadHandlers({
+        "facilities/facility-a": {
+            facilityName: "Facility", email: "facility@example.invalid", status: "active",
+            subscriptionStatus: "active", createdAt: activationDate.toISOString()
+        },
+        [`facilities/facility-a/invoiceHistory/AUTO-${periodStart.replace(/-/g, "")}`]: { status: "sent" }
+    });
+    await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin({
+        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        data: { facilityId: "facility-a" }
+    }), { code: "already-exists" });
+});
+
 test("dedicated viewing links remain valid when common LINE is stopped", async () => {
     const token = "b".repeat(64);
     const hash = crypto.createHash("sha256").update(token).digest("hex");

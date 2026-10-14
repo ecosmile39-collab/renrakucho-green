@@ -1662,6 +1662,248 @@ exports.requestFacilitySubscription = onCall({
     }
 });
 
+exports.issueFacilityInvoiceForAdmin = onCall({
+    secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
+}, async request => {
+    if (request.auth?.token.role !== "admin") {
+        throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
+    }
+    const facilityId = typeof request.data?.facilityId === "string" ? request.data.facilityId.trim() : "";
+    if (!facilityId || facilityId.length > 128) {
+        throw new HttpsError("invalid-argument", "施設を特定できません。");
+    }
+
+    const db = getFirestore();
+    const facilityRef = db.collection("facilities").doc(facilityId);
+    const facilitySnapshot = await facilityRef.get();
+    if (!facilitySnapshot.exists) {
+        throw new HttpsError("not-found", "施設情報が見つかりません。");
+    }
+    const facility = facilitySnapshot.data();
+    const isInitialInvoice = facility.subscriptionStatus === "trial";
+    if (!isInitialInvoice && facility.status !== "active") {
+        throw new HttpsError("failed-precondition", "利用中の本登録施設ではないため、月額請求書を発行できません。");
+    }
+
+    const facilityName = facility.facilityName || facilityId;
+    const recipient = typeof facility.email === "string" ? facility.email.trim() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+        throw new HttpsError("failed-precondition", "施設の登録メールアドレスが確認できません。");
+    }
+
+    const now = new Date();
+    const issueDate = dateKey(getTokyoDateParts(now));
+    const dueDateValue = new Date(`${issueDate}T00:00:00+09:00`);
+    dueDateValue.setDate(dueDateValue.getDate() + 10);
+    const dueDate = dateKey(getTokyoDateParts(dueDateValue));
+    let billingPeriodStart;
+    let billingPeriodEnd;
+    let invoiceNumber;
+    let subtotal;
+    let tax;
+    let invoiceType;
+
+    if (isInitialInvoice) {
+        const requestedAt = facility.subscriptionRequestedAt
+            ? new Date(facility.subscriptionRequestedAt)
+            : now;
+        const requestDateParts = getTokyoDateParts(requestedAt);
+        billingPeriodStart = dateKey(requestDateParts);
+        const nextPeriodStartParts = addMonthsToAnchor(requestDateParts, 1);
+        const endDate = new Date(Date.UTC(
+            Number(nextPeriodStartParts.year), Number(nextPeriodStartParts.month) - 1, Number(nextPeriodStartParts.day) - 1
+        ));
+        billingPeriodEnd = dateKey({
+            year: String(endDate.getUTCFullYear()),
+            month: String(endDate.getUTCMonth() + 1).padStart(2, "0"),
+            day: String(endDate.getUTCDate()).padStart(2, "0")
+        });
+        invoiceNumber = `INIT-${billingPeriodStart.replace(/-/g, "")}-${facilityId.toUpperCase()}`;
+        subtotal = 4000;
+        tax = 400;
+        invoiceType = "initial";
+    } else {
+        const period = getLatestMaturedBillingPeriod(
+            facility.billingAnchorAt || facility.planActivatedAt || facility.createdAt,
+            now
+        );
+        if (!period) {
+            throw new HttpsError("failed-precondition", "請求対象となる確定済みの月額期間がありません。");
+        }
+        billingPeriodStart = period.startDate;
+        billingPeriodEnd = period.endDate;
+        invoiceNumber = `INV-${period.startDate.replace(/-/g, "")}-${facilityId.toUpperCase()}`;
+        subtotal = 5000;
+        tax = 500;
+        invoiceType = "monthly";
+    }
+
+    const invoiceRef = facilityRef.collection("invoiceHistory").doc(
+        isInitialInvoice ? "INITIAL" : `AUTO-${billingPeriodStart.replace(/-/g, "")}`
+    );
+    const gmailUser = INVOICE_GMAIL_USER.value();
+    const reservation = await db.runTransaction(async transaction => {
+        const [currentFacilitySnapshot, invoiceSnapshot] = await Promise.all([
+            transaction.get(facilityRef),
+            transaction.get(invoiceRef)
+        ]);
+        if (!currentFacilitySnapshot.exists) {
+            throw new HttpsError("not-found", "施設情報が見つかりません。");
+        }
+        const currentFacility = currentFacilitySnapshot.data();
+        if ((currentFacility.subscriptionStatus === "trial") !== isInitialInvoice) {
+            throw new HttpsError("failed-precondition", "請求中に施設の契約状態が変更されました。施設一覧を更新してください。");
+        }
+        if (!isInitialInvoice && currentFacility.status !== "active") {
+            throw new HttpsError("failed-precondition", "施設が利用中ではないため、月額請求書を発行できません。");
+        }
+        if (invoiceSnapshot.exists) {
+            const previousInvoice = invoiceSnapshot.data();
+            if (previousInvoice.status === "sent") {
+                throw new HttpsError("already-exists", "この請求対象期間の請求書はすでに発行済みです。請求書履歴をご確認ください。");
+            }
+            const attemptStartedAt = previousInvoice.attemptStartedAt && typeof previousInvoice.attemptStartedAt.toDate === "function"
+                ? previousInvoice.attemptStartedAt.toDate().getTime()
+                : 0;
+            if (previousInvoice.status === "sending" && Date.now() - attemptStartedAt < 60 * 60 * 1000) {
+                throw new HttpsError("already-exists", "この請求書は現在発行処理中です。しばらくしてから履歴をご確認ください。");
+            }
+        }
+        transaction.set(invoiceRef, {
+            test: false,
+            type: invoiceType,
+            status: "sending",
+            facilityId,
+            facilityName,
+            recipient,
+            invoiceNumber,
+            issueDate,
+            dueDate,
+            billingPeriodStart,
+            billingPeriodEnd,
+            subtotal,
+            tax,
+            total: subtotal + tax,
+            manualIssuedBy: request.auth.uid,
+            attemptStartedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+        if (isInitialInvoice) {
+            transaction.set(facilityRef, {
+                subscriptionApplicationStatus: "invoice_sending",
+                subscriptionRequestedAt: currentFacility.subscriptionRequestedAt || now.toISOString(),
+                billingAnchorAt: currentFacility.billingAnchorAt || `${billingPeriodStart}T00:00:00+09:00`
+            }, { merge: true });
+        }
+        return true;
+    });
+    if (!reservation) {
+        throw new HttpsError("internal", "請求書の発行を開始できませんでした。");
+    }
+
+    const formattedPeriod = `${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}`;
+    const amountLabel = isInitialInvoice ? "初回システム利用料" : "システム利用料";
+    const closing = isInitialInvoice
+        ? "本登録のお申し込みをいただき、誠にありがとうございます。ご入金確認後、本利用へ切り替えいたします。"
+        : "平素よりシステムをご利用いただき、誠にありがとうございます。今後ともよろしくお願い申し上げます。";
+    const html = `<!doctype html><html lang="ja"><body style="font-family:sans-serif;color:#222;line-height:1.7;max-width:720px;margin:auto;padding:24px">
+        <p>${escapeHtml(facilityName)} 御中</p><h1 style="text-align:center">請求書</h1>
+        <p>請求書番号：${escapeHtml(invoiceNumber)}<br>請求対象期間：${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}<br>発行日：${formatJapaneseDateKey(issueDate)}<br>お支払期限：${formatJapaneseDateKey(dueDate)}</p>
+        <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　${(subtotal + tax).toLocaleString("ja-JP")}円</p>
+        <table style="width:100%;border-collapse:collapse"><thead><tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">内容</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">金額</th></tr></thead><tbody>
+        <tr><td style="border:1px solid #adb5bd;padding:10px">${amountLabel}（${formattedPeriod}分）</td><td style="border:1px solid #adb5bd;padding:10px">${subtotal.toLocaleString("ja-JP")}円</td></tr>
+        <tr><td style="border:1px solid #adb5bd;padding:10px">消費税（10%）</td><td style="border:1px solid #adb5bd;padding:10px">${tax.toLocaleString("ja-JP")}円</td></tr>
+        <tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">${(subtotal + tax).toLocaleString("ja-JP")}円</th></tr></tbody></table>
+        <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
+        <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
+        <p style="margin-top:20px;padding:12px;background:#e7f5ff;border:1px solid #74c0fc"><strong>A4印刷用の請求書PDFを添付しております。</strong></p>
+        <p style="margin-top:28px">${closing}</p></body></html>`;
+    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${amountLabel}：${subtotal.toLocaleString("ja-JP")}円\n消費税（10%）：${tax.toLocaleString("ja-JP")}円\n税込合計：${(subtotal + tax).toLocaleString("ja-JP")}円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\nA4印刷用の請求書PDFを添付しております。\n${closing}`;
+    let emailResult = null;
+    try {
+        const pdfBuffer = await generateInvoicePdf({
+            facilityName,
+            invoiceNumber,
+            issueDate: formatJapaneseDateKey(issueDate),
+            dueDate: formatJapaneseDateKey(dueDate),
+            billingPeriod: formattedPeriod,
+            itemTitle: amountLabel,
+            subtotal,
+            tax,
+            total: subtotal + tax,
+            issuerEmail: gmailUser,
+            note: closing
+        });
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: { user: gmailUser, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
+        });
+        emailResult = await transporter.sendMail({
+            from: { name: "株式会社えこすまいる", address: gmailUser },
+            to: recipient,
+            subject: `【${isInitialInvoice ? "初回" : ""}請求書】${facilityName} 御中 / ${invoiceNumber}`,
+            text,
+            html,
+            attachments: [{ filename: `請求書_${invoiceNumber}.pdf`, content: pdfBuffer, contentType: "application/pdf" }]
+        });
+        await Promise.all([
+            invoiceRef.set({
+                status: "sent",
+                invoiceHtml: html,
+                messageId: emailResult.messageId,
+                sentAt: FieldValue.serverTimestamp()
+            }, { merge: true }),
+            db.collection("invoiceEmailLogs").add({
+                test: false,
+                type: invoiceType,
+                manual: true,
+                facilityId,
+                facilityName,
+                recipient,
+                invoiceNumber,
+                issueDate,
+                dueDate,
+                billingPeriodStart,
+                billingPeriodEnd,
+                subtotal,
+                tax,
+                total: subtotal + tax,
+                sentAt: FieldValue.serverTimestamp(),
+                messageId: emailResult.messageId
+            })
+        ]);
+        if (isInitialInvoice) {
+            await facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true });
+        }
+        return { invoiceNumber, recipient, type: invoiceType };
+    } catch (error) {
+        if (emailResult) {
+            await invoiceRef.set({
+                status: "sent",
+                invoiceHtml: html,
+                messageId: emailResult.messageId,
+                sentAt: FieldValue.serverTimestamp()
+            }, { merge: true }).catch(logError => logger.error("Failed to finalize manually sent invoice", { facilityId, error: logError }));
+            if (isInitialInvoice) {
+                await facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true })
+                    .catch(logError => logger.error("Failed to update initial invoice status", { facilityId, error: logError }));
+            }
+            logger.error("Manual invoice email sent but finalization failed", { facilityId, recipient, error });
+            throw new HttpsError("internal", "請求書メールは送信済みですが、履歴の確定に失敗しました。重複送信を避けるため、請求書履歴をご確認ください。");
+        }
+        await invoiceRef.set({
+            status: "failed",
+            failedAt: FieldValue.serverTimestamp(),
+            failureMessage: String(error.message || error).slice(0, 500)
+        }, { merge: true }).catch(logError => logger.error("Failed to record manual invoice failure", { facilityId, error: logError }));
+        if (isInitialInvoice) {
+            await facilityRef.set({ subscriptionApplicationStatus: "invoice_failed" }, { merge: true })
+                .catch(logError => logger.error("Failed to update failed initial invoice status", { facilityId, error: logError }));
+        }
+        logger.error("Failed to issue manual invoice", { facilityId, recipient, error });
+        throw new HttpsError("internal", "請求書を発行できませんでした。請求書履歴をご確認のうえ、必要に応じて再試行してください。");
+    }
+});
+
 exports.sendTestInvoiceEmail = onCall({
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async request => {
