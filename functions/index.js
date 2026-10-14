@@ -15,6 +15,7 @@ const { decryptCredentials, encryptCredentials } = require("./line-credential-cr
 const { isFamilyRecordRequest, latestPublishedRecords } = require("./line-family-records");
 const { validateFacilityServiceTypes } = require("./service-types");
 const { generateInvoicePdf } = require("./invoice-pdf");
+const { daysUntilTrialEnds, isTrialReminderDue } = require("./trial-reminder");
 
 initializeApp();
 
@@ -1941,6 +1942,130 @@ exports.sendMonthlyInvoices = onSchedule({
 
     logger.info("Monthly invoice run completed", {
         activeFacilities: facilitiesSnapshot.size,
+        sent: sentCount,
+        skipped: skippedCount,
+        failed: failedCount
+    });
+});
+
+exports.sendTrialExpiryReminders = onSchedule({
+    schedule: "every day 09:00",
+    timeZone: "Asia/Tokyo",
+    maxInstances: 1,
+    secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
+}, async () => {
+    const db = getFirestore();
+    const now = new Date();
+    const facilitiesSnapshot = await db.collection("facilities").where("subscriptionStatus", "==", "trial").get();
+    const candidates = facilitiesSnapshot.docs.filter(document => {
+        const facility = document.data();
+        return facility.status !== "locked" &&
+            isTrialReminderDue(facility.trialEndsAt, now);
+    });
+    if (!candidates.length) {
+        logger.info("Trial expiry reminder run completed", { eligible: 0, sent: 0, skipped: 0, failed: 0 });
+        return;
+    }
+
+    const gmailUser = INVOICE_GMAIL_USER.value();
+    const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: { user: gmailUser, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
+    });
+    let sentCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+
+    for (const facilityDocument of candidates) {
+        const facilityId = facilityDocument.id;
+        const facility = facilityDocument.data();
+        const facilityRef = facilityDocument.ref;
+        const facilityName = facility.facilityName || facilityId;
+        const recipient = typeof facility.email === "string" ? facility.email.trim() : "";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+            skippedCount++;
+            logger.warn("Skipping trial expiry reminder: facility email is missing or invalid", { facilityId });
+            continue;
+        }
+
+        const reservedForSending = await db.runTransaction(async transaction => {
+            const currentSnapshot = await transaction.get(facilityRef);
+            if (!currentSnapshot.exists) return false;
+            const currentFacility = currentSnapshot.data();
+            if (currentFacility.status === "locked" ||
+                currentFacility.subscriptionStatus !== "trial" ||
+                !isTrialReminderDue(currentFacility.trialEndsAt, new Date())) {
+                return false;
+            }
+            if (currentFacility.trialReminderStatus === "sent") return false;
+            const attemptStartedAt = currentFacility.trialReminderAttemptAt?.toDate
+                ? currentFacility.trialReminderAttemptAt.toDate().getTime()
+                : 0;
+            if (currentFacility.trialReminderStatus === "sending" && Date.now() - attemptStartedAt < 60 * 60 * 1000) {
+                return false;
+            }
+            transaction.set(facilityRef, {
+                trialReminderStatus: "sending",
+                trialReminderAttemptAt: FieldValue.serverTimestamp()
+            }, { merge: true });
+            return true;
+        });
+        if (!reservedForSending) {
+            skippedCount++;
+            continue;
+        }
+
+        const trialEndDateValue = facility.trialEndsAt?.toDate
+            ? facility.trialEndsAt.toDate()
+            : new Date(facility.trialEndsAt);
+        const trialEndDate = formatJapaneseDateKey(dateKey(getTokyoDateParts(trialEndDateValue)));
+        const daysRemaining = daysUntilTrialEnds(facility.trialEndsAt, new Date());
+        const applicationPending = ["invoice_sending", "pending_payment"].includes(facility.subscriptionApplicationStatus);
+        const applicationFailed = facility.subscriptionApplicationStatus === "invoice_failed";
+        const nextStep = applicationPending
+            ? "本登録のお申し込みは受け付けています。登録メールに届いた請求書とお支払い状況をご確認ください。"
+            : applicationFailed
+                ? "本登録のお申し込み後、請求書を送信できていません。ログイン画面から連絡帳を開き、「初回請求書を再送する」を押してください。"
+                : "継続してご利用の場合は、下記ログイン画面から連絡帳を開き、「本登録を申し込む」を押してください。";
+        const text = `${facilityName} 御中\n\nえこすまいる連絡帳の無料お試し期間終了日が、あと${daysRemaining}日（${trialEndDate}）です。\n\n${nextStep}\n\nトライアル期間終了までに本登録への切り替えが完了しない場合、システムは自動的に利用停止となります。トライアル中の記録は本登録後も引き継がれます。\n\nログイン画面：https://renrakucho-green.vercel.app/login.html\n\nご不明な点がございましたら、このメールへの返信または販売元までお問い合わせください。\n\n株式会社えこすまいる`;
+        const html = `<!doctype html><html lang="ja"><body style="font-family:sans-serif;color:#333;line-height:1.8;max-width:680px;margin:auto;padding:20px">
+            <h2 style="color:#e8590c;border-bottom:2px solid #e8590c;padding-bottom:8px">無料お試し期間終了のお知らせ</h2>
+            <p><strong>${escapeHtml(facilityName)} 御中</strong></p>
+            <p>えこすまいる連絡帳の無料お試し期間終了日が、<strong>あと${daysRemaining}日（${escapeHtml(trialEndDate)}）</strong>です。</p>
+            <div style="background:#fff9db;border:1px solid #fab005;border-radius:6px;padding:16px;margin:20px 0">${escapeHtml(nextStep)}</div>
+            <p>トライアル期間終了までに本登録への切り替えが完了しない場合、システムは自動的に利用停止となります。トライアル中の記録は本登録後も引き継がれます。</p>
+            <p><a href="https://renrakucho-green.vercel.app/login.html" style="display:inline-block;background:#2b8a3e;color:white;text-decoration:none;padding:10px 18px;border-radius:5px">連絡帳にログインする</a></p>
+            <p>ご不明な点がございましたら、このメールへの返信または販売元までお問い合わせください。</p>
+            <p>株式会社えこすまいる</p>
+        </body></html>`;
+
+        try {
+            await transporter.sendMail({
+                from: { name: "えこすまいる連絡帳システム", address: gmailUser },
+                to: recipient,
+                subject: `【重要】無料お試し期間終了まであと3日です（${facilityName} 御中）`,
+                text,
+                html
+            });
+            await facilityRef.set({
+                trialReminderStatus: "sent",
+                trialReminderSentAt: FieldValue.serverTimestamp(),
+                trialReminderFailureMessage: FieldValue.delete()
+            }, { merge: true });
+            sentCount++;
+        } catch (error) {
+            failedCount++;
+            await facilityRef.set({
+                trialReminderStatus: "failed",
+                trialReminderFailedAt: FieldValue.serverTimestamp(),
+                trialReminderFailureMessage: String(error.message || error).slice(0, 500)
+            }, { merge: true });
+            logger.error("Failed to send trial expiry reminder", { facilityId, recipient, error });
+        }
+    }
+
+    logger.info("Trial expiry reminder run completed", {
+        eligible: candidates.length,
         sent: sentCount,
         skipped: skippedCount,
         failed: failedCount
