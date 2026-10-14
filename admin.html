@@ -32,6 +32,9 @@
         .facility-overview-table th, .facility-overview-table td { padding: 10px 12px; border: 1px solid #dee2e6; text-align: left; }
         .facility-overview-table th { position: sticky; top: 0; background: #f1f3f5; }
         .facility-overview-table tbody tr:nth-child(even) { background: #f8f9fa; }
+        .facility-overview-status { display: inline-block; margin-left: 8px; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: bold; }
+        .facility-overview-status.trial { color: #805b00; background: #fff3bf; }
+        .facility-overview-status.stopped { color: #c92a2a; background: #ffe3e3; }
         .status { display: inline-block; margin-top: 7px; padding: 4px 10px; border-radius: 14px; font-size: 13px; font-weight: bold; }
         .active { color: #087f23; background: #d3f9d8; border: 1px solid #2f9e44; }
         .locked { color: #c92a2a; background: #ffe3e3; border: 1px solid #fa5252; }
@@ -410,6 +413,12 @@
             } else {
                 const rows = facilities.map(facility => {
                     const trialStartedAt = facility.trialStartedAt || (facility.subscriptionStatus === "trial" ? facility.createdAt : null);
+                    const trialEndsAt = Date.parse(facility.trialEndsAt || "");
+                    const isTrialing = facility.subscriptionStatus === "trial" &&
+                        Number.isFinite(trialEndsAt) && trialEndsAt > Date.now() && facility.status !== "locked";
+                    const trialStatus = facility.subscriptionStatus === "trial"
+                        ? `<span class="facility-overview-status ${isTrialing ? "trial" : "stopped"}">${isTrialing ? "トライアル中" : "停止中"}</span>`
+                        : "";
                     const lineLinked = facility.lineServiceEnabled !== false &&
                         (facility.dedicatedLineConfigured || facility.commonLineEnabled !== false);
                     return `<tr>
@@ -417,7 +426,7 @@
                         <td>${escapeHtml(facility.email || "未登録")}</td>
                         <td>${escapeHtml(facility.phone || "未登録")}</td>
                         <td>${escapeHtml(facility.lineAgencyContactPerson || facility.contactPerson || "未登録")}</td>
-                        <td>${escapeHtml(trialStartedAt ? formatDate(trialStartedAt) : "—")}</td>
+                        <td>${escapeHtml(trialStartedAt ? formatDate(trialStartedAt) : "—")}${trialStatus}</td>
                         <td>${escapeHtml(facility.planActivatedAt ? formatDate(facility.planActivatedAt) : "—")}</td>
                         <td>${lineLinked ? "✅ 連携済み" : "— 未連携"}</td>
                     </tr>`;
