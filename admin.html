@@ -44,6 +44,20 @@
     <main class="panel">
         <h1>👑 管理者専用 コントロールパネル</h1>
         <p class="description">施設の利用状態を確認し、必要な場合のみロック・解除を行えます。</p>
+        <div id="facilitySummaryBadge" class="hidden" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px;">
+            <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #fff3bf; border: 1px solid #f08c00; border-radius: 8px; font-weight: bold; color: #8a5b00;">
+                <div style="font-size: 13px;">🟠 トライアル中</div>
+                <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTrialCount">0</span> 件</div>
+            </div>
+            <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #d3f9d8; border: 1px solid #2f9e44; border-radius: 8px; font-weight: bold; color: #087f23;">
+                <div style="font-size: 13px;">🟢 本登録済み</div>
+                <div style="font-size: 24px; margin-top: 4px;"><span id="summaryActiveCount">0</span> 件</div>
+            </div>
+            <div style="flex: 1; min-width: 140px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 8px; font-weight: bold; color: #495057;">
+                <div style="font-size: 13px;">🏢 全登録施設</div>
+                <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTotalCount">0</span> 件</div>
+            </div>
+        </div>
 
         <section id="authSection" class="auth-box">
             <strong>管理者認証</strong>
@@ -172,6 +186,7 @@
         function setAdminPanelVisible(isVisible) {
             document.getElementById("authSection").classList.toggle("hidden", isVisible);
             document.getElementById("facilitySection").classList.toggle("hidden", !isVisible);
+            document.getElementById("facilitySummaryBadge").classList.toggle("hidden", !isVisible);
         }
 
         auth.authStateReady().then(async () => {
@@ -431,6 +446,27 @@
 
         function renderFacilities() {
             let list = document.getElementById("facilityList");
+
+            // トライアル中・本登録済みの件数集計
+            let trialCount = 0;
+            let activeCount = 0;
+            facilities.forEach(facility => {
+                if (facility.subscriptionStatus === "active" || facility.status === "active" && facility.subscriptionStatus !== "trial") {
+                    activeCount++;
+                } else if (facility.subscriptionStatus === "trial") {
+                    let trialEndTime = Date.parse(facility.trialEndsAt || "");
+                    if (Number.isFinite(trialEndTime) && Date.now() < trialEndTime && facility.status !== "locked") {
+                        trialCount++;
+                    }
+                }
+            });
+            const summaryTrialEl = document.getElementById("summaryTrialCount");
+            const summaryActiveEl = document.getElementById("summaryActiveCount");
+            const summaryTotalEl = document.getElementById("summaryTotalCount");
+            if (summaryTrialEl) summaryTrialEl.textContent = trialCount;
+            if (summaryActiveEl) summaryActiveEl.textContent = activeCount;
+            if (summaryTotalEl) summaryTotalEl.textContent = facilities.length;
+
             if (facilities.length === 0) {
                 list.innerHTML = '<p class="muted">登録施設はありません。</p>';
                 return;
