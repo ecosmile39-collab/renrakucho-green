@@ -25,6 +25,13 @@
         .registered-badge { display: inline-flex; align-items: center; padding: 4px 10px; border: 1px solid #d4a017; border-radius: 999px; background: #fff3bf; color: #805b00; font-size: 13px; font-weight: bold; white-space: nowrap; }
         .page-scroll-controls { position: fixed; right: 20px; bottom: 20px; z-index: 1000; display: grid; gap: 8px; }
         .page-scroll-controls button { width: 48px; height: 48px; padding: 0; border-radius: 50%; background: #e8590c; font-size: 22px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
+        #facilityOverviewDialog { width: min(1100px, calc(100% - 32px)); max-width: 1100px; max-height: 85vh; border: 1px solid #adb5bd; border-radius: 8px; padding: 20px; }
+        #facilityOverviewDialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+        .facility-overview-table-wrap { overflow-x: auto; }
+        .facility-overview-table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 14px; }
+        .facility-overview-table th, .facility-overview-table td { padding: 10px 12px; border: 1px solid #dee2e6; text-align: left; }
+        .facility-overview-table th { position: sticky; top: 0; background: #f1f3f5; }
+        .facility-overview-table tbody tr:nth-child(even) { background: #f8f9fa; }
         .status { display: inline-block; margin-top: 7px; padding: 4px 10px; border-radius: 14px; font-size: 13px; font-weight: bold; }
         .active { color: #087f23; background: #d3f9d8; border: 1px solid #2f9e44; }
         .locked { color: #c92a2a; background: #ffe3e3; border: 1px solid #fa5252; }
@@ -80,7 +87,8 @@
         </section>
 
         <section id="facilitySection" class="hidden">
-            <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+            <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+                <button type="button" onclick="openFacilityOverview()" style="background: #1864ab;">🏢 施設一覧</button>
                 <button type="button" onclick="logoutAdmin()" style="background: #495057;">管理者からログアウト</button>
             </div>
             <div style="margin-top: 20px; padding: 16px; border: 2px dashed #40a94d; background: #eaf7eb; border-radius: 8px;">
@@ -152,6 +160,14 @@
             <p class="muted">退会処理の状態と削除対象件数を表示します。パスワードや介護記録本文は保存しません。</p>
             <div id="cancellationList"></div>
         </section>
+        <dialog id="facilityOverviewDialog" aria-labelledby="facilityOverviewTitle">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <h2 id="facilityOverviewTitle" style="margin: 0;">施設一覧</h2>
+                <button type="button" onclick="document.getElementById('facilityOverviewDialog').close()" style="background: #868e96;">閉じる</button>
+            </div>
+            <p class="muted">担当者名はLINE連携代行申込時に登録された情報です。日付情報がない場合は「—」と表示します。</p>
+            <div id="facilityOverviewList" class="facility-overview-table-wrap"></div>
+        </dialog>
     </main>
     <nav id="pageScrollControls" class="page-scroll-controls hidden" aria-label="ページ移動">
         <button type="button" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" aria-label="ページの先頭へ移動" title="ページの先頭へ">↑</button>
@@ -376,6 +392,43 @@
                 error.textContent = "施設一覧を取得できませんでした: " + e.message;
             }
         }
+
+        window.openFacilityOverview = function() {
+            const list = document.getElementById("facilityOverviewList");
+            const formatDate = value => {
+                const date = value && typeof value.toDate === "function" ? value.toDate() : new Date(value);
+                if (!Number.isFinite(date.getTime())) return "—";
+                return new Intl.DateTimeFormat("ja-JP", {
+                    timeZone: "Asia/Tokyo",
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit"
+                }).format(date);
+            };
+            if (facilities.length === 0) {
+                list.innerHTML = '<p class="muted">登録施設はありません。</p>';
+            } else {
+                const rows = facilities.map(facility => {
+                    const trialStartedAt = facility.trialStartedAt || (facility.subscriptionStatus === "trial" ? facility.createdAt : null);
+                    const lineLinked = facility.lineServiceEnabled !== false &&
+                        (facility.dedicatedLineConfigured || facility.commonLineEnabled !== false);
+                    return `<tr>
+                        <td>${escapeHtml(facility.facilityName || facility.id)}</td>
+                        <td>${escapeHtml(facility.email || "未登録")}</td>
+                        <td>${escapeHtml(facility.phone || "未登録")}</td>
+                        <td>${escapeHtml(facility.lineAgencyContactPerson || facility.contactPerson || "未登録")}</td>
+                        <td>${escapeHtml(trialStartedAt ? formatDate(trialStartedAt) : "—")}</td>
+                        <td>${escapeHtml(facility.planActivatedAt ? formatDate(facility.planActivatedAt) : "—")}</td>
+                        <td>${lineLinked ? "✅ 連携済み" : "— 未連携"}</td>
+                    </tr>`;
+                }).join("");
+                list.innerHTML = `<table class="facility-overview-table">
+                    <thead><tr><th scope="col">施設名</th><th scope="col">メールアドレス</th><th scope="col">電話番号</th><th scope="col">担当者名</th><th scope="col">トライアル開始日</th><th scope="col">本登録日</th><th scope="col">LINE連携</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+            }
+            document.getElementById("facilityOverviewDialog").showModal();
+        };
 
         window.refreshAdminLists = async function() {
             document.getElementById("loadingMessage").style.display = "block";
