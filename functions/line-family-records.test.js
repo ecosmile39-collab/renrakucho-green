@@ -387,9 +387,18 @@ test("new trial registrations disable common LINE by default", async () => {
     const context = loadHandlers({});
     const result = await context.handlers.registerTrialFacility({ data: {
         registrationKey: "test-secret", acceptedTermsVersion: "2026-10-07-v1",
-        facilityName: "Test Facility", password: "test-password", email: "test@example.invalid"
+        facilityName: "Test Facility", password: "test-password", email: "test@example.invalid", phone: "03-1234-5678"
     } });
     assert.equal(context.documents.get(`facilities/${result.facilityId}`).commonLineEnabled, false);
+    assert.equal(context.documents.get(`facilities/${result.facilityId}`).phone, "03-1234-5678");
+});
+
+test("trial registration requires a contact phone number", async () => {
+    const context = loadHandlers({});
+    await assert.rejects(context.handlers.registerTrialFacility({ data: {
+        registrationKey: "test-secret", acceptedTermsVersion: "2026-10-07-v1",
+        facilityName: "Test Facility", password: "test-password", email: "test@example.invalid"
+    } }), { code: "invalid-argument" });
 });
 
 test("dedicated viewing links remain valid when common LINE is stopped", async () => {

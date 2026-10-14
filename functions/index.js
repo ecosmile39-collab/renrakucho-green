@@ -226,8 +226,8 @@ exports.registerTrialFacility = onCall({
         throw new HttpsError("failed-precondition", "最新の利用規約を確認し、同意してから登録してください。");
     }
     if (!facilityName || facilityName.length > 200 || password.length < 6 || password.length > 200 ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        throw new HttpsError("invalid-argument", "施設名、6文字以上のパスワード、連絡先メールを確認してください。");
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !phone || phone.length > 50) {
+        throw new HttpsError("invalid-argument", "施設名、6文字以上のパスワード、連絡先メール、電話番号を確認してください。");
     }
 
     const db = getFirestore();
@@ -244,7 +244,7 @@ exports.registerTrialFacility = onCall({
         facilityName,
         password,
         email,
-        phone: phone || "未登録",
+        phone,
         status: "active",
         commonLineEnabled: false,
         createdAt: trialStartedAt.toISOString(),

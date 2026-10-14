@@ -53,7 +53,7 @@
                 <li>「� 好きな施設名」に施設名を入力します。この名前が、次回ログイン時のログインIDになります。他の施設がすでに使っている名前は登録できません。</li>
                 <li>「🔐 好きなパスワード」を入力します。6文字以上で決めてください。忘れないように控えておき、次回ログインでも同じものを使います。</li>
                 <li>「✉️ 連絡先メールアドレス」を入力します。こちらは必須です。</li>
-                <li>「📞 ご連絡先お電話番号」を入力します。任意なので、入力しなくても登録できます。</li>
+                <li>「📞 ご連絡先お電話番号」を入力します。登録後のご連絡に使用するため必須です。</li>
                 <li>「利用規約を開いて確認」を押して内容を読みます。確認後、「内容に同意します」のチェックを入れてください。</li>
                 <li>「7日間無料で登録する」を押します。</li>
                 <li>登録完了のメッセージが表示されたら、登録完了です。その後、自動的にログインして連絡帳の画面へ移動します。</li>
@@ -69,7 +69,7 @@
             <input type="text" id="regFacilityName" placeholder="📛 好きな施設名（ログインIDになります）">
             <input type="password" id="regPassword" placeholder="🔐 好きなパスワード">
             <input type="email" id="regEmail" placeholder="✉️ 連絡先メールアドレス（必須・緊急時連絡用）">
-            <input type="tel" id="regPhone" placeholder="📞 ご連絡先お電話番号（任意）">
+            <input type="tel" id="regPhone" placeholder="📞 ご連絡先お電話番号（必須）" autocomplete="tel" required>
             <label style="display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; text-align: left; font-size: 14px; line-height: 1.6;">
                 <input type="checkbox" id="termsAgreement" style="width: auto; margin-top: 4px; flex: 0 0 auto;">
                 <span><a href="terms.html" target="_blank" rel="noopener noreferrer">利用規約を開いて確認</a>し、内容に同意します。<br>個人情報の取扱いは<a href="privacy-policy.html" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>をご確認ください。</span>
@@ -249,8 +249,8 @@
             const termsAccepted = document.getElementById("termsAgreement").checked;
             const errorMsg = document.getElementById("registerError");
             errorMsg.style.display = "none";
-            if (!newName || !newPass || !email) {
-                errorMsg.textContent = "施設名、パスワード、メールアドレスは必須です。";
+            if (!newName || !newPass || !email || !phone) {
+                errorMsg.textContent = "施設名、パスワード、メールアドレス、電話番号は必須です。";
                 errorMsg.style.display = "block";
                 return;
             }
