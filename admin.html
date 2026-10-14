@@ -27,14 +27,15 @@
         .line-agency-request-alert:hover { background: #ffe3e3; }
         .page-scroll-controls { position: fixed; right: 20px; bottom: 20px; z-index: 1000; display: grid; gap: 8px; }
         .page-scroll-controls button { width: 48px; height: 48px; padding: 0; border-radius: 50%; background: #e8590c; font-size: 22px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
-        #facilityOverviewDialog { width: min(1100px, calc(100% - 32px)); max-width: 1100px; max-height: 85vh; border: 1px solid #adb5bd; border-radius: 8px; padding: 20px; }
+        #facilityOverviewDialog { box-sizing: border-box; width: min(1100px, calc(100vw - 24px)); max-width: 1100px; max-height: 85vh; border: 1px solid #adb5bd; border-radius: 8px; padding: 12px; }
         #facilityOverviewDialog::backdrop { background: rgba(0, 0, 0, 0.45); }
-        .facility-overview-table-wrap { overflow-x: auto; }
-        .facility-overview-table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 14px; }
-        .facility-overview-table th, .facility-overview-table td { padding: 10px 12px; border: 1px solid #dee2e6; text-align: left; }
+        .facility-overview-table-wrap { width: 100%; }
+        .facility-overview-table { width: 100%; table-layout: fixed; border-collapse: collapse; white-space: normal; font-size: 12px; }
+        .facility-overview-table th, .facility-overview-table td { padding: 6px 5px; border: 1px solid #dee2e6; text-align: left; overflow-wrap: anywhere; }
         .facility-overview-table th { position: sticky; top: 0; background: #f1f3f5; }
         .facility-overview-table tbody tr:nth-child(even) { background: #f8f9fa; }
         .facility-overview-status { display: inline-block; margin-left: 8px; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: bold; }
+        .facility-overview-table .facility-overview-status { margin: 2px 0 0 3px; padding: 2px 4px; font-size: 10px; }
         .facility-overview-status.trial { color: #805b00; background: #fff3bf; }
         .facility-overview-status.stopped { color: #c92a2a; background: #ffe3e3; }
         .status { display: inline-block; margin-top: 7px; padding: 4px 10px; border-radius: 14px; font-size: 13px; font-weight: bold; }
@@ -442,6 +443,7 @@
                     </tr>`;
                 }).join("");
                 list.innerHTML = `<table class="facility-overview-table">
+                    <colgroup><col style="width:14%"><col style="width:17%"><col style="width:10%"><col style="width:15%"><col style="width:12%"><col style="width:8%"><col style="width:10%"><col style="width:7%"><col style="width:7%"></colgroup>
                     <thead><tr><th scope="col">施設名</th><th scope="col">メールアドレス</th><th scope="col">電話番号</th><th scope="col">担当者名</th><th scope="col">トライアル開始日</th><th scope="col">本登録日</th><th scope="col">LINE連携申込</th><th scope="col">申込日</th><th scope="col">LINE連携</th></tr></thead>
                     <tbody>${rows}</tbody>
                 </table>`;
