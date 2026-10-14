@@ -23,6 +23,8 @@
         .facility-name-link { color: #1864ab; text-decoration: underline; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
         .facility-name-link:hover { color: #0b4b8a; }
         .registered-badge { display: inline-flex; align-items: center; padding: 4px 10px; border: 1px solid #d4a017; border-radius: 999px; background: #fff3bf; color: #805b00; font-size: 13px; font-weight: bold; white-space: nowrap; }
+        .line-agency-request-alert { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 10px 14px; border: 2px solid #c92a2a; border-radius: 6px; background: #fff0f0; color: #a51111; font-size: 15px; font-weight: bold; box-shadow: 0 2px 6px rgba(201, 42, 42, 0.2); }
+        .line-agency-request-alert:hover { background: #ffe3e3; }
         .page-scroll-controls { position: fixed; right: 20px; bottom: 20px; z-index: 1000; display: grid; gap: 8px; }
         .page-scroll-controls button { width: 48px; height: 48px; padding: 0; border-radius: 50%; background: #e8590c; font-size: 22px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
         #facilityOverviewDialog { width: min(1100px, calc(100% - 32px)); max-width: 1100px; max-height: 85vh; border: 1px solid #adb5bd; border-radius: 8px; padding: 20px; }
@@ -596,6 +598,7 @@
                 const enabledServiceTypes = normalizeServiceTypes(facility.enabledServiceTypes);
                 return `<div class="facility">
                     <div><div class="facility-name"><a class="facility-name-link" href="#" onclick="openFacilityDailyRecord('${encodeURIComponent(facility.id)}'); return false;" title="この施設の連絡帳入力画面を開く">🔗 ${escapeHtml(facility.facilityName || facility.id)}</a>${isRegistered ? '<span class="registered-badge" aria-label="本登録済み">⭐ 本登録済み</span>' : ""}</div>
+                    ${facility.lineAgencyStatus === "pending" ? `<button type="button" class="line-agency-request-alert" onclick="focusLineAgencyCompletion('${encodeURIComponent(facility.id)}')" aria-label="${escapeHtml(facility.facilityName || facility.id)}のLINE連携申込。完了欄へ移動">🔔 LINE連携申込です。</button>` : ""}
                     <div style="margin-top: 6px; color: #1971c2; font-size: 14px; font-weight: bold;">🔑 パスワード：${escapeHtml(facility.password || "未設定")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">✉️ メールアドレス：${escapeHtml(facility.email || "未登録")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">📞 電話番号：${escapeHtml(facility.phone || "未登録")}</div>
@@ -720,6 +723,19 @@
                 document.getElementById("facilityError").textContent = "LINE連携代行の状況を保存できませんでした: " + (error.message || error);
             }
         }
+
+        window.focusLineAgencyCompletion = function(encodedId) {
+            const facilityId = decodeURIComponent(encodedId);
+            const facilityRow = Array.from(document.querySelectorAll(".facility")).find(row =>
+                Array.from(row.querySelectorAll("[data-facility-agency-id]"))
+                    .some(input => decodeURIComponent(input.dataset.facilityAgencyId) === facilityId)
+            );
+            const completionCheckbox = facilityRow && Array.from(facilityRow.querySelectorAll("[data-facility-agency-id]"))
+                .find(input => input.dataset.agencyField === "completed");
+            if (!completionCheckbox) return;
+            completionCheckbox.scrollIntoView({ behavior: "smooth", block: "center" });
+            completionCheckbox.focus({ preventScroll: true });
+        };
 
         async function updateFacilityInvoicePaymentStatus(checkbox) {
             const facilityId = decodeURIComponent(checkbox.dataset.facilityPaymentId);
