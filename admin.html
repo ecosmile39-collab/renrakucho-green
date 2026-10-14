@@ -19,9 +19,10 @@
         .delete { background: #c92a2a; }
         .unlock { background: #2f9e44; }
         .facility { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 0; border-bottom: 1px solid #e9ecef; }
-        .facility-name { font-size: 18px; font-weight: bold; }
+        .facility-name { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 18px; font-weight: bold; }
         .facility-name-link { color: #1864ab; text-decoration: underline; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
         .facility-name-link:hover { color: #0b4b8a; }
+        .registered-badge { display: inline-flex; align-items: center; padding: 4px 10px; border: 1px solid #d4a017; border-radius: 999px; background: #fff3bf; color: #805b00; font-size: 13px; font-weight: bold; white-space: nowrap; }
         .status { display: inline-block; margin-top: 7px; padding: 4px 10px; border-radius: 14px; font-size: 13px; font-weight: bold; }
         .active { color: #087f23; background: #d3f9d8; border: 1px solid #2f9e44; }
         .locked { color: #c92a2a; background: #ffe3e3; border: 1px solid #fa5252; }
@@ -509,6 +510,7 @@
                 let isTrialExpired = isTrial && (!Number.isFinite(trialEndTime) || Date.now() >= trialEndTime);
                 let trialDaysRemaining = isTrial && !isTrialExpired ? Math.ceil((trialEndTime - Date.now()) / (24 * 60 * 60 * 1000)) : 0;
                 let statusClass = isLocked ? "locked" : isTrialExpired ? "trial-expired" : isTrial ? "trial" : "active";
+                const isRegistered = facility.subscriptionStatus === "active" || facility.status === "active" && facility.subscriptionStatus !== "trial";
                 const subscriptionApplicationPending = ["invoice_sending", "pending_payment", "invoice_failed"].includes(facility.subscriptionApplicationStatus);
                 let statusLabel = isLocked ? "🔴 利用停止中" : subscriptionApplicationPending ? "🧾 本登録申込済み・入金待ち" : isTrialExpired ? "⏰ 無料期間終了" : isTrial ? `🟠 無料お試し中（残り${trialDaysRemaining}日）` : "🟢 利用中";
                 let invoice = latestInvoiceByFacility.get(facility.id);
@@ -524,7 +526,7 @@
                 const basicInfoMenuEnabled = facility.basicInfoMenuEnabled !== false;
                 const enabledServiceTypes = normalizeServiceTypes(facility.enabledServiceTypes);
                 return `<div class="facility">
-                    <div><div class="facility-name"><a class="facility-name-link" href="#" onclick="openFacilityDailyRecord('${encodeURIComponent(facility.id)}'); return false;" title="この施設の連絡帳入力画面を開く">🔗 ${escapeHtml(facility.facilityName || facility.id)}</a></div>
+                    <div><div class="facility-name"><a class="facility-name-link" href="#" onclick="openFacilityDailyRecord('${encodeURIComponent(facility.id)}'); return false;" title="この施設の連絡帳入力画面を開く">🔗 ${escapeHtml(facility.facilityName || facility.id)}</a>${isRegistered ? '<span class="registered-badge" aria-label="本登録済み">⭐ 本登録済み</span>' : ""}</div>
                     <div style="margin-top: 6px; color: #1971c2; font-size: 14px; font-weight: bold;">🔑 パスワード：${escapeHtml(facility.password || "未設定")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">✉️ メールアドレス：${escapeHtml(facility.email || "未登録")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">📞 電話番号：${escapeHtml(facility.phone || "未登録")}</div>
