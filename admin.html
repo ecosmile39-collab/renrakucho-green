@@ -23,6 +23,8 @@
         .facility-name-link { color: #1864ab; text-decoration: underline; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
         .facility-name-link:hover { color: #0b4b8a; }
         .registered-badge { display: inline-flex; align-items: center; padding: 4px 10px; border: 1px solid #d4a017; border-radius: 999px; background: #fff3bf; color: #805b00; font-size: 13px; font-weight: bold; white-space: nowrap; }
+        .page-scroll-controls { position: fixed; right: 20px; bottom: 20px; z-index: 1000; display: grid; gap: 8px; }
+        .page-scroll-controls button { width: 48px; height: 48px; padding: 0; border-radius: 50%; background: #e8590c; font-size: 22px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
         .status { display: inline-block; margin-top: 7px; padding: 4px 10px; border-radius: 14px; font-size: 13px; font-weight: bold; }
         .active { color: #087f23; background: #d3f9d8; border: 1px solid #2f9e44; }
         .locked { color: #c92a2a; background: #ffe3e3; border: 1px solid #fa5252; }
@@ -151,6 +153,10 @@
             <div id="cancellationList"></div>
         </section>
     </main>
+    <nav id="pageScrollControls" class="page-scroll-controls hidden" aria-label="ページ移動">
+        <button type="button" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" aria-label="ページの先頭へ移動" title="ページの先頭へ">↑</button>
+        <button type="button" onclick="window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })" aria-label="ページの末尾へ移動" title="ページの末尾へ">↓</button>
+    </nav>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -196,6 +202,7 @@
             document.getElementById("authSection").classList.toggle("hidden", isVisible);
             document.getElementById("facilitySection").classList.toggle("hidden", !isVisible);
             document.getElementById("facilitySummaryBadge").classList.toggle("hidden", !isVisible);
+            document.getElementById("pageScrollControls").classList.toggle("hidden", !isVisible);
         }
 
         auth.authStateReady().then(async () => {
