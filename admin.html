@@ -426,6 +426,9 @@
                     const lineAgencyStatusLabel = facility.lineAgencyStatus === "pending"
                         ? "申込あり"
                         : facility.lineAgencyStatus === "completed" ? "完了" : "—";
+                    const lineAgencyRequestedAt = facility.lineAgencyRequestedAt
+                        ? formatDate(facility.lineAgencyRequestedAt)
+                        : "—";
                     return `<tr>
                         <td>${escapeHtml(facility.facilityName || facility.id)}</td>
                         <td>${escapeHtml(facility.email || "未登録")}</td>
@@ -434,11 +437,12 @@
                         <td>${escapeHtml(trialStartedAt ? formatDate(trialStartedAt) : "—")}${trialStatus}</td>
                         <td>${escapeHtml(facility.planActivatedAt ? formatDate(facility.planActivatedAt) : "—")}</td>
                         <td>${lineAgencyStatusLabel}</td>
+                        <td>${escapeHtml(lineAgencyRequestedAt)}</td>
                         <td>${lineLinked ? "✅ 連携済み" : "— 未連携"}</td>
                     </tr>`;
                 }).join("");
                 list.innerHTML = `<table class="facility-overview-table">
-                    <thead><tr><th scope="col">施設名</th><th scope="col">メールアドレス</th><th scope="col">電話番号</th><th scope="col">担当者名</th><th scope="col">トライアル開始日</th><th scope="col">本登録日</th><th scope="col">LINE連携申込</th><th scope="col">LINE連携</th></tr></thead>
+                    <thead><tr><th scope="col">施設名</th><th scope="col">メールアドレス</th><th scope="col">電話番号</th><th scope="col">担当者名</th><th scope="col">トライアル開始日</th><th scope="col">本登録日</th><th scope="col">LINE連携申込</th><th scope="col">申込日</th><th scope="col">LINE連携</th></tr></thead>
                     <tbody>${rows}</tbody>
                 </table>`;
             }
