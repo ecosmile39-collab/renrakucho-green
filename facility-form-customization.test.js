@@ -2,12 +2,36 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import {
+    DEFAULT_PROFILE_FIELDS,
     FORM_CUSTOMIZATION_SECTIONS,
+    getFacilityProfileFieldValue,
+    getFacilityProfileFields,
     normalizeFacilityFormCustomization
 } from "./facility-form-customization.js";
 
 test("unconfigured facilities keep the original form and have no custom fields", () => {
     assert.deepEqual(normalizeFacilityFormCustomization(undefined), { hiddenSections: [], customFields: [] });
+});
+
+test("emergency contact and medical history fields are available to every facility", () => {
+    assert.deepEqual(DEFAULT_PROFILE_FIELDS.map(({ id, label, type, familyVisible }) => ({ id, label, type, familyVisible })), [
+        { id: "emergency-contact", label: "緊急連絡先", type: "textarea", familyVisible: false },
+        { id: "medical-history", label: "持病", type: "textarea", familyVisible: false }
+    ]);
+    assert.deepEqual(getFacilityProfileFields(), DEFAULT_PROFILE_FIELDS);
+});
+
+test("default profile fields replace same-label facility fields without losing saved values", () => {
+    const configuredFields = [
+        { id: "legacy-contact", label: "緊急連絡先", type: "text" },
+        { id: "legacy-condition", label: "持病", type: "textarea" },
+        { id: "support-note", label: "支援メモ", type: "textarea" }
+    ];
+    const profileFields = getFacilityProfileFields(configuredFields);
+    const savedData = { customProfileFields: { "legacy-contact": "家族 090-0000-0000", "legacy-condition": "ぜんそく" } };
+    assert.deepEqual(profileFields.map(field => field.id), ["emergency-contact", "medical-history", "support-note"]);
+    assert.equal(getFacilityProfileFieldValue(savedData, profileFields[0], configuredFields), "家族 090-0000-0000");
+    assert.equal(getFacilityProfileFieldValue(savedData, profileFields[1], configuredFields), "ぜんそく");
 });
 
 test("customization accepts only known sections and valid bounded custom fields", () => {

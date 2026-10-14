@@ -12,6 +12,26 @@ export const FORM_CUSTOMIZATION_SECTIONS = [
 
 export const CUSTOM_FORM_FIELD_TYPES = ["text", "textarea", "number", "date", "checkbox"];
 export const MAX_CUSTOM_FORM_FIELDS = 20;
+export const DEFAULT_PROFILE_FIELDS = [
+    { id: "emergency-contact", label: "緊急連絡先", type: "textarea", familyVisible: false },
+    { id: "medical-history", label: "持病", type: "textarea", familyVisible: false }
+];
+
+export function getFacilityProfileFields(customFields = []) {
+    const configuredFields = Array.isArray(customFields) ? customFields : [];
+    const defaultLabels = new Set(DEFAULT_PROFILE_FIELDS.map(field => field.label));
+    return [
+        ...DEFAULT_PROFILE_FIELDS,
+        ...configuredFields.filter(field => !defaultLabels.has(field.label.trim()))
+    ];
+}
+
+export function getFacilityProfileFieldValue(userData, field, configuredFields = []) {
+    const savedFields = userData?.customProfileFields || {};
+    if (Object.prototype.hasOwnProperty.call(savedFields, field.id)) return savedFields[field.id];
+    const legacyField = configuredFields.find(configured => configured.label.trim() === field.label);
+    return legacyField ? savedFields[legacyField.id] : undefined;
+}
 
 export function normalizeFacilityFormCustomization(value) {
     const input = value && typeof value === "object" ? value : {};

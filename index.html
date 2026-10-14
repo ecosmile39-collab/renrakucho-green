@@ -298,7 +298,7 @@
                 <li><strong>画面上部を見る</strong><p>上部に施設名が表示されます。「印刷画面へ」は入力済み記録の確認・印刷、「過去データ一覧へ」は以前の記録を見るときに使います。「施設のLINE公式アカウント設定」は設定を変更するとき以外は操作しなくて大丈夫です。</p></li>
                 <li><strong>サービス種別を選ぶ</strong><p>「ご入力するサービス種別を選択してください」で、今回の記録に合うものを選びます。デイサービス、ショートステイ、放課後等デイサービス、児童発達支援、生活介護があります。選ぶと、そのサービスに合った入力欄に切り替わります。</p></li>
                 <li><strong>送信待ちや申し送りを確認する</strong><p>上部に「送信待ちのお客様」が表示されていたら、前に一時保存した記録があります。画面を再読み込みすると消えることがあるので、作業を続けて最後にまとめて送信してください。「前日の重要申し送り一覧」が表示された場合は、内容を確認します。</p></li>
-                <li><strong>利用者を選ぶ</strong><p>「お名前」から記録する方を選びます。年齢や顔写真、保存済み記録が表示されます。「利用終了者も表示する」は、以前利用していた方を選ぶ場合に使います。</p><p>顔写真は「写真 登録/変更」で撮影、「アルバムから写真を選ぶ」で保存済み写真を選べます。緊急連絡先や持病歴などの欄がある場合、入力後に「利用者情報に保存」を押すと名簿に保存されます。</p></li>
+                <li><strong>利用者を選ぶ</strong><p>「お名前」から記録する方を選びます。年齢や顔写真、保存済み記録が表示されます。「利用終了者も表示する」は、以前利用していた方を選ぶ場合に使います。</p><p>顔写真は「写真 登録/変更」で撮影、「アルバムから写真を選ぶ」から保存済み写真を選べます。緊急連絡先と持病は全施設で利用できます。入力したら「利用者情報に保存」を押してください。</p></li>
                 <li><strong>新しい利用者を登録する</strong><p>名簿にいない方は、画面下の新規登録欄に名前を入力します。生年月日は任意です。必要なら顔写真や排泄記録の設定を選び、「お名前・生年月日・各種設定をまとめて名簿に登録」を押します。</p></li>
                 <li><strong>日付を選ぶ</strong><p>「日付」で、記録する日を選びます。利用者と日付を間違えていないか、この時点で確認してください。入力途中の内容は使用中のブラウザーに下書き保存されますが、まだ正式な保存ではありません。</p></li>
                 <li><strong>記録を入力する</strong><p>表示された欄を上から入力します。デイサービスでは、担当スタッフ、介護日誌、バイタル、食事・水分・服薬・入浴、活動などを記録します。放課後等デイサービス・児童発達支援では、出欠、送迎、活動、おやつ、支援の様子などを記録します。生活介護とショートステイでは、それぞれの専用欄に健康状態、生活支援、持ち物、夜間の様子などを入力します。</p><p>分からない欄は無理に埋めず、施設の記録方法に合わせてください。「要申し送り」「受診対応あり」「体調変化」は、該当するときにチェックし、申し送り内容も入力します。</p></li>
@@ -990,7 +990,7 @@
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { MAX_VIDEO_SOURCE_BYTES, VIDEO_ENCODING_PROFILES, getVideoEncodingArguments, isVideoOutputWithinLimit } from "./video-processing-policy.js";
         import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
-        import { FORM_CUSTOMIZATION_SECTIONS, normalizeFacilityFormCustomization } from "./facility-form-customization.js";
+        import { FORM_CUSTOMIZATION_SECTIONS, getFacilityProfileFieldValue, getFacilityProfileFields, normalizeFacilityFormCustomization } from "./facility-form-customization.js";
 
         let familyLinePublicationEnabled = true;
         let facilityLineStatusSignature = "";
@@ -1059,7 +1059,8 @@
             const container = document.getElementById("customFacilityFields");
             const inputsContainer = document.getElementById("customFacilityFieldInputs");
             if (!container || !inputsContainer) return;
-            inputsContainer.replaceChildren(...facilityFormCustomization.customFields.map(field => {
+            const profileFields = getFacilityProfileFields(facilityFormCustomization.customFields);
+            inputsContainer.replaceChildren(...profileFields.map(field => {
                 const wrapper = document.createElement("div");
                 wrapper.style.marginBottom = "10px";
 
@@ -1080,18 +1081,18 @@
                 }
                 input.id = `profileCustomField_${field.id}`;
                 input.dataset.profileCustomFieldId = field.id;
-                const savedValue = userData.customProfileFields?.[field.id];
+                const savedValue = getFacilityProfileFieldValue(userData, field, facilityFormCustomization.customFields);
                 if (field.type === "checkbox") input.checked = savedValue === true;
                 else input.value = String(savedValue ?? "");
                 if (field.type !== "checkbox") input.style.marginTop = "4px";
                 wrapper.append(label, input);
                 return wrapper;
             }));
-            container.hidden = !document.getElementById("userName")?.value || facilityFormCustomization.customFields.length === 0;
+            container.hidden = !document.getElementById("userName")?.value;
         }
 
         function getCustomProfileFieldValues() {
-            return Object.fromEntries(facilityFormCustomization.customFields.map(field => {
+            return Object.fromEntries(getFacilityProfileFields(facilityFormCustomization.customFields).map(field => {
                 const input = document.querySelector(`[data-profile-custom-field-id="${field.id}"]`);
                 return [field.id, field.type === "checkbox" ? Boolean(input?.checked) : input?.value || ""];
             }));
