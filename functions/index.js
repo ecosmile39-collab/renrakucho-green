@@ -1395,6 +1395,77 @@ exports.requestLineAgencySetup = onCall({
     return { success: true, status: "pending" };
 });
 
+exports.sendFacilityInquiry = onCall({
+    secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
+}, async request => {
+    const facilityId = requireFacilityId(request);
+    await verifyFacilityIsActive(facilityId);
+
+    const facilityName = typeof request.data?.facilityName === "string" ? request.data.facilityName.trim() : "";
+    const contactPerson = typeof request.data?.contactPerson === "string" ? request.data.contactPerson.trim() : "";
+    const email = typeof request.data?.email === "string" ? request.data.email.trim() : "";
+    const message = typeof request.data?.message === "string" ? request.data.message.trim() : "";
+
+    if (!facilityName || facilityName.length > 200) {
+        throw new HttpsError("invalid-argument", "施設名を入力してください。");
+    }
+    if (!contactPerson || contactPerson.length > 100) {
+        throw new HttpsError("invalid-argument", "ご担当者名を入力してください。");
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new HttpsError("invalid-argument", "正しいメールアドレスを入力してください。");
+    }
+    if (!message || message.length > 3000) {
+        throw new HttpsError("invalid-argument", "お問合せ内容を入力してください（3000文字以内）。");
+    }
+
+    const gmailUser = INVOICE_GMAIL_USER.value();
+    const destinationEmail = "ecosmile39@gmail.com";
+
+    const adminMailText = `施設よりお問合せが届きました。\n\n施設名：${facilityName}\n施設ID：${facilityId}\n担当者名：${contactPerson} 様\n返信先メールアドレス：${email}\n受付日時：${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n【お問合せ内容】\n${message}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+    const facilityMailText = `${facilityName}\n${contactPerson} 様\n\nこのたびは「えこすまいる連絡帳」へお問合せいただき、誠にありがとうございます。\n以下の内容でお問合せを受け付けいたしました。\n内容を確認の上、担当者より順次ご返信・ご連絡を差し上げます。\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n【お問合せ内容】\n施設名：${facilityName}\nご担当者名：${contactPerson} 様\nメールアドレス：${email}\n\n内容：\n${message}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n今しばらくお待ちくださいますようお願い申し上げます。\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nメール：${destinationEmail}`;
+
+    try {
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: { user: gmailUser, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
+        });
+
+        await Promise.all([
+            // 管理者宛て（ecosmile39@gmail.com）
+            transporter.sendMail({
+                from: { name: "えこすまいる連絡帳システム", address: gmailUser },
+                to: destinationEmail,
+                replyTo: email,
+                subject: `【連絡帳お問合せ】${facilityName}（${contactPerson}様）`,
+                text: adminMailText
+            }),
+            // 施設宛て控え
+            transporter.sendMail({
+                from: { name: "株式会社えこすまいる", address: gmailUser },
+                to: email,
+                subject: `【えこすまいる連絡帳】お問合せを受け付けました（${facilityName} 御中）`,
+                text: facilityMailText
+            })
+        ]);
+
+        // Firestoreに保存
+        await getFirestore().collection("facilityInquiries").add({
+            facilityId,
+            facilityName,
+            contactPerson,
+            email,
+            message,
+            createdAt: FieldValue.serverTimestamp()
+        }).catch(err => logger.warn("Failed to log inquiry", err));
+
+        return { success: true };
+    } catch (error) {
+        logger.error("Failed to send inquiry email", { facilityId, error });
+        throw new HttpsError("internal", "お問合せメールを送信できませんでした。通信環境をご確認のうえ再試行してください。");
+    }
+});
+
 exports.requestFacilitySubscription = onCall({
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async request => {

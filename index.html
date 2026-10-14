@@ -199,6 +199,33 @@
         </div>
     </div>
 
+    <!-- ✉️ お問合せモーダルウィンドウ -->
+    <div id="inquiryModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10003; justify-content: center; align-items: center; padding: 16px; box-sizing: border-box;">
+        <div style="background: white; padding: 24px; border-radius: 10px; width: 100%; max-width: 480px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); box-sizing: border-box;">
+            <h3 style="margin-top: 0; color: #17a2b8; border-bottom: 2px solid #17a2b8; padding-bottom: 8px; font-size: 17px;">✉️ お問合せ</h3>
+            <p style="font-size: 13px; color: #555; margin: 0 0 12px; line-height: 1.5;">ご質問・ご要望などございましたら、下記に入力の上「送信する」を押してください。販売元（株式会社えこすまいる）へ送信されます。</p>
+
+            <label style="margin-top: 10px; font-size: 14px;">施設名</label>
+            <input type="text" id="inquiryFacilityName" style="font-size: 15px; padding: 8px;">
+
+            <label style="margin-top: 10px; font-size: 14px;">ご担当者名</label>
+            <input type="text" id="inquiryContactPerson" placeholder="例：山田 太郎" style="font-size: 15px; padding: 8px;">
+
+            <label style="margin-top: 10px; font-size: 14px;">ご連絡先メールアドレス</label>
+            <input type="email" id="inquiryEmail" style="font-size: 15px; padding: 8px;">
+
+            <label style="margin-top: 10px; font-size: 14px;">お問合せ内容</label>
+            <textarea id="inquiryMessageContent" rows="4" placeholder="ご質問やご相談、ご要望等をご記入ください。" style="font-size: 15px; padding: 8px; width: 100%; box-sizing: border-box;"></textarea>
+
+            <p id="inquiryStatusMessage" role="status" style="font-size: 13px; margin: 10px 0 0; color: #c92a2a; font-weight: bold;"></p>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="closeInquiryModal()" style="flex: 1; padding: 11px; background-color: #adb5bd; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px;">キャンセル</button>
+                <button type="button" id="submitInquiryButton" onclick="submitInquiryRequest()" style="flex: 1; padding: 11px; background-color: #17a2b8; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px;">送信する</button>
+            </div>
+        </div>
+    </div>
+
     <div class="form-box" id="mainForm" style="display: none;">
         
         <h2 id="secretTitle" style="user-select: none; cursor: pointer; margin-top: 0; color: #2b8a3e;">🌿 <span id="displayFacilityName">施設名読込中...</span> 連絡帳</h2>
@@ -254,6 +281,7 @@
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <button type="button" id="usageGuideToggleButton" class="usage-guide-toggle" aria-expanded="false" aria-controls="usageGuidePanel" onclick="toggleUsageGuide()" style="margin: 0;">📖 連絡帳の使い方を見る</button>
                 <button type="button" id="openLineAgencyModalButton" onclick="openLineAgencyModal()" style="margin: 0; padding: 10px 14px; background: #087f23; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">🤝 LINE連携代行を申込む（初回無料）</button>
+                <button type="button" id="openInquiryModalButton" onclick="openInquiryModal()" style="margin: 0; padding: 10px 14px; background: #17a2b8; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">✉️ お問合せ</button>
             </div>
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <div id="trialNotice" hidden style="padding: 8px 10px; background: #fff4e6; border-left: 4px solid #f08c00; color: #7c4a03; font-size: 13px; font-weight: bold;"></div>
@@ -1927,6 +1955,81 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = "申込みを送信する";
+            }
+        };
+
+        window.openInquiryModal = async function() {
+            const modal = document.getElementById("inquiryModal");
+            const facilityNameInput = document.getElementById("inquiryFacilityName");
+            const contactPersonInput = document.getElementById("inquiryContactPerson");
+            const emailInput = document.getElementById("inquiryEmail");
+            const contentInput = document.getElementById("inquiryMessageContent");
+            const msg = document.getElementById("inquiryStatusMessage");
+            msg.textContent = "";
+            contentInput.value = "";
+
+            const currentFacilityName = localStorage.getItem("currentFacilityName") || "";
+            facilityNameInput.value = currentFacilityName;
+
+            const facilityId = localStorage.getItem("currentFacilityId");
+            if (facilityId) {
+                try {
+                    const snap = await getDoc(doc(db, "facilities", facilityId));
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        if (data.email) emailInput.value = data.email;
+                        if (data.lineAgencyContactPerson) contactPersonInput.value = data.lineAgencyContactPerson;
+                    }
+                } catch (e) {
+                    console.warn("施設情報の事前取得に失敗しました:", e);
+                }
+            }
+            modal.style.display = "flex";
+        };
+
+        window.closeInquiryModal = function() {
+            document.getElementById("inquiryModal").style.display = "none";
+        };
+
+        window.submitInquiryRequest = async function() {
+            const facilityName = document.getElementById("inquiryFacilityName").value.trim();
+            const contactPerson = document.getElementById("inquiryContactPerson").value.trim();
+            const email = document.getElementById("inquiryEmail").value.trim();
+            const message = document.getElementById("inquiryMessageContent").value.trim();
+            const msg = document.getElementById("inquiryStatusMessage");
+            const btn = document.getElementById("submitInquiryButton");
+
+            if (!facilityName) {
+                msg.textContent = "施設名を入力してください。";
+                return;
+            }
+            if (!contactPerson) {
+                msg.textContent = "ご担当者名を入力してください。";
+                return;
+            }
+            if (!email || !email.includes("@")) {
+                msg.textContent = "正しいメールアドレスを入力してください。";
+                return;
+            }
+            if (!message) {
+                msg.textContent = "お問合せ内容を入力してください。";
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = "送信中...";
+            msg.textContent = "";
+
+            try {
+                const sendInquiry = httpsCallable(functions, "sendFacilityInquiry");
+                await sendInquiry({ facilityName, contactPerson, email, message });
+                closeInquiryModal();
+                alert(`🎉 お問合せを送信しました。\n\n販売元（株式会社えこすまいる：ecosmile39@gmail.com）へ送信されました。\nご登録メールアドレス（${email}）へ確認メールをお送りしましたのでご確認ください。`);
+            } catch (err) {
+                msg.textContent = err.message || "送信できませんでした。通信環境を確認して再試行してください。";
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "送信する";
             }
         };
 
