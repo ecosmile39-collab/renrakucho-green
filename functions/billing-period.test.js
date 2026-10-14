@@ -58,8 +58,7 @@ function getLatestMaturedBillingPeriod(createdAt, now, advanceDays = 10) {
         };
         latestPeriod = {
             startDate: startDateKey,
-            endDate: dateKey(endParts),
-            dueDate: startDateKey
+            endDate: dateKey(endParts)
         };
     }
     return latestPeriod;

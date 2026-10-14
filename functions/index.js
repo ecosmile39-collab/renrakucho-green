@@ -1309,8 +1309,7 @@ function getLatestMaturedBillingPeriod(createdAt, now, advanceDays = 10) {
         };
         latestPeriod = {
             startDate: startDateKey,
-            endDate: dateKey(endParts),
-            dueDate: startDateKey
+            endDate: dateKey(endParts)
         };
     }
     return latestPeriod;
@@ -1684,7 +1683,7 @@ exports.sendTestInvoiceEmail = onCall({
     const dateParts = getTokyoDateParts(now);
     const issueDate = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
     const dueDateValue = new Date(Date.UTC(
-        Number(dateParts.year), Number(dateParts.month) - 1, Number(dateParts.day) + 30
+        Number(dateParts.year), Number(dateParts.month) - 1, Number(dateParts.day) + 10
     ));
     const dueParts = {
         year: dueDateValue.getUTCFullYear(),
@@ -1790,8 +1789,8 @@ exports.sendMonthlyInvoices = onSchedule({
     const now = new Date();
     const issueDate = dateKey(getTokyoDateParts(now));
     const dueDateValue = new Date(`${issueDate}T00:00:00+09:00`);
-    dueDateValue.setDate(dueDateValue.getDate() + 30);
-    const dueDate = dateKey(getTokyoDateParts(dueDateValue));
+    dueDateValue.setDate(dueDateValue.getDate() + 10);
+    const invoiceDueDate = dateKey(getTokyoDateParts(dueDateValue));
     const gmailUser = INVOICE_GMAIL_USER.value();
     const transporter = nodemailer.createTransport({
         service: "gmail",
@@ -1829,7 +1828,6 @@ exports.sendMonthlyInvoices = onSchedule({
 
         const historyRef = db.collection("facilities").doc(facilityId)
             .collection("invoiceHistory").doc(`AUTO-${period.startDate.replace(/-/g, "")}`);
-        const invoiceDueDate = period.dueDate || dueDate;
         const reservedForSending = await db.runTransaction(async transaction => {
             const historySnapshot = await transaction.get(historyRef);
             if (historySnapshot.exists) {

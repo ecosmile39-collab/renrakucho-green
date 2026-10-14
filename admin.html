@@ -750,8 +750,36 @@
                 alert("ポップアップがブロックされました。このサイトのポップアップを許可してください。");
                 return;
             }
+
+            let htmlToDisplay = invoice.invoiceHtml;
+            // お支払期限が発行日より10日後になっていない場合の補正（発行日＋10日間）
+            if (invoice.issueDate) {
+                const issueDateObj = new Date(`${invoice.issueDate}T00:00:00+09:00`);
+                if (!isNaN(issueDateObj.getTime())) {
+                    const expectedDueObj = new Date(issueDateObj);
+                    expectedDueObj.setDate(expectedDueObj.getDate() + 10);
+                    const dueYear = expectedDueObj.getFullYear();
+                    const dueMonth = expectedDueObj.getMonth() + 1;
+                    const dueDay = expectedDueObj.getDate();
+                    const correctJapaneseDueDate = `${dueYear}年${dueMonth}月${dueDay}日`;
+                    const correctDueDateKey = `${dueYear}-${String(dueMonth).padStart(2, "0")}-${String(dueDay).padStart(2, "0")}`;
+
+                    htmlToDisplay = htmlToDisplay.replace(/お支払期限：\d{4}年\d{1,2}月\d{1,2}日/g, `お支払期限：${correctJapaneseDueDate}`);
+                    htmlToDisplay = htmlToDisplay.replace(/お支払期限：\d{4}-\d{2}-\d{2}/g, `お支払期限：${correctJapaneseDueDate}`);
+
+                    if (invoice.dueDate !== correctDueDateKey && invoice.id && currentInvoiceFacilityId) {
+                        invoice.dueDate = correctDueDateKey;
+                        invoice.invoiceHtml = htmlToDisplay;
+                        updateDoc(doc(db, "facilities", currentInvoiceFacilityId, "invoiceHistory", invoice.id), {
+                            dueDate: correctDueDateKey,
+                            invoiceHtml: htmlToDisplay
+                        }).catch(e => console.warn("Failed to sync invoice dueDate", e));
+                    }
+                }
+            }
+
             invoiceWindow.document.open();
-            invoiceWindow.document.write(invoice.invoiceHtml);
+            invoiceWindow.document.write(htmlToDisplay);
             invoiceWindow.document.close();
         };
 
@@ -787,7 +815,7 @@
             }[char]));
             const issueDate = new Date();
             const dueDate = new Date(issueDate);
-            dueDate.setDate(dueDate.getDate() + 30);
+            dueDate.setDate(dueDate.getDate() + 10);
             const formatDate = date => new Intl.DateTimeFormat("ja-JP", {
                 timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit"
             }).format(date);
