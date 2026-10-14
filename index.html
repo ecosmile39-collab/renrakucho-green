@@ -991,6 +991,7 @@
         import { MAX_VIDEO_SOURCE_BYTES, VIDEO_ENCODING_PROFILES, getVideoEncodingArguments, isVideoOutputWithinLimit } from "./video-processing-policy.js";
         import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
         import { FORM_CUSTOMIZATION_SECTIONS, getFacilityProfileFieldValue, getFacilityProfileFields, normalizeFacilityFormCustomization } from "./facility-form-customization.js";
+        import { removeUndefinedFields } from "./firestore-data.js";
 
         let familyLinePublicationEnabled = true;
         let facilityLineStatusSignature = "";
@@ -3169,7 +3170,7 @@
                 
                 data.activity = (data.stNightState ? `【夜間】${data.stNightState}\n` : "") + (data.stDayActivity ? `【日中】${data.stDayActivity}` : "");
             }
-            return data;
+            return removeUndefinedFields(data);
         }
 
         window.saveToBatch = async function() {
