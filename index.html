@@ -211,6 +211,9 @@
             <label style="margin-top: 10px; font-size: 14px;">ご担当者名</label>
             <input type="text" id="inquiryContactPerson" placeholder="例：山田 太郎" style="font-size: 15px; padding: 8px;">
 
+            <label style="margin-top: 10px; font-size: 14px;">ご連絡先電話番号</label>
+            <input type="tel" id="inquiryPhone" placeholder="例：086-xxx-xxxx または 090-xxxx-xxxx" style="font-size: 15px; padding: 8px;">
+
             <label style="margin-top: 10px; font-size: 14px;">ご連絡先メールアドレス</label>
             <input type="email" id="inquiryEmail" style="font-size: 15px; padding: 8px;">
 
@@ -1962,6 +1965,7 @@
             const modal = document.getElementById("inquiryModal");
             const facilityNameInput = document.getElementById("inquiryFacilityName");
             const contactPersonInput = document.getElementById("inquiryContactPerson");
+            const phoneInput = document.getElementById("inquiryPhone");
             const emailInput = document.getElementById("inquiryEmail");
             const contentInput = document.getElementById("inquiryMessageContent");
             const msg = document.getElementById("inquiryStatusMessage");
@@ -1978,6 +1982,8 @@
                     if (snap.exists()) {
                         const data = snap.data();
                         if (data.email) emailInput.value = data.email;
+                        if (data.phone && data.phone !== "未登録") phoneInput.value = data.phone;
+                        else if (data.lineAgencyPhone) phoneInput.value = data.lineAgencyPhone;
                         if (data.lineAgencyContactPerson) contactPersonInput.value = data.lineAgencyContactPerson;
                     }
                 } catch (e) {
@@ -1994,6 +2000,7 @@
         window.submitInquiryRequest = async function() {
             const facilityName = document.getElementById("inquiryFacilityName").value.trim();
             const contactPerson = document.getElementById("inquiryContactPerson").value.trim();
+            const phone = document.getElementById("inquiryPhone").value.trim();
             const email = document.getElementById("inquiryEmail").value.trim();
             const message = document.getElementById("inquiryMessageContent").value.trim();
             const msg = document.getElementById("inquiryStatusMessage");
@@ -2005,6 +2012,10 @@
             }
             if (!contactPerson) {
                 msg.textContent = "ご担当者名を入力してください。";
+                return;
+            }
+            if (!phone) {
+                msg.textContent = "ご連絡先電話番号を入力してください。";
                 return;
             }
             if (!email || !email.includes("@")) {
@@ -2022,7 +2033,7 @@
 
             try {
                 const sendInquiry = httpsCallable(functions, "sendFacilityInquiry");
-                await sendInquiry({ facilityName, contactPerson, email, message });
+                await sendInquiry({ facilityName, contactPerson, phone, email, message });
                 closeInquiryModal();
                 alert(`🎉 お問合せを送信しました。\n\n販売元（株式会社えこすまいる：ecosmile39@gmail.com）へ送信されました。\nご登録メールアドレス（${email}）へ確認メールをお送りしましたのでご確認ください。`);
             } catch (err) {

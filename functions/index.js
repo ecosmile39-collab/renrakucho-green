@@ -1403,6 +1403,7 @@ exports.sendFacilityInquiry = onCall({
 
     const facilityName = typeof request.data?.facilityName === "string" ? request.data.facilityName.trim() : "";
     const contactPerson = typeof request.data?.contactPerson === "string" ? request.data.contactPerson.trim() : "";
+    const phone = typeof request.data?.phone === "string" ? request.data.phone.trim() : "";
     const email = typeof request.data?.email === "string" ? request.data.email.trim() : "";
     const message = typeof request.data?.message === "string" ? request.data.message.trim() : "";
 
@@ -1411,6 +1412,9 @@ exports.sendFacilityInquiry = onCall({
     }
     if (!contactPerson || contactPerson.length > 100) {
         throw new HttpsError("invalid-argument", "ご担当者名を入力してください。");
+    }
+    if (!phone || phone.length > 50) {
+        throw new HttpsError("invalid-argument", "ご連絡先電話番号を入力してください。");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         throw new HttpsError("invalid-argument", "正しいメールアドレスを入力してください。");
@@ -1422,8 +1426,8 @@ exports.sendFacilityInquiry = onCall({
     const gmailUser = INVOICE_GMAIL_USER.value();
     const destinationEmail = "ecosmile39@gmail.com";
 
-    const adminMailText = `施設よりお問合せが届きました。\n\n施設名：${facilityName}\n施設ID：${facilityId}\n担当者名：${contactPerson} 様\n返信先メールアドレス：${email}\n受付日時：${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n【お問合せ内容】\n${message}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
-    const facilityMailText = `${facilityName}\n${contactPerson} 様\n\nこのたびは「えこすまいる連絡帳」へお問合せいただき、誠にありがとうございます。\n以下の内容でお問合せを受け付けいたしました。\n内容を確認の上、担当者より順次ご返信・ご連絡を差し上げます。\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n【お問合せ内容】\n施設名：${facilityName}\nご担当者名：${contactPerson} 様\nメールアドレス：${email}\n\n内容：\n${message}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n今しばらくお待ちくださいますようお願い申し上げます。\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nメール：${destinationEmail}`;
+    const adminMailText = `施設よりお問合せが届きました。\n\n施設名：${facilityName}\n施設ID：${facilityId}\n担当者名：${contactPerson} 様\n電話番号：${phone}\n返信先メールアドレス：${email}\n受付日時：${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n【お問合せ内容】\n${message}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+    const facilityMailText = `${facilityName}\n${contactPerson} 様\n\nこのたびは「えこすまいる連絡帳」へお問合せいただき、誠にありがとうございます。\n以下の内容でお問合せを受け付けいたしました。\n内容を確認の上、担当者より順次ご返信・ご連絡を差し上げます。\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n【お問合せ内容】\n施設名：${facilityName}\nご担当者名：${contactPerson} 様\nお電話番号：${phone}\nメールアドレス：${email}\n\n内容：\n${message}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n今しばらくお待ちくださいますようお願い申し上げます。\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nメール：${destinationEmail}`;
 
     try {
         const transporter = nodemailer.createTransport({
@@ -1454,6 +1458,7 @@ exports.sendFacilityInquiry = onCall({
             facilityId,
             facilityName,
             contactPerson,
+            phone,
             email,
             message,
             createdAt: FieldValue.serverTimestamp()
