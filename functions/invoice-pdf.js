@@ -30,6 +30,7 @@ function generateInvoicePdf({
     itemTitle,
     serviceTypes = [],
     additionalServiceSubtotal = 0,
+    oneTimeAdjustment = null,
     subtotal,
     tax,
     total,
@@ -163,6 +164,9 @@ function generateInvoicePdf({
             drawRow(`${itemTitle}（${billingPeriod}分）`, `¥ ${(subtotal - additionalServiceSubtotal).toLocaleString()}`);
             if (additionalServiceSubtotal > 0) {
                 drawRow("追加サービス利用料", `¥ ${additionalServiceSubtotal.toLocaleString()}`);
+            }
+            if (oneTimeAdjustment) {
+                drawRow(oneTimeAdjustment.description, `¥ ${oneTimeAdjustment.amount.toLocaleString()}`);
             }
             drawRow("消費税（10%）", `¥ ${tax.toLocaleString()}`);
             doc.rect(colDescX, rowY, contentWidth, 28).fillAndStroke("#f8f9fa", "#2b8a3e");

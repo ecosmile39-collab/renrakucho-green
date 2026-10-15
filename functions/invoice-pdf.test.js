@@ -32,9 +32,14 @@ test("generateInvoicePdf includes selected services and the additional-service c
         itemTitle: "システム利用料",
         serviceTypes: ["デイサービス", "生活介護"],
         additionalServiceSubtotal: 1000,
-        subtotal: 6000,
-        tax: 600,
-        total: 6600,
+        oneTimeAdjustment: {
+            id: "field-change-1",
+            description: "入力項目変更手数料",
+            amount: 3000
+        },
+        subtotal: 9000,
+        tax: 900,
+        total: 9900,
         issuerEmail: "ecosmile39@gmail.com",
         note: "ご利用ありがとうございます。"
     });

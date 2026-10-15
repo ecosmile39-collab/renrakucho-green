@@ -19,6 +19,10 @@ const {
     isShortStayService,
     validateFacilityServiceTypes
 } = require("./service-types");
+const {
+    calculateInvoicePricing,
+    normalizeOneTimeInvoiceAdjustment
+} = require("./one-time-invoice-adjustment");
 const { generateInvoicePdf } = require("./invoice-pdf");
 const { daysUntilTrialEnds, isTrialReminderDue } = require("./trial-reminder");
 
@@ -267,6 +271,7 @@ exports.registerTrialFacility = onCall({
     });
 
     // トライアル申込施設への御礼とご利用案内のメールを即時送信
+    let emailResult = null;
     try {
         const gmailUser = INVOICE_GMAIL_USER.value();
         const transporter = nodemailer.createTransport({
@@ -1353,13 +1358,16 @@ function formatJapaneseDateKey(value) {
     return `${year}年${month}月${day}日`;
 }
 
-function buildInvoiceItemRows({ serviceTypes, itemTitle, billingPeriod, baseSubtotal, additionalServiceSubtotal, tax, total }) {
+function buildInvoiceItemRows({ serviceTypes, itemTitle, billingPeriod, baseSubtotal, additionalServiceSubtotal, oneTimeAdjustment, tax, total }) {
     const rows = [
         `<tr><td style="border:1px solid #adb5bd;padding:10px">利用サービス</td><td style="border:1px solid #adb5bd;padding:10px">${escapeHtml(serviceTypes.join("、"))}</td></tr>`,
         `<tr><td style="border:1px solid #adb5bd;padding:10px">${escapeHtml(itemTitle)}（${billingPeriod}分）</td><td style="border:1px solid #adb5bd;padding:10px">${baseSubtotal.toLocaleString("ja-JP")}円</td></tr>`
     ];
     if (additionalServiceSubtotal > 0) {
         rows.push(`<tr><td style="border:1px solid #adb5bd;padding:10px">追加サービス利用料</td><td style="border:1px solid #adb5bd;padding:10px">${additionalServiceSubtotal.toLocaleString("ja-JP")}円</td></tr>`);
+    }
+    if (oneTimeAdjustment) {
+        rows.push(`<tr><td style="border:1px solid #adb5bd;padding:10px">${escapeHtml(oneTimeAdjustment.description)}</td><td style="border:1px solid #adb5bd;padding:10px">${oneTimeAdjustment.amount.toLocaleString("ja-JP")}円</td></tr>`);
     }
     rows.push(
         `<tr><td style="border:1px solid #adb5bd;padding:10px">消費税（10%）</td><td style="border:1px solid #adb5bd;padding:10px">${tax.toLocaleString("ja-JP")}円</td></tr>`,
@@ -1368,14 +1376,30 @@ function buildInvoiceItemRows({ serviceTypes, itemTitle, billingPeriod, baseSubt
     return rows.join("");
 }
 
-function buildInvoiceTextItems({ serviceTypes, itemTitle, billingPeriod, baseSubtotal, additionalServiceSubtotal, tax, total }) {
+function buildInvoiceTextItems({ serviceTypes, itemTitle, billingPeriod, baseSubtotal, additionalServiceSubtotal, oneTimeAdjustment, tax, total }) {
     return [
         `利用サービス：${serviceTypes.join("、")}`,
         `${itemTitle}${billingPeriod ? `（${billingPeriod}分）` : ""}：${baseSubtotal.toLocaleString("ja-JP")}円`,
         ...(additionalServiceSubtotal > 0 ? [`追加サービス利用料：${additionalServiceSubtotal.toLocaleString("ja-JP")}円`] : []),
+        ...(oneTimeAdjustment ? [`${oneTimeAdjustment.description}：${oneTimeAdjustment.amount.toLocaleString("ja-JP")}円`] : []),
         `消費税（10%）：${tax.toLocaleString("ja-JP")}円`,
         `税込合計：${total.toLocaleString("ja-JP")}円`
     ].join("\n");
+}
+
+async function finalizeOneTimeInvoiceAdjustment(db, facilityRef, adjustment) {
+    if (!adjustment) return;
+    await db.runTransaction(async transaction => {
+        const facilitySnapshot = await transaction.get(facilityRef);
+        if (!facilitySnapshot.exists) return;
+        const facility = facilitySnapshot.data();
+        const pendingAdjustment = normalizeOneTimeInvoiceAdjustment(facility.pendingInvoiceAdjustment);
+        if (pendingAdjustment?.id !== adjustment.id) return;
+        transaction.set(facilityRef, {
+            pendingInvoiceAdjustment: FieldValue.delete(),
+            lastConsumedInvoiceAdjustmentId: adjustment.id
+        }, { merge: true });
+    });
 }
 
 exports.requestLineAgencySetup = onCall({
@@ -1862,7 +1886,13 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             throw new HttpsError("failed-precondition", "施設が利用中ではないため、月額請求書を発行できません。");
         }
         const serviceTypes = getFacilityBillingServiceTypes(currentFacility);
-        const pricing = calculateServicePricing(baseSubtotal, serviceTypes);
+        const pendingAdjustment = normalizeOneTimeInvoiceAdjustment(currentFacility.pendingInvoiceAdjustment);
+        const alreadyConsumed = Boolean(pendingAdjustment && pendingAdjustment.id === currentFacility.lastConsumedInvoiceAdjustmentId);
+        const oneTimeAdjustment = alreadyConsumed ? null : pendingAdjustment;
+        if (alreadyConsumed) {
+            transaction.set(facilityRef, { pendingInvoiceAdjustment: FieldValue.delete() }, { merge: true });
+        }
+        const pricing = calculateInvoicePricing(baseSubtotal, serviceTypes, oneTimeAdjustment);
         if (invoiceSnapshot.exists) {
             const previousInvoice = invoiceSnapshot.data();
             if (previousInvoice.status === "sent") {
@@ -1888,6 +1918,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             dueDate,
             billingPeriodStart,
             billingPeriodEnd,
+            oneTimeAdjustment,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
             subtotal: pricing.subtotal,
             tax: pricing.tax,
@@ -1908,7 +1939,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         throw new HttpsError("internal", "請求書の発行を開始できませんでした。");
     }
 
-    const { serviceTypes, additionalServiceSubtotal, subtotal, tax, total } = reservation;
+    const { serviceTypes, additionalServiceSubtotal, oneTimeAdjustment, subtotal, tax, total } = reservation;
     const formattedPeriod = `${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}`;
     const amountLabel = isInitialInvoice ? "初回システム利用料" : "システム利用料";
     const closing = isInitialInvoice
@@ -1920,6 +1951,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         billingPeriod: formattedPeriod,
         baseSubtotal,
         additionalServiceSubtotal,
+        oneTimeAdjustment,
         tax,
         total
     });
@@ -1929,6 +1961,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         billingPeriod: formattedPeriod,
         baseSubtotal,
         additionalServiceSubtotal,
+        oneTimeAdjustment,
         tax,
         total
     });
@@ -1954,6 +1987,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             itemTitle: amountLabel,
             serviceTypes,
             additionalServiceSubtotal,
+            oneTimeAdjustment,
             subtotal,
             tax,
             total,
@@ -1993,6 +2027,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
                 billingPeriodEnd,
                 serviceTypes,
                 additionalServiceSubtotal,
+                oneTimeAdjustment,
                 subtotal,
                 tax,
                 total,
@@ -2000,6 +2035,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
                 messageId: emailResult.messageId
             })
         ]);
+        await finalizeOneTimeInvoiceAdjustment(db, facilityRef, oneTimeAdjustment);
         if (isInitialInvoice) {
             await facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true });
         }
@@ -2012,6 +2048,8 @@ exports.issueFacilityInvoiceForAdmin = onCall({
                 messageId: emailResult.messageId,
                 sentAt: FieldValue.serverTimestamp()
             }, { merge: true }).catch(logError => logger.error("Failed to finalize manually sent invoice", { facilityId, error: logError }));
+            await finalizeOneTimeInvoiceAdjustment(db, facilityRef, oneTimeAdjustment)
+                .catch(logError => logger.error("Failed to clear sent one-time invoice adjustment", { facilityId, error: logError }));
             if (isInitialInvoice) {
                 await facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true })
                     .catch(logError => logger.error("Failed to update initial invoice status", { facilityId, error: logError }));
@@ -2052,7 +2090,8 @@ exports.sendTestInvoiceEmail = onCall({
     const facility = facilitySnapshot.data();
     const facilityName = facility.facilityName || facilityId;
     const serviceTypes = getFacilityBillingServiceTypes(facility);
-    const pricing = calculateServicePricing(5000, serviceTypes);
+    const oneTimeAdjustment = normalizeOneTimeInvoiceAdjustment(facility.pendingInvoiceAdjustment);
+    const pricing = calculateInvoicePricing(5000, serviceTypes, oneTimeAdjustment);
     const now = new Date();
     const dateParts = getTokyoDateParts(now);
     const issueDate = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
@@ -2083,6 +2122,7 @@ exports.sendTestInvoiceEmail = onCall({
             billingPeriod: billingMonth,
             baseSubtotal: 5000,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            oneTimeAdjustment,
             tax: pricing.tax,
             total: pricing.total
         })}</tbody></table>
@@ -2098,6 +2138,7 @@ exports.sendTestInvoiceEmail = onCall({
         billingPeriod: billingMonth,
         baseSubtotal: 5000,
         additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+        oneTimeAdjustment,
         tax: pricing.tax,
         total: pricing.total
     });
@@ -2113,6 +2154,7 @@ exports.sendTestInvoiceEmail = onCall({
             itemTitle: "システム利用料",
             serviceTypes,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            oneTimeAdjustment,
             subtotal: pricing.subtotal,
             tax: pricing.tax,
             total: pricing.total,
@@ -2152,6 +2194,7 @@ exports.sendTestInvoiceEmail = onCall({
             billingMonth,
             serviceTypes,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            oneTimeAdjustment,
             subtotal: pricing.subtotal,
             tax: pricing.tax,
             total: pricing.total,
@@ -2221,41 +2264,56 @@ exports.sendMonthlyInvoices = onSchedule({
 
         const historyRef = db.collection("facilities").doc(facilityId)
             .collection("invoiceHistory").doc(`AUTO-${period.startDate.replace(/-/g, "")}`);
-        const serviceTypes = getFacilityBillingServiceTypes(facility);
-        const pricing = calculateServicePricing(5000, serviceTypes);
-        const reservedForSending = await db.runTransaction(async transaction => {
-            const historySnapshot = await transaction.get(historyRef);
+        const facilityRef = facilityDocument.ref;
+        const reservation = await db.runTransaction(async transaction => {
+            const [currentFacilitySnapshot, historySnapshot] = await Promise.all([
+                transaction.get(facilityRef),
+                transaction.get(historyRef)
+            ]);
+            if (!currentFacilitySnapshot.exists) return null;
+            const currentFacility = currentFacilitySnapshot.data();
+            if (currentFacility.status !== "active" || currentFacility.subscriptionStatus === "trial") return null;
             if (historySnapshot.exists) {
                 const history = historySnapshot.data();
-                if (history.status === "sent") return false;
+                if (history.status === "sent") return null;
                 const attemptStartedAt = history.attemptStartedAt && typeof history.attemptStartedAt.toDate === "function"
                     ? history.attemptStartedAt.toDate().getTime()
                     : 0;
-                if (history.status === "sending" && Date.now() - attemptStartedAt < 60 * 60 * 1000) return false;
+                if (history.status === "sending" && Date.now() - attemptStartedAt < 60 * 60 * 1000) return null;
             }
+            const serviceTypes = getFacilityBillingServiceTypes(currentFacility);
+            const pendingAdjustment = normalizeOneTimeInvoiceAdjustment(currentFacility.pendingInvoiceAdjustment);
+            const alreadyConsumed = Boolean(pendingAdjustment && pendingAdjustment.id === currentFacility.lastConsumedInvoiceAdjustmentId);
+            const oneTimeAdjustment = alreadyConsumed ? null : pendingAdjustment;
+            if (alreadyConsumed) {
+                transaction.set(facilityRef, { pendingInvoiceAdjustment: FieldValue.delete() }, { merge: true });
+            }
+            const pricing = calculateInvoicePricing(5000, serviceTypes, oneTimeAdjustment);
             transaction.set(historyRef, {
                 test: false,
                 status: "sending",
                 facilityId,
-                facilityName,
+                facilityName: currentFacility.facilityName || facilityId,
                 serviceTypes,
                 recipient,
                 issueDate,
                 dueDate: invoiceDueDate,
                 billingPeriodStart: period.startDate,
                 billingPeriodEnd: period.endDate,
+                oneTimeAdjustment,
                 additionalServiceSubtotal: pricing.additionalServiceSubtotal,
                 subtotal: pricing.subtotal,
                 tax: pricing.tax,
                 total: pricing.total,
                 attemptStartedAt: FieldValue.serverTimestamp()
             }, { merge: true });
-            return true;
+            return { serviceTypes, pricing, oneTimeAdjustment };
         });
-        if (!reservedForSending) {
+        if (!reservation) {
             skippedCount++;
             continue;
         }
+        const { serviceTypes, pricing, oneTimeAdjustment } = reservation;
 
         const invoiceNumber = `INV-${period.startDate.replace(/-/g, "")}-${facilityId.toUpperCase()}`;
         const formattedPeriod = `${formatJapaneseDateKey(period.startDate)}〜${formatJapaneseDateKey(period.endDate)}`;
@@ -2265,6 +2323,7 @@ exports.sendMonthlyInvoices = onSchedule({
             billingPeriod: formattedPeriod,
             baseSubtotal: 5000,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            oneTimeAdjustment,
             tax: pricing.tax,
             total: pricing.total
         });
@@ -2274,6 +2333,7 @@ exports.sendMonthlyInvoices = onSchedule({
             billingPeriod: formattedPeriod,
             baseSubtotal: 5000,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            oneTimeAdjustment,
             tax: pricing.tax,
             total: pricing.total
         });
@@ -2290,6 +2350,7 @@ exports.sendMonthlyInvoices = onSchedule({
         </body></html>`;
         const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(invoiceDueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
 
+        let emailResult = null;
         try {
             const pdfBuffer = await generateInvoicePdf({
                 facilityName,
@@ -2300,13 +2361,14 @@ exports.sendMonthlyInvoices = onSchedule({
                 itemTitle: "システム利用料",
                 serviceTypes,
                 additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+                oneTimeAdjustment,
                 subtotal: pricing.subtotal,
                 tax: pricing.tax,
                 total: pricing.total,
                 issuerEmail: gmailUser,
                 note: "平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。"
             });
-            const result = await transporter.sendMail({
+            emailResult = await transporter.sendMail({
                 from: { name: "株式会社えこすまいる", address: gmailUser },
                 to: recipient,
                 subject: `【請求書】${facilityName} 御中 / ${invoiceNumber}`,
@@ -2323,9 +2385,10 @@ exports.sendMonthlyInvoices = onSchedule({
                 invoiceNumber,
                 billingMonth: formattedPeriod,
                 invoiceHtml: archivedHtml,
-                messageId: result.messageId,
+                messageId: emailResult.messageId,
                 sentAt: FieldValue.serverTimestamp()
             }, { merge: true });
+            await finalizeOneTimeInvoiceAdjustment(db, facilityRef, oneTimeAdjustment);
             await db.collection("invoiceEmailLogs").add({
                 test: false,
                 facilityId,
@@ -2338,14 +2401,30 @@ exports.sendMonthlyInvoices = onSchedule({
                 billingPeriodEnd: period.endDate,
                 serviceTypes,
                 additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+                oneTimeAdjustment,
                 subtotal: pricing.subtotal,
                 tax: pricing.tax,
                 total: pricing.total,
                 sentAt: FieldValue.serverTimestamp(),
-                messageId: result.messageId
+                messageId: emailResult.messageId
             }).catch(error => logger.warn("Invoice email sent but audit logging failed", { facilityId, error }));
             sentCount++;
         } catch (error) {
+            if (emailResult) {
+                await historyRef.set({
+                    status: "sent",
+                    invoiceNumber,
+                    billingMonth: formattedPeriod,
+                    invoiceHtml: html,
+                    messageId: emailResult.messageId,
+                    sentAt: FieldValue.serverTimestamp()
+                }, { merge: true }).catch(logError => logger.error("Failed to finalize sent monthly invoice", { facilityId, error: logError }));
+                await finalizeOneTimeInvoiceAdjustment(db, facilityRef, oneTimeAdjustment)
+                    .catch(logError => logger.error("Failed to clear sent one-time invoice adjustment", { facilityId, error: logError }));
+                logger.error("Monthly invoice email sent but finalization failed", { facilityId, recipient, error });
+                sentCount++;
+                continue;
+            }
             failedCount++;
             await historyRef.set({
                 status: "failed",

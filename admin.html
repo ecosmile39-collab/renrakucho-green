@@ -184,7 +184,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { initializeAuth, browserLocalPersistence, browserSessionPersistence, signInWithCustomToken, setPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-        import { initializeFirestore, collection, getDocs, getDocsFromServer, getDoc, doc, documentId, updateDoc, deleteDoc, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { initializeFirestore, collection, getDocs, getDocsFromServer, getDoc, doc, documentId, updateDoc, deleteDoc, addDoc, query, where, orderBy, deleteField } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import {
             ALL_SERVICE_TYPE_VALUES,
@@ -257,6 +257,25 @@
 
         function escapeHtml(value) {
             return String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+        }
+
+        function calculateInvoicePricingWithAdjustment(baseSubtotal, serviceTypes, adjustment) {
+            const pricing = calculateServicePricing(baseSubtotal, serviceTypes);
+            if (adjustment == null) return { ...pricing, oneTimeAdjustment: null };
+            if (!adjustment || typeof adjustment.description !== "string" ||
+                !adjustment.description.trim() || adjustment.description.trim().length > 80 ||
+                !Number.isSafeInteger(adjustment.amount) || adjustment.amount < 1 || adjustment.amount > 1000000) {
+                throw new Error("登録済みの一度限りの追加請求設定が正しくありません。");
+            }
+            const subtotal = pricing.subtotal + adjustment.amount;
+            const tax = Math.round(subtotal * 0.1);
+            return {
+                ...pricing,
+                subtotal,
+                tax,
+                total: subtotal + tax,
+                oneTimeAdjustment: { ...adjustment, description: adjustment.description.trim() }
+            };
         }
 
         window.authenticateAdmin = async function() {
@@ -604,6 +623,9 @@
                 let invoice = latestInvoiceByFacility.get(facility.id);
                 let invoiceSent = Boolean(invoice);
                 let invoicePaid = invoice?.paymentStatus === "paid";
+                const invoiceAdjustment = facility.pendingInvoiceAdjustment && typeof facility.pendingInvoiceAdjustment === "object"
+                    ? facility.pendingInvoiceAdjustment
+                    : null;
                 const commonLineEnabled = facility.commonLineEnabled !== false;
                 const dedicatedLineConfigured = facility.dedicatedLineConfigured === true;
                 const lineServiceEnabled = facility.lineServiceEnabled !== false;
@@ -666,6 +688,19 @@
                         <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 8px 0;">${SERVICE_TYPES.map(service => `<label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; font-size: 12px;"><input type="checkbox" data-facility-billing-service-id="${encodeURIComponent(facility.id)}" value="${service.value}" ${billingServiceTypes.includes(service.value) ? "checked" : ""} style="width: auto; margin: 0;">${service.label}</label>`).join("")}</div>
                         <p id="facilityBillingPrice-${encodeURIComponent(facility.id)}" style="margin: 6px 0; font-size: 12px; font-weight: bold;">選択中：${billingServiceTypes.length}サービス／${billingPrice.total.toLocaleString("ja-JP")}円（税込）</p>
                         <button type="button" style="background: #087f5b;" onclick="saveAdminFacilityBillingServiceTypes('${encodeURIComponent(facility.id)}', this)">請求対象サービスを保存</button>
+                    </details>
+                    <details style="margin-top: 8px; padding: 8px; background: #fff4e6; border: 1px solid #ffa94d; border-radius: 5px;">
+                        <summary style="cursor: pointer; font-size: 13px; font-weight: bold;">一度限りの追加請求${invoiceAdjustment ? `（設定中：${escapeHtml(invoiceAdjustment.description || "項目名未設定")}／税抜${Number(invoiceAdjustment.amount || 0).toLocaleString("ja-JP")}円）` : ""}</summary>
+                        <p style="margin: 6px 0; font-size: 12px; color: #495057;">編集手数料などを設定できます。金額は税抜で、消費税10%を加えて請求します。次に発行される請求書へ一度だけ加算され、請求書送信後に設定が解除されます。通常請求書がすでに発行済みの場合は、次回の自動請求に加算されます。</p>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 8px 0;">
+                            <label style="display: grid; gap: 4px; margin: 0; font-size: 12px;">請求項目名
+                                <input id="invoiceAdjustmentDescription-${encodeURIComponent(facility.id)}" type="text" maxlength="80" value="${escapeHtml(invoiceAdjustment?.description || "")}" placeholder="例：入力項目変更手数料" style="width: 240px; padding: 6px;">
+                            </label>
+                            <label style="display: grid; gap: 4px; margin: 0; font-size: 12px;">金額（税抜・円）
+                                <input id="invoiceAdjustmentAmount-${encodeURIComponent(facility.id)}" type="number" min="1" max="1000000" step="1" value="${escapeHtml(invoiceAdjustment?.amount ?? "")}" placeholder="例：3000" style="width: 140px; padding: 6px;">
+                            </label>
+                            <button type="button" style="background: #c67700;" onclick="saveFacilityInvoiceAdjustment('${encodeURIComponent(facility.id)}', this)">追加請求を保存</button>
+                        </div>
                     </details>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                         <button type="button" style="background: #7048e8;" onclick="openFacilityCustomization('${encodeURIComponent(facility.id)}')">🎛️ カスタマイズ</button>
@@ -1027,10 +1062,17 @@
             }
             const isInitialInvoice = facility.subscriptionStatus === "trial";
             const billingServiceTypes = getFacilityBillingServiceTypes(facility);
-            const pricing = calculateServicePricing(isInitialInvoice ? 4000 : 5000, billingServiceTypes);
+            const pricing = calculateInvoicePricingWithAdjustment(
+                isInitialInvoice ? 4000 : 5000,
+                billingServiceTypes,
+                facility.pendingInvoiceAdjustment
+            );
             const invoiceKind = isInitialInvoice ? "初回請求書" : "月額請求書";
             const recipient = facility.email || "登録メールアドレス";
-            if (!confirm(`${facility.facilityName || facilityId} に${invoiceKind}（${pricing.total.toLocaleString("ja-JP")}円・税込）を発行し、${recipient}へ実際の請求書メールを送信します。\n請求対象サービス：${billingServiceTypes.join("、")}\n同じ対象期間の請求書が発行済みの場合は重複発行されません。続けますか？`)) return;
+            const adjustmentNotice = pricing.oneTimeAdjustment
+                ? `\n一度限りの追加請求：${pricing.oneTimeAdjustment.description} ${pricing.oneTimeAdjustment.amount.toLocaleString("ja-JP")}円（税抜）`
+                : "";
+            if (!confirm(`${facility.facilityName || facilityId} に${invoiceKind}（${pricing.total.toLocaleString("ja-JP")}円・税込）を発行し、${recipient}へ実際の請求書メールを送信します。\n請求対象サービス：${billingServiceTypes.join("、")}${adjustmentNotice}\n同じ対象期間の請求書が発行済みの場合は重複発行されず、追加請求は次回の自動請求に繰り越されます。続けますか？`)) return;
 
             const originalText = button.textContent;
             button.disabled = true;
@@ -1040,7 +1082,54 @@
                 alert(`請求書を発行し、メールを送信しました。\n宛先：${result.data.recipient}\n請求書番号：${result.data.invoiceNumber}`);
                 await loadFacilities();
             } catch (error) {
-                alert("請求書を発行できませんでした: " + (error.message || error));
+                const message = String(error.message || error);
+                alert(message.includes("すでに発行済み")
+                    ? "この期間の請求書はすでに発行済みです。登録した一度限りの追加請求は保持され、次回の自動請求書に加算されます。"
+                    : "請求書を発行できませんでした: " + message);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        };
+
+        window.saveFacilityInvoiceAdjustment = async function(encodedFacilityId, button) {
+            const facilityId = decodeURIComponent(encodedFacilityId);
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) {
+                alert("施設情報が見つかりません。施設一覧を更新してください。");
+                return;
+            }
+            const key = encodeURIComponent(facilityId);
+            const description = document.getElementById(`invoiceAdjustmentDescription-${key}`).value.trim();
+            const amountText = document.getElementById(`invoiceAdjustmentAmount-${key}`).value.trim();
+            let update;
+            if (!description && !amountText) {
+                update = { pendingInvoiceAdjustment: deleteField() };
+            } else {
+                const amount = Number(amountText);
+                if (!description || description.length > 80 || !Number.isSafeInteger(amount) || amount < 1 || amount > 1000000) {
+                    alert("請求項目名（80文字以内）と、税抜1円以上1,000,000円以下の整数を入力してください。");
+                    return;
+                }
+                update = {
+                    pendingInvoiceAdjustment: {
+                        id: `fee-${crypto.randomUUID()}`,
+                        description,
+                        amount
+                    }
+                };
+            }
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = "保存中...";
+            try {
+                await updateDoc(doc(db, "facilities", facilityId), update);
+                await loadFacilities();
+                document.getElementById("facilityError").textContent = description
+                    ? `${facility.facilityName || facilityId} の一度限りの追加請求を保存しました。`
+                    : `${facility.facilityName || facilityId} の未請求の追加請求を取り消しました。`;
+            } catch (error) {
+                alert("追加請求を保存できませんでした: " + (error.message || error));
             } finally {
                 button.disabled = false;
                 button.textContent = originalText;
@@ -1053,7 +1142,7 @@
             if (!facility) return;
 
             const serviceTypes = getFacilityBillingServiceTypes(facility);
-            const pricing = calculateServicePricing(5000, serviceTypes);
+            const pricing = calculateInvoicePricingWithAdjustment(5000, serviceTypes, facility.pendingInvoiceAdjustment);
             const escapeInvoiceText = value => String(value || "").replace(/[&<>\"']/g, char => ({
                 "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
             }[char]));
@@ -1073,6 +1162,7 @@
                 `<tr><td>利用サービス</td><td>${escapeInvoiceText(serviceTypes.join("、"))}</td></tr>`,
                 `<tr><td>システム利用料（${escapeInvoiceText(billingMonth)}分）</td><td>5,000円</td></tr>`,
                 ...(pricing.additionalServiceSubtotal > 0 ? [`<tr><td>追加サービス利用料</td><td>${pricing.additionalServiceSubtotal.toLocaleString("ja-JP")}円</td></tr>`] : []),
+                ...(pricing.oneTimeAdjustment ? [`<tr><td>${escapeInvoiceText(pricing.oneTimeAdjustment.description)}</td><td>${pricing.oneTimeAdjustment.amount.toLocaleString("ja-JP")}円</td></tr>`] : []),
                 `<tr><td>消費税（10%）</td><td>${pricing.tax.toLocaleString("ja-JP")}円</td></tr>`,
                 `<tr><th>合計</th><th>${pricing.total.toLocaleString("ja-JP")}円</th></tr>`
             ].join("");

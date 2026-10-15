@@ -5,6 +5,7 @@ const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const vm = require("node:vm");
+const DELETE_FIELD = Symbol("deleteField");
 
 function loadHandlers(entries) {
     const documents = new Map(Object.entries(entries));
@@ -20,8 +21,22 @@ function loadHandlers(entries) {
                 return { exists: documents.has(referencePath), id: this.id, ref: this,
                     data: () => documents.get(referencePath) };
             },
-            async update(fields) { documents.set(referencePath, { ...documents.get(referencePath), ...fields }); },
-            async set(fields, options) { documents.set(referencePath, options?.merge ? { ...documents.get(referencePath), ...fields } : fields); },
+            async update(fields) {
+                const next = { ...documents.get(referencePath) };
+                for (const [key, value] of Object.entries(fields)) {
+                    if (value === DELETE_FIELD) delete next[key];
+                    else next[key] = value;
+                }
+                documents.set(referencePath, next);
+            },
+            async set(fields, options) {
+                const next = options?.merge ? { ...documents.get(referencePath) } : {};
+                for (const [key, value] of Object.entries(fields)) {
+                    if (value === DELETE_FIELD) delete next[key];
+                    else next[key] = value;
+                }
+                documents.set(referencePath, next);
+            },
             async delete() { documents.delete(referencePath); }
         };
     }
@@ -58,7 +73,7 @@ function loadHandlers(entries) {
                 get: reference => reference.get(),
                 set: (reference, fields, options) => reference.set(fields, options),
                 delete: reference => documents.delete(reference.path)
-            }) }), FieldValue: { serverTimestamp: () => "timestamp" }
+            }) }), FieldValue: { serverTimestamp: () => "timestamp", delete: () => DELETE_FIELD }
         };
         if (name === "firebase-admin/storage") return {};
         if (name === "firebase-functions/v2/scheduler") return { onSchedule: (...args) => args.at(-1) };
@@ -494,6 +509,35 @@ test("manual invoices include selected services and the matching additional serv
     assert.match(context.sentEmails[0].html, /6,600円/);
 });
 
+test("manual invoice charges a saved one-time adjustment once and clears it after sending", async () => {
+    const activationDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000);
+    const adjustment = { id: "fee-change-1", description: "入力項目変更手数料", amount: 3000 };
+    const context = loadHandlers({
+        "facilities/facility-fee": {
+            facilityName: "Facility Fee", email: "facility@example.invalid", status: "active",
+            subscriptionStatus: "active", createdAt: activationDate.toISOString(),
+            pendingInvoiceAdjustment: adjustment
+        }
+    });
+
+    await context.handlers.issueFacilityInvoiceForAdmin({
+        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        data: { facilityId: "facility-fee" }
+    });
+    const invoice = [...context.documents.entries()].find(([path]) =>
+        path.startsWith("facilities/facility-fee/invoiceHistory/AUTO-"))[1];
+    const facility = context.documents.get("facilities/facility-fee");
+
+    assert.deepEqual(invoice.oneTimeAdjustment, adjustment);
+    assert.equal(invoice.subtotal, 8000);
+    assert.equal(invoice.tax, 800);
+    assert.equal(invoice.total, 8800);
+    assert.match(context.sentEmails[0].html, /入力項目変更手数料/);
+    assert.match(context.sentEmails[0].text, /入力項目変更手数料：3,000円/);
+    assert.equal(facility.pendingInvoiceAdjustment, undefined);
+    assert.equal(facility.lastConsumedInvoiceAdjustmentId, adjustment.id);
+});
+
 test("automatic monthly invoices include the saved services and surcharge", async () => {
     const activationDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000);
     const context = loadHandlers({
@@ -514,6 +558,31 @@ test("automatic monthly invoices include the saved services and surcharge", asyn
     assert.equal(invoice.total, 7700);
     assert.match(context.sentEmails[0].html, /デイサービス、児童発達支援、生活介護/);
     assert.match(context.sentEmails[0].html, /7,700円/);
+});
+
+test("automatic monthly invoice includes a pending one-time adjustment and consumes it after sending", async () => {
+    const activationDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000);
+    const adjustment = { id: "fee-change-2", description: "個別帳票作成料", amount: 2500 };
+    const context = loadHandlers({
+        "facilities/facility-auto-fee": {
+            facilityName: "Facility Auto Fee", email: "facility@example.invalid", status: "active",
+            subscriptionStatus: "active", createdAt: activationDate.toISOString(),
+            pendingInvoiceAdjustment: adjustment
+        }
+    });
+
+    await context.handlers.sendMonthlyInvoices();
+    const invoice = [...context.documents.entries()].find(([path]) =>
+        path.startsWith("facilities/facility-auto-fee/invoiceHistory/AUTO-"))[1];
+    const facility = context.documents.get("facilities/facility-auto-fee");
+
+    assert.deepEqual(invoice.oneTimeAdjustment, adjustment);
+    assert.equal(invoice.subtotal, 7500);
+    assert.equal(invoice.tax, 750);
+    assert.equal(invoice.total, 8250);
+    assert.match(context.sentEmails[0].html, /個別帳票作成料/);
+    assert.equal(facility.pendingInvoiceAdjustment, undefined);
+    assert.equal(facility.lastConsumedInvoiceAdjustmentId, adjustment.id);
 });
 
 test("billing service settings are saved independently from input service settings", async () => {
