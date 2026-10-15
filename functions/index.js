@@ -276,6 +276,7 @@ exports.registerTrialFacility = onCall({
         const subject = `【えこすまいる連絡帳】無料お試し登録ありがとうございます（${facilityName} 御中）`;
         const text = `${facilityName} 御中\n\nこのたびは「えこすまいる連絡帳」の無料お試し（トライアル）にお申し込みいただき、誠にありがとうございます。\n心より御礼申し上げます。\n\n本日から7日間の無料お試し期間がスタートいたしました。\n実際の業務に合わせて、連絡帳の作成やLINE連携の利便性をぜひご体験ください。\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n■ ご登録内容・お試し期間\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n施設名（ログインID）：${facilityName}\n無料お試し終了日　　：${trialEndDateFormatted}\nシステムログインURL ：https://renrakucho-green.vercel.app/login.html\n\n※ ログイン時はご登録いただいた「施設名」と「パスワード」を使用します。\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n■ 無料お試し終了後の進め方（本登録について）\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n無料お試し終了後も引き続きシステムをご利用いただく場合の手順は以下のとおりです。\n\n【ステップ1】画面から本登録をお申し込み\nお試し期間中、連絡帳画面上部に表示される「📝 本登録を申し込む」ボタンを押してください。\nボタンを押すと、本メールアドレス宛に初回利用分（1か月分）の請求書が自動発行されます。\n\n・初回ご請求金額：4,000円（税抜）／ 税込4,400円\n・2か月目以降　 ：月額5,000円（税抜）／ 税込5,500円\n・初回お支払期限：請求書発行から10日後\n※ A4印刷可能な請求書PDFがメールに添付されます。\n\n【ステップ2】ご利用料金のお振込み\n請求書に記載の振込先（PayPay銀行）へ利用料金をお振込みください。\n\n【ステップ3】本利用への自動継続\n弊社にて入金を確認次第、本利用へ切り替えいたします。\nお試し期間中に入力された利用者名簿や過去の連絡帳データはそのまま引き継がれ、中断することなく継続してご利用いただけます。\n\n※ 無料期間終了までにお申し込みがなかった場合、システムは自動的に停止し、費用が発生することはございません。\n\nご不明な点やお困りのことがございましたら、本メールへのご返信、または販売元までお気軽にお問い合わせください。\n今後とも「えこすまいる連絡帳」をどうぞよろしくお願い申し上げます。\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\n連絡先：${gmailUser}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
+        const serviceSelectionNotice = "本登録のお申し込み時に表示されるサービス一覧から、ご利用になるサービスにチェックを入れてください。\n1サービスの場合は従来の料金となり、2つ目以降は1サービスにつき税抜1,000円が加算されます。";
         const html = `<!doctype html><html lang="ja"><body style="font-family:sans-serif;color:#333;line-height:1.8;max-width:680px;margin:auto;padding:20px">
             <h2 style="color:#2b8a3e;border-bottom:2px solid #2b8a3e;padding-bottom:8px">無料お試し登録ありがとうございます</h2>
             <p><strong>${escapeHtml(facilityName)} 御中</strong></p>
@@ -303,6 +304,7 @@ exports.registerTrialFacility = onCall({
                     <li>2か月目以降：<strong>月額5,000円（税抜）／ 税込5,500円</strong></li>
                     <li>初回お支払期限：請求書発行から10日後（A4印刷用PDFをメールに添付）</li>
                 </ul>
+                <p style="margin:8px 0 0;font-size:13px;color:#444">${serviceSelectionNotice.replace(/\n/g, "<br>")}</p>
             </div>
 
             <div style="background:#f8f9fa;border:1px solid #ced4da;border-radius:6px;padding:16px;margin:15px 0">
@@ -331,7 +333,7 @@ exports.registerTrialFacility = onCall({
             from: { name: "株式会社えこすまいる", address: gmailUser },
             to: email,
             subject,
-            text,
+            text: `${text}\n\n${serviceSelectionNotice}`,
             html
         });
     } catch (mailError) {
@@ -1597,7 +1599,14 @@ exports.requestFacilitySubscription = onCall({
         if (invoiceSnapshot.exists) {
             const invoice = invoiceSnapshot.data();
             if (invoice.status === "sent") {
+                const invoicedServiceTypes = validateFacilityServiceTypes(invoice.serviceTypes);
                 transaction.set(facilityRef, {
+                    ...(invoicedServiceTypes ? {
+                        enabledServiceTypes: invoicedServiceTypes,
+                        billingServiceTypes: invoicedServiceTypes,
+                        enabledServiceTypesUpdatedAt: new Date().toISOString(),
+                        billingServiceTypesUpdatedAt: new Date().toISOString()
+                    } : {}),
                     subscriptionApplicationStatus: "pending_payment",
                     subscriptionRequestedAt: facility.subscriptionRequestedAt || requestedAt.toISOString(),
                     billingAnchorAt: facility.billingAnchorAt || billingAnchorAt

@@ -404,6 +404,10 @@ test("new trial registrations disable common LINE by default", async () => {
     } });
     assert.equal(context.documents.get(`facilities/${result.facilityId}`).commonLineEnabled, false);
     assert.equal(context.documents.get(`facilities/${result.facilityId}`).phone, "03-1234-5678");
+    assert.match(context.sentEmails[0].text, /ご利用になるサービスにチェックを入れてください/);
+    assert.match(context.sentEmails[0].text, /1サービスの場合は従来の料金.*2つ目以降は1サービスにつき税抜1,000円が加算されます/);
+    assert.match(context.sentEmails[0].html, /ご利用になるサービスにチェックを入れてください/);
+    assert.match(context.sentEmails[0].html, /2つ目以降は1サービスにつき税抜1,000円が加算されます/);
 });
 
 test("trial registration requires a contact phone number", async () => {
@@ -565,6 +569,30 @@ test("initial subscription invoices include the chosen billing services and surc
     assert.match(context.sentEmails[0].html, /児童発達支援、生活介護/);
     assert.match(context.sentEmails[0].html, /追加サービス利用料/);
     assert.match(context.sentEmails[0].html, /5,500円/);
+});
+
+test("repeated initial subscription requests keep facility services aligned with the sent invoice", async () => {
+    const invoiceServices = ["デイサービス", "生活介護"];
+    const context = loadHandlers({
+        "facilities/facility-already-invoiced": {
+            facilityName: "Facility", email: "facility@example.invalid", status: "active",
+            subscriptionStatus: "trial",
+            trialEndsAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        "facilities/facility-already-invoiced/invoiceHistory/INITIAL": {
+            status: "sent", serviceTypes: invoiceServices
+        }
+    });
+    await context.handlers.requestFacilitySubscription({
+        auth: { uid: "facility-already-invoiced", token: { role: "facility" } },
+        data: { serviceTypes: ["児童発達支援"] }
+    });
+
+    const facility = context.documents.get("facilities/facility-already-invoiced");
+    assert.deepEqual(facility.enabledServiceTypes, invoiceServices);
+    assert.deepEqual(facility.billingServiceTypes, invoiceServices);
+    assert.deepEqual(context.documents.get("facilities/facility-already-invoiced/invoiceHistory/INITIAL").serviceTypes, invoiceServices);
+    assert.equal(context.sentEmails.length, 0);
 });
 
 test("expired locked trial can sign in with a registration-only session", async () => {
