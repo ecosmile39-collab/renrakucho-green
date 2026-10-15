@@ -1463,6 +1463,7 @@
 
         window.openSubscriptionApplicationPanel = function() {
             if (!currentFacilityForSubscription) return;
+            prepareSubscriptionApplication(currentFacilityForSubscription);
             document.getElementById("subscriptionApplicationTitle").textContent = "本登録するサービスを選択";
             document.getElementById("subscriptionApplicationMessage").textContent =
                 "選択したサービスは管理者専用コントロールパネルの利用可能サービスと請求対象サービスの両方に保存され、初回請求書にも記載されます。";
