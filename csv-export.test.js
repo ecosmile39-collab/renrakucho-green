@@ -44,10 +44,12 @@ test("inclusive date filters isolate facility, user and service, including legac
     assert.throws(() => selectRecords(records, { ...filters, startDate: "2026-02-30" }));
 });
 
-test("record columns retain all five service types, timestamps and additional fields", () => {
+test("record columns retain all seven service types, timestamps and additional fields", () => {
     const records = [
         { serviceType: "デイサービス", temp1: "36.5", message: "本日の様子" },
         { serviceType: "ショートステイ", stMealLunch: "全量", num_in_1: "2" },
+        { serviceType: "入所", stTempIn: "36.5", stMealBreakfast: "全量" },
+        { serviceType: "ユニット入所", stNightState: "安眠" },
         { serviceType: "放課後等デイサービス", afterSchoolEpisode: "活動に参加" },
         { serviceType: "児童発達支援", afterSchoolTemperature: "36.6" },
         { serviceType: "生活介護", lifeCareActivityTags: ["創作", "運動"], customField: "残す", familyPublishedAt: { toDate: () => new Date("2026-10-07T06:00:00Z") } }
@@ -55,14 +57,14 @@ test("record columns retain all five service types, timestamps and additional fi
     const parsed = Papa.parse(createCsv(recordsTable(records, facility))).data;
     for (const record of records) assert.equal(parsed.some(row => row[4] === record.serviceType), true);
     assert.equal(parsed[0].includes("持参品1・入所時"), true);
-    assert.equal(parsed[5].includes("創作、運動"), true);
-    assert.equal(parsed[5].includes("残す"), true);
-    assert.equal(parsed[5].includes("2026-10-07T06:00:00.000Z"), true);
+    assert.equal(parsed[7].includes("創作、運動"), true);
+    assert.equal(parsed[7].includes("残す"), true);
+    assert.equal(parsed[7].includes("2026-10-07T06:00:00.000Z"), true);
     assert.deepEqual(recordsTable([], facility)[0], ["施設ID", "施設名", "日付", "氏名", "利用サービス"]);
 });
 
-test("each of five services exports only its own records for the same user and day", () => {
-    const services = ["デイサービス", "ショートステイ", "放課後等デイサービス", "児童発達支援", "生活介護"];
+test("each of seven services exports only its own records for the same user and day", () => {
+    const services = ["デイサービス", "ショートステイ", "入所", "ユニット入所", "放課後等デイサービス", "児童発達支援", "生活介護"];
     const records = services.map(serviceType => ({ facilityId: facility.id, userName: "架空 太郎", date: "2026-10-07", serviceType }));
     for (const serviceType of services) {
         const selected = selectRecords(records, { facilityId: facility.id, startDate: "2026-10-07", endDate: "2026-10-07", serviceType });

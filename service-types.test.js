@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
     ALL_SERVICE_TYPE_VALUES,
     calculateServicePricing,
+    isShortStayService,
     normalizeBillingServiceTypes,
     normalizeServiceTypes,
     populateServiceTypeSelect
@@ -22,6 +23,13 @@ test("facility service settings keep only supported values without duplicates", 
 test("empty or invalid settings fall back to all services", () => {
     assert.deepEqual(normalizeServiceTypes([]), ALL_SERVICE_TYPE_VALUES);
     assert.deepEqual(normalizeServiceTypes(["未対応"]), ALL_SERVICE_TYPE_VALUES);
+});
+
+test("short-stay, residential and unit-residential services share short-stay handling", () => {
+    assert.equal(isShortStayService("ショートステイ"), true);
+    assert.equal(isShortStayService("入所"), true);
+    assert.equal(isShortStayService("ユニット入所"), true);
+    assert.equal(isShortStayService("デイサービス"), false);
 });
 
 test("billing services default to one enabled service to preserve current invoice amounts", () => {

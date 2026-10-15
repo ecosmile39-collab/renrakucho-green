@@ -1,6 +1,6 @@
 import Papa from "papaparse";
 
-const serviceTypes = ["デイサービス", "ショートステイ", "放課後等デイサービス", "児童発達支援", "生活介護"];
+const serviceTypes = ["デイサービス", "ショートステイ", "入所", "ユニット入所", "放課後等デイサービス", "児童発達支援", "生活介護"];
 
 export function selectUsers(users, filters) {
     if (!serviceTypes.includes(filters.serviceType)) throw new Error("出力するサービスを選択してください。");
@@ -48,17 +48,17 @@ const recordLabels = {
     lifeCareBathing: "生活介護・入浴", lifeCareActivityTags: "生活介護・活動種別",
     lifeCareGoalProgress: "生活介護・個別支援状況", lifeCareActivityDetails: "生活介護・活動内容",
     lifeCareEpisode: "生活介護・本人の様子", lifeCareHandover: "生活介護・家族への連絡",
-    stTempIn: "短期入所・入所時体温", stTempOut: "短期入所・退所時体温",
-    stPulseIn: "短期入所・入所時脈拍", stPulseOut: "短期入所・退所時脈拍",
-    stSpo2In: "短期入所・入所時酸素飽和度", stSpo2Out: "短期入所・退所時酸素飽和度",
-    stBpHighIn: "短期入所・入所時血圧（上）", stBpLowIn: "短期入所・入所時血圧（下）",
-    stBpHighOut: "短期入所・退所時血圧（上）", stBpLowOut: "短期入所・退所時血圧（下）",
-    stMealBreakfast: "短期入所・朝食", stMealLunch: "短期入所・昼食", stMealDinner: "短期入所・夕食",
-    stWater: "短期入所・水分", stOralCare: "短期入所・口腔ケア", stMedication: "短期入所・服薬",
-    stBath: "短期入所・入浴", stBathReason: "短期入所・入浴補足", stBowel: "短期入所・排便",
-    stBowel1: "短期入所・便性状1", stBowel2: "短期入所・便性状2", stBowel3: "短期入所・便性状3",
-    stNightState: "短期入所・夜間の様子", stDayActivity: "短期入所・日中の活動",
-    stBelongingMemo: "短期入所・持ち物メモ", lastBathDate: "最終入浴日", lastBowelDate: "最終排便日",
+    stTempIn: "入所系・入所時体温", stTempOut: "入所系・退所時体温",
+    stPulseIn: "入所系・入所時脈拍", stPulseOut: "入所系・退所時脈拍",
+    stSpo2In: "入所系・入所時酸素飽和度", stSpo2Out: "入所系・退所時酸素飽和度",
+    stBpHighIn: "入所系・入所時血圧（上）", stBpLowIn: "入所系・入所時血圧（下）",
+    stBpHighOut: "入所系・退所時血圧（上）", stBpLowOut: "入所系・退所時血圧（下）",
+    stMealBreakfast: "入所系・朝食", stMealLunch: "入所系・昼食", stMealDinner: "入所系・夕食",
+    stWater: "入所系・水分", stOralCare: "入所系・口腔ケア", stMedication: "入所系・服薬",
+    stBath: "入所系・入浴", stBathReason: "入所系・入浴補足", stBowel: "入所系・排便",
+    stBowel1: "入所系・便性状1", stBowel2: "入所系・便性状2", stBowel3: "入所系・便性状3",
+    stNightState: "入所系・夜間の様子", stDayActivity: "入所系・日中の活動",
+    stBelongingMemo: "入所系・持ち物メモ", lastBathDate: "最終入浴日", lastBowelDate: "最終排便日",
     medRemain: "内服薬残り", nsSign: "看護確認", checkStaffIn: "入所時確認者", checkStaffOut: "退所時確認者"
 };
 

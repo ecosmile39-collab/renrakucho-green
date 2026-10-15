@@ -16,6 +16,7 @@ const { isFamilyRecordRequest, latestPublishedRecords } = require("./line-family
 const {
     calculateServicePricing,
     getFacilityBillingServiceTypes,
+    isShortStayService,
     validateFacilityServiceTypes
 } = require("./service-types");
 const { generateInvoicePdf } = require("./invoice-pdf");
@@ -811,7 +812,7 @@ function getFamilyVisibleFields(record, formCustomization) {
             ["個別支援の状況", "lifeCareGoalProgress"], ["活動内容", "lifeCareActivityDetails"],
             ["ご本人の様子", "lifeCareEpisode"], ["ご家族への連絡", "lifeCareHandover"]
         ].forEach(([label, key]) => add(label, key));
-    } else if (record.serviceType === "ショートステイ") {
+    } else if (isShortStayService(record.serviceType)) {
         [
             ["入所時体温", "stTempIn"], ["入所時脈拍", "stPulseIn"], ["入所時酸素飽和度", "stSpo2In"],
             ["退所時体温", "stTempOut"], ["退所時脈拍", "stPulseOut"], ["退所時酸素飽和度", "stSpo2Out"],

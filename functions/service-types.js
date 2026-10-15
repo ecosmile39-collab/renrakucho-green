@@ -1,10 +1,16 @@
 const SUPPORTED_SERVICE_TYPES = [
     "デイサービス",
     "ショートステイ",
+    "入所",
+    "ユニット入所",
     "放課後等デイサービス",
     "児童発達支援",
     "生活介護"
 ];
+
+function isShortStayService(serviceType) {
+    return ["ショートステイ", "入所", "ユニット入所"].includes(serviceType);
+}
 
 function normalizeFacilityServiceTypes(value) {
     if (!Array.isArray(value)) return [...SUPPORTED_SERVICE_TYPES];
@@ -38,6 +44,7 @@ function validateFacilityServiceTypes(value) {
 module.exports = {
     calculateServicePricing,
     getFacilityBillingServiceTypes,
+    isShortStayService,
     normalizeFacilityServiceTypes,
     validateFacilityServiceTypes
 };

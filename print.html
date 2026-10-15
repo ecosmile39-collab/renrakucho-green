@@ -437,7 +437,7 @@
             <ol>
                 <li><strong>画面を開く</strong><p>入力画面上部の「印刷画面へ」を押します。施設名が表示されていることを確認します。「入力画面へ戻る」「過去データ一覧へ」は、それぞれの画面に戻るリンクです。</p></li>
                 <li><strong>サービス種別を選ぶ</strong><p>「サービス種別」で、印刷したい記録のサービスを選びます。デイサービスなどを選ぶと、対象日の記録を検索します。</p></li>
-                <li><strong>日付を選ぶ</strong><p>ショートステイ以外は「ご利用日」を1日選びます。ショートステイは「ご宿泊期間」の開始日と終了日を選びます。開始日は終了日より後にできません。</p></li>
+                <li><strong>日付を選ぶ</strong><p>ショートステイ・入所・ユニット入所以外は「ご利用日」を1日選びます。これらのサービスは利用期間の開始日と終了日を選びます。開始日は終了日より後にできません。</p></li>
                 <li><strong>印刷する内容を選ぶ</strong><p>「印刷する内容」から選びます。</p><ul><li>「連絡帳＋誕生日カード」：連絡帳と、選択した方の誕生日カード</li><li>「連絡帳のみ」：連絡帳だけ</li><li>「誕生日カードのみ」：誕生日カードだけ。カードだけを別の用紙に印刷する場合に使います。</li></ul></li>
                 <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
                 <li><strong>印刷する利用者を選ぶ</strong><p>記録がある利用者が「LINE未連携」「LINE連携済み」に分かれて表示されます。LINE連携済みでも印刷できます。「すべて選択／解除」ですべてのチェックをまとめて切り替えられます。印刷しない方はチェックを外します。</p></li>
@@ -455,6 +455,8 @@
                 <select id="selectServiceType" class="filter-select" onchange="onServiceTypeChanged()">
                     <option value="デイサービス" selected>☀️ デイサービス（日帰り）</option>
                     <option value="ショートステイ">🌙 ショートステイ（宿泊）</option>
+                    <option value="入所">🏠 入所</option>
+                    <option value="ユニット入所">🏢 ユニット入所</option>
                     <option value="放課後等デイサービス">🎒 放課後等デイサービス</option>
                     <option value="児童発達支援">🧸 児童発達支援</option>
                     <option value="生活介護">♿ 生活介護</option>
@@ -467,7 +469,7 @@
             </div>
 
             <div class="filter-row" id="shortStayDateRow" style="display: none;">
-                <span class="filter-label">📅 ご宿泊期間：</span>
+                <span class="filter-label">📅 ご利用期間：</span>
                 <input type="date" id="startDate" class="date-input" onchange="onDateChanged()">
                 <span style="font-weight: bold;">～</span>
                 <input type="date" id="endDate" class="date-input" onchange="onDateChanged()">
@@ -547,7 +549,7 @@
         import { getFirestore, collection, getDocs, query, where, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-        import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
+        import { isShortStayService, normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -752,7 +754,7 @@
             let sType = document.getElementById("selectServiceType").value;
             localStorage.setItem('currentServiceType', sType);
 
-            if (sType !== "ショートステイ") {
+            if (!isShortStayService(sType)) {
                 document.getElementById("dayServiceDateRow").style.display = "flex";
                 document.getElementById("shortStayDateRow").style.display = "none";
             } else {
@@ -767,8 +769,8 @@
             let facilityId = localStorage.getItem("currentFacilityId");
             let sType = document.getElementById("selectServiceType").value;
             
-            let startDate = (sType !== "ショートステイ") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
-            let endDate = (sType !== "ショートステイ") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
+            let startDate = !isShortStayService(sType) ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
+            let endDate = !isShortStayService(sType) ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
 
             let selectBox = document.getElementById("userSelectBox");
             let checkboxesArea = document.getElementById("userCheckboxes");
@@ -849,7 +851,7 @@
                 userNames.forEach((userName) => {
                     let uData = window.globalUsersData[userName];
                     let isCardOnly = document.getElementById("selectPrintTarget").value === "card_only";
-                    let bData = getBirthdayData(uData ? uData.birthday : null, endDate, sType === "ショートステイ", startDate, endDate, isCardOnly);
+                    let bData = getBirthdayData(uData ? uData.birthday : null, endDate, isShortStayService(sType), startDate, endDate, isCardOnly);
 
                     let div = document.createElement("div");
                     div.className = "user-row";
@@ -925,8 +927,8 @@
         window.loadSelectedAndPrint = async function() {
             let facilityId = localStorage.getItem("currentFacilityId");
             let sType = document.getElementById("selectServiceType").value;
-            let startDate = (sType !== "ショートステイ") ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
-            let endDate = (sType !== "ショートステイ") ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
+            let startDate = !isShortStayService(sType) ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
+            let endDate = !isShortStayService(sType) ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
             
             let facilityName = localStorage.getItem("currentFacilityName") || "連絡帳アプリ";
             
@@ -979,6 +981,7 @@
                 let monthlyDataByUser = {};
                 monthSnap.forEach(docSnap => {
                     let d = docSnap.data();
+                    if (d.serviceType !== sType) return;
                     if (!monthlyDataByUser[d.userName]) monthlyDataByUser[d.userName] = [];
                     monthlyDataByUser[d.userName].push(d);
                 });
@@ -999,7 +1002,7 @@
                     userPeriodRecords.sort((a, b) => a.date.localeCompare(b.date)); 
                     let userMonthRecords = monthlyDataByUser[userName] || userPeriodRecords;
 
-                    if (sType === "ショートステイ") {
+                    if (isShortStayService(sType)) {
                         let shouldPrintCard = printCardUsers.includes(userName);
                         let staffMsg = shouldPrintCard ? cardMessages[userName] : "";
                         if(shouldPrintCard) {
@@ -1360,7 +1363,7 @@
                     <div class="punch-mark">▷</div>
                     <div class="print-header">
                         <div class="facility-name">${facilityName}</div>
-                        <h1>ショートステイ ご利用報告書</h1>
+                        <h1>${firstData.serviceType || "ショートステイ"} ご利用報告書</h1>
                     </div>
 
                     ${birthdayBannerHtml}

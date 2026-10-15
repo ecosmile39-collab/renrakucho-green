@@ -3,6 +3,7 @@ const { test } = require("node:test");
 const {
     calculateServicePricing,
     getFacilityBillingServiceTypes,
+    isShortStayService,
     validateFacilityServiceTypes
 } = require("./service-types");
 
@@ -11,6 +12,17 @@ test("facility service selection accepts supported services in canonical order",
         validateFacilityServiceTypes(["生活介護", "デイサービス"]),
         ["デイサービス", "生活介護"]
     );
+    assert.deepEqual(
+        validateFacilityServiceTypes(["ユニット入所", "入所", "ショートステイ"]),
+        ["ショートステイ", "入所", "ユニット入所"]
+    );
+});
+
+test("residential services use the short-stay record format", () => {
+    assert.equal(isShortStayService("ショートステイ"), true);
+    assert.equal(isShortStayService("入所"), true);
+    assert.equal(isShortStayService("ユニット入所"), true);
+    assert.equal(isShortStayService("デイサービス"), false);
 });
 
 test("facility service selection rejects empty, unsupported, and duplicate values", () => {

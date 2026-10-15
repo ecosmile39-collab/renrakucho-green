@@ -1,12 +1,18 @@
 export const SERVICE_TYPES = [
     { value: "デイサービス", label: "☀️ デイサービス（日帰り）" },
     { value: "ショートステイ", label: "🌙 ショートステイ（宿泊）" },
+    { value: "入所", label: "🏠 入所" },
+    { value: "ユニット入所", label: "🏢 ユニット入所" },
     { value: "放課後等デイサービス", label: "🎒 放課後等デイサービス" },
     { value: "児童発達支援", label: "🧸 児童発達支援" },
     { value: "生活介護", label: "♿ 生活介護" }
 ];
 
 export const ALL_SERVICE_TYPE_VALUES = SERVICE_TYPES.map(service => service.value);
+
+export function isShortStayService(serviceType) {
+    return ["ショートステイ", "入所", "ユニット入所"].includes(serviceType);
+}
 
 export function normalizeServiceTypes(value) {
     if (!Array.isArray(value)) return [...ALL_SERVICE_TYPE_VALUES];

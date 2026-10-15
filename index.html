@@ -155,6 +155,12 @@
                     <input type="checkbox" id="editServiceShort" style="width: auto; margin-right: 5px;">🌙 ショートステイ
                 </label>
                 <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" id="editServiceResidential" style="width: auto; margin-right: 5px;">🏠 入所
+                </label>
+                <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" id="editServiceUnitResidential" style="width: auto; margin-right: 5px;">🏢 ユニット入所
+                </label>
+                <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
                     <input type="checkbox" id="editServiceAfterSchool" style="width: auto; margin-right: 5px;">🎒 放課後等デイサービス
                 </label>
                 <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
@@ -311,12 +317,12 @@
             <ol>
                 <li><strong>ログインする</strong><p>ログイン画面で施設名とパスワードを入力し、「ログインする」を押します。</p></li>
                 <li><strong>画面上部を見る</strong><p>上部に施設名が表示されます。「印刷画面へ」は入力済み記録の確認・印刷、「過去データ一覧へ」は以前の記録を見るときに使います。「施設のLINE公式アカウント設定」は設定を変更するとき以外は操作しなくて大丈夫です。</p></li>
-                <li><strong>サービス種別を選ぶ</strong><p>「ご入力するサービス種別を選択してください」で、今回の記録に合うものを選びます。デイサービス、ショートステイ、放課後等デイサービス、児童発達支援、生活介護があります。選ぶと、そのサービスに合った入力欄に切り替わります。</p></li>
+                <li><strong>サービス種別を選ぶ</strong><p>「ご入力するサービス種別を選択してください」で、今回の記録に合うものを選びます。デイサービス、ショートステイ、入所、ユニット入所、放課後等デイサービス、児童発達支援、生活介護があります。入所・ユニット入所はショートステイと同じ入力欄を使用します。</p></li>
                 <li><strong>送信待ちや申し送りを確認する</strong><p>上部に「送信待ちのお客様」が表示されていたら、前に一時保存した記録があります。画面を再読み込みすると消えることがあるので、作業を続けて最後にまとめて送信してください。「前日の重要申し送り一覧」が表示された場合は、内容を確認します。</p></li>
                 <li><strong>利用者を選ぶ</strong><p>「お名前」から記録する方を選びます。年齢や顔写真、保存済み記録が表示されます。「利用終了者も表示する」は、以前利用していた方を選ぶ場合に使います。</p><p>顔写真は「写真 登録/変更」で撮影、「アルバムから写真を選ぶ」から保存済み写真を選べます。緊急連絡先と持病は全施設で利用できます。入力したら「利用者情報に保存」を押してください。</p></li>
                 <li><strong>新しい利用者を登録する</strong><p>名簿にいない方は、画面下の新規登録欄に名前を入力します。生年月日は任意です。必要なら顔写真や排泄記録の設定を選び、「お名前・生年月日・各種設定をまとめて名簿に登録」を押します。</p></li>
                 <li><strong>日付を選ぶ</strong><p>「日付」で、記録する日を選びます。利用者と日付を間違えていないか、この時点で確認してください。入力途中の内容は使用中のブラウザーに下書き保存されますが、まだ正式な保存ではありません。</p></li>
-                <li><strong>記録を入力する</strong><p>表示された欄を上から入力します。デイサービスでは、担当スタッフ、介護日誌、バイタル、食事・水分・服薬・入浴、活動などを記録します。放課後等デイサービス・児童発達支援では、出欠、送迎、活動、おやつ、支援の様子などを記録します。生活介護とショートステイでは、それぞれの専用欄に健康状態、生活支援、持ち物、夜間の様子などを入力します。</p><p>分からない欄は無理に埋めず、施設の記録方法に合わせてください。「要申し送り」「受診対応あり」「体調変化」は、該当するときにチェックし、申し送り内容も入力します。</p></li>
+                <li><strong>記録を入力する</strong><p>表示された欄を上から入力します。デイサービスでは、担当スタッフ、介護日誌、バイタル、食事・水分・服薬・入浴、活動などを記録します。放課後等デイサービス・児童発達支援では、出欠、送迎、活動、おやつ、支援の様子などを記録します。生活介護では専用欄に健康状態や生活支援を記録します。ショートステイ・入所・ユニット入所では共通の欄に入所・退所時の健康状態、食事、夜間の様子、持ち物などを記録します。</p><p>分からない欄は無理に埋めず、施設の記録方法に合わせてください。「要申し送り」「受診対応あり」「体調変化」は、該当するときにチェックし、申し送り内容も入力します。</p></li>
                 <li><strong>ご家族への連絡を入力する</strong><p>「施設からの御連絡事項」には施設から伝えることを入力します。定型文がある場合は選んで編集できます。「お客様からの御連絡事項／保護者記入欄」には家庭からの連絡事項を入力します。「施設からのお知らせ・PRを追加する」は必要なときだけ開いて使います。</p></li>
                 <li><strong>写真・動画を選ぶ</strong><p>「施設でのご様子」で撮影するか、アルバムから写真・動画を選びます。プレビューで内容を確認し、他の利用者が写っていないか確認してください。動画は先頭30秒まで、5MB以下に自動調整されます。</p><p>「今すぐ預ける」は任意です。押さなくても、最後の送信時に記録と一緒に保存できます。選んだものを外す場合は、プレビューの「取消」を使います。</p></li>
                 <li><strong>家族向け公開を選ぶ</strong><p>「LINEで家族に公開する」は初期状態ではチェックされています。チェックありなら、記録を保存した後、連携済みの家族がLINEから閲覧できます。<strong>自動でLINE通知が送られるわけではありません。</strong>施設内だけに保存したい場合はチェックを外します。</p></li>
@@ -331,6 +337,8 @@
             <select id="serviceType" onchange="onServiceTypeChanged()">
                 <option value="デイサービス">☀️ デイサービス（通所介護・日帰り）</option>
                 <option value="ショートステイ">🌙 ショートステイ（短期入所・宿泊）</option>
+                <option value="入所">🏠 入所</option>
+                <option value="ユニット入所">🏢 ユニット入所</option>
                 <option value="放課後等デイサービス">🎒 放課後等デイサービス</option>
                 <option value="児童発達支援">🧸 児童発達支援</option>
                 <option value="生活介護">♿ 生活介護（日中活動・生活支援）</option>
@@ -1007,6 +1015,7 @@
         import {
             calculateServicePricing,
             getFacilityBillingServiceTypes,
+            isShortStayService,
             normalizeServiceTypes,
             populateServiceTypeSelect,
             SERVICE_TYPES
@@ -1754,7 +1763,7 @@
             let lifeCareSec = document.getElementById("lifeCareSection");
             let regTitle = document.getElementById("regBoxTitle");
 
-            let isShortStay = sType === "ショートステイ";
+            let isShortStay = isShortStayService(sType);
             let isAfterSchool = sType === "放課後等デイサービス" || sType === "児童発達支援";
             let isLifeCare = sType === "生活介護";
             daySec.style.display = isShortStay || isAfterSchool || isLifeCare ? "none" : "block";
@@ -2370,6 +2379,8 @@
             document.getElementById("editUserBirthday").value = userData.birthday || "";
             document.getElementById("editServiceDay").checked = userServices.includes("デイサービス");
             document.getElementById("editServiceShort").checked = userServices.includes("ショートステイ");
+            document.getElementById("editServiceResidential").checked = userServices.includes("入所");
+            document.getElementById("editServiceUnitResidential").checked = userServices.includes("ユニット入所");
             document.getElementById("editServiceAfterSchool").checked = userServices.includes("放課後等デイサービス");
             document.getElementById("editServiceChildDevelopment").checked = userServices.includes("児童発達支援");
             document.getElementById("editServiceLifeCare").checked = userServices.includes("生活介護");
@@ -2390,14 +2401,18 @@
             if (!newName) { alert("お名前を入力してください。"); return; }
             let isDay = document.getElementById("editServiceDay").checked;
             let isShort = document.getElementById("editServiceShort").checked;
+            let isResidential = document.getElementById("editServiceResidential").checked;
+            let isUnitResidential = document.getElementById("editServiceUnitResidential").checked;
             let isAfterSchool = document.getElementById("editServiceAfterSchool").checked;
             let isChildDevelopment = document.getElementById("editServiceChildDevelopment").checked;
             let isLifeCare = document.getElementById("editServiceLifeCare").checked;
-            if (!isDay && !isShort && !isAfterSchool && !isChildDevelopment && !isLifeCare) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
+            if (!isDay && !isShort && !isResidential && !isUnitResidential && !isAfterSchool && !isChildDevelopment && !isLifeCare) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
 
             let newServices = [];
             if (isDay) newServices.push("デイサービス");
             if (isShort) newServices.push("ショートステイ");
+            if (isResidential) newServices.push("入所");
+            if (isUnitResidential) newServices.push("ユニット入所");
             if (isAfterSchool) newServices.push("放課後等デイサービス");
             if (isChildDevelopment) newServices.push("児童発達支援");
             if (isLifeCare) newServices.push("生活介護");
@@ -3148,7 +3163,7 @@
                 imageFiles: imageFiles, videoFiles: videoFiles
             };
 
-            if (sType !== "ショートステイ" && !isLifeCare) {
+            if (!isShortStayService(sType) && !isLifeCare) {
                 let bathVal = ""; document.getElementsByName("bath").forEach(r => { if(r.checked) bathVal = r.value; });
                 let tList = []; document.getElementsByName("training").forEach(c => { if(c.checked) tList.push(c.value); });
                 data.temp1 = document.getElementById("temp1").value;
@@ -3453,7 +3468,7 @@
                 pendingArea.style.display = "block";
                 pendingList.innerHTML = "";
                 batchDataList.forEach((data, index) => {
-                    let serviceLabel = data.serviceType === "デイサービス" ? "デイ" : data.serviceType === "放課後等デイサービス" ? "放デイ" : data.serviceType === "児童発達支援" ? "児発" : data.serviceType === "生活介護" ? "生活介護" : "ショート";
+                    let serviceLabel = SERVICE_TYPES.find(service => service.value === data.serviceType)?.label || data.serviceType;
                     const videoCount = Array.isArray(data.videoFiles) ? data.videoFiles.length : 0;
                     let span = document.createElement("span");
                     let name = document.createElement("span");
@@ -3870,7 +3885,7 @@
 
                         let recordRef = doc(db, "facilities", facilityId, "daily_records", `${targetDateStr}_${sType}_${p.name}`);
 
-                        if (sType !== "ショートステイ") {
+                        if (!isShortStayService(sType)) {
                             dayPromises.push(setDoc(recordRef, {
                                 facilityId: facilityId, userName: p.name, date: targetDateStr,
                                 serviceType: sType,

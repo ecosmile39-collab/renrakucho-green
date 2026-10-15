@@ -571,6 +571,29 @@ test("initial subscription invoices include the chosen billing services and surc
     assert.match(context.sentEmails[0].html, /5,500円/);
 });
 
+test("initial subscription saves residential selections to available services, billing and invoice", async () => {
+    const context = loadHandlers({
+        "facilities/facility-residential": {
+            facilityName: "Facility Residential", email: "facility@example.invalid", status: "active",
+            subscriptionStatus: "trial",
+            trialEndsAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()
+        }
+    });
+    await context.handlers.requestFacilitySubscription({
+        auth: { uid: "facility-residential", token: { role: "facility" } },
+        data: { serviceTypes: ["ユニット入所", "入所"] }
+    });
+
+    const facility = context.documents.get("facilities/facility-residential");
+    const invoice = context.documents.get("facilities/facility-residential/invoiceHistory/INITIAL");
+    assert.deepEqual(facility.enabledServiceTypes, ["入所", "ユニット入所"]);
+    assert.deepEqual(facility.billingServiceTypes, ["入所", "ユニット入所"]);
+    assert.deepEqual(invoice.serviceTypes, facility.billingServiceTypes);
+    assert.equal(invoice.additionalServiceSubtotal, 1000);
+    assert.equal(invoice.total, 5500);
+    assert.match(context.sentEmails[0].html, /入所、ユニット入所/);
+});
+
 test("repeated initial subscription requests keep facility services aligned with the sent invoice", async () => {
     const invoiceServices = ["デイサービス", "生活介護"];
     const context = loadHandlers({
