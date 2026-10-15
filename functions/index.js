@@ -75,20 +75,26 @@ exports.createFacilitySession = onCall(async request => {
     if (data.password !== password) {
         throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
     }
-    if (data.status === "locked") {
-        throw new HttpsError("permission-denied", "現在、この施設のシステム利用を停止しています。詳しくは販売元へお問い合わせください。");
-    }
+    let registrationOnly = false;
     if (data.subscriptionStatus === "trial") {
         const trialEndsAt = Date.parse(data.trialEndsAt || "");
-        if (!Number.isFinite(trialEndsAt) || Date.now() >= trialEndsAt) {
+        if (!Number.isFinite(trialEndsAt)) {
             throw new HttpsError("permission-denied", "無料お試し期間が終了しました。利用を続ける場合は販売元へお問い合わせください。");
         }
+        registrationOnly = Date.now() >= trialEndsAt;
+    }
+    if (data.status === "locked" && !registrationOnly) {
+        throw new HttpsError("permission-denied", "現在、この施設のシステム利用を停止しています。詳しくは販売元へお問い合わせください。");
     }
 
     return {
         facilityId: facility.id,
         facilityName: data.facilityName || facility.id,
-        customToken: await getAuth().createCustomToken(facility.id, { role: "facility" })
+        registrationOnly,
+        customToken: await getAuth().createCustomToken(facility.id, {
+            role: "facility",
+            ...(registrationOnly ? { registrationOnly: true } : {})
+        })
     };
 });
 
@@ -1523,6 +1529,10 @@ exports.requestFacilitySubscription = onCall({
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async request => {
     const facilityId = requireFacilityId(request);
+    const serviceTypes = validateFacilityServiceTypes(request.data?.serviceTypes);
+    if (!serviceTypes) {
+        throw new HttpsError("invalid-argument", "請求対象サービスを1つ以上選択してください。");
+    }
     const db = getFirestore();
     const facilityRef = db.collection("facilities").doc(facilityId);
     const invoiceRef = facilityRef.collection("invoiceHistory").doc("INITIAL");
@@ -1532,12 +1542,16 @@ exports.requestFacilitySubscription = onCall({
     }
 
     const initialFacility = initialFacilitySnapshot.data();
-    if (initialFacility.status === "locked" || initialFacility.subscriptionStatus !== "trial") {
+    if (initialFacility.subscriptionStatus !== "trial") {
         throw new HttpsError("failed-precondition", "この施設はトライアル中ではありません。");
     }
     const trialEndsAt = Date.parse(initialFacility.trialEndsAt || "");
-    if (!Number.isFinite(trialEndsAt) || trialEndsAt <= Date.now()) {
-        throw new HttpsError("failed-precondition", "無料お試し期間が終了しています。販売元へお問い合わせください。");
+    if (!Number.isFinite(trialEndsAt)) {
+        throw new HttpsError("failed-precondition", "トライアル終了日を確認できません。販売元へお問い合わせください。");
+    }
+    const trialExpired = trialEndsAt <= Date.now();
+    if (initialFacility.status === "locked" && !trialExpired) {
+        throw new HttpsError("failed-precondition", "この施設は利用停止中です。販売元へお問い合わせください。");
     }
 
     const recipient = typeof initialFacility.email === "string" ? initialFacility.email.trim() : "";
@@ -1575,6 +1589,11 @@ exports.requestFacilitySubscription = onCall({
             throw new HttpsError("failed-precondition", "この施設はトライアル中ではありません。");
         }
         const facility = facilitySnapshot.data();
+        const currentTrialEnd = Date.parse(facility.trialEndsAt || "");
+        const currentTrialExpired = Number.isFinite(currentTrialEnd) && currentTrialEnd <= Date.now();
+        if (facility.status === "locked" && !currentTrialExpired) {
+            throw new HttpsError("failed-precondition", "この施設は利用停止中です。販売元へお問い合わせください。");
+        }
         if (invoiceSnapshot.exists) {
             const invoice = invoiceSnapshot.data();
             if (invoice.status === "sent") {
@@ -1593,8 +1612,13 @@ exports.requestFacilitySubscription = onCall({
             }
         }
 
-        const serviceTypes = getFacilityBillingServiceTypes(facility);
         const pricing = calculateServicePricing(4000, serviceTypes);
+        transaction.set(facilityRef, {
+            enabledServiceTypes: serviceTypes,
+            billingServiceTypes: serviceTypes,
+            enabledServiceTypesUpdatedAt: new Date().toISOString(),
+            billingServiceTypesUpdatedAt: new Date().toISOString()
+        }, { merge: true });
         transaction.set(invoiceRef, {
             test: false,
             type: "initial",
@@ -1629,7 +1653,7 @@ exports.requestFacilitySubscription = onCall({
     const facilityName = initialFacility.facilityName || facilityId;
     const formattedPeriod = `${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}`;
     const gmailUser = INVOICE_GMAIL_USER.value();
-    const { serviceTypes, additionalServiceSubtotal, subtotal, tax, total } = reservation;
+    const { additionalServiceSubtotal, subtotal, tax, total } = reservation;
     const invoiceRows = buildInvoiceItemRows({
         serviceTypes,
         itemTitle: "初回システム利用料",

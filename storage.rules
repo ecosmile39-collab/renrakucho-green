@@ -12,6 +12,7 @@ service firebase.storage {
     function isFacility(facilityId) {
       return signedIn()
         && request.auth.token.role == 'facility'
+        && request.auth.token.get('registrationOnly', false) != true
         && request.auth.uid == facilityId
         && firestore.get(/databases/(default)/documents/facilities/$(facilityId)).data.status != 'locked';
     }
@@ -20,6 +21,7 @@ service firebase.storage {
       let userPath = /databases/(default)/documents/facilities/$(request.auth.uid)/users/$(userName);
       return signedIn()
         && request.auth.token.role == 'facility'
+        && request.auth.token.get('registrationOnly', false) != true
         && firestore.get(/databases/(default)/documents/facilities/$(request.auth.uid)).data.status != 'locked'
         && firestore.exists(userPath)
         && firestore.get(userPath).data.legacyStorageOwnerFacilityId == request.auth.uid;

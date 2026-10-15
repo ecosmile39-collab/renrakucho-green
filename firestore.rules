@@ -12,12 +12,20 @@ service cloud.firestore {
     function isFacility(facilityId) {
       return signedIn()
         && request.auth.token.role == 'facility'
+        && request.auth.token.get('registrationOnly', false) != true
         && request.auth.uid == facilityId
         && get(/databases/$(database)/documents/facilities/$(facilityId)).data.status != 'locked';
     }
 
+    function isTrialRegistrationOnly(facilityId) {
+      return signedIn()
+        && request.auth.token.role == 'facility'
+        && request.auth.token.get('registrationOnly', false) == true
+        && request.auth.uid == facilityId;
+    }
+
     match /facilities/{facilityId} {
-      allow read: if isAdmin() || isFacility(facilityId);
+      allow read: if isAdmin() || isFacility(facilityId) || isTrialRegistrationOnly(facilityId);
       allow write: if isAdmin();
 
       match /users/{userName} {

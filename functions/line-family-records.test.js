@@ -10,6 +10,7 @@ function loadHandlers(entries) {
     const documents = new Map(Object.entries(entries));
     const requests = [];
     const sentEmails = [];
+    const customTokens = [];
     function document(referencePath) {
         return {
             id: referencePath.split("/").at(-1),
@@ -42,13 +43,16 @@ function loadHandlers(entries) {
                         ? data[field]?.includes(value) : data[field] === value)) continue;
                     docs.push(await document(referencePath).get());
                 }
-                return { docs, empty: docs.length === 0 };
+                return { docs, size: docs.length, empty: docs.length === 0 };
             }
         };
     }
     const mockRequire = name => {
         if (name === "firebase-admin/app") return { initializeApp() {} };
-        if (name === "firebase-admin/auth") return { getAuth: () => ({ createCustomToken: async () => "test-custom-token" }) };
+        if (name === "firebase-admin/auth") return { getAuth: () => ({ createCustomToken: async (uid, claims) => {
+            customTokens.push({ uid, claims });
+            return "test-custom-token";
+        } }) };
         if (name === "firebase-admin/firestore") return {
             getFirestore: () => ({ collection, runTransaction: callback => callback({
                 get: reference => reference.get(),
@@ -83,7 +87,7 @@ function loadHandlers(entries) {
         }
     };
     vm.runInNewContext(readFileSync(path.join(__dirname, "index.js"), "utf8"), sandbox);
-    return { handlers: sandbox.exports, documents, requests, sentEmails };
+    return { handlers: sandbox.exports, documents, requests, sentEmails, customTokens };
 }
 
 async function sendFamilyEvent(context, userId, text = "連絡帳を見る") {
@@ -545,12 +549,15 @@ test("initial subscription invoices include the chosen billing services and surc
     });
     const result = await context.handlers.requestFacilitySubscription({
         auth: { uid: "facility-c", token: { role: "facility" } },
-        data: {}
+        data: { serviceTypes: ["生活介護", "児童発達支援"] }
     });
     const invoice = context.documents.get("facilities/facility-c/invoiceHistory/INITIAL");
+    const facility = context.documents.get("facilities/facility-c");
 
     assert.equal(result.status, "pending_payment");
     assert.deepEqual(invoice.serviceTypes, ["児童発達支援", "生活介護"]);
+    assert.deepEqual(facility.enabledServiceTypes, ["児童発達支援", "生活介護"]);
+    assert.deepEqual(facility.billingServiceTypes, ["児童発達支援", "生活介護"]);
     assert.equal(invoice.additionalServiceSubtotal, 1000);
     assert.equal(invoice.subtotal, 5000);
     assert.equal(invoice.tax, 500);
@@ -558,6 +565,63 @@ test("initial subscription invoices include the chosen billing services and surc
     assert.match(context.sentEmails[0].html, /児童発達支援、生活介護/);
     assert.match(context.sentEmails[0].html, /追加サービス利用料/);
     assert.match(context.sentEmails[0].html, /5,500円/);
+});
+
+test("expired locked trial can sign in with a registration-only session", async () => {
+    const context = loadHandlers({
+        "facilities/expired-facility": {
+            facilityName: "Expired Facility", password: "secret", status: "locked",
+            subscriptionStatus: "trial", trialEndsAt: new Date(Date.now() - 60_000).toISOString()
+        }
+    });
+    const result = await context.handlers.createFacilitySession({
+        data: { facilityName: "Expired Facility", password: "secret" }
+    });
+
+    assert.equal(result.registrationOnly, true);
+    assert.equal(result.customToken, "test-custom-token");
+    assert.equal(context.customTokens[0].uid, "expired-facility");
+    assert.equal(context.customTokens[0].claims.role, "facility");
+    assert.equal(context.customTokens[0].claims.registrationOnly, true);
+});
+
+test("expired locked trial can submit selected services and receive its initial invoice", async () => {
+    const context = loadHandlers({
+        "facilities/expired-facility": {
+            facilityName: "Expired Facility", email: "facility@example.invalid", status: "locked",
+            subscriptionStatus: "trial", trialEndsAt: new Date(Date.now() - 60_000).toISOString()
+        }
+    });
+    const result = await context.handlers.requestFacilitySubscription({
+        auth: { uid: "expired-facility", token: { role: "facility", registrationOnly: true } },
+        data: { serviceTypes: ["デイサービス", "生活介護", "児童発達支援"] }
+    });
+    const facility = context.documents.get("facilities/expired-facility");
+    const invoice = context.documents.get("facilities/expired-facility/invoiceHistory/INITIAL");
+
+    assert.equal(result.status, "pending_payment");
+    assert.deepEqual(facility.enabledServiceTypes, ["デイサービス", "児童発達支援", "生活介護"]);
+    assert.deepEqual(facility.billingServiceTypes, ["デイサービス", "児童発達支援", "生活介護"]);
+    assert.deepEqual(invoice.serviceTypes, facility.billingServiceTypes);
+    assert.equal(invoice.subtotal, 6000);
+    assert.equal(invoice.tax, 600);
+    assert.equal(invoice.total, 6600);
+    assert.match(context.sentEmails[0].html, /デイサービス、児童発達支援、生活介護/);
+    assert.match(context.sentEmails[0].html, /6,600円/);
+});
+
+test("initial subscription rejects an empty service selection", async () => {
+    const context = loadHandlers({
+        "facilities/facility-empty-selection": {
+            email: "facility@example.invalid", status: "active", subscriptionStatus: "trial",
+            trialEndsAt: new Date(Date.now() + 60_000).toISOString()
+        }
+    });
+    await assert.rejects(context.handlers.requestFacilitySubscription({
+        auth: { uid: "facility-empty-selection", token: { role: "facility" } },
+        data: { serviceTypes: [] }
+    }), { code: "invalid-argument" });
+    assert.equal(context.sentEmails.length, 0);
 });
 
 test("dedicated viewing links remain valid when common LINE is stopped", async () => {

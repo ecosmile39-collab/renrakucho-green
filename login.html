@@ -159,7 +159,12 @@
                 }
                 let facilitySnapshot = await getDoc(doc(db, "facilities", facilityId));
                 const facilityData = facilitySnapshot.exists() ? facilitySnapshot.data() : null;
-                if (facilityData && facilityData.status !== "locked" && !isTrialExpired(facilityData)) {
+                const tokenResult = await authenticatedUser.getIdTokenResult();
+                const registrationOnly = tokenResult.claims.registrationOnly === true;
+                if (registrationOnly && !isTrialExpired(facilityData || {})) {
+                    await signOut(auth);
+                } else if (facilityData && facilityData.status !== "locked" &&
+                    !isTrialExpired(facilityData) && !registrationOnly) {
                     let facilityName = facilityData.facilityName || facilityId;
                     localStorage.setItem("currentFacilityName", facilityName);
                     window.location.replace("index.html");
