@@ -5,6 +5,7 @@ const { getStorage } = require("firebase-admin/storage");
 const crypto = require("crypto");
 const { readFileSync } = require("fs");
 const path = require("path");
+const { promisify } = require("util");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
@@ -49,6 +50,9 @@ const LINE_WEBHOOK_BASE_URL = "https://us-central1-renrakucho-app-6b157.cloudfun
 const COMMON_LINE_WEBHOOK_URL = "https://us-central1-renrakucho-app-6b157.cloudfunctions.net/lineMessagingWebhook";
 const companyStampPng = readFileSync(path.join(__dirname, "company_stamp.png"));
 const companyStampDataUrl = `data:image/png;base64,${companyStampPng.toString("base64")}`;
+const scrypt = promisify(crypto.scrypt);
+const ADMIN_LOGIN_CODE_TTL_MS = 10 * 60 * 1000;
+const ADMIN_LOGIN_RATE_WINDOW_MS = 15 * 60 * 1000;
 
 function escapeHtml(value) {
     return String(value || "").replace(/[&<>\"']/g, character => ({
@@ -77,7 +81,7 @@ exports.createFacilitySession = onCall(async request => {
         throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
     }
     const data = facility.data();
-    if (data.password !== password) {
+    if (!await verifyFacilityPassword(facility, password)) {
         throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
     }
     let registrationOnly = false;
@@ -104,7 +108,7 @@ exports.createFacilitySession = onCall(async request => {
 });
 
 exports.createFacilitySessionForAdmin = onCall(async request => {
-    if (request.auth?.token.role !== "admin") {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
         throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
     }
     const facilityId = typeof request.data?.facilityId === "string" ? request.data.facilityId.trim() : "";
@@ -140,7 +144,7 @@ exports.createFacilityDeletionSession = onCall(async request => {
             facility = legacyFacility;
         }
     }
-    if (!facility || matches.size > 1 || facility.data().password !== password) {
+    if (!facility || matches.size > 1 || !await verifyFacilityPassword(facility, password)) {
         throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
     }
     if (facility.data().status === "locked") {
@@ -160,6 +164,209 @@ function secretsMatch(supplied, expected) {
     return suppliedBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(suppliedBuffer, expectedBuffer);
 }
 
+async function hashFacilityPassword(password) {
+    const salt = crypto.randomBytes(16);
+    const derivedKey = await scrypt(password, salt, 64);
+    return `scrypt$${salt.toString("hex")}$${derivedKey.toString("hex")}`;
+}
+
+function isSupportedFacilityPasswordHash(encodedHash) {
+    if (typeof encodedHash !== "string") return false;
+    const parts = encodedHash.split("$");
+    return parts.length === 3 && parts[0] === "scrypt" &&
+        /^[0-9a-f]{32}$/.test(parts[1]) && /^[0-9a-f]{128}$/.test(parts[2]);
+}
+
+async function verifyHashedFacilityPassword(password, encodedHash) {
+    if (!isSupportedFacilityPasswordHash(encodedHash)) return false;
+    const [, saltHex, keyHex] = encodedHash.split("$");
+    const expected = Buffer.from(keyHex, "hex");
+    const actual = await scrypt(password, Buffer.from(saltHex, "hex"), expected.length);
+    return crypto.timingSafeEqual(actual, expected);
+}
+
+function plaintextPasswordsMatch(storedPassword, suppliedPassword) {
+    if (typeof storedPassword !== "string" || typeof suppliedPassword !== "string") return false;
+    const stored = Buffer.from(storedPassword);
+    const supplied = Buffer.from(suppliedPassword);
+    return stored.length === supplied.length && crypto.timingSafeEqual(stored, supplied);
+}
+
+async function verifyFacilityPassword(facilitySnapshot, suppliedPassword) {
+    if (!facilitySnapshot?.exists || typeof suppliedPassword !== "string" || !suppliedPassword) return false;
+    const db = getFirestore();
+    const facilityRef = facilitySnapshot.ref;
+    const credentialRef = db.collection("facilityCredentials").doc(facilitySnapshot.id);
+    return db.runTransaction(async transaction => {
+        const [latestFacility, credential] = await Promise.all([
+            transaction.get(facilityRef),
+            transaction.get(credentialRef)
+        ]);
+        if (!latestFacility.exists) return false;
+        const passwordHash = credential.exists ? credential.data().passwordHash : null;
+        if (passwordHash) return verifyHashedFacilityPassword(suppliedPassword, passwordHash);
+
+        const legacyPassword = latestFacility.data().password;
+        if (!plaintextPasswordsMatch(legacyPassword, suppliedPassword)) return false;
+        transaction.set(credentialRef, {
+            passwordHash: await hashFacilityPassword(suppliedPassword),
+            updatedAt: FieldValue.serverTimestamp()
+        });
+        transaction.set(facilityRef, { password: FieldValue.delete() }, { merge: true });
+        return true;
+    });
+}
+
+async function enforceAdminLoginRateLimit(request, action, maxAttempts) {
+    const ip = request.rawRequest?.ip;
+    if (typeof ip !== "string" || !ip) {
+        throw new HttpsError("failed-precondition", "認証元を確認できません。時間をおいて再度お試しください。");
+    }
+    const rateLimitId = crypto.createHash("sha256").update(`${action}:${ip}`).digest("hex");
+    const limitRef = getFirestore().collection("adminLoginRateLimits").doc(rateLimitId);
+    const now = Date.now();
+    const allowed = await getFirestore().runTransaction(async transaction => {
+        const snapshot = await transaction.get(limitRef);
+        const data = snapshot.exists ? snapshot.data() : {};
+        const windowStartedAt = Number(data.windowStartedAt) || now;
+        const attempts = now - windowStartedAt >= ADMIN_LOGIN_RATE_WINDOW_MS ? 0 : Number(data.attempts) || 0;
+        if (attempts >= maxAttempts) return false;
+        const nextWindowStartedAt = attempts === 0 ? now : windowStartedAt;
+        transaction.set(limitRef, {
+            windowStartedAt: nextWindowStartedAt,
+            attempts: attempts + 1,
+            expiresAt: nextWindowStartedAt + ADMIN_LOGIN_RATE_WINDOW_MS
+        });
+        return true;
+    });
+    if (!allowed) {
+        throw new HttpsError("resource-exhausted", "認証の試行回数が上限に達しました。15分後に再度お試しください。");
+    }
+}
+
+exports.createAdminLoginChallenge = onCall({
+    secrets: [ADMIN_CONTROL_KEY, INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
+}, async request => {
+    await enforceAdminLoginRateLimit(request, "challenge", 5);
+    if (!secretsMatch(request.data?.adminKey, ADMIN_CONTROL_KEY.value())) {
+        throw new HttpsError("unauthenticated", "管理者キーまたは確認コードが正しくありません。");
+    }
+
+    const adminEmail = INVOICE_GMAIL_USER.value();
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+    const challengeId = crypto.randomBytes(32).toString("hex");
+    const codeHash = crypto.createHmac("sha256", ADMIN_CONTROL_KEY.value())
+        .update(`${challengeId}:${code}`).digest("hex");
+    const challengeRef = getFirestore().collection("adminLoginChallenges").doc(challengeId);
+    await challengeRef.set({
+        codeHash,
+        expiresAt: Date.now() + ADMIN_LOGIN_CODE_TTL_MS,
+        attempts: 0
+    });
+
+    try {
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: { user: adminEmail, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
+        });
+        await transporter.sendMail({
+            from: { name: "えこすまいる連絡帳 管理者認証", address: adminEmail },
+            to: adminEmail,
+            subject: "【えこすまいる連絡帳】管理者ログイン確認コード",
+            text: `管理者ログイン確認コード：${code}\n\nこのコードは10分間有効です。心当たりがない場合は、このメールを破棄してください。`
+        });
+    } catch (error) {
+        await challengeRef.delete();
+        logger.error("Failed to send admin login verification code", { error });
+        throw new HttpsError("internal", "確認コードをメール送信できませんでした。時間をおいて再度お試しください。");
+    }
+    return { challengeId };
+});
+
+exports.verifyAdminLoginCode = onCall({ secrets: [ADMIN_CONTROL_KEY] }, async request => {
+    await enforceAdminLoginRateLimit(request, "verification", 10);
+    const challengeId = typeof request.data?.challengeId === "string" ? request.data.challengeId : "";
+    const code = typeof request.data?.code === "string" ? request.data.code : "";
+    if (!/^[0-9a-f]{64}$/.test(challengeId) || !/^\d{6}$/.test(code)) {
+        throw new HttpsError("unauthenticated", "管理者キーまたは確認コードが正しくありません。");
+    }
+
+    const challengeRef = getFirestore().collection("adminLoginChallenges").doc(challengeId);
+    const isValid = await getFirestore().runTransaction(async transaction => {
+        const snapshot = await transaction.get(challengeRef);
+        if (!snapshot.exists) return false;
+        const challenge = snapshot.data();
+        if (Number(challenge.expiresAt) <= Date.now() || Number(challenge.attempts) >= 5) {
+            transaction.delete(challengeRef);
+            return false;
+        }
+        const providedHash = crypto.createHmac("sha256", ADMIN_CONTROL_KEY.value())
+            .update(`${challengeId}:${code}`).digest("hex");
+        if (!secretsMatch(providedHash, challenge.codeHash)) {
+            transaction.set(challengeRef, { attempts: Number(challenge.attempts) + 1 }, { merge: true });
+            return false;
+        }
+        transaction.delete(challengeRef);
+        return true;
+    });
+    if (!isValid) {
+        throw new HttpsError("unauthenticated", "管理者キーまたは確認コードが正しくありません。");
+    }
+    return {
+        customToken: await getAuth().createCustomToken("admin-control-panel", {
+            role: "admin",
+            mfaVerified: true
+        })
+    };
+});
+
+exports.cleanExpiredAdminLoginData = onSchedule("every day 03:00", async () => {
+    const db = getFirestore();
+    const now = Date.now();
+    for (const collectionName of ["adminLoginChallenges", "adminLoginRateLimits"]) {
+        while (true) {
+            const expired = await db.collection(collectionName).where("expiresAt", "<=", now).limit(400).get();
+            if (expired.empty) break;
+            const batch = db.batch();
+            expired.docs.forEach(document => batch.delete(document.ref));
+            await batch.commit();
+        }
+    }
+});
+
+exports.migrateLegacyFacilityPasswords = onCall(async request => {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
+        throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
+    }
+    const facilities = await getFirestore().collection("facilities").get();
+    let migrated = 0;
+    let cleaned = 0;
+    for (const facility of facilities.docs) {
+        const facilityRef = facility.ref;
+        const credentialRef = getFirestore().collection("facilityCredentials").doc(facility.id);
+        const result = await getFirestore().runTransaction(async transaction => {
+            const [latestFacility, credential] = await Promise.all([
+                transaction.get(facilityRef),
+                transaction.get(credentialRef)
+            ]);
+            if (!latestFacility.exists || typeof latestFacility.data().password !== "string") return "unchanged";
+            const existingHash = credential.exists ? credential.data().passwordHash : null;
+            const hasValidHash = isSupportedFacilityPasswordHash(existingHash);
+            if (!hasValidHash) {
+                transaction.set(credentialRef, {
+                    passwordHash: await hashFacilityPassword(latestFacility.data().password),
+                    updatedAt: FieldValue.serverTimestamp()
+                });
+            }
+            transaction.set(facilityRef, { password: FieldValue.delete() }, { merge: true });
+            return hasValidHash ? "cleaned" : "migrated";
+        });
+        if (result === "migrated") migrated++;
+        if (result === "cleaned") cleaned++;
+    }
+    return { checked: facilities.size, migrated, cleaned };
+});
+
 function encryptFacilityLineCredentials(facilityId, credentials) {
     return encryptCredentials(credentials, FACILITY_LINE_ENCRYPTION_KEY.value(), facilityId);
 }
@@ -173,17 +380,8 @@ async function getFacilityLineCredentials(facilityId) {
     return snapshot.exists ? decryptFacilityLineCredentials(facilityId, snapshot.data().encryptedCredentials) : null;
 }
 
-exports.createAdminSession = onCall({ secrets: [ADMIN_CONTROL_KEY] }, async request => {
-    if (!secretsMatch(request.data?.adminKey, ADMIN_CONTROL_KEY.value())) {
-        throw new HttpsError("unauthenticated", "管理者キーが正しくありません。");
-    }
-    return {
-        customToken: await getAuth().createCustomToken("admin-control-panel", { role: "admin" })
-    };
-});
-
 exports.prepareLegacyStorageOwnership = onCall(async request => {
-    if (request.auth?.token.role !== "admin") {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
         throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
     }
     const db = getFirestore();
@@ -257,7 +455,6 @@ exports.registerTrialFacility = onCall({
 
     const facilityRef = await db.collection("facilities").add({
         facilityName,
-        password,
         email,
         phone,
         status: "active",
@@ -269,6 +466,15 @@ exports.registerTrialFacility = onCall({
         acceptedTermsVersion: CURRENT_TERMS_VERSION,
         termsAcceptedAt: new Date().toISOString()
     });
+    try {
+        await db.collection("facilityCredentials").doc(facilityRef.id).set({
+            passwordHash: await hashFacilityPassword(password),
+            updatedAt: FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        await facilityRef.delete();
+        throw error;
+    }
 
     // トライアル申込施設への御礼とご利用案内のメールを即時送信
     let emailResult = null;
@@ -361,13 +567,16 @@ exports.changeFacilityPassword = onCall(async request => {
     const newPassword = typeof request.data?.newPassword === "string" ? request.data.newPassword : "";
     const facilityRef = getFirestore().collection("facilities").doc(facilityId);
     const facilitySnapshot = await facilityRef.get();
-    if (!currentPassword || facilitySnapshot.data().password !== currentPassword) {
+    if (!facilitySnapshot.exists || !currentPassword || !await verifyFacilityPassword(facilitySnapshot, currentPassword)) {
         throw new HttpsError("unauthenticated", "現在のパスワードが違います。");
     }
     if (newPassword.length < 6 || newPassword.length > 200) {
         throw new HttpsError("invalid-argument", "新しいパスワードは6文字以上で入力してください。");
     }
-    await facilityRef.update({ password: newPassword });
+    await getFirestore().collection("facilityCredentials").doc(facilityId).set({
+        passwordHash: await hashFacilityPassword(newPassword),
+        updatedAt: FieldValue.serverTimestamp()
+    });
     return { success: true };
 });
 
@@ -381,7 +590,7 @@ exports.changeFacilityEmail = onCall(async request => {
     }
     const facilityRef = getFirestore().collection("facilities").doc(facilityId);
     const facilitySnapshot = await facilityRef.get();
-    if (!facilitySnapshot.exists || !currentPassword || facilitySnapshot.data().password !== currentPassword) {
+    if (!facilitySnapshot.exists || !currentPassword || !await verifyFacilityPassword(facilitySnapshot, currentPassword)) {
         throw new HttpsError("unauthenticated", "現在の施設パスワードが違います。");
     }
     await facilityRef.update({ email: newEmail });
@@ -398,7 +607,7 @@ exports.changeFacilityPhone = onCall(async request => {
     }
     const facilityRef = getFirestore().collection("facilities").doc(facilityId);
     const facilitySnapshot = await facilityRef.get();
-    if (!facilitySnapshot.exists || !currentPassword || facilitySnapshot.data().password !== currentPassword) {
+    if (!facilitySnapshot.exists || !currentPassword || !await verifyFacilityPassword(facilitySnapshot, currentPassword)) {
         throw new HttpsError("unauthenticated", "現在の施設パスワードが違います。");
     }
     await facilityRef.update({ phone: newPhone });
@@ -417,7 +626,7 @@ exports.renameFacility = onCall(async request => {
     const db = getFirestore();
     const facilityRef = db.collection("facilities").doc(facilityId);
     const facilitySnapshot = await facilityRef.get();
-    if (!facilitySnapshot.exists || facilitySnapshot.data().password !== currentPassword) {
+    if (!facilitySnapshot.exists || !await verifyFacilityPassword(facilitySnapshot, currentPassword)) {
         throw new HttpsError("unauthenticated", "現在のパスワードが違います。");
     }
     const nameMatches = await db.collection("facilities").where("facilityName", "==", newFacilityName).limit(2).get();
@@ -506,7 +715,8 @@ exports.previewFacilityDeletion = onCall(async request => {
     const facilityId = requireFacilityDeletionId(request);
     const facilitySnapshot = await getFirestore().collection("facilities").doc(facilityId).get();
     const password = typeof request.data?.password === "string" ? request.data.password : "";
-    if (!facilitySnapshot.exists || facilitySnapshot.data().status === "locked" || !password || facilitySnapshot.data().password !== password) {
+    if (!facilitySnapshot.exists || facilitySnapshot.data().status === "locked" ||
+        !password || !await verifyFacilityPassword(facilitySnapshot, password)) {
         throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
     }
     const plan = await buildFacilityDeletionPlan(facilityId);
@@ -532,7 +742,8 @@ exports.deleteFacilityAccount = onCall(async request => {
     const confirmedFacilityName = typeof request.data?.confirmedFacilityName === "string" ? request.data.confirmedFacilityName.trim() : "";
     const facilityRef = getFirestore().collection("facilities").doc(facilityId);
     const facilitySnapshot = await facilityRef.get();
-    if (!facilitySnapshot.exists || facilitySnapshot.data().status === "locked" || !password || facilitySnapshot.data().password !== password) {
+    if (!facilitySnapshot.exists || facilitySnapshot.data().status === "locked" ||
+        !password || !await verifyFacilityPassword(facilitySnapshot, password)) {
         throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
     }
     const facilityName = facilitySnapshot.data().facilityName || facilityId;
@@ -581,7 +792,8 @@ exports.deleteFacilityAccount = onCall(async request => {
             deleteFirestoreDocuments(plan.invoiceHistorySnapshot.docs),
             deleteFirestoreDocuments(pairingCodes.docs),
             deleteFirestoreDocuments(recordLinks.docs),
-            db.collection("facilityLineSettings").doc(facilityId).delete()
+            db.collection("facilityLineSettings").doc(facilityId).delete(),
+            db.collection("facilityCredentials").doc(facilityId).delete()
         ]);
         await facilityRef.delete();
         await cancellationRef.set({ status: "completed", completedAt: new Date().toISOString() }, { merge: true });
@@ -942,7 +1154,7 @@ exports.getFacilityAccessStatus = onCall(async request => {
 });
 
 exports.updateFacilityServiceTypes = onCall(async request => {
-    if (request.auth?.token.role !== "admin") {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
         throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
     }
     const facilityId = typeof request.data?.facilityId === "string" ? request.data.facilityId : "";
@@ -961,7 +1173,7 @@ exports.updateFacilityServiceTypes = onCall(async request => {
 });
 
 exports.updateFacilityBillingServiceTypes = onCall(async request => {
-    if (request.auth?.token.role !== "admin") {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
         throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
     }
     const facilityId = typeof request.data?.facilityId === "string" ? request.data.facilityId.trim() : "";
@@ -1796,7 +2008,7 @@ exports.requestFacilitySubscription = onCall({
 exports.issueFacilityInvoiceForAdmin = onCall({
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async request => {
-    if (request.auth?.token.role !== "admin") {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
         throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
     }
     const facilityId = typeof request.data?.facilityId === "string" ? request.data.facilityId.trim() : "";
@@ -2075,7 +2287,7 @@ exports.sendTestInvoiceEmail = onCall({
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async request => {
     const { facilityId } = request.data || {};
-    if (request.auth?.token.role !== "admin") {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
         throw new HttpsError("unauthenticated", "請求書送信キーが正しくありません。");
     }
     if (typeof facilityId !== "string" || !facilityId || facilityId.length > 128) {

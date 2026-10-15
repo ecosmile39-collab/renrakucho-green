@@ -151,7 +151,7 @@ test("staff publication never sends a LINE message", async () => {
     assert.equal(context.requests.length, 0);
 });
 
-test("facility can update its contact email with its current password without changing other data", async () => {
+test("facility can update its contact email and migrate its legacy password to a private hash", async () => {
     const context = loadHandlers({
         "facilities/facility-a": { status: "active", password: "current-password", email: "old@example.com", facilityName: "Facility" }
     });
@@ -161,8 +161,26 @@ test("facility can update its contact email with its current password without ch
     });
     assert.equal(result.email, "new@example.com");
     assert.deepEqual(context.documents.get("facilities/facility-a"), {
-        status: "active", password: "current-password", email: "new@example.com", facilityName: "Facility"
+        status: "active", email: "new@example.com", facilityName: "Facility"
     });
+    assert.match(context.documents.get("facilityCredentials/facility-a").passwordHash, /^scrypt\$[0-9a-f]{32}\$[0-9a-f]{128}$/);
+});
+
+test("facility login verifies the private password hash after migration", async () => {
+    const context = loadHandlers({
+        "facilities/facility-a": { facilityName: "Facility", status: "active", password: "current-password" }
+    });
+    await context.handlers.changeFacilityEmail({
+        auth: { uid: "facility-a", token: { role: "facility" } },
+        data: { currentPassword: "current-password", newEmail: "new@example.invalid" }
+    });
+    const result = await context.handlers.createFacilitySession({
+        data: { facilityName: "Facility", password: "current-password" }
+    });
+    assert.equal(result.facilityId, "facility-a");
+    await assert.rejects(context.handlers.createFacilitySession({
+        data: { facilityName: "Facility", password: "wrong-password" }
+    }), { code: "unauthenticated" });
 });
 
 test("family request uses only Reply API and returns only linked published records", async () => {
@@ -418,11 +436,67 @@ test("new trial registrations disable common LINE by default", async () => {
         facilityName: "Test Facility", password: "test-password", email: "test@example.invalid", phone: "03-1234-5678"
     } });
     assert.equal(context.documents.get(`facilities/${result.facilityId}`).commonLineEnabled, false);
+    assert.equal(Object.hasOwn(context.documents.get(`facilities/${result.facilityId}`), "password"), false);
+    assert.match(context.documents.get(`facilityCredentials/${result.facilityId}`).passwordHash, /^scrypt\$/);
     assert.equal(context.documents.get(`facilities/${result.facilityId}`).phone, "03-1234-5678");
     assert.match(context.sentEmails[0].text, /ご利用になるサービスにチェックを入れてください/);
     assert.match(context.sentEmails[0].text, /1サービスの場合は従来の料金.*2つ目以降は1サービスにつき税抜1,000円が加算されます/);
     assert.match(context.sentEmails[0].html, /ご利用になるサービスにチェックを入れてください/);
     assert.match(context.sentEmails[0].html, /2つ目以降は1サービスにつき税抜1,000円が加算されます/);
+});
+
+test("admin login requires a one-time email code and consumes it after successful verification", async () => {
+    const context = loadHandlers({});
+    const challenge = await context.handlers.createAdminLoginChallenge({
+        data: { adminKey: "test-secret" }, rawRequest: { ip: "192.0.2.10" }
+    });
+    const code = context.sentEmails[0].text.match(/\d{6}/)[0];
+    assert.equal(context.sentEmails[0].to, "test-secret");
+    const result = await context.handlers.verifyAdminLoginCode({
+        data: { challengeId: challenge.challengeId, code }, rawRequest: { ip: "192.0.2.10" }
+    });
+    assert.equal(result.customToken, "test-custom-token");
+    assert.equal(context.customTokens[0].claims.mfaVerified, true);
+    await assert.rejects(context.handlers.verifyAdminLoginCode({
+        data: { challengeId: challenge.challengeId, code }, rawRequest: { ip: "192.0.2.10" }
+    }), { code: "unauthenticated" });
+});
+
+test("admin login challenge requests are rate-limited by source IP", async () => {
+    const context = loadHandlers({});
+    for (let attempt = 0; attempt < 5; attempt++) {
+        await assert.rejects(context.handlers.createAdminLoginChallenge({
+            data: { adminKey: "wrong-key" }, rawRequest: { ip: "192.0.2.11" }
+        }), { code: "unauthenticated" });
+    }
+    await assert.rejects(context.handlers.createAdminLoginChallenge({
+        data: { adminKey: "wrong-key" }, rawRequest: { ip: "192.0.2.11" }
+    }), { code: "resource-exhausted" });
+});
+
+test("administrator can migrate legacy facility passwords without exposing them in facility documents", async () => {
+    const context = loadHandlers({
+        "facilities/legacy": { facilityName: "Legacy", password: "legacy-password" },
+        "facilities/already-hashed": { facilityName: "Already hashed", password: "old-password" },
+        "facilityCredentials/already-hashed": {
+            passwordHash: `scrypt$${"a".repeat(32)}$${"b".repeat(128)}`
+        }
+    });
+    const result = await context.handlers.migrateLegacyFacilityPasswords({
+        auth: { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } }
+    });
+    assert.equal(result.checked, 2);
+    assert.equal(result.migrated, 1);
+    assert.equal(result.cleaned, 1);
+    assert.equal(Object.hasOwn(context.documents.get("facilities/legacy"), "password"), false);
+    assert.equal(Object.hasOwn(context.documents.get("facilities/already-hashed"), "password"), false);
+    assert.match(context.documents.get("facilityCredentials/legacy").passwordHash, /^scrypt\$/);
+    await assert.rejects(context.handlers.migrateLegacyFacilityPasswords({
+        auth: { uid: "facility-a", token: { role: "facility" } }
+    }), { code: "unauthenticated" });
+    await assert.rejects(context.handlers.migrateLegacyFacilityPasswords({
+        auth: { uid: "admin-control-panel", token: { role: "admin" } }
+    }), { code: "unauthenticated" });
 });
 
 test("trial registration requires a contact phone number", async () => {
@@ -444,7 +518,7 @@ test("manual invoice issuance is restricted to administrators", async () => {
 test("manual invoice issuance rejects a missing facility identifier", async () => {
     const context = loadHandlers({});
     await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin({
-        auth: { uid: "admin-control-panel", token: { role: "admin" } }, data: {}
+        auth: { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } }, data: {}
     }), { code: "invalid-argument" });
 });
 
@@ -456,7 +530,7 @@ test("manual initial invoice issuance prevents duplicate sent invoices", async (
         "facilities/facility-a/invoiceHistory/INITIAL": { status: "sent", invoiceNumber: "INIT-20261015-FACILITY-A" }
     });
     await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin({
-        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        auth: { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } },
         data: { facilityId: "facility-a" }
     }), { code: "already-exists" });
 });
@@ -475,7 +549,7 @@ test("manual monthly invoice issuance prevents duplicate automatic invoices", as
         [`facilities/facility-a/invoiceHistory/AUTO-${periodStart.replace(/-/g, "")}`]: { status: "sent" }
     });
     await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin({
-        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        auth: { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } },
         data: { facilityId: "facility-a" }
     }), { code: "already-exists" });
 });
@@ -491,7 +565,7 @@ test("manual invoices include selected services and the matching additional serv
         }
     });
     const result = await context.handlers.issueFacilityInvoiceForAdmin({
-        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        auth: { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } },
         data: { facilityId: "facility-b" }
     });
     const invoice = [...context.documents.entries()].find(([path]) =>
@@ -521,7 +595,7 @@ test("manual invoice charges a saved one-time adjustment once and clears it afte
     });
 
     await context.handlers.issueFacilityInvoiceForAdmin({
-        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        auth: { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } },
         data: { facilityId: "facility-fee" }
     });
     const invoice = [...context.documents.entries()].find(([path]) =>
@@ -597,11 +671,11 @@ test("billing service settings are saved independently from input service settin
         data: { facilityId: "facility-d", serviceTypes: ["デイサービス"] }
     }), { code: "unauthenticated" });
     await assert.rejects(context.handlers.updateFacilityBillingServiceTypes({
-        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        auth: { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } },
         data: { facilityId: "facility-d", serviceTypes: [] }
     }), { code: "invalid-argument" });
     const result = await context.handlers.updateFacilityBillingServiceTypes({
-        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        auth: { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } },
         data: { facilityId: "facility-d", serviceTypes: ["生活介護", "デイサービス"] }
     });
 

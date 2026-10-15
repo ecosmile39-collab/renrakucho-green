@@ -87,16 +87,21 @@
             <strong>管理者認証</strong>
             <input type="password" id="adminKey" placeholder="管理者キーを入力">
             <label style="display: block; margin-top: 6px; font-size: 13px; cursor: pointer;"><input type="checkbox" id="showAdminKey" style="width: auto; margin-right: 6px;"> 管理者キーを表示する</label>
+            <p id="adminCodeHelp" class="muted">管理者キーを確認後、登録済みの管理者メールアドレスへ確認コードを送信します。</p>
+            <input type="text" id="adminVerificationCode" class="hidden" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="メールに届いた6桁の確認コード">
             <label style="display: block; margin-top: 8px; font-size: 13px; cursor: pointer;"><input type="checkbox" id="rememberAdminAuth" style="width: auto; margin-right: 6px;"> この端末で管理者認証を記憶する（自分専用の端末のみ）</label>
-            <button class="primary" onclick="authenticateAdmin()">管理者として認証する</button>
+            <button id="adminAuthButton" class="primary" onclick="authenticateAdmin()">確認コードを送信</button>
+            <button id="resetAdminChallengeButton" type="button" class="hidden" onclick="resetAdminChallenge()">認証をやり直す</button>
             <p id="authError" class="error"></p>
         </section>
 
         <section id="facilitySection" class="hidden">
             <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
                 <button type="button" onclick="openFacilityOverview()" style="background: #1864ab;">🏢 施設一覧</button>
+                <button type="button" onclick="migrateLegacyFacilityPasswords()" style="background: #2b8a3e;">🔒 施設パスワードを安全に移行</button>
                 <button type="button" onclick="logoutAdmin()" style="background: #495057;">管理者からログアウト</button>
             </div>
+            <p id="passwordMigrationStatus" class="muted" role="status" aria-live="polite"></p>
             <div style="margin-top: 20px; padding: 16px; border: 2px dashed #40a94d; background: #eaf7eb; border-radius: 8px;">
                 <h2 style="margin-top: 0; color: #237032;">➕ 新規施設の登録（アカウント発行）</h2>
                 <p>施設名・初期パスワード・請求書の送付先メールを登録します。施設IDは自動発行され、施設名を変更しても変わりません。</p>
@@ -213,8 +218,11 @@
         const functions = getFunctions(app);
         const sendTestInvoiceEmail = httpsCallable(functions, "sendTestInvoiceEmail");
         const issueFacilityInvoice = httpsCallable(functions, "issueFacilityInvoiceForAdmin");
-        const createAdminSession = httpsCallable(functions, "createAdminSession");
+        const createAdminLoginChallenge = httpsCallable(functions, "createAdminLoginChallenge");
+        const verifyAdminLoginCode = httpsCallable(functions, "verifyAdminLoginCode");
+        const migrateFacilityPasswords = httpsCallable(functions, "migrateLegacyFacilityPasswords");
         const createFacilitySessionForAdmin = httpsCallable(functions, "createFacilitySessionForAdmin");
+        let pendingAdminLoginChallengeId = "";
         let facilities = [];
         let cancellationRecords = [];
         let latestInvoiceByFacility = new Map();
@@ -239,7 +247,7 @@
             if (!user || user.uid !== "admin-control-panel") return;
             try {
                 const token = await user.getIdTokenResult();
-                if (token.claims.role !== "admin") {
+                if (token.claims.role !== "admin" || token.claims.mfaVerified !== true) {
                     await signOut(auth);
                     return;
                 }
@@ -279,25 +287,67 @@
         }
 
         window.authenticateAdmin = async function() {
-            let key = document.getElementById("adminKey").value;
             let error = document.getElementById("authError");
             error.textContent = "";
             try {
-                const result = await createAdminSession({ adminKey: key });
+                if (!pendingAdminLoginChallengeId) {
+                    const key = document.getElementById("adminKey").value;
+                    const challenge = await createAdminLoginChallenge({ adminKey: key });
+                    pendingAdminLoginChallengeId = challenge.data.challengeId;
+                    document.getElementById("adminKey").value = "";
+                    document.getElementById("adminKey").classList.add("hidden");
+                    document.getElementById("showAdminKey").parentElement.classList.add("hidden");
+                    document.getElementById("adminVerificationCode").classList.remove("hidden");
+                    document.getElementById("adminAuthButton").textContent = "確認コードを確認";
+                    document.getElementById("resetAdminChallengeButton").classList.remove("hidden");
+                    document.getElementById("adminCodeHelp").textContent = "管理者メールに届いた6桁のコードを10分以内に入力してください。";
+                    document.getElementById("adminVerificationCode").focus();
+                    return;
+                }
+                const result = await verifyAdminLoginCode({
+                    challengeId: pendingAdminLoginChallengeId,
+                    code: document.getElementById("adminVerificationCode").value.trim()
+                });
                 const remember = rememberAdminAuth.checked;
                 await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
                 localStorage.setItem("rememberAdminAuth", String(remember));
                 await signInWithCustomToken(auth, result.data.customToken);
-                document.getElementById("adminKey").value = "";
+                resetAdminChallenge();
                 setAdminPanelVisible(true);
                 await loadFacilities();
             } catch (authError) {
-                error.textContent = "管理者キーが正しくないか、認証に失敗しました。";
-                document.getElementById("authError").textContent = authError.message
-                    ? "管理者キーが正しくないか、認証に失敗しました。"
-                    : "認証に失敗しました。";
+                error.textContent = authError.message || "管理者認証に失敗しました。";
             }
         };
+
+        window.resetAdminChallenge = function() {
+            pendingAdminLoginChallengeId = "";
+            document.getElementById("adminKey").classList.remove("hidden");
+            document.getElementById("showAdminKey").parentElement.classList.remove("hidden");
+            document.getElementById("adminVerificationCode").classList.add("hidden");
+            document.getElementById("adminVerificationCode").value = "";
+            document.getElementById("adminAuthButton").textContent = "確認コードを送信";
+            document.getElementById("resetAdminChallengeButton").classList.add("hidden");
+            document.getElementById("adminCodeHelp").textContent = "管理者キーを確認後、登録済みの管理者メールアドレスへ確認コードを送信します。";
+        };
+
+        window.migrateLegacyFacilityPasswords = async function() {
+            if (!confirm("施設に保存されている旧形式のパスワードを、ログインに必要な安全なハッシュへ移行し、平文を削除します。移行後、管理画面でパスワードの内容は表示できなくなります。続けますか？")) return;
+            if (await migrateFacilityPasswordsBeforeLoad()) await loadFacilities();
+        };
+
+        async function migrateFacilityPasswordsBeforeLoad() {
+            const status = document.getElementById("passwordMigrationStatus");
+            status.textContent = "施設パスワードの安全な移行状況を確認しています...";
+            try {
+                const result = await migrateFacilityPasswords({});
+                status.textContent = `パスワード保護を確認しました。対象 ${result.data.checked}件、新規移行 ${result.data.migrated}件、旧形式の平文削除 ${result.data.cleaned}件。`;
+                return true;
+            } catch (error) {
+                status.textContent = `警告：パスワード移行を完了できませんでした。施設一覧を開いていません。再試行してください。詳細: ${error.message || error}`;
+                return false;
+            }
+        }
 
         window.logoutAdmin = async function() {
             await signOut(auth);
@@ -641,7 +691,7 @@
                 return `<div class="facility">
                     <div><div class="facility-name"><a class="facility-name-link" href="#" onclick="openFacilityDailyRecord('${encodeURIComponent(facility.id)}'); return false;" title="この施設の連絡帳入力画面を開く">🔗 ${escapeHtml(facility.facilityName || facility.id)}</a>${isRegistered ? '<span class="registered-badge" aria-label="本登録済み">⭐ 本登録済み</span>' : ""}</div>
                     ${facility.lineAgencyStatus === "pending" ? `<button type="button" class="line-agency-request-alert" onclick="focusLineAgencyCompletion('${encodeURIComponent(facility.id)}')" aria-label="${escapeHtml(facility.facilityName || facility.id)}のLINE連携申込。完了欄へ移動">🔔 LINE連携申込です。</button>` : ""}
-                    <div style="margin-top: 6px; color: #1971c2; font-size: 14px; font-weight: bold;">🔑 パスワード：${escapeHtml(facility.password || "未設定")}</div>
+                    <div style="margin-top: 6px; color: #1971c2; font-size: 14px; font-weight: bold;">🔑 パスワード：安全のため表示しません</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">✉️ メールアドレス：${escapeHtml(facility.email || "未登録")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">📞 電話番号：${escapeHtml(facility.phone || "未登録")}</div>
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 13px;">

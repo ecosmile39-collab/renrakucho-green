@@ -6,7 +6,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return signedIn() && request.auth.token.role == 'admin';
+      return signedIn()
+        && request.auth.token.role == 'admin'
+        && request.auth.token.get('mfaVerified', false) == true;
     }
 
     function isFacility(facilityId) {
@@ -51,6 +53,18 @@ service cloud.firestore {
       match /invoiceHistory/{invoiceId} {
         allow read, write: if isAdmin();
       }
+    }
+
+    match /facilityCredentials/{facilityId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /adminLoginChallenges/{challengeId} {
+      allow read, write: if false;
+    }
+
+    match /adminLoginRateLimits/{rateLimitId} {
+      allow read, write: if false;
     }
 
     match /facilityCancellations/{facilityId} {

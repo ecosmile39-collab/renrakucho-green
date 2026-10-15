@@ -6,7 +6,9 @@ service firebase.storage {
     }
 
     function isAdmin() {
-      return signedIn() && request.auth.token.role == 'admin';
+      return signedIn()
+        && request.auth.token.role == 'admin'
+        && request.auth.token.get('mfaVerified', false) == true;
     }
 
     function isFacility(facilityId) {
