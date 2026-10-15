@@ -28,6 +28,8 @@ function generateInvoicePdf({
     dueDate,
     billingPeriod,
     itemTitle,
+    serviceTypes = [],
+    additionalServiceSubtotal = 0,
     subtotal,
     tax,
     total,
@@ -136,26 +138,38 @@ function generateInvoicePdf({
                 .text("内　容", colDescX + 10, tableTop + 7)
                 .text("金　額", colAmountX, tableTop + 7, { width: colAmountW - 10, align: "right" });
 
-            // Row 1: Subtotal
             let rowY = tableTop + 24;
-            doc.rect(colDescX, rowY, contentWidth, 26).stroke("#adb5bd");
-            doc.fillColor("#222222").fontSize(9)
-                .text(`${itemTitle}（${billingPeriod}分）`, colDescX + 10, rowY + 8)
-                .text(`¥ ${subtotal.toLocaleString()}`, colAmountX, rowY + 8, { width: colAmountW - 10, align: "right" });
+            const drawRow = (description, amountLabel, { fill, border, fontSize = 9 } = {}) => {
+                doc.font("Japanese").fontSize(fontSize);
+                const descriptionHeight = doc.heightOfString(description, { width: colDescW - 20, fontSize });
+                const rowHeight = Math.max(26, descriptionHeight + 14);
+                if (fill) doc.rect(colDescX, rowY, contentWidth, rowHeight).fillAndStroke(fill, border || "#adb5bd");
+                else doc.rect(colDescX, rowY, contentWidth, rowHeight).stroke("#adb5bd");
+                doc.fillColor("#222222").fontSize(fontSize).font("Japanese")
+                    .text(description, colDescX + 10, rowY + (rowHeight - descriptionHeight) / 2, {
+                        width: colDescW - 20,
+                        lineGap: 1
+                    })
+                    .text(amountLabel, colAmountX, rowY + (rowHeight - fontSize) / 2, {
+                        width: colAmountW - 10,
+                        align: "right"
+                    });
+                rowY += rowHeight;
+            };
 
-            // Row 2: Tax
-            rowY += 26;
-            doc.rect(colDescX, rowY, contentWidth, 26).stroke("#adb5bd");
-            doc.fillColor("#222222").fontSize(9)
-                .text("消費税（10%）", colDescX + 10, rowY + 8)
-                .text(`¥ ${tax.toLocaleString()}`, colAmountX, rowY + 8, { width: colAmountW - 10, align: "right" });
-
-            // Row 3: Total
-            rowY += 26;
+            if (serviceTypes.length) {
+                drawRow(`利用サービス：${serviceTypes.join("、")}`, "—");
+            }
+            drawRow(`${itemTitle}（${billingPeriod}分）`, `¥ ${(subtotal - additionalServiceSubtotal).toLocaleString()}`);
+            if (additionalServiceSubtotal > 0) {
+                drawRow("追加サービス利用料", `¥ ${additionalServiceSubtotal.toLocaleString()}`);
+            }
+            drawRow("消費税（10%）", `¥ ${tax.toLocaleString()}`);
             doc.rect(colDescX, rowY, contentWidth, 28).fillAndStroke("#f8f9fa", "#2b8a3e");
-            doc.fillColor("#1e6b2e").fontSize(10)
+            doc.fillColor("#1e6b2e").fontSize(10).font("Japanese")
                 .text("合　計（税込）", colDescX + 10, rowY + 8)
                 .text(`¥ ${total.toLocaleString()}`, colAmountX, rowY + 8, { width: colAmountW - 10, align: "right" });
+            rowY += 28;
 
             // Bank details block
             let bankY = rowY + 38;

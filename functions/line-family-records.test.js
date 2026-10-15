@@ -9,6 +9,7 @@ const vm = require("node:vm");
 function loadHandlers(entries) {
     const documents = new Map(Object.entries(entries));
     const requests = [];
+    const sentEmails = [];
     function document(referencePath) {
         return {
             id: referencePath.split("/").at(-1),
@@ -63,7 +64,15 @@ function loadHandlers(entries) {
         };
         if (name === "firebase-functions/params") return { defineSecret: () => ({ value: () => "test-secret" }) };
         if (name === "firebase-functions/logger") return { warn() {}, error() {}, info() {} };
-        if (name === "nodemailer" || name === "google-auth-library") return {};
+        if (name === "nodemailer") return {
+            createTransport: () => ({
+                async sendMail(message) {
+                    sentEmails.push(message);
+                    return { messageId: `test-message-${sentEmails.length}` };
+                }
+            })
+        };
+        if (name === "google-auth-library") return {};
         return require(name.startsWith("./") ? path.join(__dirname, name) : name);
     };
     const sandbox = {
@@ -74,7 +83,7 @@ function loadHandlers(entries) {
         }
     };
     vm.runInNewContext(readFileSync(path.join(__dirname, "index.js"), "utf8"), sandbox);
-    return { handlers: sandbox.exports, documents, requests };
+    return { handlers: sandbox.exports, documents, requests, sentEmails };
 }
 
 async function sendFamilyEvent(context, userId, text = "連絡帳を見る") {
@@ -446,6 +455,109 @@ test("manual monthly invoice issuance prevents duplicate automatic invoices", as
         auth: { uid: "admin-control-panel", token: { role: "admin" } },
         data: { facilityId: "facility-a" }
     }), { code: "already-exists" });
+});
+
+test("manual invoices include selected services and the matching additional service charge", async () => {
+    const activationDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000);
+    const context = loadHandlers({
+        "facilities/facility-b": {
+            facilityName: "Facility B", email: "facility@example.invalid", status: "active",
+            subscriptionStatus: "active", createdAt: activationDate.toISOString(),
+            enabledServiceTypes: ["デイサービス", "生活介護"],
+            billingServiceTypes: ["デイサービス", "生活介護"]
+        }
+    });
+    const result = await context.handlers.issueFacilityInvoiceForAdmin({
+        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        data: { facilityId: "facility-b" }
+    });
+    const invoice = [...context.documents.entries()].find(([path]) =>
+        path.startsWith("facilities/facility-b/invoiceHistory/AUTO-"))[1];
+
+    assert.equal(result.type, "monthly");
+    assert.deepEqual(invoice.serviceTypes, ["デイサービス", "生活介護"]);
+    assert.equal(invoice.additionalServiceSubtotal, 1000);
+    assert.equal(invoice.subtotal, 6000);
+    assert.equal(invoice.tax, 600);
+    assert.equal(invoice.total, 6600);
+    assert.match(context.sentEmails[0].html, /利用サービス/);
+    assert.match(context.sentEmails[0].html, /デイサービス、生活介護/);
+    assert.match(context.sentEmails[0].html, /追加サービス利用料/);
+    assert.match(context.sentEmails[0].html, /6,600円/);
+});
+
+test("automatic monthly invoices include the saved services and surcharge", async () => {
+    const activationDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000);
+    const context = loadHandlers({
+        "facilities/facility-e": {
+            facilityName: "Facility E", email: "facility@example.invalid", status: "active",
+            subscriptionStatus: "active", createdAt: activationDate.toISOString(),
+            billingServiceTypes: ["デイサービス", "生活介護", "児童発達支援"]
+        }
+    });
+    await context.handlers.sendMonthlyInvoices();
+    const invoice = [...context.documents.entries()].find(([path]) =>
+        path.startsWith("facilities/facility-e/invoiceHistory/AUTO-"))[1];
+
+    assert.deepEqual(invoice.serviceTypes, ["デイサービス", "児童発達支援", "生活介護"]);
+    assert.equal(invoice.additionalServiceSubtotal, 2000);
+    assert.equal(invoice.subtotal, 7000);
+    assert.equal(invoice.tax, 700);
+    assert.equal(invoice.total, 7700);
+    assert.match(context.sentEmails[0].html, /デイサービス、児童発達支援、生活介護/);
+    assert.match(context.sentEmails[0].html, /7,700円/);
+});
+
+test("billing service settings are saved independently from input service settings", async () => {
+    const context = loadHandlers({
+        "facilities/facility-d": {
+            enabledServiceTypes: ["デイサービス"],
+            billingServiceTypes: ["デイサービス"]
+        }
+    });
+    await assert.rejects(context.handlers.updateFacilityBillingServiceTypes({
+        auth: { uid: "facility-d", token: { role: "facility" } },
+        data: { facilityId: "facility-d", serviceTypes: ["デイサービス"] }
+    }), { code: "unauthenticated" });
+    await assert.rejects(context.handlers.updateFacilityBillingServiceTypes({
+        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        data: { facilityId: "facility-d", serviceTypes: [] }
+    }), { code: "invalid-argument" });
+    const result = await context.handlers.updateFacilityBillingServiceTypes({
+        auth: { uid: "admin-control-panel", token: { role: "admin" } },
+        data: { facilityId: "facility-d", serviceTypes: ["生活介護", "デイサービス"] }
+    });
+
+    assert.deepEqual(result.serviceTypes, ["デイサービス", "生活介護"]);
+    assert.deepEqual(context.documents.get("facilities/facility-d").enabledServiceTypes, ["デイサービス"]);
+    assert.deepEqual(context.documents.get("facilities/facility-d").billingServiceTypes, ["デイサービス", "生活介護"]);
+});
+
+test("initial subscription invoices include the chosen billing services and surcharge", async () => {
+    const context = loadHandlers({
+        "facilities/facility-c": {
+            facilityName: "Facility C", email: "facility@example.invalid", status: "active",
+            subscriptionStatus: "trial",
+            trialEndsAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+            enabledServiceTypes: ["デイサービス", "生活介護"],
+            billingServiceTypes: ["生活介護", "児童発達支援"]
+        }
+    });
+    const result = await context.handlers.requestFacilitySubscription({
+        auth: { uid: "facility-c", token: { role: "facility" } },
+        data: {}
+    });
+    const invoice = context.documents.get("facilities/facility-c/invoiceHistory/INITIAL");
+
+    assert.equal(result.status, "pending_payment");
+    assert.deepEqual(invoice.serviceTypes, ["児童発達支援", "生活介護"]);
+    assert.equal(invoice.additionalServiceSubtotal, 1000);
+    assert.equal(invoice.subtotal, 5000);
+    assert.equal(invoice.tax, 500);
+    assert.equal(invoice.total, 5500);
+    assert.match(context.sentEmails[0].html, /児童発達支援、生活介護/);
+    assert.match(context.sentEmails[0].html, /追加サービス利用料/);
+    assert.match(context.sentEmails[0].html, /5,500円/);
 });
 
 test("dedicated viewing links remain valid when common LINE is stopped", async () => {

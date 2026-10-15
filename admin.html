@@ -186,7 +186,13 @@
         import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { initializeFirestore, collection, getDocs, getDocsFromServer, getDoc, doc, documentId, updateDoc, deleteDoc, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
-        import { ALL_SERVICE_TYPE_VALUES, SERVICE_TYPES, normalizeServiceTypes } from "./service-types.js";
+        import {
+            ALL_SERVICE_TYPE_VALUES,
+            calculateServicePricing,
+            getFacilityBillingServiceTypes,
+            normalizeServiceTypes,
+            SERVICE_TYPES
+        } from "./service-types.js";
         import { CUSTOM_FORM_FIELD_TYPES, FORM_CUSTOMIZATION_SECTIONS, normalizeFacilityFormCustomization } from "./facility-form-customization.js";
 
         const COMMON_LINE_BASIC_ID = "@805xgtzu";
@@ -607,6 +613,9 @@
                 const familyLinePublicationEnabled = facility.familyLinePublicationEnabled !== false;
                 const basicInfoMenuEnabled = facility.basicInfoMenuEnabled !== false;
                 const enabledServiceTypes = normalizeServiceTypes(facility.enabledServiceTypes);
+                const billingServiceTypes = getFacilityBillingServiceTypes(facility);
+                const billingBaseSubtotal = isTrial ? 4000 : 5000;
+                const billingPrice = calculateServicePricing(billingBaseSubtotal, billingServiceTypes);
                 return `<div class="facility">
                     <div><div class="facility-name"><a class="facility-name-link" href="#" onclick="openFacilityDailyRecord('${encodeURIComponent(facility.id)}'); return false;" title="この施設の連絡帳入力画面を開く">🔗 ${escapeHtml(facility.facilityName || facility.id)}</a>${isRegistered ? '<span class="registered-badge" aria-label="本登録済み">⭐ 本登録済み</span>' : ""}</div>
                     ${facility.lineAgencyStatus === "pending" ? `<button type="button" class="line-agency-request-alert" onclick="focusLineAgencyCompletion('${encodeURIComponent(facility.id)}')" aria-label="${escapeHtml(facility.facilityName || facility.id)}のLINE連携申込。完了欄へ移動">🔔 LINE連携申込です。</button>` : ""}
@@ -651,8 +660,16 @@
                         <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 8px 0;">${SERVICE_TYPES.map(service => `<label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; font-size: 12px;"><input type="checkbox" data-facility-service-id="${encodeURIComponent(facility.id)}" value="${service.value}" ${enabledServiceTypes.includes(service.value) ? "checked" : ""} style="width: auto; margin: 0;">${service.label}</label>`).join("")}</div>
                         <button type="button" style="background: #2b8a3e;" onclick="saveAdminFacilityServiceTypes('${encodeURIComponent(facility.id)}', this)">サービス設定を保存</button>
                     </details>
+                    <details id="facilityBillingServiceSettings-${encodeURIComponent(facility.id)}" style="margin-top: 8px; padding: 8px; background: #fff8e1; border: 1px solid #ffe082; border-radius: 5px;">
+                        <summary style="cursor: pointer; font-size: 13px; font-weight: bold;">請求対象サービス（${billingServiceTypes.length}/${ALL_SERVICE_TYPE_VALUES.length}）</summary>
+                        <p style="margin: 6px 0; font-size: 12px; color: #495057;">チェックしたサービスを請求書に記載します。1サービスは従来の基本料金、2つ目以降は1サービスごとに税抜1,000円を加算します。</p>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 8px 0;">${SERVICE_TYPES.map(service => `<label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; font-size: 12px;"><input type="checkbox" data-facility-billing-service-id="${encodeURIComponent(facility.id)}" value="${service.value}" ${billingServiceTypes.includes(service.value) ? "checked" : ""} style="width: auto; margin: 0;">${service.label}</label>`).join("")}</div>
+                        <p id="facilityBillingPrice-${encodeURIComponent(facility.id)}" style="margin: 6px 0; font-size: 12px; font-weight: bold;">選択中：${billingServiceTypes.length}サービス／${billingPrice.total.toLocaleString("ja-JP")}円（税込）</p>
+                        <button type="button" style="background: #087f5b;" onclick="saveAdminFacilityBillingServiceTypes('${encodeURIComponent(facility.id)}', this)">請求対象サービスを保存</button>
+                    </details>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                         <button type="button" style="background: #7048e8;" onclick="openFacilityCustomization('${encodeURIComponent(facility.id)}')">🎛️ カスタマイズ</button>
+                        <button type="button" style="background: #087f5b;" onclick="openFacilityServiceList('${encodeURIComponent(facility.id)}')">📋 利用サービス一覧</button>
                         <button type="button" style="background: #c67700;" onclick="issueFacilityInvoiceFromAdmin('${encodeURIComponent(facility.id)}', this)">🧾 請求書を発行</button>
                         <button type="button" style="background: #1971c2;" onclick="previewTestInvoice('${encodeURIComponent(facility.id)}')">🧾 テスト請求書PDFプレビュー</button>
                         <button type="button" style="background: #2f9e44;" onclick="sendTestInvoiceFromPreview('${encodeURIComponent(facility.id)}', this)">📧 テスト請求書メールを送信</button>
@@ -675,7 +692,37 @@
             list.querySelectorAll("[data-facility-basicinfo-id]").forEach(checkbox => {
                 checkbox.addEventListener("change", () => updateFacilityBasicInfoMenuStatus(checkbox));
             });
+            list.querySelectorAll("[data-facility-billing-service-id]").forEach(checkbox => {
+                checkbox.addEventListener("change", () => {
+                    const facilityId = decodeURIComponent(checkbox.dataset.facilityBillingServiceId);
+                    const container = checkbox.closest(".facility");
+                    const selected = container.querySelectorAll("[data-facility-billing-service-id]:checked");
+                    if (!selected.length) {
+                        checkbox.checked = true;
+                        alert("少なくとも1つのサービスを選択してください。");
+                    }
+                    updateFacilityServicePricePreview(facilityId, container);
+                });
+            });
         }
+
+        function updateFacilityServicePricePreview(facilityId, container = document.getElementById("facilityBillingServiceSettings-" + encodeURIComponent(facilityId))?.closest(".facility")) {
+            if (!container) return;
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) return;
+            const selectedCount = container.querySelectorAll("[data-facility-billing-service-id]:checked").length;
+            const pricing = calculateServicePricing(facility.subscriptionStatus === "trial" ? 4000 : 5000, Array(selectedCount).fill("selected"));
+            const preview = container.querySelector(`[id="facilityBillingPrice-${encodeURIComponent(facilityId)}"]`);
+            if (preview) preview.textContent = `選択中：${selectedCount}サービス／${pricing.total.toLocaleString("ja-JP")}円（税込）`;
+        }
+
+        window.openFacilityServiceList = function(encodedId) {
+            const facilityId = decodeURIComponent(encodedId);
+            const details = document.getElementById(`facilityBillingServiceSettings-${encodeURIComponent(facilityId)}`);
+            if (!details) return;
+            details.open = true;
+            details.scrollIntoView({ behavior: "smooth", block: "center" });
+        };
 
         async function updateFacilityBasicInfoMenuStatus(checkbox) {
             const facilityId = decodeURIComponent(checkbox.dataset.facilityBasicinfoId);
@@ -979,9 +1026,11 @@
                 return;
             }
             const isInitialInvoice = facility.subscriptionStatus === "trial";
-            const invoiceKind = isInitialInvoice ? "初回請求書（4,400円・税込）" : "月額請求書（5,500円・税込）";
+            const billingServiceTypes = getFacilityBillingServiceTypes(facility);
+            const pricing = calculateServicePricing(isInitialInvoice ? 4000 : 5000, billingServiceTypes);
+            const invoiceKind = isInitialInvoice ? "初回請求書" : "月額請求書";
             const recipient = facility.email || "登録メールアドレス";
-            if (!confirm(`${facility.facilityName || facilityId} に${invoiceKind}を発行し、${recipient}へ実際の請求書メールを送信します。\n同じ対象期間の請求書が発行済みの場合は重複発行されません。続けますか？`)) return;
+            if (!confirm(`${facility.facilityName || facilityId} に${invoiceKind}（${pricing.total.toLocaleString("ja-JP")}円・税込）を発行し、${recipient}へ実際の請求書メールを送信します。\n請求対象サービス：${billingServiceTypes.join("、")}\n同じ対象期間の請求書が発行済みの場合は重複発行されません。続けますか？`)) return;
 
             const originalText = button.textContent;
             button.disabled = true;
@@ -1003,6 +1052,8 @@
             let facility = facilities.find(item => item.id === facilityId);
             if (!facility) return;
 
+            const serviceTypes = getFacilityBillingServiceTypes(facility);
+            const pricing = calculateServicePricing(5000, serviceTypes);
             const escapeInvoiceText = value => String(value || "").replace(/[&<>\"']/g, char => ({
                 "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
             }[char]));
@@ -1018,6 +1069,13 @@
             const invoiceNumber = `TEST-${issueDate.getFullYear()}${String(issueDate.getMonth() + 1).padStart(2, "0")}${String(issueDate.getDate()).padStart(2, "0")}-${facilityId.slice(-6)}`;
             const companyStampUrl = new URL("company_stamp.png", window.location.href).href;
             const printWindow = window.open("", "_blank");
+            const invoiceRows = [
+                `<tr><td>利用サービス</td><td>${escapeInvoiceText(serviceTypes.join("、"))}</td></tr>`,
+                `<tr><td>システム利用料（${escapeInvoiceText(billingMonth)}分）</td><td>5,000円</td></tr>`,
+                ...(pricing.additionalServiceSubtotal > 0 ? [`<tr><td>追加サービス利用料</td><td>${pricing.additionalServiceSubtotal.toLocaleString("ja-JP")}円</td></tr>`] : []),
+                `<tr><td>消費税（10%）</td><td>${pricing.tax.toLocaleString("ja-JP")}円</td></tr>`,
+                `<tr><th>合計</th><th>${pricing.total.toLocaleString("ja-JP")}円</th></tr>`
+            ].join("");
             if (!printWindow) {
                 alert("ポップアップがブロックされました。このサイトのポップアップを許可して再度お試しください。");
                 return;
@@ -1042,11 +1100,9 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
 <div class="top"><div><div class="recipient">${escapeInvoiceText(facility.facilityName || facilityId)} 御中</div><div>施設登録メール：${escapeInvoiceText(facility.email || "未登録")}<br>送信先：株式会社えこすまいる</div></div>
 <div>請求書番号：${escapeInvoiceText(invoiceNumber)}<br>発行日：${escapeInvoiceText(formatDate(issueDate))}<br>お支払期限：${escapeInvoiceText(formatDate(dueDate))}</div></div>
 <h1>請求書</h1><div>下記のとおりご請求申し上げます。</div>
-<div class="total">ご請求金額（税込）　5,500円</div>
+<div class="total">ご請求金額（税込）　${pricing.total.toLocaleString("ja-JP")}円</div>
 <table><thead><tr><th>内容</th><th>金額</th></tr></thead><tbody>
-<tr><td>システム利用料（${escapeInvoiceText(billingMonth)}分）</td><td>5,000円</td></tr>
-<tr><td>消費税（10%）</td><td>500円</td></tr>
-<tr><th>合計</th><th>5,500円</th></tr>
+${invoiceRows}
 </tbody></table>
 <div class="issuer"><div><h2>発行元</h2><div>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：ecosmile39@gmail.com<br>適格請求書発行事業者登録番号：なし</div></div><img src="${escapeInvoiceText(companyStampUrl)}" alt="株式会社えこすまいる会社印"></div>
 <table><tbody><tr><th>お振込先</th><td>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</td></tr></tbody></table>
@@ -1223,6 +1279,40 @@ table{width:100%;border-collapse:collapse;margin:20px 0}th,td{border:1px solid #
                 const message = error.code === "permission-denied"
                     ? "管理者権限を確認できず、サービス設定は変更していません。管理者として認証し直してください。"
                     : "サービス設定を保存できませんでした: " + error.message;
+                document.getElementById("facilityError").textContent = message;
+                alert(message);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        };
+
+        window.saveAdminFacilityBillingServiceTypes = async function(encodedId, button) {
+            const facilityId = decodeURIComponent(encodedId);
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) { alert("施設一覧を更新してから操作してください。"); return; }
+            const checkboxes = Array.from(document.querySelectorAll("[data-facility-billing-service-id]"))
+                .filter(checkbox => decodeURIComponent(checkbox.dataset.facilityBillingServiceId) === facilityId);
+            const serviceTypes = checkboxes.filter(checkbox => checkbox.checked).map(checkbox => checkbox.value);
+            if (!serviceTypes.length) {
+                alert("少なくとも1つの請求対象サービスを選択してください。");
+                return;
+            }
+            const pricing = calculateServicePricing(facility.subscriptionStatus === "trial" ? 4000 : 5000, serviceTypes);
+            if (!confirm(`${facility.facilityName || facilityId} の請求対象サービスを保存しますか？\n選択サービス：${serviceTypes.join("、")}\n次回請求額：${pricing.total.toLocaleString("ja-JP")}円（税込）`)) return;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = "保存中...";
+            document.getElementById("facilityError").textContent = "";
+            try {
+                const saveBillingServiceTypes = httpsCallable(functions, "updateFacilityBillingServiceTypes");
+                await saveBillingServiceTypes({ facilityId, serviceTypes });
+                facility.billingServiceTypes = serviceTypes;
+                renderFacilities();
+            } catch (error) {
+                const message = error.code === "permission-denied"
+                    ? "管理者権限を確認できず、請求対象サービスは変更していません。管理者として認証し直してください。"
+                    : "請求対象サービスを保存できませんでした: " + error.message;
                 document.getElementById("facilityError").textContent = message;
                 alert(message);
             } finally {

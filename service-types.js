@@ -14,6 +14,26 @@ export function normalizeServiceTypes(value) {
     return selected.length ? selected : [...ALL_SERVICE_TYPE_VALUES];
 }
 
+export function normalizeBillingServiceTypes(value, configuredTypes = ALL_SERVICE_TYPE_VALUES) {
+    const enabledTypes = normalizeServiceTypes(configuredTypes);
+    const selected = Array.isArray(value)
+        ? ALL_SERVICE_TYPE_VALUES.filter(serviceType => value.includes(serviceType))
+        : [];
+    return selected.length ? selected : [enabledTypes[0]];
+}
+
+export function getFacilityBillingServiceTypes(facility) {
+    return normalizeBillingServiceTypes(facility.billingServiceTypes, facility.enabledServiceTypes);
+}
+
+export function calculateServicePricing(baseSubtotal, serviceTypes) {
+    const additionalServiceCount = Math.max(0, serviceTypes.length - 1);
+    const additionalServiceSubtotal = additionalServiceCount * 1000;
+    const subtotal = baseSubtotal + additionalServiceSubtotal;
+    const tax = Math.round(subtotal * 0.1);
+    return { additionalServiceCount, additionalServiceSubtotal, subtotal, tax, total: subtotal + tax };
+}
+
 export function populateServiceTypeSelect(select, configuredTypes, preferredValue = select.value) {
     const enabledTypes = normalizeServiceTypes(configuredTypes);
     const enabledSet = new Set(enabledTypes);

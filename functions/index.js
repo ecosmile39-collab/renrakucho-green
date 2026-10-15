@@ -13,7 +13,11 @@ const nodemailer = require("nodemailer");
 const { GoogleAuth } = require("google-auth-library");
 const { decryptCredentials, encryptCredentials } = require("./line-credential-crypto");
 const { isFamilyRecordRequest, latestPublishedRecords } = require("./line-family-records");
-const { validateFacilityServiceTypes } = require("./service-types");
+const {
+    calculateServicePricing,
+    getFacilityBillingServiceTypes,
+    validateFacilityServiceTypes
+} = require("./service-types");
 const { generateInvoicePdf } = require("./invoice-pdf");
 const { daysUntilTrialEnds, isTrialReminderDue } = require("./trial-reminder");
 
@@ -942,6 +946,25 @@ exports.updateFacilityServiceTypes = onCall(async request => {
     return { serviceTypes };
 });
 
+exports.updateFacilityBillingServiceTypes = onCall(async request => {
+    if (request.auth?.token.role !== "admin") {
+        throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
+    }
+    const facilityId = typeof request.data?.facilityId === "string" ? request.data.facilityId.trim() : "";
+    const serviceTypes = validateFacilityServiceTypes(request.data?.serviceTypes);
+    if (!facilityId || facilityId.length > 200 || !serviceTypes) {
+        throw new HttpsError("invalid-argument", "施設と請求対象サービスを確認してください。");
+    }
+    const facilityRef = getFirestore().collection("facilities").doc(facilityId);
+    const facilitySnapshot = await facilityRef.get();
+    if (!facilitySnapshot.exists) throw new HttpsError("not-found", "施設が見つかりません。");
+    await facilityRef.update({
+        billingServiceTypes: serviceTypes,
+        billingServiceTypesUpdatedAt: new Date().toISOString()
+    });
+    return { serviceTypes };
+});
+
 exports.getLineRecipientStatus = onCall(async request => {
     const facilityId = requireFacilityId(request);
     await verifyFacilityIsActive(facilityId);
@@ -1321,6 +1344,31 @@ function formatJapaneseDateKey(value) {
     return `${year}年${month}月${day}日`;
 }
 
+function buildInvoiceItemRows({ serviceTypes, itemTitle, billingPeriod, baseSubtotal, additionalServiceSubtotal, tax, total }) {
+    const rows = [
+        `<tr><td style="border:1px solid #adb5bd;padding:10px">利用サービス</td><td style="border:1px solid #adb5bd;padding:10px">${escapeHtml(serviceTypes.join("、"))}</td></tr>`,
+        `<tr><td style="border:1px solid #adb5bd;padding:10px">${escapeHtml(itemTitle)}（${billingPeriod}分）</td><td style="border:1px solid #adb5bd;padding:10px">${baseSubtotal.toLocaleString("ja-JP")}円</td></tr>`
+    ];
+    if (additionalServiceSubtotal > 0) {
+        rows.push(`<tr><td style="border:1px solid #adb5bd;padding:10px">追加サービス利用料</td><td style="border:1px solid #adb5bd;padding:10px">${additionalServiceSubtotal.toLocaleString("ja-JP")}円</td></tr>`);
+    }
+    rows.push(
+        `<tr><td style="border:1px solid #adb5bd;padding:10px">消費税（10%）</td><td style="border:1px solid #adb5bd;padding:10px">${tax.toLocaleString("ja-JP")}円</td></tr>`,
+        `<tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">${total.toLocaleString("ja-JP")}円</th></tr>`
+    );
+    return rows.join("");
+}
+
+function buildInvoiceTextItems({ serviceTypes, itemTitle, billingPeriod, baseSubtotal, additionalServiceSubtotal, tax, total }) {
+    return [
+        `利用サービス：${serviceTypes.join("、")}`,
+        `${itemTitle}${billingPeriod ? `（${billingPeriod}分）` : ""}：${baseSubtotal.toLocaleString("ja-JP")}円`,
+        ...(additionalServiceSubtotal > 0 ? [`追加サービス利用料：${additionalServiceSubtotal.toLocaleString("ja-JP")}円`] : []),
+        `消費税（10%）：${tax.toLocaleString("ja-JP")}円`,
+        `税込合計：${total.toLocaleString("ja-JP")}円`
+    ].join("\n");
+}
+
 exports.requestLineAgencySetup = onCall({
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async request => {
@@ -1545,21 +1593,25 @@ exports.requestFacilitySubscription = onCall({
             }
         }
 
+        const serviceTypes = getFacilityBillingServiceTypes(facility);
+        const pricing = calculateServicePricing(4000, serviceTypes);
         transaction.set(invoiceRef, {
             test: false,
             type: "initial",
             status: "sending",
             facilityId,
             facilityName: facility.facilityName || facilityId,
+            serviceTypes,
             recipient,
             invoiceNumber,
             issueDate,
             dueDate,
             billingPeriodStart,
             billingPeriodEnd,
-            subtotal: 4000,
-            tax: 400,
-            total: 4400,
+            additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            subtotal: pricing.subtotal,
+            tax: pricing.tax,
+            total: pricing.total,
             attemptStartedAt: FieldValue.serverTimestamp()
         }, { merge: true });
         transaction.set(facilityRef, {
@@ -1567,7 +1619,7 @@ exports.requestFacilitySubscription = onCall({
             subscriptionRequestedAt: facility.subscriptionRequestedAt || requestedAt.toISOString(),
             billingAnchorAt: facility.billingAnchorAt || billingAnchorAt
         }, { merge: true });
-        return { shouldSend: true };
+        return { shouldSend: true, serviceTypes, ...pricing };
     });
 
     if (!reservation.shouldSend) {
@@ -1577,20 +1629,37 @@ exports.requestFacilitySubscription = onCall({
     const facilityName = initialFacility.facilityName || facilityId;
     const formattedPeriod = `${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}`;
     const gmailUser = INVOICE_GMAIL_USER.value();
+    const { serviceTypes, additionalServiceSubtotal, subtotal, tax, total } = reservation;
+    const invoiceRows = buildInvoiceItemRows({
+        serviceTypes,
+        itemTitle: "初回システム利用料",
+        billingPeriod: formattedPeriod,
+        baseSubtotal: 4000,
+        additionalServiceSubtotal,
+        tax,
+        total
+    });
+    const textItems = buildInvoiceTextItems({
+        serviceTypes,
+        itemTitle: "初回システム利用料",
+        billingPeriod: formattedPeriod,
+        baseSubtotal: 4000,
+        additionalServiceSubtotal,
+        tax,
+        total
+    });
     const html = `<!doctype html><html lang="ja"><body style="font-family:sans-serif;color:#222;line-height:1.7;max-width:720px;margin:auto;padding:24px">
         <p>${escapeHtml(facilityName)} 御中</p><h1 style="text-align:center">請求書</h1>
         <p>請求書番号：${escapeHtml(invoiceNumber)}<br>請求対象期間：${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}<br>発行日：${formatJapaneseDateKey(issueDate)}<br>お支払期限：${formatJapaneseDateKey(dueDate)}</p>
-        <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　4,400円</p>
+        <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　${total.toLocaleString("ja-JP")}円</p>
         <table style="width:100%;border-collapse:collapse"><thead><tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">内容</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">金額</th></tr></thead><tbody>
-        <tr><td style="border:1px solid #adb5bd;padding:10px">初回システム利用料（${formattedPeriod}分）</td><td style="border:1px solid #adb5bd;padding:10px">4,000円</td></tr>
-        <tr><td style="border:1px solid #adb5bd;padding:10px">消費税（10%）</td><td style="border:1px solid #adb5bd;padding:10px">400円</td></tr>
-        <tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">4,400円</th></tr></tbody></table>
+        ${invoiceRows}</tbody></table>
         <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
         <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能な請求書PDF（<code>請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。印刷して保管される際などにご活用ください。</p>
         <p style="margin-top:28px">このたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。</p>
     </body></html>`;
-    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n初回システム利用料：4,000円\n消費税（10%）：400円\n税込合計：4,400円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。`;
+    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。`;
 
     let emailResult = null;
     const archivedHtml = html;
@@ -1602,9 +1671,11 @@ exports.requestFacilitySubscription = onCall({
             dueDate: formatJapaneseDateKey(dueDate),
             billingPeriod: formattedPeriod,
             itemTitle: "初回システム利用料",
-            subtotal: 4000,
-            tax: 400,
-            total: 4400,
+            serviceTypes,
+            additionalServiceSubtotal,
+            subtotal,
+            tax,
+            total,
             issuerEmail: gmailUser,
             note: "このたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。"
         });
@@ -1636,9 +1707,11 @@ exports.requestFacilitySubscription = onCall({
                 dueDate,
                 billingPeriodStart,
                 billingPeriodEnd,
-                subtotal: 4000,
-                tax: 400,
-                total: 4400,
+                serviceTypes,
+                additionalServiceSubtotal,
+                subtotal,
+                tax,
+                total,
                 sentAt: FieldValue.serverTimestamp(),
                 messageId: emailResult.messageId
             })
@@ -1699,8 +1772,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
     let billingPeriodStart;
     let billingPeriodEnd;
     let invoiceNumber;
-    let subtotal;
-    let tax;
+    let baseSubtotal;
     let invoiceType;
 
     if (isInitialInvoice) {
@@ -1719,8 +1791,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             day: String(endDate.getUTCDate()).padStart(2, "0")
         });
         invoiceNumber = `INIT-${billingPeriodStart.replace(/-/g, "")}-${facilityId.toUpperCase()}`;
-        subtotal = 4000;
-        tax = 400;
+        baseSubtotal = 4000;
         invoiceType = "initial";
     } else {
         const period = getLatestMaturedBillingPeriod(
@@ -1733,8 +1804,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         billingPeriodStart = period.startDate;
         billingPeriodEnd = period.endDate;
         invoiceNumber = `INV-${period.startDate.replace(/-/g, "")}-${facilityId.toUpperCase()}`;
-        subtotal = 5000;
-        tax = 500;
+        baseSubtotal = 5000;
         invoiceType = "monthly";
     }
 
@@ -1757,6 +1827,8 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         if (!isInitialInvoice && currentFacility.status !== "active") {
             throw new HttpsError("failed-precondition", "施設が利用中ではないため、月額請求書を発行できません。");
         }
+        const serviceTypes = getFacilityBillingServiceTypes(currentFacility);
+        const pricing = calculateServicePricing(baseSubtotal, serviceTypes);
         if (invoiceSnapshot.exists) {
             const previousInvoice = invoiceSnapshot.data();
             if (previousInvoice.status === "sent") {
@@ -1775,15 +1847,17 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             status: "sending",
             facilityId,
             facilityName,
+            serviceTypes,
             recipient,
             invoiceNumber,
             issueDate,
             dueDate,
             billingPeriodStart,
             billingPeriodEnd,
-            subtotal,
-            tax,
-            total: subtotal + tax,
+            additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            subtotal: pricing.subtotal,
+            tax: pricing.tax,
+            total: pricing.total,
             manualIssuedBy: request.auth.uid,
             attemptStartedAt: FieldValue.serverTimestamp()
         }, { merge: true });
@@ -1794,30 +1868,47 @@ exports.issueFacilityInvoiceForAdmin = onCall({
                 billingAnchorAt: currentFacility.billingAnchorAt || `${billingPeriodStart}T00:00:00+09:00`
             }, { merge: true });
         }
-        return true;
+        return { serviceTypes, ...pricing };
     });
     if (!reservation) {
         throw new HttpsError("internal", "請求書の発行を開始できませんでした。");
     }
 
+    const { serviceTypes, additionalServiceSubtotal, subtotal, tax, total } = reservation;
     const formattedPeriod = `${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}`;
     const amountLabel = isInitialInvoice ? "初回システム利用料" : "システム利用料";
     const closing = isInitialInvoice
         ? "本登録のお申し込みをいただき、誠にありがとうございます。ご入金確認後、本利用へ切り替えいたします。"
         : "平素よりシステムをご利用いただき、誠にありがとうございます。今後ともよろしくお願い申し上げます。";
+    const invoiceRows = buildInvoiceItemRows({
+        serviceTypes,
+        itemTitle: amountLabel,
+        billingPeriod: formattedPeriod,
+        baseSubtotal,
+        additionalServiceSubtotal,
+        tax,
+        total
+    });
+    const textItems = buildInvoiceTextItems({
+        serviceTypes,
+        itemTitle: amountLabel,
+        billingPeriod: formattedPeriod,
+        baseSubtotal,
+        additionalServiceSubtotal,
+        tax,
+        total
+    });
     const html = `<!doctype html><html lang="ja"><body style="font-family:sans-serif;color:#222;line-height:1.7;max-width:720px;margin:auto;padding:24px">
         <p>${escapeHtml(facilityName)} 御中</p><h1 style="text-align:center">請求書</h1>
         <p>請求書番号：${escapeHtml(invoiceNumber)}<br>請求対象期間：${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}<br>発行日：${formatJapaneseDateKey(issueDate)}<br>お支払期限：${formatJapaneseDateKey(dueDate)}</p>
-        <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　${(subtotal + tax).toLocaleString("ja-JP")}円</p>
+        <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　${total.toLocaleString("ja-JP")}円</p>
         <table style="width:100%;border-collapse:collapse"><thead><tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">内容</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">金額</th></tr></thead><tbody>
-        <tr><td style="border:1px solid #adb5bd;padding:10px">${amountLabel}（${formattedPeriod}分）</td><td style="border:1px solid #adb5bd;padding:10px">${subtotal.toLocaleString("ja-JP")}円</td></tr>
-        <tr><td style="border:1px solid #adb5bd;padding:10px">消費税（10%）</td><td style="border:1px solid #adb5bd;padding:10px">${tax.toLocaleString("ja-JP")}円</td></tr>
-        <tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">${(subtotal + tax).toLocaleString("ja-JP")}円</th></tr></tbody></table>
+        ${invoiceRows}</tbody></table>
         <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
         <p style="margin-top:20px;padding:12px;background:#e7f5ff;border:1px solid #74c0fc"><strong>A4印刷用の請求書PDFを添付しております。</strong></p>
         <p style="margin-top:28px">${closing}</p></body></html>`;
-    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${amountLabel}：${subtotal.toLocaleString("ja-JP")}円\n消費税（10%）：${tax.toLocaleString("ja-JP")}円\n税込合計：${(subtotal + tax).toLocaleString("ja-JP")}円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\nA4印刷用の請求書PDFを添付しております。\n${closing}`;
+    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\nA4印刷用の請求書PDFを添付しております。\n${closing}`;
     let emailResult = null;
     try {
         const pdfBuffer = await generateInvoicePdf({
@@ -1827,9 +1918,11 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             dueDate: formatJapaneseDateKey(dueDate),
             billingPeriod: formattedPeriod,
             itemTitle: amountLabel,
+            serviceTypes,
+            additionalServiceSubtotal,
             subtotal,
             tax,
-            total: subtotal + tax,
+            total,
             issuerEmail: gmailUser,
             note: closing
         });
@@ -1864,9 +1957,11 @@ exports.issueFacilityInvoiceForAdmin = onCall({
                 dueDate,
                 billingPeriodStart,
                 billingPeriodEnd,
+                serviceTypes,
+                additionalServiceSubtotal,
                 subtotal,
                 tax,
-                total: subtotal + tax,
+                total,
                 sentAt: FieldValue.serverTimestamp(),
                 messageId: emailResult.messageId
             })
@@ -1922,6 +2017,8 @@ exports.sendTestInvoiceEmail = onCall({
 
     const facility = facilitySnapshot.data();
     const facilityName = facility.facilityName || facilityId;
+    const serviceTypes = getFacilityBillingServiceTypes(facility);
+    const pricing = calculateServicePricing(5000, serviceTypes);
     const now = new Date();
     const dateParts = getTokyoDateParts(now);
     const issueDate = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
@@ -1944,18 +2041,33 @@ exports.sendTestInvoiceEmail = onCall({
         <p>${safeFacilityName} 御中</p>
         <h1 style="text-align:center">請求書</h1>
         <p>請求書番号：${safeInvoiceNumber}<br>発行日：${formatJapaneseDate(dateParts)}<br>お支払期限：${formatJapaneseDate(dueParts)}</p>
-        <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　5,500円</p>
+        <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　${pricing.total.toLocaleString("ja-JP")}円</p>
         <table style="width:100%;border-collapse:collapse"><thead><tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">内容</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">金額</th></tr></thead><tbody>
-        <tr><td style="border:1px solid #adb5bd;padding:10px">システム利用料（${billingMonth}分）</td><td style="border:1px solid #adb5bd;padding:10px">5,000円</td></tr>
-        <tr><td style="border:1px solid #adb5bd;padding:10px">消費税（10%）</td><td style="border:1px solid #adb5bd;padding:10px">500円</td></tr>
-        <tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">5,500円</th></tr></tbody></table>
+        ${buildInvoiceItemRows({
+            serviceTypes,
+            itemTitle: "システム利用料",
+            billingPeriod: billingMonth,
+            baseSubtotal: 5000,
+            additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            tax: pricing.tax,
+            total: pricing.total
+        })}</tbody></table>
         <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
         <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能なテスト請求書PDF（<code>テスト請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。</p>
         <p style="background:#fff4e6;padding:12px">これは送信テストです。実際の請求・お支払いは発生しません。</p>
         <p>平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。</p>
     </body></html>`;
-    const text = `${facilityName} 御中\nテスト請求書（実請求ではありません）\n請求書番号：${invoiceNumber}\n発行日：${formatJapaneseDate(dateParts)}\n支払期限：${formatJapaneseDate(dueParts)}\nシステム利用料（${billingMonth}分）：5,000円\n消費税（10%）：500円\n税込合計：5,500円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDFを本メールに添付しております。\n\nこれは送信テストです。実際の請求・お支払いは発生しません。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
+    const textItems = buildInvoiceTextItems({
+        serviceTypes,
+        itemTitle: "システム利用料",
+        billingPeriod: billingMonth,
+        baseSubtotal: 5000,
+        additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+        tax: pricing.tax,
+        total: pricing.total
+    });
+    const text = `${facilityName} 御中\nテスト請求書（実請求ではありません）\n請求書番号：${invoiceNumber}\n発行日：${formatJapaneseDate(dateParts)}\n支払期限：${formatJapaneseDate(dueParts)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDFを本メールに添付しております。\n\nこれは送信テストです。実際の請求・お支払いは発生しません。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
 
     try {
         const pdfBuffer = await generateInvoicePdf({
@@ -1965,9 +2077,11 @@ exports.sendTestInvoiceEmail = onCall({
             dueDate: formatJapaneseDate(dueParts),
             billingPeriod: `${billingMonth}分`,
             itemTitle: "システム利用料",
-            subtotal: 5000,
-            tax: 500,
-            total: 5500,
+            serviceTypes,
+            additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            subtotal: pricing.subtotal,
+            tax: pricing.tax,
+            total: pricing.total,
             issuerEmail: gmailUser,
             note: "これは送信テストです。実際の請求・お支払いは発生しません。"
         });
@@ -2002,9 +2116,11 @@ exports.sendTestInvoiceEmail = onCall({
             issueDate,
             dueDate: `${dueParts.year}-${dueParts.month}-${dueParts.day}`,
             billingMonth,
-            subtotal: 5000,
-            tax: 500,
-            total: 5500,
+            serviceTypes,
+            additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            subtotal: pricing.subtotal,
+            tax: pricing.tax,
+            total: pricing.total,
             sentAt: FieldValue.serverTimestamp(),
             messageId: result.messageId,
             invoiceHtml: html
@@ -2071,6 +2187,8 @@ exports.sendMonthlyInvoices = onSchedule({
 
         const historyRef = db.collection("facilities").doc(facilityId)
             .collection("invoiceHistory").doc(`AUTO-${period.startDate.replace(/-/g, "")}`);
+        const serviceTypes = getFacilityBillingServiceTypes(facility);
+        const pricing = calculateServicePricing(5000, serviceTypes);
         const reservedForSending = await db.runTransaction(async transaction => {
             const historySnapshot = await transaction.get(historyRef);
             if (historySnapshot.exists) {
@@ -2086,14 +2204,16 @@ exports.sendMonthlyInvoices = onSchedule({
                 status: "sending",
                 facilityId,
                 facilityName,
+                serviceTypes,
                 recipient,
                 issueDate,
                 dueDate: invoiceDueDate,
                 billingPeriodStart: period.startDate,
                 billingPeriodEnd: period.endDate,
-                subtotal: 5000,
-                tax: 500,
-                total: 5500,
+                additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+                subtotal: pricing.subtotal,
+                tax: pricing.tax,
+                total: pricing.total,
                 attemptStartedAt: FieldValue.serverTimestamp()
             }, { merge: true });
             return true;
@@ -2105,20 +2225,36 @@ exports.sendMonthlyInvoices = onSchedule({
 
         const invoiceNumber = `INV-${period.startDate.replace(/-/g, "")}-${facilityId.toUpperCase()}`;
         const formattedPeriod = `${formatJapaneseDateKey(period.startDate)}〜${formatJapaneseDateKey(period.endDate)}`;
+        const invoiceRows = buildInvoiceItemRows({
+            serviceTypes,
+            itemTitle: "システム利用料",
+            billingPeriod: formattedPeriod,
+            baseSubtotal: 5000,
+            additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            tax: pricing.tax,
+            total: pricing.total
+        });
+        const textItems = buildInvoiceTextItems({
+            serviceTypes,
+            itemTitle: "システム利用料",
+            billingPeriod: formattedPeriod,
+            baseSubtotal: 5000,
+            additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+            tax: pricing.tax,
+            total: pricing.total
+        });
         const html = `<!doctype html><html lang="ja"><body style="font-family:sans-serif;color:#222;line-height:1.7;max-width:720px;margin:auto;padding:24px">
             <p>${escapeHtml(facilityName)} 御中</p><h1 style="text-align:center">請求書</h1>
             <p>請求書番号：${escapeHtml(invoiceNumber)}<br>発行日：${formatJapaneseDateKey(issueDate)}<br>お支払期限：${formatJapaneseDateKey(invoiceDueDate)}</p>
-            <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　5,500円</p>
+            <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　${pricing.total.toLocaleString("ja-JP")}円</p>
             <table style="width:100%;border-collapse:collapse"><thead><tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">内容</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">金額</th></tr></thead><tbody>
-            <tr><td style="border:1px solid #adb5bd;padding:10px">システム利用料（${formattedPeriod}分）</td><td style="border:1px solid #adb5bd;padding:10px">5,000円</td></tr>
-            <tr><td style="border:1px solid #adb5bd;padding:10px">消費税（10%）</td><td style="border:1px solid #adb5bd;padding:10px">500円</td></tr>
-            <tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">5,500円</th></tr></tbody></table>
+            ${invoiceRows}</tbody></table>
             <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
             <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
             <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能な請求書PDF（<code>請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。印刷して保管される際などにご活用ください。</p>
             <p style="margin-top:28px">平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。</p>
         </body></html>`;
-        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(invoiceDueDate)}\nシステム利用料：5,000円\n消費税（10%）：500円\n税込合計：5,500円\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
+        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(invoiceDueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
 
         try {
             const pdfBuffer = await generateInvoicePdf({
@@ -2128,9 +2264,11 @@ exports.sendMonthlyInvoices = onSchedule({
                 dueDate: formatJapaneseDateKey(invoiceDueDate),
                 billingPeriod: formattedPeriod,
                 itemTitle: "システム利用料",
-                subtotal: 5000,
-                tax: 500,
-                total: 5500,
+                serviceTypes,
+                additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+                subtotal: pricing.subtotal,
+                tax: pricing.tax,
+                total: pricing.total,
                 issuerEmail: gmailUser,
                 note: "平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。"
             });
@@ -2164,9 +2302,11 @@ exports.sendMonthlyInvoices = onSchedule({
                 dueDate: invoiceDueDate,
                 billingPeriodStart: period.startDate,
                 billingPeriodEnd: period.endDate,
-                subtotal: 5000,
-                tax: 500,
-                total: 5500,
+                serviceTypes,
+                additionalServiceSubtotal: pricing.additionalServiceSubtotal,
+                subtotal: pricing.subtotal,
+                tax: pricing.tax,
+                total: pricing.total,
                 sentAt: FieldValue.serverTimestamp(),
                 messageId: result.messageId
             }).catch(error => logger.warn("Invoice email sent but audit logging failed", { facilityId, error }));
