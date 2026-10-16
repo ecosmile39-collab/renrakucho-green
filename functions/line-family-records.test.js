@@ -188,7 +188,7 @@ test("daily facility summaries show matching names with Tokyo dates and reset em
     const elements = new Map();
     for (const id of ["facilityList", "summaryTrialCount", "summaryActiveCount",
         "summaryTodayTrialCount", "summaryTodayActiveCount", "summaryTodayTrialNames",
-        "summaryTodayActiveNames", "summaryTotalCount"]) {
+        "summaryTodayActiveNames", "summaryPausedCount", "summaryPausedNames", "summaryTotalCount"]) {
         assert.ok(html.includes(`id="${id}"`));
         elements.set(id, { textContent: "" });
     }
@@ -205,7 +205,11 @@ test("daily facility summaries show matching names with Tokyo dates and reset em
             { id: "active", facilityName: "Active", subscriptionStatus: "active", trialStartedAt: "2026-10-01T00:00:00Z", planActivatedAt: { toDate: () => new Date("2026-10-16T00:00:00Z") } },
             { id: "yesterday", subscriptionStatus: "trial", trialStartedAt: "2026-10-15T14:59:59Z" },
             { id: "tomorrow", subscriptionStatus: "active", planActivatedAt: "2026-10-16T15:00:00Z" },
-            { id: "invalid", subscriptionStatus: "trial", trialStartedAt: "invalid-date" }
+            { id: "invalid", subscriptionStatus: "trial", trialStartedAt: "invalid-date" },
+            { id: "paused-trial", facilityName: "<b>Paused</b>", subscriptionStatus: "trial", status: "locked", usagePaused: true },
+            { id: "paused-active", subscriptionStatus: "active", status: "locked", usagePaused: true },
+            { id: "locked-only", subscriptionStatus: "active", status: "locked" },
+            { id: "resumed", subscriptionStatus: "active", status: "active", usagePaused: false }
         ]
     };
     vm.runInNewContext(summary, sandbox);
@@ -214,12 +218,20 @@ test("daily facility summaries show matching names with Tokyo dates and reset em
     assert.equal(elements.get("summaryTodayActiveCount").textContent, 1);
     assert.equal(elements.get("summaryTodayTrialNames").textContent, "<b>Trial</b>\nlegacy");
     assert.equal(elements.get("summaryTodayActiveNames").textContent, "Active");
+    assert.equal(elements.get("summaryPausedCount").textContent, 2);
+    assert.equal(elements.get("summaryPausedNames").textContent, "<b>Paused</b>\npaused-active");
+    sandbox.facilities = sandbox.facilities.map(facility => ({ ...facility, usagePaused: false }));
+    sandbox.renderFacilities();
+    assert.equal(elements.get("summaryPausedCount").textContent, 0);
+    assert.equal(elements.get("summaryPausedNames").textContent, "該当なし");
     sandbox.facilities = [];
     sandbox.renderFacilities();
     assert.equal(elements.get("summaryTodayTrialCount").textContent, 0);
     assert.equal(elements.get("summaryTodayActiveCount").textContent, 0);
     assert.equal(elements.get("summaryTodayTrialNames").textContent, "該当なし");
     assert.equal(elements.get("summaryTodayActiveNames").textContent, "該当なし");
+    assert.equal(elements.get("summaryPausedCount").textContent, 0);
+    assert.equal(elements.get("summaryPausedNames").textContent, "該当なし");
 });
 
 test("cancellation history cards escape names and do not restore facility controls", () => {

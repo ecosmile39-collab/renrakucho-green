@@ -81,6 +81,11 @@
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTodayActiveCount">0</span> 件</div>
                 <div id="summaryTodayActiveNames" style="font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere;">該当なし</div>
             </div>
+            <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #fff4e6; border: 1px solid #e8590c; border-radius: 8px; font-weight: bold; color: #a64100;">
+                <div style="font-size: 13px;">一時利用停止中</div>
+                <div style="font-size: 24px; margin-top: 4px;"><span id="summaryPausedCount">0</span> 件</div>
+                <div id="summaryPausedNames" style="font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere;">該当なし</div>
+            </div>
             <div style="flex: 1; min-width: 140px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 8px; font-weight: bold; color: #495057;">
                 <div style="font-size: 13px;">🏢 全登録施設</div>
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTotalCount">0</span> 件</div>
@@ -622,6 +627,7 @@
             let activeCount = 0;
             const todayTrialNames = [];
             const todayActiveNames = [];
+            const pausedNames = [];
             const tokyoDateFormatter = new Intl.DateTimeFormat("en", {
                 timeZone: "Asia/Tokyo",
                 year: "numeric",
@@ -637,6 +643,7 @@
             };
             const todayKey = getTokyoDateKey(new Date());
             facilities.forEach(facility => {
+                if (facility.usagePaused === true) pausedNames.push(facility.facilityName || facility.id);
                 if (facility.subscriptionStatus === "active" || facility.status === "active" && facility.subscriptionStatus !== "trial") {
                     activeCount++;
                 } else if (facility.subscriptionStatus === "trial") {
@@ -655,6 +662,8 @@
             const summaryTodayActiveEl = document.getElementById("summaryTodayActiveCount");
             const summaryTodayTrialNamesEl = document.getElementById("summaryTodayTrialNames");
             const summaryTodayActiveNamesEl = document.getElementById("summaryTodayActiveNames");
+            const summaryPausedEl = document.getElementById("summaryPausedCount");
+            const summaryPausedNamesEl = document.getElementById("summaryPausedNames");
             const summaryTotalEl = document.getElementById("summaryTotalCount");
             if (summaryTrialEl) summaryTrialEl.textContent = trialCount;
             if (summaryActiveEl) summaryActiveEl.textContent = activeCount;
@@ -662,6 +671,8 @@
             if (summaryTodayActiveEl) summaryTodayActiveEl.textContent = todayActiveNames.length;
             if (summaryTodayTrialNamesEl) summaryTodayTrialNamesEl.textContent = todayTrialNames.join("\n") || "該当なし";
             if (summaryTodayActiveNamesEl) summaryTodayActiveNamesEl.textContent = todayActiveNames.join("\n") || "該当なし";
+            if (summaryPausedEl) summaryPausedEl.textContent = pausedNames.length;
+            if (summaryPausedNamesEl) summaryPausedNamesEl.textContent = pausedNames.join("\n") || "該当なし";
             if (summaryTotalEl) summaryTotalEl.textContent = facilities.length;
 
             if (facilities.length === 0) {
