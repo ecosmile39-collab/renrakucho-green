@@ -474,6 +474,144 @@ test("admin login challenge requests are rate-limited by source IP", async () =>
     }), { code: "resource-exhausted" });
 });
 
+test("facility can reset a forgotten password using a one-time code sent to its registered email", async () => {
+    const context = loadHandlers({
+        "facilities/facility-reset": {
+            facilityName: "Facility Reset",
+            email: "reset@example.invalid",
+            password: "old-password",
+            status: "active"
+        }
+    });
+    const request = await context.handlers.requestFacilityPasswordReset({
+        data: { facilityName: "Facility Reset", email: " RESET@example.invalid " },
+        rawRequest: { ip: "192.0.2.20" }
+    });
+    assert.equal(request.accepted, true);
+    assert.match(request.challengeId, /^[0-9a-f]{64}$/);
+    assert.equal(context.sentEmails[0].to, "reset@example.invalid");
+    const code = context.sentEmails[0].text.match(/\d{6}/)[0];
+
+    const result = await context.handlers.completeFacilityPasswordReset({
+        data: { challengeId: request.challengeId, code, newPassword: "new-password" },
+        rawRequest: { ip: "192.0.2.20" }
+    });
+    assert.equal(result.success, true);
+    assert.equal(Object.hasOwn(context.documents.get("facilities/facility-reset"), "password"), false);
+    assert.match(context.documents.get("facilityCredentials/facility-reset").passwordHash, /^scrypt\$/);
+    assert.equal(context.documents.has(`facilityPasswordResetChallenges/${request.challengeId}`), false);
+
+    const login = await context.handlers.createFacilitySession({
+        data: { facilityName: "Facility Reset", password: "new-password" }
+    });
+    assert.equal(login.facilityId, "facility-reset");
+    await assert.rejects(context.handlers.createFacilitySession({
+        data: { facilityName: "Facility Reset", password: "old-password" }
+    }), { code: "unauthenticated" });
+});
+
+test("password reset does not reveal whether the facility name and email match", async () => {
+    const context = loadHandlers({
+        "facilities/facility-reset": {
+            facilityName: "Facility Reset",
+            email: "reset@example.invalid"
+        }
+    });
+    const matching = await context.handlers.requestFacilityPasswordReset({
+        data: { facilityName: "Facility Reset", email: "reset@example.invalid" },
+        rawRequest: { ip: "192.0.2.21" }
+    });
+    const nonMatching = await context.handlers.requestFacilityPasswordReset({
+        data: { facilityName: "Facility Reset", email: "wrong@example.invalid" },
+        rawRequest: { ip: "192.0.2.22" }
+    });
+    assert.deepEqual(Object.keys(matching).sort(), Object.keys(nonMatching).sort());
+    assert.equal(matching.accepted, true);
+    assert.equal(nonMatching.accepted, true);
+    assert.notEqual(matching.challengeId, nonMatching.challengeId);
+    assert.equal(context.sentEmails.length, 1);
+});
+
+test("facility password reset codes are rate-limited by registered email", async () => {
+    const context = loadHandlers({
+        "facilities/facility-reset": {
+            facilityName: "Facility Reset",
+            email: "reset@example.invalid"
+        }
+    });
+    for (let attempt = 0; attempt < 3; attempt++) {
+        await context.handlers.requestFacilityPasswordReset({
+            data: { facilityName: "Facility Reset", email: "reset@example.invalid" },
+            rawRequest: { ip: `192.0.2.${30 + attempt}` }
+        });
+    }
+    await assert.rejects(context.handlers.requestFacilityPasswordReset({
+        data: { facilityName: "Facility Reset", email: "reset@example.invalid" },
+        rawRequest: { ip: "192.0.2.40" }
+    }), { code: "resource-exhausted" });
+    assert.equal(context.sentEmails.length, 3);
+});
+
+test("facility password reset code is invalidated if the registered email changes", async () => {
+    const context = loadHandlers({
+        "facilities/facility-reset": {
+            facilityName: "Facility Reset",
+            email: "reset@example.invalid",
+            password: "old-password"
+        }
+    });
+    const request = await context.handlers.requestFacilityPasswordReset({
+        data: { facilityName: "Facility Reset", email: "reset@example.invalid" },
+        rawRequest: { ip: "192.0.2.41" }
+    });
+    const code = context.sentEmails[0].text.match(/\d{6}/)[0];
+    context.documents.get("facilities/facility-reset").email = "changed@example.invalid";
+    await assert.rejects(context.handlers.completeFacilityPasswordReset({
+        data: { challengeId: request.challengeId, code, newPassword: "new-password" },
+        rawRequest: { ip: "192.0.2.41" }
+    }), { code: "unauthenticated" });
+    assert.equal(context.documents.get("facilities/facility-reset").password, "old-password");
+});
+
+test("facility password reset rejects exhausted and expired codes without changing the password", async () => {
+    const context = loadHandlers({
+        "facilities/facility-reset": {
+            facilityName: "Facility Reset",
+            email: "reset@example.invalid",
+            password: "old-password"
+        }
+    });
+    const request = await context.handlers.requestFacilityPasswordReset({
+        data: { facilityName: "Facility Reset", email: "reset@example.invalid" },
+        rawRequest: { ip: "192.0.2.50" }
+    });
+    const code = context.sentEmails[0].text.match(/\d{6}/)[0];
+    const wrongCode = code === "000000" ? "000001" : "000000";
+    for (let attempt = 0; attempt < 5; attempt++) {
+        await assert.rejects(context.handlers.completeFacilityPasswordReset({
+            data: { challengeId: request.challengeId, code: wrongCode, newPassword: "new-password" },
+            rawRequest: { ip: "192.0.2.50" }
+        }), { code: "unauthenticated" });
+    }
+    await assert.rejects(context.handlers.completeFacilityPasswordReset({
+        data: { challengeId: request.challengeId, code, newPassword: "new-password" },
+        rawRequest: { ip: "192.0.2.50" }
+    }), { code: "unauthenticated" });
+
+    const expiredRequest = await context.handlers.requestFacilityPasswordReset({
+        data: { facilityName: "Facility Reset", email: "reset@example.invalid" },
+        rawRequest: { ip: "192.0.2.51" }
+    });
+    const expiredChallenge = context.documents.get(`facilityPasswordResetChallenges/${expiredRequest.challengeId}`);
+    expiredChallenge.expiresAt = Date.now() - 1;
+    const expiredCode = context.sentEmails[1].text.match(/\d{6}/)[0];
+    await assert.rejects(context.handlers.completeFacilityPasswordReset({
+        data: { challengeId: expiredRequest.challengeId, code: expiredCode, newPassword: "new-password" },
+        rawRequest: { ip: "192.0.2.51" }
+    }), { code: "unauthenticated" });
+    assert.equal(context.documents.get("facilities/facility-reset").password, "old-password");
+});
+
 test("administrator can migrate legacy facility passwords without exposing them in facility documents", async () => {
     const context = loadHandlers({
         "facilities/legacy": { facilityName: "Legacy", password: "legacy-password" },

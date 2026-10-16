@@ -67,6 +67,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /facilityPasswordResetChallenges/{challengeId} {
+      allow read, write: if false;
+    }
+
+    match /facilityPasswordResetRateLimits/{rateLimitId} {
+      allow read, write: if false;
+    }
+
     match /facilityCancellations/{facilityId} {
       allow read: if isAdmin() || isFacility(facilityId);
       allow write: if isAdmin();

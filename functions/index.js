@@ -53,6 +53,8 @@ const companyStampDataUrl = `data:image/png;base64,${companyStampPng.toString("b
 const scrypt = promisify(crypto.scrypt);
 const ADMIN_LOGIN_CODE_TTL_MS = 10 * 60 * 1000;
 const ADMIN_LOGIN_RATE_WINDOW_MS = 15 * 60 * 1000;
+const FACILITY_PASSWORD_RESET_RATE_WINDOW_MS = 60 * 60 * 1000;
+const FACILITY_PASSWORD_RESET_CODE_TTL_MS = 10 * 60 * 1000;
 
 function escapeHtml(value) {
     return String(value || "").replace(/[&<>\"']/g, character => ({
@@ -244,6 +246,162 @@ async function enforceAdminLoginRateLimit(request, action, maxAttempts) {
     }
 }
 
+function normalizeFacilityEmail(email) {
+    return typeof email === "string" ? email.trim().toLowerCase() : "";
+}
+
+async function enforceFacilityPasswordResetRateLimit(request, key, maxAttempts) {
+    const ip = request.rawRequest?.ip;
+    if (typeof ip !== "string" || !ip) {
+        throw new HttpsError("failed-precondition", "接続元を確認できません。時間をおいて再度お試しください。");
+    }
+    const rateLimitId = crypto.createHash("sha256").update(key).digest("hex");
+    const limitRef = getFirestore().collection("facilityPasswordResetRateLimits").doc(rateLimitId);
+    const now = Date.now();
+    const allowed = await getFirestore().runTransaction(async transaction => {
+        const snapshot = await transaction.get(limitRef);
+        const data = snapshot.exists ? snapshot.data() : {};
+        const windowStartedAt = Number(data.windowStartedAt) || now;
+        const attempts = now - windowStartedAt >= FACILITY_PASSWORD_RESET_RATE_WINDOW_MS
+            ? 0
+            : Number(data.attempts) || 0;
+        if (attempts >= maxAttempts) return false;
+        const nextWindowStartedAt = attempts === 0 ? now : windowStartedAt;
+        transaction.set(limitRef, {
+            windowStartedAt: nextWindowStartedAt,
+            attempts: attempts + 1,
+            expiresAt: nextWindowStartedAt + FACILITY_PASSWORD_RESET_RATE_WINDOW_MS
+        });
+        return true;
+    });
+    if (!allowed) {
+        throw new HttpsError("resource-exhausted", "確認コードの送信回数が上限に達しました。1時間後に再度お試しください。");
+    }
+}
+
+exports.requestFacilityPasswordReset = onCall({
+    secrets: [ADMIN_CONTROL_KEY, INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
+}, async request => {
+    const facilityName = typeof request.data?.facilityName === "string" ? request.data.facilityName.trim() : "";
+    const email = normalizeFacilityEmail(request.data?.email);
+    if (!facilityName || facilityName.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new HttpsError("invalid-argument", "施設名と登録済みのメールアドレスを入力してください。");
+    }
+
+    const ip = request.rawRequest?.ip;
+    await enforceFacilityPasswordResetRateLimit(request, `request:ip:${ip}`, 10);
+    const emailHash = crypto.createHash("sha256").update(email).digest("hex");
+    await enforceFacilityPasswordResetRateLimit(request, `request:email:${emailHash}`, 3);
+
+    let challengeId = crypto.randomBytes(32).toString("hex");
+    const facilities = getFirestore().collection("facilities");
+    const matches = await facilities.where("facilityName", "==", facilityName).limit(2).get();
+    let facility = matches.docs.length === 1 ? matches.docs[0] : null;
+    if (matches.empty) {
+        const legacyFacility = await facilities.doc(facilityName).get();
+        if (legacyFacility.exists && (!legacyFacility.data().facilityName || legacyFacility.data().facilityName === facilityName)) {
+            facility = legacyFacility;
+        }
+    }
+
+    if (facility && matches.size <= 1 && normalizeFacilityEmail(facility.data().email) === email) {
+        const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+        challengeId = crypto.randomBytes(32).toString("hex");
+        const codeHash = crypto.createHmac("sha256", ADMIN_CONTROL_KEY.value())
+            .update(`${challengeId}:${code}`).digest("hex");
+        const challengeRef = getFirestore().collection("facilityPasswordResetChallenges").doc(challengeId);
+        await challengeRef.set({
+            facilityId: facility.id,
+            email,
+            codeHash,
+            expiresAt: Date.now() + FACILITY_PASSWORD_RESET_CODE_TTL_MS,
+            attempts: 0
+        });
+
+        const senderEmail = INVOICE_GMAIL_USER.value();
+        try {
+            const transporter = nodemailer.createTransport({
+                service: "gmail",
+                auth: { user: senderEmail, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
+            });
+            await transporter.sendMail({
+                from: { name: "えこすまいる連絡帳", address: senderEmail },
+                to: email,
+                subject: "【えこすまいる連絡帳】パスワード再設定確認コード",
+                text: `パスワード再設定確認コード：${code}\n\nこのコードは10分間有効です。心当たりがない場合は、このメールを破棄してください。`
+            });
+        } catch (error) {
+            await challengeRef.delete();
+            logger.error("Failed to send facility password reset code", { facilityId: facility.id, error });
+        }
+    }
+
+    return { accepted: true, challengeId };
+});
+
+exports.completeFacilityPasswordReset = onCall({
+    secrets: [ADMIN_CONTROL_KEY]
+}, async request => {
+    const challengeId = typeof request.data?.challengeId === "string" ? request.data.challengeId : "";
+    const code = typeof request.data?.code === "string" ? request.data.code.trim() : "";
+    const newPassword = typeof request.data?.newPassword === "string" ? request.data.newPassword : "";
+    if (!/^[0-9a-f]{64}$/.test(challengeId) || !/^\d{6}$/.test(code)) {
+        throw new HttpsError("invalid-argument", "確認コードが正しくありません。再度コードを送信してください。");
+    }
+    if (newPassword.length < 6 || newPassword.length > 200) {
+        throw new HttpsError("invalid-argument", "新しいパスワードは6文字以上200文字以内で入力してください。");
+    }
+
+    await enforceAdminLoginRateLimit(request, "facility-password-reset-verification", 10);
+    const db = getFirestore();
+    const challengeRef = db.collection("facilityPasswordResetChallenges").doc(challengeId);
+    const snapshot = await challengeRef.get();
+    if (!snapshot.exists) {
+        throw new HttpsError("unauthenticated", "確認コードが正しくないか、有効期限が切れています。最初からやり直してください。");
+    }
+    const challenge = snapshot.data();
+    const providedHash = crypto.createHmac("sha256", ADMIN_CONTROL_KEY.value())
+        .update(`${challengeId}:${code}`).digest("hex");
+    const storedHash = typeof challenge.codeHash === "string" ? challenge.codeHash : "";
+    const codeMatches = /^[0-9a-f]{64}$/.test(storedHash) &&
+        crypto.timingSafeEqual(Buffer.from(providedHash, "hex"), Buffer.from(storedHash, "hex"));
+    const passwordHash = codeMatches ? await hashFacilityPassword(newPassword) : null;
+    const result = await db.runTransaction(async transaction => {
+        const currentChallenge = await transaction.get(challengeRef);
+        if (!currentChallenge.exists) return "invalid";
+        const current = currentChallenge.data();
+        if (Number(current.expiresAt) <= Date.now() || Number(current.attempts) >= 5) {
+            transaction.delete(challengeRef);
+            return "invalid";
+        }
+        if (!codeMatches || current.codeHash !== storedHash) {
+            const attempts = Number(current.attempts) + 1;
+            if (attempts >= 5) transaction.delete(challengeRef);
+            else transaction.set(challengeRef, { attempts }, { merge: true });
+            return "invalid";
+        }
+
+        const facilityRef = db.collection("facilities").doc(current.facilityId);
+        const credentialRef = db.collection("facilityCredentials").doc(current.facilityId);
+        const facility = await transaction.get(facilityRef);
+        if (!facility.exists || normalizeFacilityEmail(facility.data().email) !== current.email) {
+            transaction.delete(challengeRef);
+            return "invalid";
+        }
+        transaction.set(credentialRef, {
+            passwordHash,
+            updatedAt: FieldValue.serverTimestamp()
+        });
+        transaction.set(facilityRef, { password: FieldValue.delete() }, { merge: true });
+        transaction.delete(challengeRef);
+        return "success";
+    });
+    if (result !== "success") {
+        throw new HttpsError("unauthenticated", "確認コードが正しくないか、有効期限が切れています。最初からやり直してください。");
+    }
+    return { success: true };
+});
+
 exports.createAdminLoginChallenge = onCall({
     secrets: [ADMIN_CONTROL_KEY, INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async request => {
@@ -323,7 +481,12 @@ exports.verifyAdminLoginCode = onCall({ secrets: [ADMIN_CONTROL_KEY] }, async re
 exports.cleanExpiredAdminLoginData = onSchedule("every day 03:00", async () => {
     const db = getFirestore();
     const now = Date.now();
-    for (const collectionName of ["adminLoginChallenges", "adminLoginRateLimits"]) {
+    for (const collectionName of [
+        "adminLoginChallenges",
+        "adminLoginRateLimits",
+        "facilityPasswordResetChallenges",
+        "facilityPasswordResetRateLimits"
+    ]) {
         while (true) {
             const expired = await db.collection(collectionName).where("expiresAt", "<=", now).limit(400).get();
             if (expired.empty) break;
