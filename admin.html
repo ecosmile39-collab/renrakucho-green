@@ -25,6 +25,7 @@
         .registered-badge { display: inline-flex; align-items: center; padding: 4px 10px; border: 1px solid #d4a017; border-radius: 999px; background: #fff3bf; color: #805b00; font-size: 13px; font-weight: bold; white-space: nowrap; }
         .line-agency-request-alert { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 10px 14px; border: 2px solid #c92a2a; border-radius: 6px; background: #fff0f0; color: #a51111; font-size: 15px; font-weight: bold; box-shadow: 0 2px 6px rgba(201, 42, 42, 0.2); }
         .line-agency-request-alert:hover { background: #ffe3e3; }
+        button.invoice-sent-alert:disabled { display: inline-flex; align-items: center; margin: 0; padding: 6px 10px; border: 1px solid #2f9e44; background: #ebfbee; color: #237032; font-size: 13px; opacity: 1; cursor: default; }
         .page-scroll-controls { position: fixed; right: 20px; bottom: 20px; z-index: 1000; display: grid; gap: 8px; }
         .page-scroll-controls button { width: 48px; height: 48px; padding: 0; border-radius: 50%; background: #e8590c; font-size: 22px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
         #facilityOverviewDialog { box-sizing: border-box; width: min(1100px, calc(100vw - 24px)); max-width: 1100px; max-height: 85vh; border: 1px solid #adb5bd; border-radius: 8px; padding: 12px; }
@@ -696,6 +697,7 @@
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">📞 電話番号：${escapeHtml(facility.phone || "未登録")}</div>
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 13px;">
                         <strong>請求状況${invoice ? `（${escapeHtml(invoice.invoiceNumber || "最新請求書")}）` : ""}</strong>
+                        ${invoiceSent && !invoicePaid ? '<button type="button" class="invoice-sent-alert" disabled>📨 請求書が送信されました</button>' : ""}
                         <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0;"><input type="checkbox" ${invoiceSent ? "checked" : ""} disabled style="width: auto; margin: 0;">発送済み</label>
                         <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; ${invoiceSent ? "cursor: pointer;" : "color: #868e96;"}"><input type="checkbox" data-facility-payment-id="${encodeURIComponent(facility.id)}" data-payment-status="paid" ${invoicePaid ? "checked" : ""} ${invoiceSent ? "" : "disabled"} style="width: auto; margin: 0;">入金済み</label>
                         <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; ${invoiceSent ? "cursor: pointer;" : "color: #868e96;"}"><input type="checkbox" data-facility-payment-id="${encodeURIComponent(facility.id)}" data-payment-status="unpaid" ${invoiceSent && !invoicePaid ? "checked" : ""} ${invoiceSent ? "" : "disabled"} style="width: auto; margin: 0;">未入金</label>
