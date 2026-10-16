@@ -1083,6 +1083,231 @@ test("manual invoices include selected services and the matching additional serv
     assert.equal(invoice.adminNotificationMessageId, "test-message-2");
 });
 
+const agencyAdminAuth = { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } };
+const agencyRequest = {
+    auth: { uid: "agency", token: { role: "facility" } },
+    data: { facilityName: "Agency", email: "facility@example.invalid", phone: "03-1234-5678",
+        contactPerson: "Contact", acceptedFeeAmount: 3000 }
+};
+const agencyFee = { id: "agency-fee-1", description: "LINE連携設定代行手数料", amount: 3000 };
+
+test("LINE agency request email failure is surfaced without losing or duplicating the paid application", async () => {
+    const context = loadHandlers({ "facilities/agency": { status: "active" } }, {
+        sendMail: async () => { throw new Error("Mail unavailable"); }
+    });
+    const result = await context.handlers.requestLineAgencySetup(agencyRequest);
+    assert.equal(result.status, "pending");
+    assert.equal(result.notificationStatus, "failed");
+    assert.equal(context.documents.get("facilities/agency").lineAgencyFee.status, "awaiting_completion");
+    assert.ok(context.loggedErrors.length);
+    await assert.rejects(context.handlers.requestLineAgencySetup(agencyRequest), { code: "already-exists" });
+});
+
+test("cancelling an uncompleted paid agency request does not schedule a fee", async () => {
+    const context = loadHandlers({ "facilities/agency": {
+        lineAgencyStatus: "pending", lineAgencyFee: { ...agencyFee, status: "awaiting_completion" }
+    } });
+    await context.handlers.updateFacilityLineAgencyStatus({
+        auth: agencyAdminAuth, data: { facilityId: "agency", status: null }
+    });
+    assert.equal(context.documents.get("facilities/agency").lineAgencyStatus, null);
+    assert.equal(context.documents.get("facilities/agency").lineAgencyFee, null);
+});
+
+test("a newly completed LINE fee stays pending when the current initial invoice was already sent", async () => {
+    const context = loadHandlers({
+        "facilities/agency": {
+            facilityName: "Agency", email: "facility@example.invalid", status: "active",
+            subscriptionStatus: "trial", trialEndsAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+            lineAgencyFee: { ...agencyFee, status: "pending" }
+        },
+        "facilities/agency/invoiceHistory/INITIAL": { status: "sent", serviceTypes: ["デイサービス"] }
+    });
+    await context.handlers.requestFacilitySubscription({
+        auth: agencyRequest.auth, data: { serviceTypes: ["デイサービス"] }
+    });
+    await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin({
+        auth: agencyAdminAuth, data: { facilityId: "agency" }
+    }), { code: "already-exists" });
+    assert.equal(context.sentEmails.length, 0);
+    assert.equal(context.documents.get("facilities/agency").lineAgencyFee.status, "pending");
+});
+
+test("paid LINE agency requests require fee consent, notify both recipients and reject duplicate requests", async () => {
+    const context = loadHandlers({ "facilities/agency": { status: "active" } });
+    await assert.rejects(context.handlers.requestLineAgencySetup({
+        ...agencyRequest, data: { ...agencyRequest.data, acceptedFeeAmount: undefined }
+    }), { code: "failed-precondition" });
+    assert.equal(context.documents.get("facilities/agency").lineAgencyFee, undefined);
+    await context.handlers.requestLineAgencySetup(agencyRequest);
+    const fee = context.documents.get("facilities/agency").lineAgencyFee;
+    assert.equal(fee.amount, 3000);
+    assert.equal(fee.status, "awaiting_completion");
+    assert.match(fee.id, /^[a-f0-9]{32}$/);
+    assert.equal(context.sentEmails.length, 2);
+    for (const mail of context.sentEmails) {
+        assert.match(mail.text, /税抜3,000円（税込3,300円）/);
+        assert.match(mail.text, /連携完了後、次に発行する請求書へ一度だけ加算/);
+        assert.doesNotMatch(mail.text, /初回無料/);
+    }
+    await assert.rejects(context.handlers.requestLineAgencySetup(agencyRequest), { code: "already-exists" });
+    assert.equal(context.documents.get("facilities/agency").lineAgencyFee.id, fee.id);
+});
+
+test("LINE agency completion is MFA-admin-only, preserves old free requests and schedules a paid fee once", async () => {
+    const context = loadHandlers({
+        "facilities/agency": { lineAgencyStatus: "pending", lineAgencyFee: { ...agencyFee, status: "awaiting_completion" } },
+        "facilities/free": { lineAgencyStatus: "pending" }
+    });
+
+    for (const auth of [undefined, agencyRequest.auth, { uid: "admin", token: { role: "admin" } }]) {
+        await assert.rejects(context.handlers.updateFacilityLineAgencyStatus({
+            auth, data: { facilityId: "agency", status: "completed" }
+        }), { code: "unauthenticated" });
+    }
+    await context.handlers.updateFacilityLineAgencyStatus({
+        auth: agencyAdminAuth, data: { facilityId: "agency", status: "completed" }
+    });
+    assert.equal(context.documents.get("facilities/agency").lineAgencyFee.status, "pending");
+    context.documents.get("facilities/agency").lineAgencyFee.status = "billed";
+    await context.handlers.updateFacilityLineAgencyStatus({
+        auth: agencyAdminAuth, data: { facilityId: "agency", status: "completed" }
+    });
+    assert.equal(context.documents.get("facilities/agency").lineAgencyFee.status, "billed");
+    await context.handlers.updateFacilityLineAgencyStatus({
+        auth: agencyAdminAuth, data: { facilityId: "free", status: "completed" }
+    });
+    assert.equal(context.documents.get("facilities/free").lineAgencyFee, undefined);
+    await assert.rejects(context.handlers.updateFacilityLineAgencyStatus({
+        auth: agencyAdminAuth, data: { facilityId: "missing", status: "completed" }
+    }), { code: "not-found" });
+});
+
+test("a successful family pairing completes only pending agency requests and schedules only agreed fees", async () => {
+    for (const state of ["paid", "free", "none"]) {
+        const code = "ABCDEF123456";
+        const codeHash = crypto.createHash("sha256").update(code).digest("hex");
+        const context = loadHandlers({
+            "facilities/agency": { status: "active", commonLineEnabled: true,
+                ...(state !== "none" ? { lineAgencyStatus: "pending" } : {}),
+                ...(state === "paid" ? { lineAgencyFee: { ...agencyFee, status: "awaiting_completion" } } : {}) },
+            "facilities/agency/users/User": {},
+            [`linePairingCodes/${codeHash}`]: {
+                facilityId: "agency", userName: "User", expiresAt: new Date(Date.now() + 60000).toISOString()
+            }
+        });
+        await sendFamilyEvent(context, "family-new", code);
+        const facility = context.documents.get("facilities/agency");
+        assert.equal(facility.lineAgencyStatus, state === "none" ? undefined : "completed");
+        assert.equal(facility.lineAgencyFee?.status, state === "paid" ? "pending" : undefined);
+        assert.deepEqual(Array.from(context.documents.get("facilities/agency/users/User").lineUserIds), ["family-new"]);
+    }
+});
+
+for (const mode of ["initial", "manual-initial", "manual-monthly", "automatic"]) {
+    for (const failFirst of [false, true]) {
+        test(`${mode} LINE agency fee is billed once with retry=${failFirst} and other adjustments preserved`, async () => {
+            const initial = mode.includes("initial");
+            let rejectMail = failFirst;
+            const context = loadHandlers({
+                "facilities/agency": {
+                    facilityName: "Agency", email: "facility@example.invalid", status: "active",
+                    subscriptionStatus: initial ? "trial" : "active",
+                    trialEndsAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+                    createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
+                    pendingInvoiceAdjustment: { id: "other", description: "帳票変更手数料", amount: 2000 },
+                    lineAgencyStatus: "completed", lineAgencyFee: { ...agencyFee, status: "pending" }
+                }
+            }, { sendMail: async message => {
+                if (rejectMail && message.to === "facility@example.invalid") throw new Error("Delivery failure");
+            } });
+            const send = () => mode === "initial"
+                ? context.handlers.requestFacilitySubscription({ auth: agencyRequest.auth, data: { serviceTypes: ["デイサービス"] } })
+                : mode === "automatic" ? context.handlers.sendMonthlyInvoices()
+                : context.handlers.issueFacilityInvoiceForAdmin({ auth: agencyAdminAuth, data: { facilityId: "agency" } });
+            if (failFirst) {
+                if (mode === "automatic") await send();
+                else await assert.rejects(send(), { code: "internal" });
+                assert.equal(context.documents.get("facilities/agency").lineAgencyFee.status, "pending");
+                rejectMail = false;
+            }
+            await send();
+            const invoice = [...context.documents.entries()].find(([key]) => key.startsWith("facilities/agency/invoiceHistory/"))[1];
+            assert.equal(invoice.status, "sent");
+            assert.equal(invoice.lineAgencyFee.amount, 3000);
+            const otherFee = mode === "initial" ? 0 : 2000;
+            assert.equal(invoice.subtotal, (initial ? 4000 : 5000) + 3000 + otherFee);
+            assert.equal(invoice.total, Math.round(invoice.subtotal * 1.1));
+            assert.match(invoice.invoiceHtml, /LINE連携設定代行手数料/);
+            assert.match(context.sentEmails.filter(mail => mail.to === "facility@example.invalid").at(-1).text, /LINE連携設定代行手数料：3,000円/);
+            const facility = context.documents.get("facilities/agency");
+            assert.equal(facility.lineAgencyFee.status, "billed");
+            if (mode === "initial") assert.equal(facility.pendingInvoiceAdjustment.amount, 2000);
+            else assert.equal(facility.pendingInvoiceAdjustment, undefined);
+            const sentCount = context.sentEmails.length;
+            if (mode.startsWith("manual")) await assert.rejects(send(), { code: "already-exists" });
+            else await send();
+            assert.equal(context.sentEmails.length, sentCount);
+
+            const resumedFacility = context.documents.get("facilities/agency");
+            resumedFacility.subscriptionStatus = "active";
+            resumedFacility.billingCycleId = "next-cycle";
+            resumedFacility.billingAnchorAt = new Date(Date.now() - 20 * 86400000).toISOString();
+            await context.handlers.sendMonthlyInvoices();
+            const next = [...context.documents.entries()].find(([key]) => key.includes("next-cycle"))[1];
+            assert.equal(next.lineAgencyFee, null);
+            assert.equal(context.documents.get("facilities/agency").lineAgencyFee.status, "billed");
+        });
+    }
+}
+
+test("uncompleted and already reserved LINE agency fees are not billed by another invoice or a test invoice", async () => {
+    for (const status of ["awaiting_completion", "reserved", "pending"]) {
+        const context = loadHandlers({
+            "facilities/agency": {
+                facilityName: "Agency", email: "facility@example.invalid", status: "active",
+                subscriptionStatus: "active", createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
+                lineAgencyFee: { ...agencyFee, status, ...(status === "reserved" ? { invoicePath: "another-invoice" } : {}) }
+            }
+        });
+
+        await context.handlers.sendTestInvoiceEmail({ auth: agencyAdminAuth, data: { facilityId: "agency" } });
+        assert.equal(context.documents.get("facilities/agency").lineAgencyFee.status, status);
+        if (status !== "pending") {
+            await context.handlers.sendMonthlyInvoices();
+            const invoice = [...context.documents.entries()].find(([key]) => key.startsWith("facilities/agency/invoiceHistory/AUTO-"))[1];
+            assert.equal(invoice.lineAgencyFee, null);
+            assert.equal(invoice.total, 5500);
+        } else {
+            assert.match(context.sentEmails[0].text, /LINE連携設定代行手数料：3,000円/);
+        }
+    }
+});
+
+test("LINE agency fee displays and invoice previews match the agreed price", () => {
+    const html = readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+    assert.doesNotMatch(html, /LINE連携代行[^\n]*初回無料|初回のみ無料/);
+    assert.match(html, /acceptedFeeAmount: 3000/);
+    assert.match(html, /代行手数料は3,000円/);
+    const admin = readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
+    const calculate = admin.match(/        function calculateInvoicePricingWithAdjustment\([\s\S]*?(?=\n        window.authenticateAdmin)/)[0];
+    const { calculateServicePricing } = require("./service-types");
+    const sandbox = { calculateServicePricing };
+    vm.runInNewContext(calculate, sandbox);
+    const pricing = sandbox.calculateInvoicePricingWithAdjustment(5000, ["デイサービス"],
+        { description: "Other", amount: 2000 }, { ...agencyFee, status: "pending" });
+    assert.equal(pricing.subtotal, 10000);
+    assert.equal(pricing.total, 11000);
+    assert.equal(pricing.lineAgencyFee.amount, 3000);
+    const initial = html.match(/        function calculateInitialPricingWithLineAgency\([\s\S]*?(?=\n        function prepareSubscriptionApplication)/)[0];
+    sandbox.currentFacilityForSubscription = { lineAgencyFee: { ...agencyFee, status: "pending" } };
+    vm.runInNewContext(initial, sandbox);
+    assert.equal(sandbox.calculateInitialPricingWithLineAgency(["デイサービス"]).total, 7700);
+    sandbox.currentFacilityForSubscription.lineAgencyFee.status = "billed";
+    assert.equal(sandbox.calculateInitialPricingWithLineAgency(["デイサービス"]).total, 4400);
+    assert.match(admin, /httpsCallable\(functions, "updateFacilityLineAgencyStatus"\)/);
+});
+
 test("manual invoice charges a saved one-time adjustment once and clears it after sending", async () => {
     const activationDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000);
     const adjustment = { id: "fee-change-1", description: "入力項目変更手数料", amount: 3000 };

@@ -20,17 +20,19 @@ function normalizeOneTimeInvoiceAdjustment(value) {
     return { id, description, amount };
 }
 
-function calculateInvoicePricing(baseSubtotal, serviceTypes, adjustmentValue) {
+function calculateInvoicePricing(baseSubtotal, serviceTypes, adjustmentValue, lineAgencyFeeValue) {
     const adjustment = normalizeOneTimeInvoiceAdjustment(adjustmentValue);
+    const lineAgencyFee = normalizeOneTimeInvoiceAdjustment(lineAgencyFeeValue);
     const servicePricing = calculateServicePricing(baseSubtotal, serviceTypes);
-    const subtotal = servicePricing.subtotal + (adjustment?.amount || 0);
+    const subtotal = servicePricing.subtotal + (adjustment?.amount || 0) + (lineAgencyFee?.amount || 0);
     const tax = Math.round(subtotal * 0.1);
     return {
         ...servicePricing,
         subtotal,
         tax,
         total: subtotal + tax,
-        oneTimeAdjustment: adjustment
+        oneTimeAdjustment: adjustment,
+        ...(lineAgencyFee ? { lineAgencyFee } : {})
     };
 }
 

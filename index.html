@@ -194,9 +194,10 @@
     <!-- 🤝 LINE連携代行申込みモーダルウィンドウ -->
     <div id="lineAgencyModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10003; justify-content: center; align-items: center; padding: 16px; box-sizing: border-box;">
         <div style="background: white; padding: 24px; border-radius: 10px; width: 100%; max-width: 480px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); box-sizing: border-box;">
-            <h3 style="margin-top: 0; color: #087f23; border-bottom: 2px solid #087f23; padding-bottom: 8px; font-size: 17px;">🤝 LINE連携代行申込み（初回無料）</h3>
+            <h3 style="margin-top: 0; color: #087f23; border-bottom: 2px solid #087f23; padding-bottom: 8px; font-size: 17px;">🤝 LINE連携代行申込み（代行手数料3,000円・税抜）</h3>
             <div style="background: #f1f8f2; border: 1px solid #b2dfbf; border-radius: 6px; padding: 12px; margin-bottom: 14px; font-size: 13px; line-height: 1.6; color: #222;">
-                <strong>初回のみ無料</strong>にて施設と家族様のLINE連携設定をさせて頂きます。<br>
+                <strong>代行手数料は3,000円</strong>にて施設と家族様のLINE連携設定をさせて頂きます。<br>
+                税抜3,000円（税込3,300円）です。連携完了後、次に発行する請求書に一度だけ加算します。<br>
                 連携が完了すると、連絡帳でお名前を選択した際に<strong>「保護者LINE：1件連携済み」</strong>と表示され、ご家族様がLINEで連絡帳を見られるようになります。
             </div>
             <label style="margin-top: 10px; font-size: 14px;">施設名</label>
@@ -304,7 +305,7 @@
         <div id="usageGuideActionRow" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <button type="button" id="usageGuideToggleButton" class="usage-guide-toggle" aria-expanded="false" aria-controls="usageGuidePanel" onclick="toggleUsageGuide()" style="margin: 0;">📖 連絡帳の使い方を見る</button>
-                <button type="button" id="openLineAgencyModalButton" onclick="openLineAgencyModal()" style="margin: 0; padding: 10px 14px; background: #087f23; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">🤝 LINE連携代行を申込む（初回無料）</button>
+                <button type="button" id="openLineAgencyModalButton" onclick="openLineAgencyModal()" style="margin: 0; padding: 10px 14px; background: #087f23; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">🤝 LINE連携代行を申込む（税抜3,000円）</button>
                 <button type="button" id="openInquiryModalButton" onclick="openInquiryModal()" style="margin: 0; padding: 10px 14px; background: #17a2b8; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">✉️ お問合せ</button>
             </div>
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
@@ -1443,9 +1444,22 @@
                 preview.textContent = "サービスを1つ以上選択してください。";
                 return;
             }
-            const initialPricing = calculateServicePricing(4000, serviceTypes);
+            const initialPricing = calculateInitialPricingWithLineAgency(serviceTypes);
             const monthlyPricing = calculateServicePricing(5000, serviceTypes);
             preview.textContent = `今回の初回請求（税込）：${initialPricing.total.toLocaleString("ja-JP")}円 ／ 2か月目以降（税込）：${monthlyPricing.total.toLocaleString("ja-JP")}円`;
+            if (initialPricing.lineAgencyFeeAmount) preview.textContent += "（初回にLINE連携設定代行手数料：税抜3,000円を含みます）";
+        }
+
+        function calculateInitialPricingWithLineAgency(serviceTypes) {
+            const pricing = calculateServicePricing(4000, serviceTypes);
+            const fee = currentFacilityForSubscription?.lineAgencyFee;
+            const lineAgencyFeeAmount = fee?.status === "pending" ? fee.amount : 0;
+            if (lineAgencyFeeAmount && lineAgencyFeeAmount !== 3000) {
+                throw new Error("LINE連携設定代行手数料を確認できません。管理者へお問い合わせください。");
+            }
+            const subtotal = pricing.subtotal + lineAgencyFeeAmount;
+            const tax = Math.round(subtotal * 0.1);
+            return { ...pricing, subtotal, tax, total: subtotal + tax, lineAgencyFeeAmount };
         }
 
         function prepareSubscriptionApplication(facilityData) {
@@ -2082,15 +2096,19 @@
                 return;
             }
 
+            if (!confirm("代行手数料は税抜3,000円（税込3,300円）です。連携完了後、次に発行する請求書に一度だけ加算します。この料金に同意して申し込みますか？")) return;
             btn.disabled = true;
             btn.textContent = "申込みを送信しています...";
             msg.textContent = "";
 
             try {
                 const requestAgency = httpsCallable(functions, "requestLineAgencySetup");
-                await requestAgency({ facilityName, email, phone, contactPerson });
+                const result = await requestAgency({ facilityName, email, phone, contactPerson, acceptedFeeAmount: 3000 });
                 closeLineAgencyModal();
-                alert(`🎉 LINE連携代行のお申込みを受け付けました。\n\nご登録メールアドレス（${email}）へ確認メールをお送りしました。\n担当者より順次ご連絡・連携設定のサポートをさせていただきます。\n連携が完了すると、連絡帳画面で利用者名を選択した際に「保護者LINE：1件連携済み」と自動的に表示されます。`);
+                const notificationMessage = result.data.notificationStatus === "failed"
+                    ? "申込みは保存されましたが、受付通知メールの一部または全部を送信できませんでした。再申込みはせず、管理者へお問い合わせください。"
+                    : `ご登録メールアドレス（${email}）へ確認メールをお送りしました。`;
+                alert(`🎉 LINE連携代行のお申込みを受け付けました。\n\n${notificationMessage}\n代行手数料は税抜3,000円（税込3,300円）です。連携完了後、次に発行する請求書へ一度だけ加算します。\n担当者より順次ご連絡・連携設定のサポートをさせていただきます。\n連携が完了すると、連絡帳画面で利用者名を選択した際に「保護者LINE：1件連携済み」と自動的に表示されます。`);
             } catch (err) {
                 msg.textContent = err.message || "申込みを送信できませんでした。通信環境を確認して再試行してください。";
             } finally {
@@ -2193,11 +2211,11 @@
                 error.textContent = "サービスを1つ以上選択してください。";
                 return;
             }
-            const initialPricing = calculateServicePricing(4000, serviceTypes);
+            const initialPricing = calculateInitialPricingWithLineAgency(serviceTypes);
             const monthlyPricing = calculateServicePricing(5000, serviceTypes);
             const selectedNames = SERVICE_TYPES.filter(service => serviceTypes.includes(service.value))
                 .map(service => service.value).join("、");
-            if (!confirm(`次のサービスで本登録を申し込みます。\n${selectedNames}\n\n初回請求（税込）：${initialPricing.total.toLocaleString("ja-JP")}円\n2か月目以降（税込）：${monthlyPricing.total.toLocaleString("ja-JP")}円\n\n選択サービスを管理者専用コントロールパネルの利用可能サービスと請求対象サービスの両方へ保存し、初回請求書を登録メールアドレスへ発行します。よろしいですか？`)) return;
+            if (!confirm(`次のサービスで本登録を申し込みます。\n${selectedNames}\n\n初回請求（税込）：${initialPricing.total.toLocaleString("ja-JP")}円${initialPricing.lineAgencyFeeAmount ? "\nLINE連携設定代行手数料：税抜3,000円を含みます。" : ""}\n2か月目以降（税込）：${monthlyPricing.total.toLocaleString("ja-JP")}円\n\n選択サービスを管理者専用コントロールパネルの利用可能サービスと請求対象サービスの両方へ保存し、初回請求書を登録メールアドレスへ発行します。よろしいですか？`)) return;
 
             button.disabled = true;
             button.textContent = "請求書を発行しています...";

@@ -1212,12 +1212,10 @@ async function connectLineUser(code, lineUserId, expectedFacilityId = "") {
                 lineLinkedAt: FieldValue.serverTimestamp()
             }, { merge: true });
         }
-        // LINE連携代行が受付中の施設の場合、連携完了ステータスへ自動更新
-        const facilityRef = db.collection("facilities").doc(pairing.facilityId);
-        transaction.set(facilityRef, {
-            lineAgencyStatus: "completed",
-            lineAgencyCompletedAt: FieldValue.serverTimestamp()
-        }, { merge: true });
+        if (facilitySnapshot.data().lineAgencyStatus === "pending") {
+            transaction.set(db.collection("facilities").doc(pairing.facilityId),
+                lineAgencyStatusUpdate(facilitySnapshot.data(), "completed"), { merge: true });
+        }
 
         transaction.delete(codeRef);
         return { status: "linked", userName: pairing.userName };
@@ -1842,7 +1840,7 @@ function formatJapaneseDateKey(value) {
     return `${year}年${month}月${day}日`;
 }
 
-function buildInvoiceItemRows({ serviceTypes, itemTitle, billingPeriod, baseSubtotal, additionalServiceSubtotal, oneTimeAdjustment, tax, total }) {
+function buildInvoiceItemRows({ serviceTypes, itemTitle, billingPeriod, baseSubtotal, additionalServiceSubtotal, oneTimeAdjustment, lineAgencyFee, tax, total }) {
     const rows = [
         `<tr><td style="border:1px solid #adb5bd;padding:10px">利用サービス</td><td style="border:1px solid #adb5bd;padding:10px">${escapeHtml(serviceTypes.join("、"))}</td></tr>`,
         `<tr><td style="border:1px solid #adb5bd;padding:10px">${escapeHtml(itemTitle)}（${billingPeriod}分）</td><td style="border:1px solid #adb5bd;padding:10px">${baseSubtotal.toLocaleString("ja-JP")}円</td></tr>`
@@ -1853,6 +1851,9 @@ function buildInvoiceItemRows({ serviceTypes, itemTitle, billingPeriod, baseSubt
     if (oneTimeAdjustment) {
         rows.push(`<tr><td style="border:1px solid #adb5bd;padding:10px">${escapeHtml(oneTimeAdjustment.description)}</td><td style="border:1px solid #adb5bd;padding:10px">${oneTimeAdjustment.amount.toLocaleString("ja-JP")}円</td></tr>`);
     }
+    if (lineAgencyFee) {
+        rows.push(`<tr><td style="border:1px solid #adb5bd;padding:10px">${escapeHtml(lineAgencyFee.description)}</td><td style="border:1px solid #adb5bd;padding:10px">${lineAgencyFee.amount.toLocaleString("ja-JP")}円</td></tr>`);
+    }
     rows.push(
         `<tr><td style="border:1px solid #adb5bd;padding:10px">消費税（10%）</td><td style="border:1px solid #adb5bd;padding:10px">${tax.toLocaleString("ja-JP")}円</td></tr>`,
         `<tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">合計</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">${total.toLocaleString("ja-JP")}円</th></tr>`
@@ -1860,12 +1861,13 @@ function buildInvoiceItemRows({ serviceTypes, itemTitle, billingPeriod, baseSubt
     return rows.join("");
 }
 
-function buildInvoiceTextItems({ serviceTypes, itemTitle, billingPeriod, baseSubtotal, additionalServiceSubtotal, oneTimeAdjustment, tax, total }) {
+function buildInvoiceTextItems({ serviceTypes, itemTitle, billingPeriod, baseSubtotal, additionalServiceSubtotal, oneTimeAdjustment, lineAgencyFee, tax, total }) {
     return [
         `利用サービス：${serviceTypes.join("、")}`,
         `${itemTitle}${billingPeriod ? `（${billingPeriod}分）` : ""}：${baseSubtotal.toLocaleString("ja-JP")}円`,
         ...(additionalServiceSubtotal > 0 ? [`追加サービス利用料：${additionalServiceSubtotal.toLocaleString("ja-JP")}円`] : []),
         ...(oneTimeAdjustment ? [`${oneTimeAdjustment.description}：${oneTimeAdjustment.amount.toLocaleString("ja-JP")}円`] : []),
+        ...(lineAgencyFee ? [`${lineAgencyFee.description}：${lineAgencyFee.amount.toLocaleString("ja-JP")}円`] : []),
         `消費税（10%）：${tax.toLocaleString("ja-JP")}円`,
         `税込合計：${total.toLocaleString("ja-JP")}円`
     ].join("\n");
@@ -1886,11 +1888,70 @@ async function finalizeOneTimeInvoiceAdjustment(db, facilityRef, adjustment) {
     });
 }
 
+function lineAgencyStatusUpdate(facility, status) {
+    return {
+        lineAgencyStatus: status,
+        lineAgencyStatusUpdatedAt: new Date().toISOString(),
+        ...(status === "completed" ? { lineAgencyCompletedAt: FieldValue.serverTimestamp() } : {}),
+        ...(status === "completed" && facility.lineAgencyFee?.status === "awaiting_completion"
+            ? { lineAgencyFee: { ...facility.lineAgencyFee, status: "pending" } } : {}),
+        ...(status === null && facility.lineAgencyFee?.status === "awaiting_completion"
+            ? { lineAgencyFee: null } : {})
+    };
+}
+
+function reserveLineAgencyFee(transaction, facilityRef, facility, invoiceRef) {
+    const fee = facility.lineAgencyFee;
+    if (!fee || !["pending", "reserved"].includes(fee.status)) return null;
+    if (fee.status === "reserved" && fee.invoicePath !== invoiceRef.path) return null;
+    const normalized = normalizeOneTimeInvoiceAdjustment(fee);
+    transaction.set(facilityRef, {
+        lineAgencyFee: { ...normalized, status: "reserved", invoicePath: invoiceRef.path }
+    }, { merge: true });
+    return normalized;
+}
+
+async function settleLineAgencyFee(db, facilityRef, invoiceRef, fee, sent) {
+    if (!fee) return;
+    await db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(facilityRef);
+        const current = snapshot.data()?.lineAgencyFee;
+        if (!current || current.id !== fee.id || current.status !== "reserved" || current.invoicePath !== invoiceRef.path) return;
+        transaction.set(facilityRef, {
+            lineAgencyFee: { ...current, status: sent ? "billed" : "pending",
+                ...(sent ? { billedAt: FieldValue.serverTimestamp() } : { invoicePath: null }) }
+        }, { merge: true });
+    });
+}
+
+exports.updateFacilityLineAgencyStatus = onCall(async request => {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
+        throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
+    }
+    const { facilityId, status } = request.data || {};
+    if (typeof facilityId !== "string" || !facilityId || facilityId.length > 128 ||
+        ![null, "pending", "completed"].includes(status)) {
+        throw new HttpsError("invalid-argument", "施設と受付状況を確認してください。");
+    }
+    const db = getFirestore();
+    const ref = db.collection("facilities").doc(facilityId);
+    await db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(ref);
+        if (!snapshot.exists) throw new HttpsError("not-found", "施設情報が見つかりません。");
+        const facility = snapshot.data();
+        transaction.set(ref, lineAgencyStatusUpdate(facility, status), { merge: true });
+    });
+    return { status };
+});
+
 exports.requestLineAgencySetup = onCall({
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async request => {
     const facilityId = requireFacilityId(request);
     await verifyFacilityIsActive(facilityId);
+    if (request.data?.acceptedFeeAmount !== 3000) {
+        throw new HttpsError("failed-precondition", "代行手数料は税抜3,000円（税込3,300円）です。画面を再読み込みし、料金をご確認のうえお申し込みください。");
+    }
 
     const facilityName = typeof request.data?.facilityName === "string" ? request.data.facilityName.trim() : "";
     const email = typeof request.data?.email === "string" ? request.data.email.trim() : "";
@@ -1912,20 +1973,29 @@ exports.requestLineAgencySetup = onCall({
 
     const db = getFirestore();
     const facilityRef = db.collection("facilities").doc(facilityId);
-    const facilitySnapshot = await facilityRef.get();
-    if (!facilitySnapshot.exists) {
-        throw new HttpsError("not-found", "施設情報が見つかりません。");
-    }
-
     const requestedAt = new Date().toISOString();
-    await facilityRef.set({
-        lineAgencyStatus: "pending",
-        lineAgencyRequestedAt: requestedAt,
-        lineAgencyContactPerson: contactPerson,
-        lineAgencyEmail: email,
-        lineAgencyPhone: phone
-    }, { merge: true });
+    await db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(facilityRef);
+        if (!snapshot.exists) throw new HttpsError("not-found", "施設情報が見つかりません。");
+        const facility = snapshot.data();
+        if (facility.lineAgencyStatus === "pending" ||
+            (facility.lineAgencyFee && facility.lineAgencyFee.status !== "billed")) {
+            throw new HttpsError("already-exists", "代行申込みは受付済み、または手数料の請求待ちです。管理者へお問い合わせください。");
+        }
+        transaction.set(facilityRef, {
+            lineAgencyStatus: "pending",
+            lineAgencyRequestedAt: requestedAt,
+            lineAgencyContactPerson: contactPerson,
+            lineAgencyEmail: email,
+            lineAgencyPhone: phone,
+            lineAgencyFee: {
+                id: crypto.randomBytes(16).toString("hex"), description: "LINE連携設定代行手数料",
+                amount: 3000, status: "awaiting_completion"
+            }
+        }, { merge: true });
+    });
 
+    let notificationStatus = "sent";
     // 管理者および施設側へメール通知
     try {
         const gmailUser = INVOICE_GMAIL_USER.value();
@@ -1934,8 +2004,9 @@ exports.requestLineAgencySetup = onCall({
             auth: { user: gmailUser, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
         });
 
-        const adminMailText = `施設よりLINE連携代行の申込みがありました。\n\n施設名：${facilityName}\n施設ID：${facilityId}\n担当者名：${contactPerson} 様\n連絡先メール：${email}\nLINEビジネスアカウント用電話番号（認証用）：${phone}\n申込日時：${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\n管理者コントロールパネルにてご確認の上、連携設定またはサポートを行ってください。`;
-        const facilityMailText = `${facilityName}\n${contactPerson} 様\n\nこのたびは「LINE連携代行申込み」をいただき、誠にありがとうございます。\n初回無料にて施設様とご家族様のLINE連携設定をサポート・設定代行させていただきます。\n\n■ お申込み内容\n施設名：${facilityName}\nご担当者名：${contactPerson} 様\nメールアドレス：${email}\n認証用電話番号：${phone}\n\n担当者より順次ご連絡、または設定作業を進めさせていただきます。\nLINE連携が完了すると、連絡帳画面で利用者様のお名前を選択した際に「保護者LINE：1件連携済み」と表示され、ご家族様がLINEから連絡帳を閲覧できるようになります。\n\n今しばらくお待ちくださいますようお願い申し上げます。\n\n株式会社えこすまいる\n連絡先：${gmailUser}`;
+        const feeNotice = "代行手数料は3,000円にて施設と家族様のLINE連携設定をさせて頂きます。\n税抜3,000円（税込3,300円）です。連携完了後、次に発行する請求書へ一度だけ加算します。";
+        const adminMailText = `施設よりLINE連携代行の申込みがありました。\n\n施設名：${facilityName}\n施設ID：${facilityId}\n担当者名：${contactPerson} 様\n連絡先メール：${email}\nLINEビジネスアカウント用電話番号（認証用）：${phone}\n申込日時：${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\n${feeNotice}\n\n管理者コントロールパネルにてご確認の上、連携設定またはサポートを行ってください。`;
+        const facilityMailText = `${facilityName}\n${contactPerson} 様\n\nこのたびは「LINE連携代行申込み」をいただき、誠にありがとうございます。\n${feeNotice}\n\n■ お申込み内容\n施設名：${facilityName}\nご担当者名：${contactPerson} 様\nメールアドレス：${email}\n認証用電話番号：${phone}\n\n担当者より順次ご連絡、または設定作業を進めさせていただきます。\nLINE連携が完了すると、連絡帳画面で利用者様のお名前を選択した際に「保護者LINE：1件連携済み」と表示され、ご家族様がLINEから連絡帳を閲覧できるようになります。\n\n今しばらくお待ちくださいますようお願い申し上げます。\n\n株式会社えこすまいる\n連絡先：${gmailUser}`;
 
         await Promise.all([
             // 管理者宛て
@@ -1954,10 +2025,11 @@ exports.requestLineAgencySetup = onCall({
             })
         ]);
     } catch (mailError) {
+        notificationStatus = "failed";
         logger.error("Failed to send line agency request notification emails", { facilityId, error: mailError });
     }
 
-    return { success: true, status: "pending" };
+    return { success: true, status: "pending", notificationStatus };
 });
 
 exports.sendFacilityInquiry = onCall({
@@ -2166,7 +2238,8 @@ exports.requestFacilitySubscription = onCall({
             }
         }
 
-        const pricing = calculateServicePricing(4000, serviceTypes);
+        const lineAgencyFee = reserveLineAgencyFee(transaction, facilityRef, facility, invoiceRef);
+        const pricing = calculateInvoicePricing(4000, serviceTypes, null, lineAgencyFee);
         transaction.set(facilityRef, {
             enabledServiceTypes: serviceTypes,
             billingServiceTypes: serviceTypes,
@@ -2186,6 +2259,7 @@ exports.requestFacilitySubscription = onCall({
             dueDate,
             billingPeriodStart,
             billingPeriodEnd,
+            lineAgencyFee,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
             subtotal: pricing.subtotal,
             tax: pricing.tax,
@@ -2207,13 +2281,14 @@ exports.requestFacilitySubscription = onCall({
     const facilityName = initialFacility.facilityName || facilityId;
     const formattedPeriod = `${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}`;
     const gmailUser = INVOICE_GMAIL_USER.value();
-    const { additionalServiceSubtotal, subtotal, tax, total } = reservation;
+    const { additionalServiceSubtotal, lineAgencyFee = null, subtotal, tax, total } = reservation;
     const invoiceRows = buildInvoiceItemRows({
         serviceTypes,
         itemTitle: "初回システム利用料",
         billingPeriod: formattedPeriod,
         baseSubtotal: 4000,
         additionalServiceSubtotal,
+        lineAgencyFee,
         tax,
         total
     });
@@ -2223,6 +2298,7 @@ exports.requestFacilitySubscription = onCall({
         billingPeriod: formattedPeriod,
         baseSubtotal: 4000,
         additionalServiceSubtotal,
+        lineAgencyFee,
         tax,
         total
     });
@@ -2251,6 +2327,7 @@ exports.requestFacilitySubscription = onCall({
             itemTitle: "初回システム利用料",
             serviceTypes,
             additionalServiceSubtotal,
+            lineAgencyFee,
             subtotal,
             tax,
             total,
@@ -2291,6 +2368,7 @@ exports.requestFacilitySubscription = onCall({
                 billingPeriodEnd,
                 serviceTypes,
                 additionalServiceSubtotal,
+                lineAgencyFee,
                 subtotal,
                 tax,
                 total,
@@ -2298,6 +2376,7 @@ exports.requestFacilitySubscription = onCall({
                 messageId: emailResult.messageId
             })
         ]);
+        await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, true);
         return { status: "pending_payment", invoiceNumber, recipient };
     } catch (error) {
         if (emailResult) {
@@ -2305,6 +2384,8 @@ exports.requestFacilitySubscription = onCall({
                 invoiceRef.set({ status: "sent", invoiceHtml: archivedHtml, messageId: emailResult.messageId, sentAt: FieldValue.serverTimestamp() }, { merge: true }),
                 facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true })
             ]).catch(logError => logger.error("Failed to finalize sent initial invoice", logError));
+            await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, true)
+                .catch(logError => logger.error("Failed to finalize LINE agency fee", { facilityId, error: logError }));
             logger.error("Initial invoice email was sent but finalization failed", { facilityId, recipient, error });
             return { status: "pending_payment", invoiceNumber, recipient };
         }
@@ -2312,6 +2393,8 @@ exports.requestFacilitySubscription = onCall({
             invoiceRef.set({ status: "failed", failedAt: FieldValue.serverTimestamp(), failureMessage: String(error.message || error).slice(0, 500) }, { merge: true }),
             facilityRef.set({ subscriptionApplicationStatus: "invoice_failed" }, { merge: true })
         ]).catch(logError => logger.error("Failed to record initial invoice failure", logError));
+        await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, false)
+            .catch(logError => logger.error("Failed to release LINE agency fee", { facilityId, error: logError }));
         logger.error("Failed to send initial subscription invoice", { facilityId, recipient, error });
         throw new HttpsError("internal", "初回請求書を送信できませんでした。販売元へお問い合わせください。");
     }
@@ -2423,7 +2506,6 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         if (alreadyConsumed) {
             transaction.set(facilityRef, { pendingInvoiceAdjustment: FieldValue.delete() }, { merge: true });
         }
-        const pricing = calculateInvoicePricing(baseSubtotal, serviceTypes, oneTimeAdjustment);
         if (invoiceSnapshot.exists) {
             const previousInvoice = invoiceSnapshot.data();
             if (previousInvoice.status === "sent") {
@@ -2436,6 +2518,8 @@ exports.issueFacilityInvoiceForAdmin = onCall({
                 throw new HttpsError("already-exists", "この請求書は現在発行処理中です。しばらくしてから履歴をご確認ください。");
             }
         }
+        const lineAgencyFee = reserveLineAgencyFee(transaction, facilityRef, currentFacility, invoiceRef);
+        const pricing = calculateInvoicePricing(baseSubtotal, serviceTypes, oneTimeAdjustment, lineAgencyFee);
         transaction.set(invoiceRef, {
             test: false,
             type: invoiceType,
@@ -2450,6 +2534,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             billingPeriodStart,
             billingPeriodEnd,
             oneTimeAdjustment,
+            lineAgencyFee,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
             subtotal: pricing.subtotal,
             tax: pricing.tax,
@@ -2470,7 +2555,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         throw new HttpsError("internal", "請求書の発行を開始できませんでした。");
     }
 
-    const { serviceTypes, additionalServiceSubtotal, oneTimeAdjustment, subtotal, tax, total } = reservation;
+    const { serviceTypes, additionalServiceSubtotal, oneTimeAdjustment, lineAgencyFee = null, subtotal, tax, total } = reservation;
     const formattedPeriod = `${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}`;
     const amountLabel = isInitialInvoice ? "初回システム利用料" : "システム利用料";
     const closing = isInitialInvoice
@@ -2483,6 +2568,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         baseSubtotal,
         additionalServiceSubtotal,
         oneTimeAdjustment,
+        lineAgencyFee,
         tax,
         total
     });
@@ -2493,6 +2579,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         baseSubtotal,
         additionalServiceSubtotal,
         oneTimeAdjustment,
+        lineAgencyFee,
         tax,
         total
     });
@@ -2519,6 +2606,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             serviceTypes,
             additionalServiceSubtotal,
             oneTimeAdjustment,
+            lineAgencyFee,
             subtotal,
             tax,
             total,
@@ -2563,6 +2651,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
                 serviceTypes,
                 additionalServiceSubtotal,
                 oneTimeAdjustment,
+                lineAgencyFee,
                 subtotal,
                 tax,
                 total,
@@ -2571,6 +2660,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             })
         ]);
         await finalizeOneTimeInvoiceAdjustment(db, facilityRef, oneTimeAdjustment);
+        await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, true);
         if (isInitialInvoice) {
             await facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true });
         }
@@ -2585,6 +2675,8 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             }, { merge: true }).catch(logError => logger.error("Failed to finalize manually sent invoice", { facilityId, error: logError }));
             await finalizeOneTimeInvoiceAdjustment(db, facilityRef, oneTimeAdjustment)
                 .catch(logError => logger.error("Failed to clear sent one-time invoice adjustment", { facilityId, error: logError }));
+            await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, true)
+                .catch(logError => logger.error("Failed to finalize LINE agency fee", { facilityId, error: logError }));
             if (isInitialInvoice) {
                 await facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true })
                     .catch(logError => logger.error("Failed to update initial invoice status", { facilityId, error: logError }));
@@ -2597,6 +2689,8 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             failedAt: FieldValue.serverTimestamp(),
             failureMessage: String(error.message || error).slice(0, 500)
         }, { merge: true }).catch(logError => logger.error("Failed to record manual invoice failure", { facilityId, error: logError }));
+        await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, false)
+            .catch(logError => logger.error("Failed to release LINE agency fee", { facilityId, error: logError }));
         if (isInitialInvoice) {
             await facilityRef.set({ subscriptionApplicationStatus: "invoice_failed" }, { merge: true })
                 .catch(logError => logger.error("Failed to update failed initial invoice status", { facilityId, error: logError }));
@@ -2626,7 +2720,9 @@ exports.sendTestInvoiceEmail = onCall({
     const facilityName = facility.facilityName || facilityId;
     const serviceTypes = getFacilityBillingServiceTypes(facility);
     const oneTimeAdjustment = normalizeOneTimeInvoiceAdjustment(facility.pendingInvoiceAdjustment);
-    const pricing = calculateInvoicePricing(5000, serviceTypes, oneTimeAdjustment);
+    const lineAgencyFee = facility.lineAgencyFee?.status === "pending"
+        ? normalizeOneTimeInvoiceAdjustment(facility.lineAgencyFee) : null;
+    const pricing = calculateInvoicePricing(5000, serviceTypes, oneTimeAdjustment, lineAgencyFee);
     const now = new Date();
     const dateParts = getTokyoDateParts(now);
     const issueDate = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
@@ -2658,6 +2754,7 @@ exports.sendTestInvoiceEmail = onCall({
             baseSubtotal: 5000,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
             oneTimeAdjustment,
+            lineAgencyFee,
             tax: pricing.tax,
             total: pricing.total
         })}</tbody></table>
@@ -2674,6 +2771,7 @@ exports.sendTestInvoiceEmail = onCall({
         baseSubtotal: 5000,
         additionalServiceSubtotal: pricing.additionalServiceSubtotal,
         oneTimeAdjustment,
+        lineAgencyFee,
         tax: pricing.tax,
         total: pricing.total
     });
@@ -2690,6 +2788,7 @@ exports.sendTestInvoiceEmail = onCall({
             serviceTypes,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
             oneTimeAdjustment,
+            lineAgencyFee,
             subtotal: pricing.subtotal,
             tax: pricing.tax,
             total: pricing.total,
@@ -2730,6 +2829,7 @@ exports.sendTestInvoiceEmail = onCall({
             serviceTypes,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
             oneTimeAdjustment,
+            lineAgencyFee,
             subtotal: pricing.subtotal,
             tax: pricing.tax,
             total: pricing.total,
@@ -2824,7 +2924,8 @@ exports.sendMonthlyInvoices = onSchedule({
             if (alreadyConsumed) {
                 transaction.set(facilityRef, { pendingInvoiceAdjustment: FieldValue.delete() }, { merge: true });
             }
-            const pricing = calculateInvoicePricing(5000, serviceTypes, oneTimeAdjustment);
+            const lineAgencyFee = reserveLineAgencyFee(transaction, facilityRef, currentFacility, historyRef);
+            const pricing = calculateInvoicePricing(5000, serviceTypes, oneTimeAdjustment, lineAgencyFee);
             transaction.set(historyRef, {
                 test: false,
                 status: "sending",
@@ -2837,6 +2938,7 @@ exports.sendMonthlyInvoices = onSchedule({
                 billingPeriodStart: period.startDate,
                 billingPeriodEnd: period.endDate,
                 oneTimeAdjustment,
+                lineAgencyFee,
                 additionalServiceSubtotal: pricing.additionalServiceSubtotal,
                 subtotal: pricing.subtotal,
                 tax: pricing.tax,
@@ -2850,6 +2952,7 @@ exports.sendMonthlyInvoices = onSchedule({
             continue;
         }
         const { serviceTypes, pricing, oneTimeAdjustment } = reservation;
+        const lineAgencyFee = pricing.lineAgencyFee || null;
 
         const invoiceNumber = `INV-${monthlyInvoiceKey(period.startDate, facility)}-${facilityId.toUpperCase()}`;
         const formattedPeriod = `${formatJapaneseDateKey(period.startDate)}〜${formatJapaneseDateKey(period.endDate)}`;
@@ -2860,6 +2963,7 @@ exports.sendMonthlyInvoices = onSchedule({
             baseSubtotal: 5000,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
             oneTimeAdjustment,
+            lineAgencyFee,
             tax: pricing.tax,
             total: pricing.total
         });
@@ -2870,6 +2974,7 @@ exports.sendMonthlyInvoices = onSchedule({
             baseSubtotal: 5000,
             additionalServiceSubtotal: pricing.additionalServiceSubtotal,
             oneTimeAdjustment,
+            lineAgencyFee,
             tax: pricing.tax,
             total: pricing.total
         });
@@ -2898,6 +3003,7 @@ exports.sendMonthlyInvoices = onSchedule({
                 serviceTypes,
                 additionalServiceSubtotal: pricing.additionalServiceSubtotal,
                 oneTimeAdjustment,
+                lineAgencyFee,
                 subtotal: pricing.subtotal,
                 tax: pricing.tax,
                 total: pricing.total,
@@ -2930,6 +3036,7 @@ exports.sendMonthlyInvoices = onSchedule({
                 sentAt: FieldValue.serverTimestamp()
             }, { merge: true });
             await finalizeOneTimeInvoiceAdjustment(db, facilityRef, oneTimeAdjustment);
+            await settleLineAgencyFee(db, facilityRef, historyRef, lineAgencyFee, true);
             await db.collection("invoiceEmailLogs").add({
                 test: false,
                 facilityId,
@@ -2943,6 +3050,7 @@ exports.sendMonthlyInvoices = onSchedule({
                 serviceTypes,
                 additionalServiceSubtotal: pricing.additionalServiceSubtotal,
                 oneTimeAdjustment,
+                lineAgencyFee,
                 subtotal: pricing.subtotal,
                 tax: pricing.tax,
                 total: pricing.total,
@@ -2962,6 +3070,8 @@ exports.sendMonthlyInvoices = onSchedule({
                 }, { merge: true }).catch(logError => logger.error("Failed to finalize sent monthly invoice", { facilityId, error: logError }));
                 await finalizeOneTimeInvoiceAdjustment(db, facilityRef, oneTimeAdjustment)
                     .catch(logError => logger.error("Failed to clear sent one-time invoice adjustment", { facilityId, error: logError }));
+                await settleLineAgencyFee(db, facilityRef, historyRef, lineAgencyFee, true)
+                    .catch(logError => logger.error("Failed to finalize LINE agency fee", { facilityId, error: logError }));
                 logger.error("Monthly invoice email sent but finalization failed", { facilityId, recipient, error });
                 sentCount++;
                 continue;
@@ -2972,6 +3082,8 @@ exports.sendMonthlyInvoices = onSchedule({
                 failedAt: FieldValue.serverTimestamp(),
                 failureMessage: String(error.message || error).slice(0, 500)
             }, { merge: true }).catch(logError => logger.error("Failed to record invoice send failure", logError));
+            await settleLineAgencyFee(db, facilityRef, historyRef, lineAgencyFee, false)
+                .catch(logError => logger.error("Failed to release LINE agency fee", { facilityId, error: logError }));
             logger.error("Failed to send monthly invoice", { facilityId, recipient, error });
         }
     }

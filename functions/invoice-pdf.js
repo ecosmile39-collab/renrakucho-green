@@ -31,6 +31,7 @@ function generateInvoicePdf({
     serviceTypes = [],
     additionalServiceSubtotal = 0,
     oneTimeAdjustment = null,
+    lineAgencyFee = null,
     subtotal,
     tax,
     total,
@@ -161,12 +162,15 @@ function generateInvoicePdf({
             if (serviceTypes.length) {
                 drawRow(`利用サービス：${serviceTypes.join("、")}`, "—");
             }
-            drawRow(`${itemTitle}（${billingPeriod}分）`, `¥ ${(subtotal - additionalServiceSubtotal).toLocaleString()}`);
+            drawRow(`${itemTitle}（${billingPeriod}分）`, `¥ ${(subtotal - additionalServiceSubtotal - (oneTimeAdjustment?.amount || 0) - (lineAgencyFee?.amount || 0)).toLocaleString()}`);
             if (additionalServiceSubtotal > 0) {
                 drawRow("追加サービス利用料", `¥ ${additionalServiceSubtotal.toLocaleString()}`);
             }
             if (oneTimeAdjustment) {
                 drawRow(oneTimeAdjustment.description, `¥ ${oneTimeAdjustment.amount.toLocaleString()}`);
+            }
+            if (lineAgencyFee) {
+                drawRow(lineAgencyFee.description, `¥ ${lineAgencyFee.amount.toLocaleString()}`);
             }
             drawRow("消費税（10%）", `¥ ${tax.toLocaleString()}`);
             doc.rect(colDescX, rowY, contentWidth, 28).fillAndStroke("#f8f9fa", "#2b8a3e");

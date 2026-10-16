@@ -48,3 +48,14 @@ test("invalid adjustment values are rejected", () => {
         assert.throws(() => normalizeOneTimeInvoiceAdjustment(value), TypeError);
     }
 });
+
+test("LINE agency fee is a separate one-time item added with other adjustments before tax", () => {
+    const fee = { id: "agency-1", description: "LINE連携設定代行手数料", amount: 3000 };
+    const pricing = calculateInvoicePricing(5000, ["デイサービス", "生活介護"],
+        { id: "manual-1", description: "帳票変更手数料", amount: 2000 }, fee);
+    assert.equal(pricing.subtotal, 11000);
+    assert.equal(pricing.tax, 1100);
+    assert.equal(pricing.total, 12100);
+    assert.deepEqual(pricing.lineAgencyFee, fee);
+    assert.equal(pricing.oneTimeAdjustment.amount, 2000);
+});

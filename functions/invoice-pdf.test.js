@@ -1,6 +1,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { generateInvoicePdf } = require("./invoice-pdf");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
 
 test("generateInvoicePdf generates a valid A4 PDF buffer with long invoice number and stamp without overlap", async () => {
     const pdfBuffer = await generateInvoicePdf({
@@ -47,4 +50,37 @@ test("generateInvoicePdf includes selected services and the additional-service c
     assert.ok(Buffer.isBuffer(pdfBuffer));
     assert.ok(pdfBuffer.length > 5000);
     assert.equal(pdfBuffer.subarray(0, 4).toString(), "%PDF");
+});
+
+test("invoice PDF lists LINE agency and other fees separately without inflating the base fee", async () => {
+    const PDFDocument = require("pdfkit");
+    const texts = [];
+    class ObservedPDFDocument extends PDFDocument {
+        text(value, ...args) {
+            texts.push(String(value));
+            return super.text(value, ...args);
+        }
+    }
+    const sandbox = {
+        module: { exports: {} }, __dirname, Buffer,
+        require: name => name === "pdfkit" ? ObservedPDFDocument : require(name)
+    };
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, "invoice-pdf.js"), "utf8"), sandbox);
+    const pdf = await sandbox.module.exports.generateInvoicePdf({
+        facilityName: "テスト施設", invoiceNumber: "TEST-AGENCY", issueDate: "2026年10月16日",
+        dueDate: "2026年10月26日", billingPeriod: "2026年10月16日〜2026年11月15日",
+        itemTitle: "システム利用料", serviceTypes: ["デイサービス", "生活介護"],
+        additionalServiceSubtotal: 1000,
+        oneTimeAdjustment: { id: "other", description: "帳票変更手数料", amount: 2000 },
+        lineAgencyFee: { id: "agency", description: "LINE連携設定代行手数料", amount: 3000 },
+        subtotal: 11000, tax: 1100, total: 12100, issuerEmail: "test@example.invalid", note: "テスト"
+    });
+    assert.equal(pdf.subarray(0, 4).toString(), "%PDF");
+    assert.ok(texts.includes("LINE連携設定代行手数料"));
+    assert.ok(texts.includes("帳票変更手数料"));
+    assert.ok(texts.includes("¥ 5,000"));
+    assert.ok(texts.includes("¥ 3,000"));
+    assert.ok(texts.includes("¥ 2,000"));
+    assert.ok(!texts.includes("¥ 10,000"));
+    assert.match(pdf.toString("latin1"), /\/Count 1\b/);
 });
