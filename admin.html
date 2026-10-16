@@ -696,6 +696,7 @@
                     <div style="margin-top: 6px; color: #1971c2; font-size: 14px; font-weight: bold;">🔑 パスワード：安全のため表示しません</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">✉️ メールアドレス：${escapeHtml(facility.email || "未登録")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">📞 電話番号：${escapeHtml(facility.phone || "未登録")}</div>
+                    <div style="margin-top: 4px; color: #495057; font-size: 14px;">担当者名：${escapeHtml(facility.contactPerson || "未登録")}</div>
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 13px;">
                         <strong>請求状況${invoice ? `（${escapeHtml(invoice.invoiceNumber || "最新請求書")}）` : ""}</strong>
                         ${invoiceSent && !invoicePaid ? '<button type="button" class="invoice-sent-alert" disabled>📨 請求書が送信されました</button>' : ""}

@@ -601,12 +601,14 @@ exports.registerTrialFacility = onCall({
     const password = typeof request.data?.password === "string" ? request.data.password : "";
     const email = typeof request.data?.email === "string" ? request.data.email.trim() : "";
     const phone = typeof request.data?.phone === "string" ? request.data.phone.trim() : "";
+    const contactPerson = typeof request.data?.contactPerson === "string" ? request.data.contactPerson.trim() : "";
     if (acceptedTermsVersion !== CURRENT_TERMS_VERSION) {
         throw new HttpsError("failed-precondition", "最新の利用規約を確認し、同意してから登録してください。");
     }
     if (!facilityName || facilityName.length > 200 || password.length < 6 || password.length > 200 ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !phone || phone.length > 50) {
-        throw new HttpsError("invalid-argument", "施設名、6文字以上のパスワード、連絡先メール、電話番号を確認してください。");
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !phone || phone.length > 50 ||
+        !contactPerson || contactPerson.length > 100) {
+        throw new HttpsError("invalid-argument", "施設名、6文字以上のパスワード、連絡先メール、電話番号、担当者名（100文字以内）を確認してください。");
     }
 
     const db = getFirestore();
@@ -623,6 +625,7 @@ exports.registerTrialFacility = onCall({
         facilityName,
         email,
         phone,
+        contactPerson,
         status: "active",
         commonLineEnabled: false,
         createdAt: trialStartedAt.toISOString(),

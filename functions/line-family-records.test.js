@@ -690,9 +690,11 @@ test("new trial registrations disable common LINE by default", async () => {
     const context = loadHandlers({});
     const result = await context.handlers.registerTrialFacility({ data: {
         registrationKey: "test-secret", acceptedTermsVersion: "2026-10-07-v1",
-        facilityName: "Test Facility", password: "test-password", email: "test@example.invalid", phone: "03-1234-5678"
+        facilityName: "Test Facility", password: "test-password", email: "test@example.invalid", phone: "03-1234-5678",
+        contactPerson: "  Test Contact  "
     } });
     assert.equal(context.documents.get(`facilities/${result.facilityId}`).commonLineEnabled, false);
+    assert.equal(context.documents.get(`facilities/${result.facilityId}`).contactPerson, "Test Contact");
     assert.equal(Object.hasOwn(context.documents.get(`facilities/${result.facilityId}`), "password"), false);
     assert.match(context.documents.get(`facilityCredentials/${result.facilityId}`).passwordHash, /^scrypt\$/);
     assert.equal(context.documents.get(`facilities/${result.facilityId}`).phone, "03-1234-5678");
@@ -898,8 +900,20 @@ test("trial registration requires a contact phone number", async () => {
     const context = loadHandlers({});
     await assert.rejects(context.handlers.registerTrialFacility({ data: {
         registrationKey: "test-secret", acceptedTermsVersion: "2026-10-07-v1",
-        facilityName: "Test Facility", password: "test-password", email: "test@example.invalid"
+        facilityName: "Test Facility", password: "test-password", email: "test@example.invalid", contactPerson: "Test"
     } }), { code: "invalid-argument" });
+});
+
+test("trial registration rejects missing, blank, non-string and overlong contact names", async () => {
+    for (const contactPerson of [undefined, "", "   ", 123, "a".repeat(101)]) {
+        const context = loadHandlers({});
+        await assert.rejects(context.handlers.registerTrialFacility({ data: {
+            acceptedTermsVersion: "2026-10-07-v1", facilityName: "Test Facility",
+            password: "test-password", email: "test@example.invalid", phone: "03-1234-5678", contactPerson
+        } }), { code: "invalid-argument" });
+        assert.equal(context.documents.size, 0);
+        assert.equal(context.sentEmails.length, 0);
+    }
 });
 
 test("manual invoice issuance is restricted to administrators", async () => {
