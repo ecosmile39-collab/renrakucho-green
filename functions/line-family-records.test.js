@@ -184,18 +184,32 @@ test("failed facility data deletion does not send a thank-you email", async () =
 
 test("cancellation history cards escape names and do not restore facility controls", () => {
     const html = readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
-    const render = html.match(/        function renderCancellationCard\(record\) \{[\s\S]*?(?=\n        function renderCancellationRecords)/)[0];
+    const render = html.match(/        function formatCancellationDate\(value\) \{[\s\S]*?(?=\n        window.resumeFacilityUsageFromAdmin)/)[0];
+    const historyList = { innerHTML: "" };
     const sandbox = {
         escapeHtml: text => String(text).replace(/</g, "&lt;").replace(/>/g, "&gt;"),
-        formatDate: value => value || "不明"
+        document: { getElementById: () => historyList },
+        cancellationRecords: []
     };
     vm.runInNewContext(render, sandbox);
     const card = sandbox.renderCancellationCard({
-        facilityName: "<script>alert(1)</script>", status: "completed", thankYouEmailStatus: "sent"
+        facilityName: "<script>alert(1)</script>", status: "completed", thankYouEmailStatus: "sent",
+        requestedAt: "2026-10-16T04:00:00Z"
     });
     assert.match(card, /退会申込です/);
     assert.match(card, /退会・データ削除完了/);
     assert.match(card, /お礼メール：送信済み/);
+    assert.match(card, /2026\/10\/16 13:00:00/);
+    for (const requestedAt of [undefined, "invalid-date", "2026-10-16T04:00:00Z",
+        { toDate: () => new Date("2026-10-16T04:00:00Z") }]) {
+        const record = { facilityName: "Test", status: "completed", requestedAt };
+        assert.doesNotThrow(() => sandbox.renderCancellationCard(record));
+        sandbox.cancellationRecords = [record];
+        assert.doesNotThrow(() => sandbox.renderCancellationRecords());
+        assert.match(historyList.innerHTML, /Test/);
+    }
+    assert.equal(sandbox.formatCancellationDate(null), "日時不明");
+    assert.match(sandbox.formatCancellationDate("invalid-date"), /保存日時を確認/);
     assert.ok(!card.includes("<script>"));
     assert.ok(!card.includes("onclick="));
     assert.match(html, /background: #000; color: #fff/);
