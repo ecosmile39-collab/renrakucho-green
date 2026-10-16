@@ -182,6 +182,46 @@ test("failed facility data deletion does not send a thank-you email", async () =
     assert.equal(context.sentEmails.length, 0);
 });
 
+test("daily facility summaries show matching names with Tokyo dates and reset empty lists", () => {
+    const html = readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
+    const summary = html.match(/        function renderFacilities\(\) \{[\s\S]*?(?=\n            if \(facilities.length === 0\))/)[0] + "\n}";
+    const elements = new Map();
+    for (const id of ["facilityList", "summaryTrialCount", "summaryActiveCount",
+        "summaryTodayTrialCount", "summaryTodayActiveCount", "summaryTodayTrialNames",
+        "summaryTodayActiveNames", "summaryTotalCount"]) {
+        assert.ok(html.includes(`id="${id}"`));
+        elements.set(id, { textContent: "" });
+    }
+    const now = new Date("2026-10-16T06:00:00Z");
+    const sandbox = {
+        Date: class extends Date {
+            constructor(...args) { super(...(args.length ? args : [now.getTime()])); }
+            static now() { return now.getTime(); }
+        },
+        document: { getElementById: id => elements.get(id) },
+        facilities: [
+            { id: "trial", facilityName: "<b>Trial</b>", subscriptionStatus: "trial", trialStartedAt: "2026-10-15T15:00:00Z" },
+            { id: "legacy", subscriptionStatus: "trial", createdAt: "2026-10-16T14:59:59Z" },
+            { id: "active", facilityName: "Active", subscriptionStatus: "active", trialStartedAt: "2026-10-01T00:00:00Z", planActivatedAt: { toDate: () => new Date("2026-10-16T00:00:00Z") } },
+            { id: "yesterday", subscriptionStatus: "trial", trialStartedAt: "2026-10-15T14:59:59Z" },
+            { id: "tomorrow", subscriptionStatus: "active", planActivatedAt: "2026-10-16T15:00:00Z" },
+            { id: "invalid", subscriptionStatus: "trial", trialStartedAt: "invalid-date" }
+        ]
+    };
+    vm.runInNewContext(summary, sandbox);
+    sandbox.renderFacilities();
+    assert.equal(elements.get("summaryTodayTrialCount").textContent, 2);
+    assert.equal(elements.get("summaryTodayActiveCount").textContent, 1);
+    assert.equal(elements.get("summaryTodayTrialNames").textContent, "<b>Trial</b>\nlegacy");
+    assert.equal(elements.get("summaryTodayActiveNames").textContent, "Active");
+    sandbox.facilities = [];
+    sandbox.renderFacilities();
+    assert.equal(elements.get("summaryTodayTrialCount").textContent, 0);
+    assert.equal(elements.get("summaryTodayActiveCount").textContent, 0);
+    assert.equal(elements.get("summaryTodayTrialNames").textContent, "該当なし");
+    assert.equal(elements.get("summaryTodayActiveNames").textContent, "該当なし");
+});
+
 test("cancellation history cards escape names and do not restore facility controls", () => {
     const html = readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
     const render = html.match(/        function formatCancellationDate\(value\) \{[\s\S]*?(?=\n        window.resumeFacilityUsageFromAdmin)/)[0];
