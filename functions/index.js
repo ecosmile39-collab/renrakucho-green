@@ -931,9 +931,12 @@ exports.resumeFacilityUsage = onCall(async request => {
             usagePaused: false,
             usageResumedAt: now,
             usageResumedBy: request.auth.uid,
-            ...(facility.subscriptionStatus !== "trial" ? {
-                billingAnchorAt: now,
-                billingCycleId: crypto.randomBytes(8).toString("hex")
+            subscriptionStatus: "active",
+            subscriptionApplicationStatus: "activated",
+            billingAnchorAt: now,
+            billingCycleId: crypto.randomBytes(8).toString("hex"),
+            ...(facility.subscriptionStatus === "trial" ? {
+                planActivatedAt: now
             } : {})
         }, { merge: true });
     });

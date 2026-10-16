@@ -318,8 +318,9 @@ test("only MFA administrators can resume and a new billing cycle preserves old i
     assert.equal(context.documents.get("facilities/pause-test").billingAnchorAt, facility.billingAnchorAt);
 });
 
-test("paused expired trials cannot bypass pause via registration and retain their expiry on resume", async () => {
-    const trialEndsAt = new Date(Date.now() - 86400000).toISOString();
+for (const trialExpired of [true, false]) {
+test(`paused ${trialExpired ? "expired" : "unexpired"} trials resume as paid subscriptions with standard monthly invoicing`, async () => {
+    const trialEndsAt = new Date(Date.now() + (trialExpired ? -86400000 : 86400000)).toISOString();
     const context = loadHandlers({
         "facilities/pause-test": {
             facilityName: "Pause Test", password: "secret", status: "locked", usagePaused: true,
@@ -336,13 +337,30 @@ test("paused expired trials cannot bypass pause via registration and retain thei
     await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin(resumeRequest), { code: "failed-precondition" });
     await context.handlers.resumeFacilityUsage(resumeRequest);
     assert.equal(context.documents.get("facilities/pause-test").trialEndsAt, trialEndsAt);
-    assert.equal(context.documents.get("facilities/pause-test").billingCycleId, undefined);
+    const facility = context.documents.get("facilities/pause-test");
+    assert.match(facility.billingCycleId, /^[0-9a-f]{16}$/);
+    assert.equal(facility.subscriptionStatus, "active");
+    assert.equal(facility.subscriptionApplicationStatus, "activated");
+    assert.equal(facility.planActivatedAt, facility.usageResumedAt);
     const login = await context.handlers.createFacilitySession({
         data: { facilityName: "Pause Test", password: "secret" }
     });
-    assert.equal(login.registrationOnly, true);
+    assert.equal(login.registrationOnly, false);
     assert.equal(context.sentEmails.length, 0);
+    await context.handlers.issueFacilityInvoiceForAdmin(resumeRequest);
+    const invoice = [...context.documents.entries()].find(([key]) =>
+        key.startsWith("facilities/pause-test/invoiceHistory/AUTO-"))[1];
+    assert.equal(invoice.type, "monthly");
+    assert.equal(invoice.subtotal, 5000);
+    assert.equal(invoice.tax, 500);
+    assert.equal(invoice.total, 5500);
+    assert.equal(context.documents.has("facilities/pause-test/invoiceHistory/INITIAL"), false);
+    assert.match(context.sentEmails[0].subject, /【請求書】/);
+    assert.equal(context.sentEmails.length, 2);
+    await context.handlers.sendMonthlyInvoices();
+    assert.equal(context.sentEmails.length, 2);
 });
+}
 
 test("pause selection and administrator resume controls are wired without changing data retention", () => {
     const unsubscribe = readFileSync(path.join(__dirname, "..", "unsubscribe.html"), "utf8");

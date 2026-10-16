@@ -1308,7 +1308,7 @@ ${invoiceRows}
 
         window.resumeFacilityUsageFromAdmin = async function(encodedId, button) {
             const facilityId = decodeURIComponent(encodedId);
-            if (!confirm("利用再開を承認しますか？本登録施設は本日から新しい1か月の請求期間を開始し、通常の月額請求の対象になります。休止期間は新たに請求せず、発行済み請求書は残ります。トライアルの終了日は延長しません。")) return;
+            if (!confirm("利用再開を承認しますか？トライアル施設も本登録へ切り替え、本日から新しい1か月の請求期間を開始します。無料期間・初回割引は適用せず、通常月額（1サービス：税抜5,000円／税込5,500円、追加サービスは1サービスごとに税抜1,000円加算）で請求します。請求書は毎日9時の自動発行、または「請求書を発行」で送信します。休止期間は新たに請求せず、発行済み請求書は残ります。")) return;
             button.disabled = true;
             try {
                 await httpsCallable(functions, "resumeFacilityUsage")({ facilityId });
