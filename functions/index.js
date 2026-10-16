@@ -2110,7 +2110,7 @@ exports.sendFacilityInquiry = onCall({
 
 async function notifyAdminOfSentInvoice({
     transporter, gmailUser, invoiceRef, facilityId, facilityName, recipient,
-    invoiceNumber, billingPeriodStart, billingPeriodEnd, dueDate, total
+    invoiceNumber, billingPeriodStart, billingPeriodEnd, dueDate, total, textItems
 }) {
     let notification;
     try {
@@ -2118,7 +2118,7 @@ async function notifyAdminOfSentInvoice({
             from: { name: "えこすまいる連絡帳システム", address: gmailUser },
             to: "ecosmile39@gmail.com",
             subject: `【請求書送信完了】${facilityName} / ${invoiceNumber}`,
-            text: `施設の請求書を送信しました。\n\n施設名：${facilityName}\n施設ID：${facilityId}\n送信先：${recipient}\n請求書番号：${invoiceNumber}\n請求対象期間：${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}\nご請求金額（税込）：${total.toLocaleString("ja-JP")}円\nお支払期限：${formatJapaneseDateKey(dueDate)}\n送信処理完了日時：${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\nこれは請求書メールの送信処理完了通知です。施設での受信・開封や入金を確認した通知ではありません。\n管理画面：https://renrakucho-green.vercel.app/admin.html`
+            text: `施設の請求書を送信しました。\n\n施設名：${facilityName}\n施設ID：${facilityId}\n送信先：${recipient}\n請求書番号：${invoiceNumber}\n請求対象期間：${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}\nご請求金額（税込）：${total.toLocaleString("ja-JP")}円\nお支払期限：${formatJapaneseDateKey(dueDate)}\n送信処理完了日時：${new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}\n\n■ 請求明細（金額は税抜、合計は税込）\n${textItems}\n\nこれは請求書メールの送信処理完了通知です。施設での受信・開封や入金を確認した通知ではありません。\n管理画面：https://renrakucho-green.vercel.app/admin.html`
         });
         notification = {
             adminNotificationStatus: "sent",
@@ -2350,7 +2350,7 @@ exports.requestFacilitySubscription = onCall({
         });
         await notifyAdminOfSentInvoice({
             transporter, gmailUser, invoiceRef, facilityId, facilityName, recipient,
-            invoiceNumber, billingPeriodStart, billingPeriodEnd, dueDate, total
+            invoiceNumber, billingPeriodStart, billingPeriodEnd, dueDate, total, textItems
         });
         await Promise.all([
             invoiceRef.set({ status: "sent", invoiceHtml: archivedHtml, messageId: emailResult.messageId, sentAt: FieldValue.serverTimestamp() }, { merge: true }),
@@ -2627,7 +2627,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         });
         await notifyAdminOfSentInvoice({
             transporter, gmailUser, invoiceRef, facilityId, facilityName, recipient,
-            invoiceNumber, billingPeriodStart, billingPeriodEnd, dueDate, total
+            invoiceNumber, billingPeriodStart, billingPeriodEnd, dueDate, total, textItems
         });
         await Promise.all([
             invoiceRef.set({
@@ -3023,7 +3023,7 @@ exports.sendMonthlyInvoices = onSchedule({
             await notifyAdminOfSentInvoice({
                 transporter, gmailUser, invoiceRef: historyRef, facilityId, facilityName, recipient,
                 invoiceNumber, billingPeriodStart: period.startDate, billingPeriodEnd: period.endDate,
-                dueDate: invoiceDueDate, total: pricing.total
+                dueDate: invoiceDueDate, total: pricing.total, textItems
             });
             const archivedHtml = html;
             await historyRef.set({

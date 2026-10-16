@@ -1091,6 +1091,47 @@ const agencyRequest = {
 };
 const agencyFee = { id: "agency-fee-1", description: "LINE連携設定代行手数料", amount: 3000 };
 
+for (const mode of ["initial", "manual-initial", "manual-monthly", "automatic"]) {
+    test(`${mode} administrator notification includes the exact sent invoice itemization`, async () => {
+        const initial = mode.includes("initial");
+        const context = loadHandlers({
+            "facilities/agency": {
+                facilityName: "Agency", email: "facility@example.invalid", status: "active",
+                subscriptionStatus: initial ? "trial" : "active",
+                trialEndsAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+                createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
+                billingServiceTypes: ["デイサービス", "生活介護"],
+                pendingInvoiceAdjustment: { id: "other", description: "帳票変更手数料", amount: 2000 },
+                lineAgencyFee: { ...agencyFee, status: "pending" }
+            }
+        });
+        if (mode === "initial") {
+            await context.handlers.requestFacilitySubscription({
+                auth: agencyRequest.auth, data: { serviceTypes: ["デイサービス", "生活介護"] }
+            });
+        } else if (mode === "automatic") {
+            await context.handlers.sendMonthlyInvoices();
+        } else {
+            await context.handlers.issueFacilityInvoiceForAdmin({
+                auth: agencyAdminAuth, data: { facilityId: "agency" }
+            });
+        }
+        assert.equal(context.sentEmails.length, 2);
+        const facilityEmail = context.sentEmails[0];
+        const notification = context.sentEmails[1];
+        const items = facilityEmail.text.match(/利用サービス：[\s\S]*?税込合計：[^\n]+/)[0];
+        assert.equal(notification.to, "ecosmile39@gmail.com");
+        assert.match(notification.subject, /【請求書送信完了】/);
+        assert.ok(notification.text.includes(`■ 請求明細（金額は税抜、合計は税込）\n${items}\n`));
+        assert.match(notification.text, /追加サービス利用料：1,000円/);
+        assert.match(notification.text, /LINE連携設定代行手数料：3,000円/);
+        assert.match(notification.text, /消費税（10%）：/);
+        assert.match(notification.text, initial ? /初回システム利用料/ : /システム利用料/);
+        if (mode !== "initial") assert.match(notification.text, /帳票変更手数料：2,000円/);
+        assert.doesNotMatch(notification.text, /undefined/);
+    });
+}
+
 test("LINE agency request email failure is surfaced without losing or duplicating the paid application", async () => {
     const context = loadHandlers({ "facilities/agency": { status: "active" } }, {
         sendMail: async () => { throw new Error("Mail unavailable"); }
