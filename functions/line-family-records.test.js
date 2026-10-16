@@ -7,11 +7,12 @@ const crypto = require("node:crypto");
 const vm = require("node:vm");
 const DELETE_FIELD = Symbol("deleteField");
 
-function loadHandlers(entries) {
+function loadHandlers(entries, options = {}) {
     const documents = new Map(Object.entries(entries));
     const requests = [];
     const sentEmails = [];
     const customTokens = [];
+    const loggedErrors = [];
     function document(referencePath) {
         return {
             id: referencePath.split("/").at(-1),
@@ -82,11 +83,14 @@ function loadHandlers(entries) {
             HttpsError: class extends Error { constructor(code, message) { super(message); this.code = code; } }
         };
         if (name === "firebase-functions/params") return { defineSecret: () => ({ value: () => "test-secret" }) };
-        if (name === "firebase-functions/logger") return { warn() {}, error() {}, info() {} };
+        if (name === "firebase-functions/logger") return {
+            warn() {}, error: (...args) => loggedErrors.push(args), info() {}
+        };
         if (name === "nodemailer") return {
             createTransport: () => ({
                 async sendMail(message) {
                     sentEmails.push(message);
+                    if (options.sendMail) await options.sendMail(message);
                     return { messageId: `test-message-${sentEmails.length}` };
                 }
             })
@@ -102,7 +106,7 @@ function loadHandlers(entries) {
         }
     };
     vm.runInNewContext(readFileSync(path.join(__dirname, "index.js"), "utf8"), sandbox);
-    return { handlers: sandbox.exports, documents, requests, sentEmails, customTokens };
+    return { handlers: sandbox.exports, documents, requests, sentEmails, customTokens, loggedErrors };
 }
 
 async function sendFamilyEvent(context, userId, text = "連絡帳を見る") {
@@ -719,6 +723,15 @@ test("manual invoices include selected services and the matching additional serv
     assert.match(context.sentEmails[0].html, /デイサービス、生活介護/);
     assert.match(context.sentEmails[0].html, /追加サービス利用料/);
     assert.match(context.sentEmails[0].html, /6,600円/);
+    assert.equal(context.sentEmails.length, 2);
+    assert.equal(context.sentEmails[1].to, "ecosmile39@gmail.com");
+    assert.match(context.sentEmails[1].subject, /【請求書送信完了】Facility B/);
+    assert.match(context.sentEmails[1].text, /施設の請求書を送信しました。/);
+    assert.match(context.sentEmails[1].text, /送信先：facility@example.invalid/);
+    assert.match(context.sentEmails[1].text, /6,600円/);
+    assert.ok(context.sentEmails[1].text.includes(invoice.invoiceNumber));
+    assert.equal(invoice.adminNotificationStatus, "sent");
+    assert.equal(invoice.adminNotificationMessageId, "test-message-2");
 });
 
 test("manual invoice charges a saved one-time adjustment once and clears it after sending", async () => {
@@ -770,6 +783,13 @@ test("automatic monthly invoices include the saved services and surcharge", asyn
     assert.equal(invoice.total, 7700);
     assert.match(context.sentEmails[0].html, /デイサービス、児童発達支援、生活介護/);
     assert.match(context.sentEmails[0].html, /7,700円/);
+    assert.equal(context.sentEmails.length, 2);
+    assert.equal(context.sentEmails[1].to, "ecosmile39@gmail.com");
+    assert.match(context.sentEmails[1].subject, /【請求書送信完了】Facility E/);
+    assert.match(context.sentEmails[1].text, /7,700円/);
+    assert.equal(invoice.adminNotificationStatus, "sent");
+    await context.handlers.sendMonthlyInvoices();
+    assert.equal(context.sentEmails.length, 2);
 });
 
 test("automatic monthly invoice includes a pending one-time adjustment and consumes it after sending", async () => {
@@ -850,6 +870,95 @@ test("initial subscription invoices include the chosen billing services and surc
     assert.match(context.sentEmails[0].html, /児童発達支援、生活介護/);
     assert.match(context.sentEmails[0].html, /追加サービス利用料/);
     assert.match(context.sentEmails[0].html, /5,500円/);
+    assert.equal(context.sentEmails.length, 2);
+    assert.equal(context.sentEmails[1].to, "ecosmile39@gmail.com");
+    assert.match(context.sentEmails[1].subject, /【請求書送信完了】Facility C/);
+    assert.match(context.sentEmails[1].text, /5,500円/);
+    assert.equal(invoice.adminNotificationStatus, "sent");
+    await context.handlers.requestFacilitySubscription({
+        auth: { uid: "facility-c", token: { role: "facility" } },
+        data: { serviceTypes: ["生活介護", "児童発達支援"] }
+    });
+    assert.equal(context.sentEmails.length, 2);
+});
+
+for (const mode of ["initial", "manual-initial", "manual-monthly", "automatic"]) {
+    for (const failure of ["facility", "admin"]) {
+        test(`${mode} invoice handles ${failure} email failure without duplicate facility delivery`, async () => {
+            const initial = mode === "initial" || mode === "manual-initial";
+            const context = loadHandlers({
+                "facilities/notification-test": {
+                    facilityName: "Notification Test", email: "facility@example.invalid", status: "active",
+                    subscriptionStatus: initial ? "trial" : "active",
+                    trialEndsAt: new Date(Date.now() + 86400000).toISOString(),
+                    createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
+                    billingServiceTypes: ["デイサービス"],
+                    pendingInvoiceAdjustment: { id: "notification-fee", description: "変更手数料", amount: 1000 }
+                }
+            }, {
+                sendMail(message) {
+                    if (message.to === (failure === "admin" ? "ecosmile39@gmail.com" : "facility@example.invalid")) {
+                        throw new Error("Simulated email delivery failure");
+                    }
+                }
+            });
+            const invoke = () => {
+                if (mode === "automatic") return context.handlers.sendMonthlyInvoices();
+                if (mode === "initial") return context.handlers.requestFacilitySubscription({
+                    auth: { uid: "notification-test", token: { role: "facility" } },
+                    data: { serviceTypes: ["デイサービス"] }
+                });
+                return context.handlers.issueFacilityInvoiceForAdmin({
+                    auth: { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } },
+                    data: { facilityId: "notification-test" }
+                });
+            };
+            if (failure === "facility" && mode !== "automatic") {
+                await assert.rejects(invoke(), { code: "internal" });
+            } else {
+                await invoke();
+            }
+            const invoice = [...context.documents.entries()].find(([path]) =>
+                path.startsWith("facilities/notification-test/invoiceHistory/"))[1];
+            assert.equal(invoice.status, failure === "facility" ? "failed" : "sent");
+            assert.equal(context.sentEmails.length, failure === "facility" ? 1 : 2);
+            assert.equal(invoice.adminNotificationStatus, failure === "admin" ? "failed" : undefined);
+            if (failure === "admin") {
+                assert.match(invoice.adminNotificationFailureMessage, /Simulated email delivery failure/);
+                assert.ok(context.loggedErrors.some(([message]) =>
+                    message === "Invoice sent but administrator notification failed"));
+                if (mode !== "initial") {
+                    assert.equal(context.documents.get("facilities/notification-test").pendingInvoiceAdjustment, undefined);
+                }
+                if (mode.startsWith("manual")) {
+                    await assert.rejects(invoke(), { code: "already-exists" });
+                } else {
+                    await invoke();
+                }
+                assert.equal(context.sentEmails.length, 2);
+            }
+        });
+    }
+}
+
+test("manual initial invoices also notify the administrator", async () => {
+    const context = loadHandlers({
+        "facilities/manual-initial": {
+            facilityName: "Manual Initial", email: "facility@example.invalid",
+            status: "active", subscriptionStatus: "trial",
+            billingServiceTypes: ["デイサービス"]
+        }
+    });
+    await context.handlers.issueFacilityInvoiceForAdmin({
+        auth: { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } },
+        data: { facilityId: "manual-initial" }
+    });
+    const invoice = context.documents.get("facilities/manual-initial/invoiceHistory/INITIAL");
+    assert.equal(invoice.status, "sent");
+    assert.equal(invoice.adminNotificationStatus, "sent");
+    assert.equal(context.sentEmails.length, 2);
+    assert.equal(context.sentEmails[1].to, "ecosmile39@gmail.com");
+    assert.match(context.sentEmails[1].text, /4,400円/);
 });
 
 test("initial subscription saves residential selections to available services, billing and invoice", async () => {
