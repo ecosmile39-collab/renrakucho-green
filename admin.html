@@ -671,7 +671,7 @@
                 let statusClass = isLocked ? "locked" : isTrialExpired ? "trial-expired" : isTrial ? "trial" : "active";
                 const isRegistered = facility.subscriptionStatus === "active" || facility.status === "active" && facility.subscriptionStatus !== "trial";
                 const subscriptionApplicationPending = ["invoice_sending", "pending_payment", "invoice_failed"].includes(facility.subscriptionApplicationStatus);
-                let statusLabel = isLocked ? "🔴 利用停止中" : subscriptionApplicationPending ? "🧾 本登録申込済み・入金待ち" : isTrialExpired ? "⏰ 無料期間終了" : isTrial ? `🟠 無料お試し中（残り${trialDaysRemaining}日）` : "🟢 利用中";
+                let statusLabel = facility.usagePaused === true ? "一時利用停止中（新規請求停止・再開承認待ち）" : isLocked ? "🔴 利用停止中" : subscriptionApplicationPending ? "🧾 本登録申込済み・入金待ち" : isTrialExpired ? "⏰ 無料期間終了" : isTrial ? `🟠 無料お試し中（残り${trialDaysRemaining}日）` : "🟢 利用中";
                 let invoice = latestInvoiceByFacility.get(facility.id);
                 let invoiceSent = Boolean(invoice);
                 let invoicePaid = invoice?.paymentStatus === "paid";
@@ -758,15 +758,15 @@
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                         <button type="button" style="background: #7048e8;" onclick="openFacilityCustomization('${encodeURIComponent(facility.id)}')">🎛️ カスタマイズ</button>
                         <button type="button" style="background: #087f5b;" onclick="openFacilityServiceList('${encodeURIComponent(facility.id)}')">📋 利用サービス一覧</button>
-                        <button type="button" style="background: #c67700;" onclick="issueFacilityInvoiceFromAdmin('${encodeURIComponent(facility.id)}', this)">🧾 請求書を発行</button>
+                        <button type="button" style="background: #c67700;" ${facility.usagePaused === true ? "disabled" : ""} onclick="issueFacilityInvoiceFromAdmin('${encodeURIComponent(facility.id)}', this)">🧾 請求書を発行</button>
                         <button type="button" style="background: #1971c2;" onclick="previewTestInvoice('${encodeURIComponent(facility.id)}')">🧾 テスト請求書PDFプレビュー</button>
                         <button type="button" style="background: #2f9e44;" onclick="sendTestInvoiceFromPreview('${encodeURIComponent(facility.id)}', this)">📧 テスト請求書メールを送信</button>
                         <button type="button" style="background: #495057;" onclick="showFacilityInvoiceHistory('${encodeURIComponent(facility.id)}')">📚 請求書履歴</button>
-                        ${isTrial ? `<button type="button" style="background: #087f23;" onclick="activateFacilitySubscription('${encodeURIComponent(facility.id)}')">✅ 購入後の本利用へ切替</button>` : ""}
+                        ${isTrial && facility.usagePaused !== true ? `<button type="button" style="background: #087f23;" onclick="activateFacilitySubscription('${encodeURIComponent(facility.id)}')">✅ 購入後の本利用へ切替</button>` : ""}
                         <button type="button" style="background: ${lineEnabled ? "#c92a2a" : "#237032"};" title="この施設で使用中の${lineAccountLabel}を停止・許可します。停止すると連携、返信、家族向け閲覧を停止します。連携情報は削除しません。" onclick="toggleFacilityLine('${encodeURIComponent(facility.id)}', this)">${lineEnabled ? `⏸ ${lineAccountLabel}を停止` : `▶ ${lineAccountLabel}を許可`}</button>
                         <button type="button" style="background: ${facilityLineSettingsButtonVisible ? "#c92a2a" : "#237032"};" title="この施設の入力画面で施設LINE設定ボタンの表示だけを切り替えます。" onclick="toggleFacilityLineSettingsButton('${encodeURIComponent(facility.id)}', this)">${facilityLineSettingsButtonVisible ? "施設LINE設定ボタンを非表示" : "施設LINE設定ボタンを表示"}</button>
                         <button type="button" style="background: ${familyLinePublicationEnabled ? "#c92a2a" : "#237032"};" title="非表示にすると入力画面のLINE公開チェックを隠し、新しい連絡帳は家族向けに公開しません。公開済み記録は変更しません。" onclick="toggleFamilyLinePublication('${encodeURIComponent(facility.id)}', this)">${familyLinePublicationEnabled ? "LINE公開チェックを非表示" : "LINE公開チェックを表示"}</button>
-                        <button class="${isLocked ? "unlock" : "lock"}" onclick="toggleFacility('${encodeURIComponent(facility.id)}', ${isLocked})">${isLocked ? "🔓 解除する" : "🔒 ロックする"}</button>
+                        ${facility.usagePaused === true ? `<button type="button" class="unlock" onclick="resumeFacilityUsageFromAdmin('${encodeURIComponent(facility.id)}', this)">利用再開を承認する</button>` : `<button class="${isLocked ? "unlock" : "lock"}" onclick="toggleFacility('${encodeURIComponent(facility.id)}', ${isLocked})">${isLocked ? "🔓 解除する" : "🔒 ロックする"}</button>`}
                         <button type="button" class="delete" onclick="deleteFacility('${encodeURIComponent(facility.id)}', this)">🗑️ 登録施設を削除</button>
                     </div>
                 </div>`;
@@ -932,6 +932,10 @@
             const facility = facilities.find(item => item.id === facilityId);
             if (!facility) return;
             const facilityName = facility.facilityName || facilityId;
+            if (facility.usagePaused === true) {
+                alert("一時利用停止中です。先に利用再開を承認してください。");
+                return;
+            }
             if (!confirm(`${facilityName} を無料お試しから本利用へ切り替えますか？以後、月次請求の対象になります。`)) return;
 
             try {
@@ -1295,8 +1299,27 @@ ${invoiceRows}
             }).join("");
         }
 
+        window.resumeFacilityUsageFromAdmin = async function(encodedId, button) {
+            const facilityId = decodeURIComponent(encodedId);
+            if (!confirm("利用再開を承認しますか？本登録施設は本日から新しい1か月の請求期間を開始し、通常の月額請求の対象になります。休止期間は新たに請求せず、発行済み請求書は残ります。トライアルの終了日は延長しません。")) return;
+            button.disabled = true;
+            try {
+                await httpsCallable(functions, "resumeFacilityUsage")({ facilityId });
+            } catch (error) {
+                document.getElementById("facilityError").textContent = "利用再開に失敗しました: " + error.message;
+                button.disabled = false;
+                return;
+            }
+            await loadFacilities();
+        };
+
         window.toggleFacility = async function(encodedId, currentlyLocked) {
             let facilityId = decodeURIComponent(encodedId);
+            const currentFacility = facilities.find(item => item.id === facilityId);
+            if (currentFacility?.usagePaused === true) {
+                alert("「利用再開を承認する」ボタンから再開してください。");
+                return;
+            }
             let action = currentlyLocked ? "利用停止を解除" : "利用停止";
             if (!confirm(`${facilityId} を${action}しますか？`)) return;
             try {

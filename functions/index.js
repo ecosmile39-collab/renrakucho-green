@@ -86,6 +86,9 @@ exports.createFacilitySession = onCall(async request => {
     if (!await verifyFacilityPassword(facility, password)) {
         throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
     }
+    if (data.usagePaused === true) {
+        throw new HttpsError("permission-denied", "一時利用停止中です。再開をご希望の場合は管理者へお問い合わせください。");
+    }
     let registrationOnly = false;
     if (data.subscriptionStatus === "trial") {
         const trialEndsAt = Date.parse(data.trialEndsAt || "");
@@ -872,6 +875,73 @@ function requireFacilityDeletionId(request) {
         throw new HttpsError("unauthenticated", "退会処理の施設認証を確認できません。");
     }
     return facilityId;
+}
+
+exports.pauseFacilityUsage = onCall(async request => {
+    const facilityId = requireFacilityDeletionId(request);
+    const password = typeof request.data?.password === "string" ? request.data.password : "";
+    const db = getFirestore();
+    const facilityRef = db.collection("facilities").doc(facilityId);
+    const snapshot = await facilityRef.get();
+    if (!snapshot.exists || !password || !await verifyFacilityPassword(snapshot, password)) {
+        throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
+    }
+    await db.runTransaction(async transaction => {
+        const [current, invoices] = await Promise.all([
+            transaction.get(facilityRef),
+            transaction.get(facilityRef.collection("invoiceHistory"))
+        ]);
+        if (!current.exists) throw new HttpsError("not-found", "施設情報が見つかりません。");
+        if (current.data().usagePaused === true) return;
+        if (current.data().status === "locked") {
+            throw new HttpsError("failed-precondition", "利用停止中です。管理者へお問い合わせください。");
+        }
+        if (invoices.docs.some(invoice => invoice.data().status === "sending")) {
+            throw new HttpsError("failed-precondition", "請求書の発行処理中です。処理完了後に再度お試しください。");
+        }
+        transaction.set(facilityRef, {
+            status: "locked",
+            usagePaused: true,
+            usagePausedAt: new Date().toISOString()
+        }, { merge: true });
+    });
+    return { status: "paused" };
+});
+
+exports.resumeFacilityUsage = onCall(async request => {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
+        throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
+    }
+    const facilityId = typeof request.data?.facilityId === "string" ? request.data.facilityId.trim() : "";
+    if (!facilityId || facilityId.length > 200 || facilityId.includes("/")) {
+        throw new HttpsError("invalid-argument", "施設IDが正しくありません。");
+    }
+    const db = getFirestore();
+    const facilityRef = db.collection("facilities").doc(facilityId);
+    await db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(facilityRef);
+        if (!snapshot.exists) throw new HttpsError("not-found", "施設情報が見つかりません。");
+        const facility = snapshot.data();
+        if (facility.usagePaused !== true) {
+            throw new HttpsError("failed-precondition", "この施設は一時利用停止中ではありません。");
+        }
+        const now = new Date().toISOString();
+        transaction.set(facilityRef, {
+            status: "active",
+            usagePaused: false,
+            usageResumedAt: now,
+            usageResumedBy: request.auth.uid,
+            ...(facility.subscriptionStatus !== "trial" ? {
+                billingAnchorAt: now,
+                billingCycleId: crypto.randomBytes(8).toString("hex")
+            } : {})
+        }, { merge: true });
+    });
+    return { status: "active" };
+});
+
+function monthlyInvoiceKey(periodStart, facility) {
+    return `${periodStart.replace(/-/g, "")}${facility.billingCycleId ? `-${facility.billingCycleId}` : ""}`;
 }
 
 exports.previewFacilityDeletion = onCall(async request => {
@@ -2008,6 +2078,9 @@ exports.requestFacilitySubscription = onCall({
     }
 
     const initialFacility = initialFacilitySnapshot.data();
+    if (initialFacility.usagePaused === true) {
+        throw new HttpsError("failed-precondition", "一時利用停止中は請求書を発行できません。管理者へ再開をご相談ください。");
+    }
     if (initialFacility.subscriptionStatus !== "trial") {
         throw new HttpsError("failed-precondition", "この施設はトライアル中ではありません。");
     }
@@ -2051,7 +2124,8 @@ exports.requestFacilitySubscription = onCall({
             transaction.get(facilityRef),
             transaction.get(invoiceRef)
         ]);
-        if (!facilitySnapshot.exists || facilitySnapshot.data().subscriptionStatus !== "trial") {
+        if (!facilitySnapshot.exists || facilitySnapshot.data().subscriptionStatus !== "trial" ||
+            facilitySnapshot.data().usagePaused === true) {
             throw new HttpsError("failed-precondition", "この施設はトライアル中ではありません。");
         }
         const facility = facilitySnapshot.data();
@@ -2254,6 +2328,9 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         throw new HttpsError("not-found", "施設情報が見つかりません。");
     }
     const facility = facilitySnapshot.data();
+    if (facility.usagePaused === true) {
+        throw new HttpsError("failed-precondition", "一時利用停止中は請求書を発行できません。先に利用再開を承認してください。");
+    }
     const isInitialInvoice = facility.subscriptionStatus === "trial";
     if (!isInitialInvoice && facility.status !== "active") {
         throw new HttpsError("failed-precondition", "利用中の本登録施設ではないため、月額請求書を発行できません。");
@@ -2304,13 +2381,13 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         }
         billingPeriodStart = period.startDate;
         billingPeriodEnd = period.endDate;
-        invoiceNumber = `INV-${period.startDate.replace(/-/g, "")}-${facilityId.toUpperCase()}`;
+        invoiceNumber = `INV-${monthlyInvoiceKey(period.startDate, facility)}-${facilityId.toUpperCase()}`;
         baseSubtotal = 5000;
         invoiceType = "monthly";
     }
 
     const invoiceRef = facilityRef.collection("invoiceHistory").doc(
-        isInitialInvoice ? "INITIAL" : `AUTO-${billingPeriodStart.replace(/-/g, "")}`
+        isInitialInvoice ? "INITIAL" : `AUTO-${monthlyInvoiceKey(billingPeriodStart, facility)}`
     );
     const gmailUser = INVOICE_GMAIL_USER.value();
     const reservation = await db.runTransaction(async transaction => {
@@ -2322,6 +2399,10 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             throw new HttpsError("not-found", "施設情報が見つかりません。");
         }
         const currentFacility = currentFacilitySnapshot.data();
+        if (currentFacility.usagePaused === true ||
+            currentFacility.billingCycleId !== facility.billingCycleId) {
+            throw new HttpsError("failed-precondition", "利用状態または請求期間が変更されました。施設一覧を更新してください。");
+        }
         if ((currentFacility.subscriptionStatus === "trial") !== isInitialInvoice) {
             throw new HttpsError("failed-precondition", "請求中に施設の契約状態が変更されました。施設一覧を更新してください。");
         }
@@ -2688,7 +2769,7 @@ exports.sendMonthlyInvoices = onSchedule({
         const facility = facilityDocument.data();
         const facilityId = facilityDocument.id;
         const facilityName = facility.facilityName || facilityId;
-        if (facility.subscriptionStatus === "trial") {
+        if (facility.subscriptionStatus === "trial" || facility.usagePaused === true) {
             skippedCount++;
             continue;
         }
@@ -2710,7 +2791,7 @@ exports.sendMonthlyInvoices = onSchedule({
         }
 
         const historyRef = db.collection("facilities").doc(facilityId)
-            .collection("invoiceHistory").doc(`AUTO-${period.startDate.replace(/-/g, "")}`);
+            .collection("invoiceHistory").doc(`AUTO-${monthlyInvoiceKey(period.startDate, facility)}`);
         const facilityRef = facilityDocument.ref;
         const reservation = await db.runTransaction(async transaction => {
             const [currentFacilitySnapshot, historySnapshot] = await Promise.all([
@@ -2719,7 +2800,8 @@ exports.sendMonthlyInvoices = onSchedule({
             ]);
             if (!currentFacilitySnapshot.exists) return null;
             const currentFacility = currentFacilitySnapshot.data();
-            if (currentFacility.status !== "active" || currentFacility.subscriptionStatus === "trial") return null;
+            if (currentFacility.status !== "active" || currentFacility.subscriptionStatus === "trial" ||
+                currentFacility.usagePaused === true || currentFacility.billingCycleId !== facility.billingCycleId) return null;
             if (historySnapshot.exists) {
                 const history = historySnapshot.data();
                 if (history.status === "sent") return null;
@@ -2762,7 +2844,7 @@ exports.sendMonthlyInvoices = onSchedule({
         }
         const { serviceTypes, pricing, oneTimeAdjustment } = reservation;
 
-        const invoiceNumber = `INV-${period.startDate.replace(/-/g, "")}-${facilityId.toUpperCase()}`;
+        const invoiceNumber = `INV-${monthlyInvoiceKey(period.startDate, facility)}-${facilityId.toUpperCase()}`;
         const formattedPeriod = `${formatJapaneseDateKey(period.startDate)}〜${formatJapaneseDateKey(period.endDate)}`;
         const invoiceRows = buildInvoiceItemRows({
             serviceTypes,

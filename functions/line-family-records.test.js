@@ -203,6 +203,143 @@ test("cancellation history cards escape names and do not restore facility contro
     assert.match(html, /facilities\.length === 0 && cancellationRecords\.length === 0/);
 });
 
+const pauseRequest = {
+    auth: { uid: "pause-test", token: { role: "facility-delete" } },
+    data: { password: "secret" }
+};
+const resumeRequest = {
+    auth: { uid: "admin-control-panel", token: { role: "admin", mfaVerified: true } },
+    data: { facilityId: "pause-test" }
+};
+
+test("facility pause keeps records and invoices but blocks login and all new invoicing", async () => {
+    const context = loadHandlers({
+        "facilities/pause-test": {
+            facilityName: "Pause Test", password: "secret", status: "active",
+            subscriptionStatus: "active", email: "facility@example.invalid",
+            billingAnchorAt: "2026-01-01T00:00:00+09:00"
+        },
+        "facilities/pause-test/users/user-a": { name: "User A" },
+        "facilities/pause-test/daily_records/record-a": { note: "keep" },
+        "facilities/pause-test/invoiceHistory/OLD": { status: "sent", paymentStatus: "unpaid" },
+        "facilityLineSettings/pause-test": { basicId: "@dedicated" }
+    });
+    await context.handlers.pauseFacilityUsage(pauseRequest);
+    const facility = context.documents.get("facilities/pause-test");
+    assert.equal(facility.usagePaused, true);
+    assert.equal(facility.status, "locked");
+    assert.equal(facility.billingAnchorAt, "2026-01-01T00:00:00+09:00");
+    const firstPausedAt = facility.usagePausedAt;
+    await context.handlers.pauseFacilityUsage(pauseRequest);
+    assert.equal(context.documents.get("facilities/pause-test").usagePausedAt, firstPausedAt);
+    assert.equal(context.documents.get("facilities/pause-test/daily_records/record-a").note, "keep");
+    assert.equal(context.documents.has("facilities/pause-test/users/user-a"), true);
+    assert.equal(context.documents.has("facilityLineSettings/pause-test"), true);
+    assert.equal(context.documents.get("facilities/pause-test/invoiceHistory/OLD").paymentStatus, "unpaid");
+    assert.equal(context.documents.has("facilityCancellations/pause-test"), false);
+    assert.deepEqual(await context.handlers.getFacilityAccessStatus({
+        auth: { uid: "pause-test", token: { role: "facility" } }
+    }).then(r => r.status), "locked");
+    await assert.rejects(context.handlers.createFacilitySession({
+        data: { facilityName: "Pause Test", password: "secret" }
+    }), { code: "permission-denied" });
+    await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin(resumeRequest), { code: "failed-precondition" });
+    await context.handlers.sendMonthlyInvoices();
+    assert.equal(context.sentEmails.length, 0);
+});
+
+test("pause requires facility deletion credentials and refuses in-flight invoices", async () => {
+    const context = loadHandlers({
+        "facilities/pause-test": { facilityName: "Pause Test", password: "secret", status: "active" },
+        "facilities/pause-test/invoiceHistory/INITIAL": { status: "sending" }
+    });
+    await assert.rejects(context.handlers.pauseFacilityUsage({
+        ...pauseRequest, auth: { uid: "pause-test", token: { role: "facility" } }
+    }), { code: "unauthenticated" });
+    await assert.rejects(context.handlers.pauseFacilityUsage({
+        ...pauseRequest, data: { password: "wrong" }
+    }), { code: "unauthenticated" });
+    await assert.rejects(context.handlers.pauseFacilityUsage(pauseRequest), { code: "failed-precondition" });
+    assert.equal(context.documents.get("facilities/pause-test").status, "active");
+    assert.equal(context.sentEmails.length, 0);
+});
+
+test("only MFA administrators can resume and a new billing cycle preserves old invoices", async () => {
+    const oldAnchor = "2026-01-01T00:00:00+09:00";
+    const context = loadHandlers({
+        "facilities/pause-test": {
+            facilityName: "Pause Test", password: "secret", status: "locked", usagePaused: true,
+            subscriptionStatus: "active", email: "facility@example.invalid", billingAnchorAt: oldAnchor
+        },
+        "facilities/pause-test/invoiceHistory/OLD": { status: "sent", paymentStatus: "unpaid" },
+        "facilities/pause-test/daily_records/record-a": { note: "keep" }
+    });
+    for (const token of [{ role: "facility" }, { role: "admin" }]) {
+        await assert.rejects(context.handlers.resumeFacilityUsage({
+            ...resumeRequest, auth: { uid: "pause-test", token }
+        }), { code: "unauthenticated" });
+    }
+    const before = Date.now();
+    await context.handlers.resumeFacilityUsage(resumeRequest);
+    const facility = context.documents.get("facilities/pause-test");
+    assert.equal(facility.status, "active");
+    assert.equal(facility.usagePaused, false);
+    assert.ok(Date.parse(facility.billingAnchorAt) >= before);
+    assert.match(facility.billingCycleId, /^[0-9a-f]{16}$/);
+    assert.equal(facility.usageResumedBy, "admin-control-panel");
+    assert.equal(context.documents.get("facilities/pause-test/invoiceHistory/OLD").paymentStatus, "unpaid");
+    assert.equal(context.documents.get("facilities/pause-test/daily_records/record-a").note, "keep");
+    await context.handlers.sendMonthlyInvoices();
+    const invoice = [...context.documents.entries()].find(([key]) =>
+        key.startsWith("facilities/pause-test/invoiceHistory/AUTO-"));
+    assert.ok(invoice[0].endsWith("-" + facility.billingCycleId));
+    const resumedDate = new Date(facility.billingAnchorAt).toLocaleString("sv-SE", { timeZone: "Asia/Tokyo" }).slice(0, 10);
+    assert.equal(invoice[1].billingPeriodStart, resumedDate);
+    assert.equal(invoice[1].total, 5500);
+    assert.equal(context.sentEmails.length, 2);
+    await context.handlers.sendMonthlyInvoices();
+    await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin(resumeRequest), { code: "already-exists" });
+    assert.equal(context.sentEmails.length, 2);
+    await assert.rejects(context.handlers.resumeFacilityUsage(resumeRequest), { code: "failed-precondition" });
+    assert.equal(context.documents.get("facilities/pause-test").billingAnchorAt, facility.billingAnchorAt);
+});
+
+test("paused expired trials cannot bypass pause via registration and retain their expiry on resume", async () => {
+    const trialEndsAt = new Date(Date.now() - 86400000).toISOString();
+    const context = loadHandlers({
+        "facilities/pause-test": {
+            facilityName: "Pause Test", password: "secret", status: "locked", usagePaused: true,
+            subscriptionStatus: "trial", trialEndsAt, email: "facility@example.invalid"
+        }
+    });
+    await assert.rejects(context.handlers.createFacilitySession({
+        data: { facilityName: "Pause Test", password: "secret" }
+    }), { code: "permission-denied" });
+    await assert.rejects(context.handlers.requestFacilitySubscription({
+        auth: { uid: "pause-test", token: { role: "facility", registrationOnly: true } },
+        data: { serviceTypes: ["デイサービス"] }
+    }), { code: "failed-precondition" });
+    await assert.rejects(context.handlers.issueFacilityInvoiceForAdmin(resumeRequest), { code: "failed-precondition" });
+    await context.handlers.resumeFacilityUsage(resumeRequest);
+    assert.equal(context.documents.get("facilities/pause-test").trialEndsAt, trialEndsAt);
+    assert.equal(context.documents.get("facilities/pause-test").billingCycleId, undefined);
+    const login = await context.handlers.createFacilitySession({
+        data: { facilityName: "Pause Test", password: "secret" }
+    });
+    assert.equal(login.registrationOnly, true);
+    assert.equal(context.sentEmails.length, 0);
+});
+
+test("pause selection and administrator resume controls are wired without changing data retention", () => {
+    const unsubscribe = readFileSync(path.join(__dirname, "..", "unsubscribe.html"), "utf8");
+    const admin = readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
+    assert.match(unsubscribe, /一時利用停止（名簿・連絡帳を残す）/);
+    assert.match(unsubscribe, /httpsCallable\(functions, "pauseFacilityUsage"\)/);
+    assert.match(unsubscribe, /写真・動画の自動削除期限/);
+    assert.match(admin, /httpsCallable\(functions, "resumeFacilityUsage"\)/);
+    assert.match(admin, /利用再開を承認する/);
+});
+
 test("only the family record button or exact command requests records", () => {
     assert.equal(isFamilyRecordRequest({ type: "postback", postback: { data: "view_records" } }), true);
     assert.equal(isFamilyRecordRequest({ type: "message", message: { type: "text", text: " 連絡帳を見る " } }), true);
