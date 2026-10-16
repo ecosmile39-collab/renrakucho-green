@@ -59,7 +59,7 @@ function loadHandlers(entries, options = {}) {
                         ? data[field]?.includes(value) : data[field] === value)) continue;
                     docs.push(await document(referencePath).get());
                 }
-                return { docs, size: docs.length, empty: docs.length === 0 };
+                return { docs, size: docs.length, empty: docs.length === 0, forEach: callback => docs.forEach(callback) };
             }
         };
     }
@@ -70,13 +70,23 @@ function loadHandlers(entries, options = {}) {
             return "test-custom-token";
         } }) };
         if (name === "firebase-admin/firestore") return {
-            getFirestore: () => ({ collection, runTransaction: callback => callback({
+            getFirestore: () => ({ collection, batch: () => {
+                const deletions = [];
+                return {
+                    delete: reference => deletions.push(reference.path),
+                    commit: async () => deletions.forEach(referencePath => documents.delete(referencePath))
+                };
+            }, runTransaction: callback => callback({
                 get: reference => reference.get(),
                 set: (reference, fields, options) => reference.set(fields, options),
                 delete: reference => documents.delete(reference.path)
             }) }), FieldValue: { serverTimestamp: () => "timestamp", delete: () => DELETE_FIELD }
         };
-        if (name === "firebase-admin/storage") return {};
+        if (name === "firebase-admin/storage") return {
+            getStorage: () => ({ bucket: () => ({
+                getFiles: async () => [options.storageFiles || []]
+            }) })
+        };
         if (name === "firebase-functions/v2/scheduler") return { onSchedule: (...args) => args.at(-1) };
         if (name === "firebase-functions/v2/https") return {
             onCall: (...args) => args.at(-1), onRequest: (...args) => args.at(-1),
@@ -118,6 +128,80 @@ async function sendFamilyEvent(context, userId, text = "連絡帳を見る") {
     await context.handlers.lineMessagingWebhook({ method: "POST", body, rawBody, get: () => signature }, response);
     assert.equal(response.statusCode, 200);
 }
+
+for (const failEmail of [false, true]) {
+    test(`facility cancellation deletes data and records thank-you email ${failEmail ? "failure" : "success"}`, async () => {
+        const context = loadHandlers({
+            "facilities/cancel-test": {
+                facilityName: "Cancel Facility", email: "facility@example.invalid", password: "secret", status: "active"
+            },
+            "facilities/cancel-test/users/user-a": {},
+            "facilities/cancel-test/daily_records/record-a": {},
+            "facilities/cancel-test/invoiceHistory/INITIAL": {},
+            "facilityLineSettings/cancel-test": {},
+            "linePairingCodes/pair": { facilityId: "cancel-test" },
+            "lineRecordLinks/link": { facilityId: "cancel-test" },
+            "facilities/other": { facilityName: "Other" }
+        }, { sendMail() { if (failEmail) throw new Error("Mail unavailable"); } });
+        const result = await context.handlers.deleteFacilityAccount({
+            auth: { uid: "cancel-test", token: { role: "facility-delete" } },
+            data: { password: "secret", confirmedFacilityName: "Cancel Facility" }
+        });
+        assert.equal(result.thankYouEmailStatus, failEmail ? "failed" : "sent");
+        assert.equal(context.documents.has("facilities/cancel-test"), false);
+        assert.equal(context.documents.has("facilities/cancel-test/users/user-a"), false);
+        assert.equal(context.documents.has("facilities/cancel-test/daily_records/record-a"), false);
+        assert.equal(context.documents.has("facilities/cancel-test/invoiceHistory/INITIAL"), false);
+        assert.equal(context.documents.has("facilityCredentials/cancel-test"), false);
+        assert.equal(context.documents.has("facilityLineSettings/cancel-test"), false);
+        assert.equal(context.documents.has("linePairingCodes/pair"), false);
+        assert.equal(context.documents.has("lineRecordLinks/link"), false);
+        assert.equal(context.documents.has("facilities/other"), true);
+        const cancellation = context.documents.get("facilityCancellations/cancel-test");
+        assert.equal(cancellation.status, "completed");
+        assert.equal(cancellation.thankYouEmailStatus, result.thankYouEmailStatus);
+        assert.equal(cancellation.email, undefined);
+        assert.equal(context.sentEmails.length, 1);
+        assert.equal(context.sentEmails[0].to, "facility@example.invalid");
+        assert.match(context.sentEmails[0].text, /Cancel Facility 御中/);
+        assert.match(context.sentEmails[0].text, /心より御礼申し上げます/);
+        assert.match(context.sentEmails[0].text, /バックアップ/);
+    });
+}
+
+test("failed facility data deletion does not send a thank-you email", async () => {
+    const context = loadHandlers({
+        "facilities/cancel-test": { facilityName: "Cancel", password: "secret", email: "facility@example.invalid" }
+    }, { storageFiles: [{ async delete() { throw new Error("Storage failure"); } }] });
+    await assert.rejects(context.handlers.deleteFacilityAccount({
+        auth: { uid: "cancel-test", token: { role: "facility-delete" } },
+        data: { password: "secret", confirmedFacilityName: "Cancel" }
+    }), { code: "unavailable" });
+    assert.equal(context.documents.has("facilities/cancel-test"), true);
+    assert.equal(context.documents.get("facilityCancellations/cancel-test").status, "failed");
+    assert.equal(context.sentEmails.length, 0);
+});
+
+test("cancellation history cards escape names and do not restore facility controls", () => {
+    const html = readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
+    const render = html.match(/        function renderCancellationCard\(record\) \{[\s\S]*?(?=\n        function renderCancellationRecords)/)[0];
+    const sandbox = {
+        escapeHtml: text => String(text).replace(/</g, "&lt;").replace(/>/g, "&gt;"),
+        formatDate: value => value || "不明"
+    };
+    vm.runInNewContext(render, sandbox);
+    const card = sandbox.renderCancellationCard({
+        facilityName: "<script>alert(1)</script>", status: "completed", thankYouEmailStatus: "sent"
+    });
+    assert.match(card, /退会申込です/);
+    assert.match(card, /退会・データ削除完了/);
+    assert.match(card, /お礼メール：送信済み/);
+    assert.ok(!card.includes("<script>"));
+    assert.ok(!card.includes("onclick="));
+    assert.match(html, /background: #000; color: #fff/);
+    assert.match(html, /join\(""\) \+ cancellationRecords\.map/);
+    assert.match(html, /facilities\.length === 0 && cancellationRecords\.length === 0/);
+});
 
 test("only the family record button or exact command requests records", () => {
     assert.equal(isFamilyRecordRequest({ type: "postback", postback: { data: "view_records" } }), true);

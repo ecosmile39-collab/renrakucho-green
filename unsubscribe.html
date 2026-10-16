@@ -137,6 +137,9 @@
                 }
                 await signOut(auth);
                 setStatus("退会処理が完了しました。StorageのSoft Delete設定によっては完全消去まで時間がかかります。", "success");
+                if (result.data.thankYouEmailStatus === "failed") {
+                    setStatus("退会・データ削除は完了しましたが、お礼メールを送信できませんでした。必要な場合は管理者へお問い合わせください。", "error");
+                }
                 document.getElementById("deleteButton").style.display = "none";
                 document.getElementById("facilityPassword").value = "";
                 verifiedFacilityId = null;

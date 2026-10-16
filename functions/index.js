@@ -899,7 +899,9 @@ async function deleteFirestoreDocuments(documents) {
     }
 }
 
-exports.deleteFacilityAccount = onCall(async request => {
+exports.deleteFacilityAccount = onCall({
+    secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
+}, async request => {
     const facilityId = requireFacilityDeletionId(request);
     const password = typeof request.data?.password === "string" ? request.data.password : "";
     const confirmedFacilityName = typeof request.data?.confirmedFacilityName === "string" ? request.data.confirmedFacilityName.trim() : "";
@@ -969,7 +971,37 @@ exports.deleteFacilityAccount = onCall(async request => {
         throw new HttpsError("internal", "データ削除を完了できませんでした。管理者へお問い合わせください。");
     }
 
-    return { facilityName, ...counts, deletedStorageFiles: storageResults.length };
+    const recipient = typeof plan.facility.email === "string" ? plan.facility.email.trim() : "";
+    let thankYouEmailStatus = "failed";
+    try {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+            throw new Error("Registered facility email is missing or invalid.");
+        }
+        const gmailUser = INVOICE_GMAIL_USER.value();
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: { user: gmailUser, pass: INVOICE_GMAIL_APP_PASSWORD.value() }
+        });
+        const email = await transporter.sendMail({
+            from: { name: "株式会社えこすまいる", address: gmailUser },
+            to: recipient,
+            subject: "【えこすまいる連絡帳】ご利用のお礼と退会手続き完了のお知らせ",
+            text: `${facilityName} 御中\n\nこれまで「えこすまいる連絡帳」をご利用いただき、誠にありがとうございました。\n日々の大切な記録と、ご家族とのつながりを支えるお手伝いをさせていただきましたこと、心より御礼申し上げます。\n\nお申し込みいただいた退会手続きと、施設アカウント・利用者名簿・連絡帳・関連ファイル等の削除処理が完了しました。\nバックアップや退会処理の履歴等は、プライバシーポリシーおよび保存設定に従い、一定期間残る場合があります。\n\nご利用中にお寄せいただいたご意見やご協力に、重ねて感謝申し上げます。\n今後またお役に立てる機会がございましたら、幸いに存じます。\n皆様のますますのご健勝と、貴施設のご発展を心よりお祈り申し上げます。\n\nご不明な点がございましたら、本メールへの返信にてお問い合わせください。\n\n株式会社えこすまいる`
+        });
+        thankYouEmailStatus = "sent";
+        await cancellationRef.set({
+            thankYouEmailStatus,
+            thankYouEmailSentAt: new Date().toISOString(),
+            thankYouEmailMessageId: email.messageId
+        }, { merge: true });
+    } catch (error) {
+        logger.error("Facility deleted but thank-you email or status recording failed", { facilityId, error });
+        await cancellationRef.set({
+            thankYouEmailStatus,
+            thankYouEmailError: String(error.message || error).slice(0, 500)
+        }, { merge: true }).catch(logError => logger.error("Failed to record cancellation email outcome", { facilityId, error: logError }));
+    }
+    return { facilityName, ...counts, deletedStorageFiles: storageResults.length, thankYouEmailStatus };
 });
 
 function requireFacilityId(request) {

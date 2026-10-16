@@ -26,6 +26,7 @@
         .line-agency-request-alert { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 10px 14px; border: 2px solid #c92a2a; border-radius: 6px; background: #fff0f0; color: #a51111; font-size: 15px; font-weight: bold; box-shadow: 0 2px 6px rgba(201, 42, 42, 0.2); }
         .line-agency-request-alert:hover { background: #ffe3e3; }
         button.invoice-sent-alert:disabled { display: inline-flex; align-items: center; margin: 0; padding: 6px 10px; border: 1px solid #2f9e44; background: #ebfbee; color: #237032; font-size: 13px; opacity: 1; cursor: default; }
+        button.cancellation-alert:disabled { background: #000; color: #fff; opacity: 1; cursor: default; padding: 8px 12px; }
         .page-scroll-controls { position: fixed; right: 20px; bottom: 20px; z-index: 1000; display: grid; gap: 8px; }
         .page-scroll-controls button { width: 48px; height: 48px; padding: 0; border-radius: 50%; background: #e8590c; font-size: 22px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
         #facilityOverviewDialog { box-sizing: border-box; width: min(1100px, calc(100vw - 24px)); max-width: 1100px; max-height: 85vh; border: 1px solid #adb5bd; border-radius: 8px; padding: 12px; }
@@ -488,7 +489,7 @@
                     day: "2-digit"
                 }).format(date);
             };
-            if (facilities.length === 0) {
+            if (facilities.length === 0 && cancellationRecords.length === 0) {
                 list.innerHTML = '<p class="muted">登録施設はありません。</p>';
             } else {
                 const rows = facilities.map(facility => {
@@ -769,7 +770,7 @@
                         <button type="button" class="delete" onclick="deleteFacility('${encodeURIComponent(facility.id)}', this)">🗑️ 登録施設を削除</button>
                     </div>
                 </div>`;
-            }).join("");
+            }).join("") + cancellationRecords.map(record => renderCancellationCard(record)).join("");
             list.querySelectorAll("[data-facility-payment-id]").forEach(checkbox => {
                 checkbox.addEventListener("change", () => updateFacilityInvoicePaymentStatus(checkbox));
             });
@@ -1254,6 +1255,21 @@ ${invoiceRows}
 </body></html>`);
             printWindow.document.close();
         };
+
+        function renderCancellationCard(record) {
+            const statusText = record.status === "completed" ? "退会・データ削除完了"
+                : record.status === "processing" ? "退会・削除処理中" : "削除未完了（管理者の確認が必要）";
+            return `<div class="facility" style="border-left: 4px solid #000;">
+                <div>
+                    <strong>${escapeHtml(record.facilityName || record.facilityId || record.id)}</strong>
+                    <div><button type="button" class="cancellation-alert" disabled>退会申込です</button></div>
+                    <div>${escapeHtml(statusText)}</div>
+                    <div class="muted">申込日時：${escapeHtml(formatDate(record.requestedAt))}</div>
+                    ${record.thankYouEmailStatus === "sent" ? '<div>お礼メール：送信済み</div>' : record.thankYouEmailStatus === "failed" ? '<div class="error">お礼メール：送信できませんでした</div>' : ""}
+                    ${record.errorMessage ? `<div class="error">${escapeHtml(record.errorMessage)}</div>` : ""}
+                </div>
+            </div>`;
+        }
 
         function renderCancellationRecords() {
             let list = document.getElementById("cancellationList");
