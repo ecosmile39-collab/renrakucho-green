@@ -628,6 +628,7 @@ exports.registerTrialFacility = onCall({
         contactPerson,
         status: "active",
         commonLineEnabled: false,
+        basicInfoMenuEnabled: false,
         createdAt: trialStartedAt.toISOString(),
         subscriptionStatus: "trial",
         trialStartedAt: trialStartedAt.toISOString(),

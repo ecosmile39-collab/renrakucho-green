@@ -738,7 +738,7 @@ test("previously issued viewing links expire no later than three days after crea
     await assert.rejects(context.handlers.getLineSharedRecord({ data: { token } }), { code: "unauthenticated" });
 });
 
-test("new trial registrations disable common LINE by default", async () => {
+test("new trial registrations disable common LINE and basic info management links by default", async () => {
     const context = loadHandlers({});
     const result = await context.handlers.registerTrialFacility({ data: {
         registrationKey: "test-secret", acceptedTermsVersion: "2026-10-07-v1",
@@ -746,6 +746,7 @@ test("new trial registrations disable common LINE by default", async () => {
         contactPerson: "  Test Contact  "
     } });
     assert.equal(context.documents.get(`facilities/${result.facilityId}`).commonLineEnabled, false);
+    assert.equal(context.documents.get(`facilities/${result.facilityId}`).basicInfoMenuEnabled, false);
     assert.equal(context.documents.get(`facilities/${result.facilityId}`).contactPerson, "Test Contact");
     assert.equal(Object.hasOwn(context.documents.get(`facilities/${result.facilityId}`), "password"), false);
     assert.match(context.documents.get(`facilityCredentials/${result.facilityId}`).passwordHash, /^scrypt\$/);
@@ -754,6 +755,35 @@ test("new trial registrations disable common LINE by default", async () => {
     assert.match(context.sentEmails[0].text, /1サービスの場合は従来の料金.*2つ目以降は1サービスにつき税抜1,000円が加算されます/);
     assert.match(context.sentEmails[0].html, /ご利用になるサービスにチェックを入れてください/);
     assert.match(context.sentEmails[0].html, /2つ目以降は1サービスにつき税抜1,000円が加算されます/);
+});
+
+test("basic info management links stay hidden when disabled and remain available when allowed", () => {
+    const html = readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+    const handler = html.match(/document\.getElementById\("basicInfoTitle"\)\.addEventListener\("click", function\(\) \{([\s\S]*?)\n            \}\);/)[1];
+    const links = new Map();
+    const sandbox = {
+        basicInfoMenuEnabled: false, unsubscribeClickCount: 0, unsubscribeClickTimer: null,
+        clearTimeout() {}, setTimeout() { return 1; },
+        window: { showToast() {} },
+        document: { getElementById(id) {
+            if (!links.has(id)) links.set(id, { style: { display: "none" } });
+            return links.get(id);
+        } }
+    };
+    vm.runInNewContext(`function clickBasicInfo() {${handler}\n}`, sandbox);
+    for (let i = 0; i < 5; i++) sandbox.clickBasicInfo();
+    assert.equal(sandbox.unsubscribeClickCount, 0);
+    assert.equal(links.size, 0);
+    sandbox.basicInfoMenuEnabled = true;
+    for (let i = 0; i < 5; i++) sandbox.clickBasicInfo();
+    assert.equal(links.size, 5);
+    for (const link of links.values()) assert.notEqual(link.style.display, "none");
+
+    const admin = readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
+    const controls = admin.match(/const basicInfoMenuEnabled = ([^;]+);/)[1];
+    assert.equal(vm.runInNewContext(controls, { facility: { basicInfoMenuEnabled: false } }), false);
+    assert.equal(vm.runInNewContext(controls, { facility: {} }), true);
+    assert.match(admin, /data-menu-status="disallowed" \$\{!basicInfoMenuEnabled \? "checked" : ""\}/);
 });
 
 test("admin login requires a one-time email code and consumes it after successful verification", async () => {
