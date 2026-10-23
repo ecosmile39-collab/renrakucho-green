@@ -1125,7 +1125,7 @@
                         input.focus();
                     } else {
                         input.value = select.value;
-                        input.hidden = !select.value;
+                        syncTextSuggestionSelects();
                     }
                 });
                 input.addEventListener("input", () => {
