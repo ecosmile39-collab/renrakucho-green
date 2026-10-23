@@ -11,7 +11,15 @@
         h3 { border-bottom: 2px solid #2b8a3e; color: #2b8a3e; padding-bottom: 5px; margin-top: 25px; font-size: 18px; }
         label { display: block; margin-top: 15px; font-weight: bold; color: #333; font-size: 15px; }
         input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
-        .suggestion-input-control { width: 100%; }
+        .suggestion-input-control { position: relative; width: 100%; }
+        .suggestion-input-control details { position: relative; z-index: 0; }
+        .suggestion-input-control details[open] { z-index: 20; }
+        .suggestion-input-control summary { display: block; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; background: #fff; font-size: 16px; cursor: pointer; list-style: none; }
+        .suggestion-input-control summary::-webkit-details-marker { display: none; }
+        .suggestion-input-control summary::after { content: "▼"; float: right; font-size: 12px; }
+        .suggestion-input-options { position: absolute; top: 100%; left: 0; right: 0; max-height: 240px; overflow-y: auto; border: 1px solid #aaa; border-radius: 5px; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,.18); }
+        .suggestion-input-options button { display: block; width: 100%; padding: 10px 12px; border: 0; border-bottom: 1px solid #eee; background: #fff; color: #222; text-align: left; font-size: 16px; cursor: pointer; }
+        .suggestion-input-options button:hover, .suggestion-input-options button:focus-visible { background: #e7f5ff; }
         .flex-box { display: flex; gap: 10px; }
         .flex-box > div { flex: 1; }
         .bp-box { display: flex; align-items: center; gap: 5px; }
@@ -1107,50 +1115,68 @@
 
                 const wrapper = document.createElement("div");
                 wrapper.className = "suggestion-input-control";
-                const select = document.createElement("select");
-                select.setAttribute("aria-label", "候補から選択");
-                select.add(new Option("候補から選択", ""));
+                const details = document.createElement("details");
+                const summary = document.createElement("summary");
+                details.dataset.customEntry = "false";
+                summary.textContent = "候補から選択";
+                const options = document.createElement("div");
+                options.className = "suggestion-input-options";
                 Array.from(dataList.options).forEach(option => {
-                    select.add(new Option(option.value, option.value));
-                });
-                select.add(new Option("その他を直接入力", "__custom__"));
-                input.before(wrapper);
-                wrapper.append(select, input);
-                input.hidden = true;
-
-                select.addEventListener("change", () => {
-                    if (select.value === "__custom__") {
-                        input.value = "";
-                        input.hidden = false;
-                        input.focus();
-                    } else {
-                        input.value = select.value;
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.textContent = option.value;
+                    button.addEventListener("click", () => {
+                        details.dataset.customEntry = "false";
+                        input.value = option.value;
+                        input.hidden = true;
                         syncTextSuggestionSelects();
-                    }
+                        input.dispatchEvent(new Event("input", { bubbles: true }));
+                    });
+                    options.append(button);
+                });
+                const customButton = document.createElement("button");
+                customButton.type = "button";
+                customButton.textContent = "その他を直接入力";
+                customButton.addEventListener("click", () => {
+                    details.dataset.customEntry = "true";
+                    input.value = "";
+                    input.hidden = false;
+                    details.open = false;
+                    input.focus();
+                    syncTextSuggestionSelects();
+                    input.dispatchEvent(new Event("input", { bubbles: true }));
+                });
+                options.append(customButton);
+                details.append(summary, options);
+                input.before(wrapper);
+                wrapper.append(details, input);
+                input.hidden = true;
+                details.addEventListener("toggle", () => {
+                    details.style.zIndex = details.open ? "20" : "0";
                 });
                 input.addEventListener("input", () => {
-                    if (!input.value) {
-                        select.value = "";
-                        return;
-                    }
-                    input.hidden = false;
-                    select.value = Array.from(select.options).some(option =>
-                        option.value === input.value && option.value !== "__custom__"
-                    ) ? input.value : "__custom__";
+                    syncTextSuggestionSelects();
                 });
-                input.addEventListener("blur", syncTextSuggestionSelects);
+                input.addEventListener("blur", () => {
+                    if (!input.value) details.dataset.customEntry = "false";
+                    syncTextSuggestionSelects();
+                });
             });
         }
 
-        function syncTextSuggestionSelects() {
+        function syncTextSuggestionSelects(resetCustomEntries = false) {
             document.querySelectorAll(".suggestion-input-control input[list][type=\"text\"]").forEach(input => {
-                const select = input.parentElement.querySelector("select");
-                if (!select) return;
-                const hasMatchingOption = Array.from(select.options).some(option =>
-                    option.value === input.value && option.value !== "" && option.value !== "__custom__"
-                );
-                select.value = input.value ? (hasMatchingOption ? input.value : "__custom__") : "";
-                input.hidden = !input.value || hasMatchingOption;
+                const details = input.parentElement.querySelector("details");
+                const summary = details?.querySelector("summary");
+                if (!details || !summary) return;
+                if (resetCustomEntries) details.dataset.customEntry = "false";
+                const optionButtons = Array.from(details.querySelectorAll(".suggestion-input-options button"));
+                const matchingButton = optionButtons.find(button => button.textContent === input.value);
+                optionButtons.forEach(button => {
+                    button.setAttribute("aria-pressed", String(button === matchingButton && details.dataset.customEntry !== "true"));
+                });
+                summary.textContent = input.value || (details.dataset.customEntry === "true" ? "その他を直接入力" : "候補から選択");
+                input.hidden = details.dataset.customEntry !== "true" && (!input.value || Boolean(matchingButton));
             });
         }
 
@@ -3749,7 +3775,7 @@
             document.getElementById("stMealDinner").value = "";
             document.getElementById("stWater").value = "";
             document.getElementById("stOralCare").value = "";
-            syncTextSuggestionSelects();
+            syncTextSuggestionSelects(true);
 
             document.getElementById("dsBowel").value = "";
             if(document.getElementById("dsBowel1")) document.getElementById("dsBowel1").value = "";
