@@ -437,6 +437,7 @@
                 <input type="text" id="newUserName" placeholder="例：鈴木 一郎 様">
                 <div style="font-size: 12px; margin-top: 6px; color: #555;">生年月日（任意・お祝いメッセージ自動表示用・年-月-日）：</div>
                 <input type="date" id="newBirthday">
+                <div style="font-size: 12px; margin-top: 4px; color: #555;">初期表示は1995年（平成7年）です。登録前に実際の生年月日へ変更してください。不明な場合は空欄にしてください。</div>
                 <div style="margin-top: 10px; background-color: #fff; padding: 10px; border-radius: 5px; border: 1px solid #ced4da;">
                     <div style="font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px;">📸 ご本人のお顔写真を撮影／選択</div>
                     <div class="register-grid">
@@ -458,13 +459,25 @@
         <label>日付</label>
         <input type="date" id="date" onchange="onDateChanged()">
         <script>
+            function getInitialBirthdayDate(today = new Date()) {
+                const month = today.getMonth();
+                const day = Math.min(today.getDate(), new Date(1995, month + 1, 0).getDate());
+                return [
+                    1995,
+                    String(month + 1).padStart(2, "0"),
+                    String(day).padStart(2, "0")
+                ].join("-");
+            }
+
             (() => {
                 const today = new Date();
-                document.getElementById("date").value = [
+                const todayString = [
                     today.getFullYear(),
                     String(today.getMonth() + 1).padStart(2, "0"),
                     String(today.getDate()).padStart(2, "0")
                 ].join("-");
+                document.getElementById("date").value = todayString;
+                document.getElementById("newBirthday").value = getInitialBirthdayDate(today);
             })();
         </script>
 
@@ -1989,7 +2002,7 @@
 
                 alert(`🎉 ${newName} 様を名簿に登録しました！`);
                 document.getElementById("newUserName").value = ""; 
-                birthdayInput.value = "";
+                birthdayInput.value = getInitialBirthdayDate();
                 document.getElementById("newFaceInput").value = "";
                 document.getElementById("newNeedExcretion").checked = false; 
                 document.getElementById("newFacePreview").src = defaultIcon;
