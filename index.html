@@ -11,6 +11,8 @@
         h3 { border-bottom: 2px solid #2b8a3e; color: #2b8a3e; padding-bottom: 5px; margin-top: 25px; font-size: 18px; }
         label { display: block; margin-top: 15px; font-weight: bold; color: #333; font-size: 15px; }
         input[type="text"], input[type="number"], input[type="date"], select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+        .birthday-selectors { display: flex; gap: 8px; }
+        .birthday-selectors select { flex: 1; min-width: 0; }
         .flex-box { display: flex; gap: 10px; }
         .flex-box > div { flex: 1; }
         .bp-box { display: flex; align-items: center; gap: 5px; }
@@ -144,7 +146,11 @@
             <input type="text" id="editUserName" style="font-size: 16px; padding: 8px;">
 
             <label style="margin-top: 12px; font-size: 14px;">生年月日（任意）</label>
-            <input type="date" id="editUserBirthday" style="font-size: 16px; padding: 8px;">
+            <div class="birthday-selectors">
+                <select id="editUserBirthdayYear" aria-label="生年月日 年"><option value="">年</option></select>
+                <select id="editUserBirthdayMonth" aria-label="生年月日 月"><option value="">月</option></select>
+                <select id="editUserBirthdayDay" aria-label="生年月日 日"><option value="">日</option></select>
+            </div>
 
             <label style="margin-top: 12px; font-size: 14px;">ご利用サービス種別（複数選択可）</label>
             <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 6px;">
@@ -435,7 +441,11 @@
             <div style="margin-top: 8px;">
                 <input type="text" id="newUserName" placeholder="例：鈴木 一郎 様">
                 <div style="font-size: 12px; margin-top: 6px; color: #555;">生年月日（任意・お祝いメッセージ自動表示用）：</div>
-                <input type="date" id="newBirthday">
+                <div class="birthday-selectors">
+                    <select id="newBirthdayYear" aria-label="生年月日 年"><option value="">年</option></select>
+                    <select id="newBirthdayMonth" aria-label="生年月日 月"><option value="">月</option></select>
+                    <select id="newBirthdayDay" aria-label="生年月日 日"><option value="">日</option></select>
+                </div>
                 <div style="margin-top: 10px; background-color: #fff; padding: 10px; border-radius: 5px; border: 1px solid #ced4da;">
                     <div style="font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px;">📸 ご本人のお顔写真を撮影／選択</div>
                     <div class="register-grid">
@@ -1078,6 +1088,64 @@
             if (error.message) return error.message;
             return String(error);
         }
+
+        function initializeBirthdaySelectors(prefix) {
+            const yearSelect = document.getElementById(`${prefix}Year`);
+            const monthSelect = document.getElementById(`${prefix}Month`);
+            const daySelect = document.getElementById(`${prefix}Day`);
+            const currentYear = new Date().getFullYear();
+
+            for (let year = currentYear; year >= 1900; year--) {
+                yearSelect.add(new Option(`${year}年`, String(year)));
+            }
+            for (let month = 1; month <= 12; month++) {
+                monthSelect.add(new Option(`${month}月`, String(month)));
+            }
+
+            const updateDays = () => {
+                const previousDay = daySelect.value;
+                const year = Number(yearSelect.value);
+                const month = Number(monthSelect.value);
+                const dayCount = year && month ? new Date(year, month, 0).getDate() : 31;
+                daySelect.replaceChildren(new Option("日", ""));
+                for (let day = 1; day <= dayCount; day++) {
+                    daySelect.add(new Option(`${day}日`, String(day)));
+                }
+                if (Number(previousDay) <= dayCount) daySelect.value = previousDay;
+            };
+
+            yearSelect.addEventListener("change", updateDays);
+            monthSelect.addEventListener("change", updateDays);
+            updateDays();
+        }
+
+        function getBirthdaySelection(prefix) {
+            const year = document.getElementById(`${prefix}Year`).value;
+            const month = document.getElementById(`${prefix}Month`).value;
+            const day = document.getElementById(`${prefix}Day`).value;
+            if (!year && !month && !day) return "";
+            if (!year || !month || !day) return null;
+            return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+        }
+
+        function setBirthdaySelection(prefix, birthday) {
+            const yearSelect = document.getElementById(`${prefix}Year`);
+            const monthSelect = document.getElementById(`${prefix}Month`);
+            const daySelect = document.getElementById(`${prefix}Day`);
+            yearSelect.value = "";
+            monthSelect.value = "";
+            daySelect.value = "";
+            if (!birthday) return;
+
+            const [year, month, day] = birthday.split("-");
+            yearSelect.value = year;
+            monthSelect.value = String(Number(month));
+            monthSelect.dispatchEvent(new Event("change"));
+            daySelect.value = String(Number(day));
+        }
+
+        initializeBirthdaySelectors("newBirthday");
+        initializeBirthdaySelectors("editUserBirthday");
 
         function applyFacilityFormCustomization() {
             const hiddenSections = new Set(facilityFormCustomization.hiddenSections);
@@ -1881,12 +1949,13 @@
 
         window.registerNewUser = async function() {
             let newName = document.getElementById("newUserName").value.trim();
-            let newBirthday = document.getElementById("newBirthday").value;
+            let newBirthday = getBirthdaySelection("newBirthday");
             let sType = document.getElementById("serviceType").value;
             let facilityId = localStorage.getItem("currentFacilityId");
             let needExcretion = document.getElementById("newNeedExcretion").checked;
 
             if (!newName) { alert("新しいお名前を入力してください。"); return; }
+            if (newBirthday === null) { alert("生年月日は年・月・日をすべて選択するか、すべて未選択にしてください。"); return; }
             if (!facilityId) return;
 
             showToast(`⏳ ${newName} 様の情報を名簿に登録しています...`);
@@ -1920,7 +1989,7 @@
 
                 alert(`🎉 ${newName} 様を名簿に登録しました！`);
                 document.getElementById("newUserName").value = ""; 
-                document.getElementById("newBirthday").value = ""; 
+                setBirthdaySelection("newBirthday", "");
                 document.getElementById("newFaceInput").value = "";
                 document.getElementById("newNeedExcretion").checked = false; 
                 document.getElementById("newFacePreview").src = defaultIcon;
@@ -2394,7 +2463,7 @@
             let userServices = userData.services || (userData.serviceType ? [userData.serviceType] : ["デイサービス"]);
 
             document.getElementById("editUserName").value = userName;
-            document.getElementById("editUserBirthday").value = userData.birthday || "";
+            setBirthdaySelection("editUserBirthday", userData.birthday || "");
             document.getElementById("editServiceDay").checked = userServices.includes("デイサービス");
             document.getElementById("editServiceShort").checked = userServices.includes("ショートステイ");
             document.getElementById("editServiceResidential").checked = userServices.includes("入所");
@@ -2413,10 +2482,11 @@
         window.saveEditedUser = async function() {
             let oldName = document.getElementById("userName").value;
             let newName = document.getElementById("editUserName").value.trim();
-            let newBirthday = document.getElementById("editUserBirthday").value;
+            let newBirthday = getBirthdaySelection("editUserBirthday");
             let facilityId = localStorage.getItem("currentFacilityId");
 
             if (!newName) { alert("お名前を入力してください。"); return; }
+            if (newBirthday === null) { alert("生年月日は年・月・日をすべて選択するか、すべて未選択にしてください。"); return; }
             let isDay = document.getElementById("editServiceDay").checked;
             let isShort = document.getElementById("editServiceShort").checked;
             let isResidential = document.getElementById("editServiceResidential").checked;
