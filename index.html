@@ -457,6 +457,16 @@
 
         <label>日付</label>
         <input type="date" id="date" onchange="onDateChanged()">
+        <script>
+            (() => {
+                const today = new Date();
+                document.getElementById("date").value = [
+                    today.getFullYear(),
+                    String(today.getMonth() + 1).padStart(2, "0"),
+                    String(today.getDate()).padStart(2, "0")
+                ].join("-");
+            })();
+        </script>
 
         <div id="careJournalArea" style="margin-top: 15px; padding: 15px; background-color: #fff9db; border: 1px solid #ffd43b; border-radius: 8px;">
             <h3 id="careJournalTitle" style="margin-top: 0; color: #8d6e00;">介護日誌</h3>
@@ -1721,18 +1731,23 @@
                 if (selectedUser) refreshLineRecipientStatus(selectedUser);
             }, error => console.warn("LINEの停止状態を更新できませんでした:", error));
 
-            let today = new Date();
-            let year = today.getFullYear();
-            let month = String(today.getMonth() + 1).padStart(2, '0');
-            let day = String(today.getDate()).padStart(2, '0');
-            document.getElementById("date").value = `${year}-${month}-${day}`;
+            const dateInput = document.getElementById("date");
+            if (!dateInput.value) {
+                const today = new Date();
+                dateInput.value = [
+                    today.getFullYear(),
+                    String(today.getMonth() + 1).padStart(2, "0"),
+                    String(today.getDate()).padStart(2, "0")
+                ].join("-");
+            }
+            const selectedDate = dateInput.value;
             let savedServiceType = localStorage.getItem('currentServiceType');
             if (savedServiceType) {
                 document.getElementById("serviceType").value = savedServiceType;
             }
             await loadImportantHandoverDashboard(
                 facilityId,
-                getPreviousDateString(`${year}-${month}-${day}`),
+                getPreviousDateString(selectedDate),
                 document.getElementById("serviceType").value
             );
             
