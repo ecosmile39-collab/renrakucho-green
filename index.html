@@ -144,7 +144,7 @@
             <input type="text" id="editUserName" style="font-size: 16px; padding: 8px;">
 
             <label style="margin-top: 12px; font-size: 14px;">生年月日（任意）</label>
-            <input type="text" id="editUserBirthday" class="date-entry" inputmode="text" placeholder="例：2026-10-23（年-月-日）" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください">
+            <input type="date" id="editUserBirthday" style="font-size: 16px; padding: 8px;">
 
             <label style="margin-top: 12px; font-size: 14px;">ご利用サービス種別（複数選択可）</label>
             <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 6px;">
@@ -321,8 +321,8 @@
                 <li><strong>サービス種別を選ぶ</strong><p>「ご入力するサービス種別を選択してください」で、今回の記録に合うものを選びます。デイサービス、ショートステイ、入所、ユニット入所、放課後等デイサービス、児童発達支援、生活介護があります。入所・ユニット入所はショートステイと同じ入力欄を使用します。</p></li>
                 <li><strong>送信待ちや申し送りを確認する</strong><p>上部に「送信待ちのお客様」が表示されていたら、前に一時保存した記録があります。画面を再読み込みすると消えることがあるので、作業を続けて最後にまとめて送信してください。「前日の重要申し送り一覧」が表示された場合は、内容を確認します。</p></li>
                 <li><strong>利用者を選ぶ</strong><p>「お名前」から記録する方を選びます。年齢や顔写真、保存済み記録が表示されます。「利用終了者も表示する」は、以前利用していた方を選ぶ場合に使います。</p><p>顔写真は「写真 登録/変更」で撮影、「アルバムから写真を選ぶ」から保存済み写真を選べます。緊急連絡先と持病は全施設で利用できます。入力したら「利用者情報に保存」を押してください。</p></li>
-                <li><strong>新しい利用者を登録する</strong><p>名簿にいない方は、画面下の新規登録欄に名前を入力します。生年月日は任意です。日付は「YYYY-MM-DD」（例：2026-10-23）の形式で入力してください。必要なら顔写真や排泄記録の設定を選び、「お名前・生年月日・各種設定をまとめて名簿に登録」を押します。</p></li>
-                <li><strong>日付を入力する</strong><p>「日付」に記録する日を「YYYY-MM-DD」（例：2026-10-23）の形式で入力します。利用者と日付を間違えていないか、この時点で確認してください。入力途中の内容は使用中のブラウザーに下書き保存されますが、まだ正式な保存ではありません。</p></li>
+                <li><strong>新しい利用者を登録する</strong><p>名簿にいない方は、画面下の新規登録欄に名前を入力します。生年月日は任意です。必要なら顔写真や排泄記録の設定を選び、「お名前・生年月日・各種設定をまとめて名簿に登録」を押します。</p></li>
+                <li><strong>日付を選ぶ</strong><p>「日付」で、記録する日を選びます。利用者と日付を間違えていないか、この時点で確認してください。入力途中の内容は使用中のブラウザーに下書き保存されますが、まだ正式な保存ではありません。</p></li>
                 <li><strong>記録を入力する</strong><p>表示された欄を上から入力します。デイサービスでは、担当スタッフ、介護日誌、バイタル、食事・水分・服薬・入浴、活動などを記録します。放課後等デイサービス・児童発達支援では、出欠、送迎、活動、おやつ、支援の様子などを記録します。生活介護では専用欄に健康状態や生活支援を記録します。ショートステイ・入所・ユニット入所では共通の欄に入所・退所時の健康状態、食事、夜間の様子、持ち物などを記録します。</p><p>分からない欄は無理に埋めず、施設の記録方法に合わせてください。「要申し送り」「受診対応あり」「体調変化」は、該当するときにチェックし、申し送り内容も入力します。</p></li>
                 <li><strong>ご家族への連絡を入力する</strong><p>「施設からの御連絡事項」には施設から伝えることを入力します。定型文がある場合は選んで編集できます。「お客様からの御連絡事項／保護者記入欄」には家庭からの連絡事項を入力します。「施設からのお知らせ・PRを追加する」は必要なときだけ開いて使います。</p></li>
                 <li><strong>写真・動画を選ぶ</strong><p>「施設でのご様子」で撮影するか、アルバムから写真・動画を選びます。プレビューで内容を確認し、他の利用者が写っていないか確認してください。動画は先頭30秒まで、5MB以下に自動調整されます。</p><p>「今すぐ預ける」は任意です。押さなくても、最後の送信時に記録と一緒に保存できます。選んだものを外す場合は、プレビューの「取消」を使います。</p></li>
@@ -435,7 +435,7 @@
             <div style="margin-top: 8px;">
                 <input type="text" id="newUserName" placeholder="例：鈴木 一郎 様">
                 <div style="font-size: 12px; margin-top: 6px; color: #555;">生年月日（任意・お祝いメッセージ自動表示用・年-月-日）：</div>
-                <input type="text" id="newBirthday" class="date-entry" inputmode="text" placeholder="例：2026-10-23" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください">
+                <input type="date" id="newBirthday">
                 <div style="margin-top: 10px; background-color: #fff; padding: 10px; border-radius: 5px; border: 1px solid #ced4da;">
                     <div style="font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px;">📸 ご本人のお顔写真を撮影／選択</div>
                     <div class="register-grid">
@@ -455,7 +455,7 @@
         </div>
 
         <label>日付</label>
-        <input type="text" id="date" class="date-entry" placeholder="例：2026-10-23（年-月-日）" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください" onchange="onDateChanged()">
+        <input type="date" id="date" onchange="onDateChanged()">
 
         <div id="careJournalArea" style="margin-top: 15px; padding: 15px; background-color: #fff9db; border: 1px solid #ffd43b; border-radius: 8px;">
             <h3 id="careJournalTitle" style="margin-top: 0; color: #8d6e00;">介護日誌</h3>
@@ -646,7 +646,7 @@
             <label>施設での様子・エピソード（スタッフ記入欄）</label>
             <textarea id="afterSchoolEpisode" rows="4" placeholder="表情、友だちとの関わり、できたこと、支援の様子、怪我や体調変化など"></textarea>
             <div class="flex-box">
-                <div><label>次回利用予定日</label><input type="text" id="afterSchoolNextUseDate" class="date-entry" placeholder="例：2026-10-23" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください"></div>
+                <div><label>次回利用予定日</label><input type="date" id="afterSchoolNextUseDate"></div>
                 <div><label>持ち物・お知らせ</label><input type="text" id="afterSchoolBelongings" placeholder="例：外靴、水筒、着替え"></div>
             </div>
             <h4>保護者記入欄</h4>
@@ -860,8 +860,8 @@
 
             <h3 style="color: #2b8a3e; border-color: #2b8a3e;">最終確認項目</h3>
             <div class="flex-box">
-                <div><label>最終入浴日</label><input type="text" id="lastBathDate" class="date-entry" placeholder="例：2026-10-23" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください"></div>
-                <div><label>最終排便日</label><input type="text" id="lastBowelDate" class="date-entry" placeholder="例：2026-10-23" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください"></div>
+                <div><label>最終入浴日</label><input type="date" id="lastBathDate"></div>
+                <div><label>最終排便日</label><input type="date" id="lastBowelDate"></div>
             </div>
             <div class="flex-box" style="margin-top: 15px;">
                 <div><label>内服薬残り</label>

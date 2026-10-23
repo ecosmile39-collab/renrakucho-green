@@ -24,7 +24,7 @@
 
         .filter-panel { background-color: #ebfbee; padding: 20px; border-radius: 8px; border: 2px solid #40c057; margin-bottom: 20px; text-align: center; }
         .filter-select { font-size: 16px; padding: 8px 12px; border-radius: 5px; border: 1px solid #40c057; font-weight: bold; margin-right: 15px; }
-        .month-input { font-size: 16px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; margin-right: 15px; width: 145px; box-sizing: border-box; }
+        .month-input { font-size: 16px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; margin-right: 15px; }
         .btn-search { background-color: #3b5bdb; color: white; border: none; padding: 10px 20px; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; }
         .btn-search:hover { background-color: #364fc7; }
 
@@ -83,14 +83,14 @@
             <ol>
                 <li><strong>画面上部のリンク</strong><p>「入力画面へ戻る」は記録入力画面へ、「印刷画面へ」は通常の印刷・確認画面へ戻るリンクです。</p></li>
                 <li><strong>サービス種別を選ぶ</strong><p>「デイサービス」「ショートステイ」「入所」「ユニット入所」「放課後等デイサービス」「児童発達支援」「生活介護」から、確認したい記録の種類を選びます。入所・ユニット入所はショートステイと同じ項目で記録を確認します。複数サービスの記録を一度に混ぜて表示する画面ではありません。</p></li>
-                <li><strong>確認したい月を入力する</strong><p>月の欄に対象年月を「YYYY-MM」（例：2026-10）の形式で入力します。通常は今月が初期表示されています。</p></li>
+                <li><strong>確認したい月を選ぶ</strong><p>月の欄で対象年月を選びます。通常は今月が初期表示されています。</p></li>
                 <li><strong>「この月のデータを探す」を押す</strong><p>選んだサービス・月の記録を検索します。正式に保存された記録が対象です。入力画面で一時保存しただけのデータは表示されません。</p></li>
                 <li><strong>利用者を選ぶ</strong><p>検索結果があれば、記録がある利用者の一覧が表示されます。「すべて選択／解除」でまとめて切り替えるか、利用者ごとにチェックします。</p></li>
                 <li><strong>利用者別のまとめを見る</strong><p>「選んだ人のまとめを画面に表示する」を押すと、チェックした利用者の月内の記録が表示されます。サービスによって表示項目は変わります。</p></li>
                 <li><strong>利用者別のまとめを印刷する</strong><p>内容を確認したら「選んだ人のまとめを印刷する」を押します。印刷画面でプリンターや部数を確認してください。</p></li>
                 <li><strong>担当スタッフ別に見る</strong><p>「担当スタッフ別の介護日誌」で担当者を選び、「担当者別に介護日誌を表示する」を押すと、その担当者の記録を確認できます。「担当者別の介護日誌を印刷する」から印刷できます。</p></li>
                 <li><strong>月別監査保存用一覧を見る</strong><p>検索後に表示される「月別監査保存用一覧を表示」を押すと、その月の利用記録と介護日誌を一覧で確認できます。「印刷・PDF保存」から保存できます。</p></li>
-                <li><strong>CSV出力を使う場合</strong><p>月別の画面表示とは別の機能です。施設とサービスを確認し、必要なら利用者を選びます。「利用者名簿CSV」は名簿の出力、「指定期間の記録CSV」は開始日・終了日を「YYYY-MM-DD」（例：2026-10-23）の形式で入力した記録の出力です。CSVには氏名や健康情報などが含まれるため、保存先や共有先に注意してください。</p></li>
+                <li><strong>CSV出力を使う場合</strong><p>月別の画面表示とは別の機能です。施設とサービスを確認し、必要なら利用者を選びます。「利用者名簿CSV」は名簿の出力、「指定期間の記録CSV」は開始日・終了日を指定した記録の出力です。CSVには氏名や健康情報などが含まれるため、保存先や共有先に注意してください。</p></li>
             </ol>
             <p class="guide-note">対象のデータがないと表示されたときは、サービス種別と月を確認してください。なお、利用者別・担当者別の表示やCSV出力は、必要な方・期間だけに絞ると探しやすくなります。</p>
         </section>
@@ -105,7 +105,7 @@
                 <option value="児童発達支援">🧸 児童発達支援</option>
                 <option value="生活介護">♿ 生活介護</option>
             </select>
-            <input type="text" id="targetMonth" class="month-input" inputmode="text" placeholder="YYYY-MM" pattern="[0-9]{4}-(0[1-9]|1[0-2])" maxlength="7" title="月はYYYY-MM形式で入力してください">
+            <input type="month" id="targetMonth" class="month-input">
             <button class="btn-search" onclick="searchData()">この月のデータを探す</button>
             <button class="btn-show" id="auditResultsBtn" onclick="showAuditResults()" style="display: none; background-color: #7950f2;">📚 月別監査保存用一覧を表示</button>
         </div>
@@ -115,8 +115,8 @@
             <div class="csv-export-fields">
                 <label>施設<select id="csvFacility" disabled><option value="">施設確認中...</option></select></label>
                 <label>利用者<select id="csvUser"><option value="">すべての利用者</option></select></label>
-                <label>開始日<input type="text" id="csvStartDate" class="date-entry" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください" required></label>
-                <label>終了日<input type="text" id="csvEndDate" class="date-entry" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください" required></label>
+                <label>開始日<input type="date" id="csvStartDate" required></label>
+                <label>終了日<input type="date" id="csvEndDate" required></label>
                 <label>サービス<select id="csvService" onchange="onCsvServiceChanged()">
                     <option value="デイサービス">デイサービス</option>
                     <option value="ショートステイ">ショートステイ</option>
