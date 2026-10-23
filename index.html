@@ -10,9 +10,7 @@
         .form-box { background-color: white; padding: 20px; border-radius: 10px; max-width: 650px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h3 { border-bottom: 2px solid #2b8a3e; color: #2b8a3e; padding-bottom: 5px; margin-top: 25px; font-size: 18px; }
         label { display: block; margin-top: 15px; font-weight: bold; color: #333; font-size: 15px; }
-        input[type="text"], input[type="number"], input[type="date"], select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
-        .birthday-selectors { display: flex; gap: 8px; }
-        .birthday-selectors select { flex: 1; min-width: 0; }
+        input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
         .flex-box { display: flex; gap: 10px; }
         .flex-box > div { flex: 1; }
         .bp-box { display: flex; align-items: center; gap: 5px; }
@@ -146,11 +144,7 @@
             <input type="text" id="editUserName" style="font-size: 16px; padding: 8px;">
 
             <label style="margin-top: 12px; font-size: 14px;">生年月日（任意）</label>
-            <div class="birthday-selectors">
-                <select id="editUserBirthdayYear" aria-label="生年月日 年"><option value="">年</option></select>
-                <select id="editUserBirthdayMonth" aria-label="生年月日 月"><option value="">月</option></select>
-                <select id="editUserBirthdayDay" aria-label="生年月日 日"><option value="">日</option></select>
-            </div>
+            <input type="text" id="editUserBirthday" class="date-entry" inputmode="text" placeholder="例：2026-10-23（年-月-日）" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください">
 
             <label style="margin-top: 12px; font-size: 14px;">ご利用サービス種別（複数選択可）</label>
             <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 6px;">
@@ -327,8 +321,8 @@
                 <li><strong>サービス種別を選ぶ</strong><p>「ご入力するサービス種別を選択してください」で、今回の記録に合うものを選びます。デイサービス、ショートステイ、入所、ユニット入所、放課後等デイサービス、児童発達支援、生活介護があります。入所・ユニット入所はショートステイと同じ入力欄を使用します。</p></li>
                 <li><strong>送信待ちや申し送りを確認する</strong><p>上部に「送信待ちのお客様」が表示されていたら、前に一時保存した記録があります。画面を再読み込みすると消えることがあるので、作業を続けて最後にまとめて送信してください。「前日の重要申し送り一覧」が表示された場合は、内容を確認します。</p></li>
                 <li><strong>利用者を選ぶ</strong><p>「お名前」から記録する方を選びます。年齢や顔写真、保存済み記録が表示されます。「利用終了者も表示する」は、以前利用していた方を選ぶ場合に使います。</p><p>顔写真は「写真 登録/変更」で撮影、「アルバムから写真を選ぶ」から保存済み写真を選べます。緊急連絡先と持病は全施設で利用できます。入力したら「利用者情報に保存」を押してください。</p></li>
-                <li><strong>新しい利用者を登録する</strong><p>名簿にいない方は、画面下の新規登録欄に名前を入力します。生年月日は任意です。必要なら顔写真や排泄記録の設定を選び、「お名前・生年月日・各種設定をまとめて名簿に登録」を押します。</p></li>
-                <li><strong>日付を選ぶ</strong><p>「日付」で、記録する日を選びます。利用者と日付を間違えていないか、この時点で確認してください。入力途中の内容は使用中のブラウザーに下書き保存されますが、まだ正式な保存ではありません。</p></li>
+                <li><strong>新しい利用者を登録する</strong><p>名簿にいない方は、画面下の新規登録欄に名前を入力します。生年月日は任意です。日付は「YYYY-MM-DD」（例：2026-10-23）の形式で入力してください。必要なら顔写真や排泄記録の設定を選び、「お名前・生年月日・各種設定をまとめて名簿に登録」を押します。</p></li>
+                <li><strong>日付を入力する</strong><p>「日付」に記録する日を「YYYY-MM-DD」（例：2026-10-23）の形式で入力します。利用者と日付を間違えていないか、この時点で確認してください。入力途中の内容は使用中のブラウザーに下書き保存されますが、まだ正式な保存ではありません。</p></li>
                 <li><strong>記録を入力する</strong><p>表示された欄を上から入力します。デイサービスでは、担当スタッフ、介護日誌、バイタル、食事・水分・服薬・入浴、活動などを記録します。放課後等デイサービス・児童発達支援では、出欠、送迎、活動、おやつ、支援の様子などを記録します。生活介護では専用欄に健康状態や生活支援を記録します。ショートステイ・入所・ユニット入所では共通の欄に入所・退所時の健康状態、食事、夜間の様子、持ち物などを記録します。</p><p>分からない欄は無理に埋めず、施設の記録方法に合わせてください。「要申し送り」「受診対応あり」「体調変化」は、該当するときにチェックし、申し送り内容も入力します。</p></li>
                 <li><strong>ご家族への連絡を入力する</strong><p>「施設からの御連絡事項」には施設から伝えることを入力します。定型文がある場合は選んで編集できます。「お客様からの御連絡事項／保護者記入欄」には家庭からの連絡事項を入力します。「施設からのお知らせ・PRを追加する」は必要なときだけ開いて使います。</p></li>
                 <li><strong>写真・動画を選ぶ</strong><p>「施設でのご様子」で撮影するか、アルバムから写真・動画を選びます。プレビューで内容を確認し、他の利用者が写っていないか確認してください。動画は先頭30秒まで、5MB以下に自動調整されます。</p><p>「今すぐ預ける」は任意です。押さなくても、最後の送信時に記録と一緒に保存できます。選んだものを外す場合は、プレビューの「取消」を使います。</p></li>
@@ -440,12 +434,8 @@
             <span style="font-size: 14px; color: #1c7ed6; font-weight: bold;" id="regBoxTitle">➕ 【デイサービス】の名簿に新しく登録する</span>
             <div style="margin-top: 8px;">
                 <input type="text" id="newUserName" placeholder="例：鈴木 一郎 様">
-                <div style="font-size: 12px; margin-top: 6px; color: #555;">生年月日（任意・お祝いメッセージ自動表示用）：</div>
-                <div class="birthday-selectors">
-                    <select id="newBirthdayYear" aria-label="生年月日 年"><option value="">年</option></select>
-                    <select id="newBirthdayMonth" aria-label="生年月日 月"><option value="">月</option></select>
-                    <select id="newBirthdayDay" aria-label="生年月日 日"><option value="">日</option></select>
-                </div>
+                <div style="font-size: 12px; margin-top: 6px; color: #555;">生年月日（任意・お祝いメッセージ自動表示用・年-月-日）：</div>
+                <input type="text" id="newBirthday" class="date-entry" inputmode="text" placeholder="例：2026-10-23" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください">
                 <div style="margin-top: 10px; background-color: #fff; padding: 10px; border-radius: 5px; border: 1px solid #ced4da;">
                     <div style="font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px;">📸 ご本人のお顔写真を撮影／選択</div>
                     <div class="register-grid">
@@ -465,7 +455,7 @@
         </div>
 
         <label>日付</label>
-        <input type="date" id="date" onchange="onDateChanged()">
+        <input type="text" id="date" class="date-entry" placeholder="例：2026-10-23（年-月-日）" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください" onchange="onDateChanged()">
 
         <div id="careJournalArea" style="margin-top: 15px; padding: 15px; background-color: #fff9db; border: 1px solid #ffd43b; border-radius: 8px;">
             <h3 id="careJournalTitle" style="margin-top: 0; color: #8d6e00;">介護日誌</h3>
@@ -656,7 +646,7 @@
             <label>施設での様子・エピソード（スタッフ記入欄）</label>
             <textarea id="afterSchoolEpisode" rows="4" placeholder="表情、友だちとの関わり、できたこと、支援の様子、怪我や体調変化など"></textarea>
             <div class="flex-box">
-                <div><label>次回利用予定日</label><input type="date" id="afterSchoolNextUseDate"></div>
+                <div><label>次回利用予定日</label><input type="text" id="afterSchoolNextUseDate" class="date-entry" placeholder="例：2026-10-23" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください"></div>
                 <div><label>持ち物・お知らせ</label><input type="text" id="afterSchoolBelongings" placeholder="例：外靴、水筒、着替え"></div>
             </div>
             <h4>保護者記入欄</h4>
@@ -870,8 +860,8 @@
 
             <h3 style="color: #2b8a3e; border-color: #2b8a3e;">最終確認項目</h3>
             <div class="flex-box">
-                <div><label>最終入浴日</label><input type="date" id="lastBathDate"></div>
-                <div><label>最終排便日</label><input type="date" id="lastBowelDate"></div>
+                <div><label>最終入浴日</label><input type="text" id="lastBathDate" class="date-entry" placeholder="例：2026-10-23" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください"></div>
+                <div><label>最終排便日</label><input type="text" id="lastBowelDate" class="date-entry" placeholder="例：2026-10-23" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください"></div>
             </div>
             <div class="flex-box" style="margin-top: 15px;">
                 <div><label>内服薬残り</label>
@@ -1089,63 +1079,25 @@
             return String(error);
         }
 
-        function initializeBirthdaySelectors(prefix) {
-            const yearSelect = document.getElementById(`${prefix}Year`);
-            const monthSelect = document.getElementById(`${prefix}Month`);
-            const daySelect = document.getElementById(`${prefix}Day`);
-            const currentYear = new Date().getFullYear();
+        function isValidIsoDate(value) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+            const date = new Date(`${value}T00:00:00.000Z`);
+            return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+        }
 
-            for (let year = currentYear; year >= 1900; year--) {
-                yearSelect.add(new Option(`${year}年`, String(year)));
-            }
-            for (let month = 1; month <= 12; month++) {
-                monthSelect.add(new Option(`${month}月`, String(month)));
-            }
-
-            const updateDays = () => {
-                const previousDay = daySelect.value;
-                const year = Number(yearSelect.value);
-                const month = Number(monthSelect.value);
-                const dayCount = year && month ? new Date(year, month, 0).getDate() : 31;
-                daySelect.replaceChildren(new Option("日", ""));
-                for (let day = 1; day <= dayCount; day++) {
-                    daySelect.add(new Option(`${day}日`, String(day)));
+        function validateDateEntries(inputs) {
+            for (const input of inputs) {
+                const value = input.value.trim();
+                const isValid = !value || isValidIsoDate(value);
+                input.setCustomValidity(isValid ? "" : "日付はYYYY-MM-DD形式で、実在する日付を入力してください。");
+                if (!isValid) {
+                    input.reportValidity();
+                    input.focus();
+                    return false;
                 }
-                if (Number(previousDay) <= dayCount) daySelect.value = previousDay;
-            };
-
-            yearSelect.addEventListener("change", updateDays);
-            monthSelect.addEventListener("change", updateDays);
-            updateDays();
+            }
+            return true;
         }
-
-        function getBirthdaySelection(prefix) {
-            const year = document.getElementById(`${prefix}Year`).value;
-            const month = document.getElementById(`${prefix}Month`).value;
-            const day = document.getElementById(`${prefix}Day`).value;
-            if (!year && !month && !day) return "";
-            if (!year || !month || !day) return null;
-            return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-        }
-
-        function setBirthdaySelection(prefix, birthday) {
-            const yearSelect = document.getElementById(`${prefix}Year`);
-            const monthSelect = document.getElementById(`${prefix}Month`);
-            const daySelect = document.getElementById(`${prefix}Day`);
-            yearSelect.value = "";
-            monthSelect.value = "";
-            daySelect.value = "";
-            if (!birthday) return;
-
-            const [year, month, day] = birthday.split("-");
-            yearSelect.value = year;
-            monthSelect.value = String(Number(month));
-            monthSelect.dispatchEvent(new Event("change"));
-            daySelect.value = String(Number(day));
-        }
-
-        initializeBirthdaySelectors("newBirthday");
-        initializeBirthdaySelectors("editUserBirthday");
 
         function applyFacilityFormCustomization() {
             const hiddenSections = new Set(facilityFormCustomization.hiddenSections);
@@ -1827,8 +1779,10 @@
         }
 
         window.onDateChanged = function() {
+            const dateInput = document.getElementById("date");
+            if (!validateDateEntries([dateInput])) return;
             let userName = document.getElementById("userName").value;
-            let dateStr = document.getElementById("date").value;
+            let dateStr = dateInput.value;
             if (userName && dateStr) {
                 applyDraftOrEmpty(userName, dateStr);
                 fetchServerData(userName, dateStr);
@@ -1949,13 +1903,14 @@
 
         window.registerNewUser = async function() {
             let newName = document.getElementById("newUserName").value.trim();
-            let newBirthday = getBirthdaySelection("newBirthday");
+            let birthdayInput = document.getElementById("newBirthday");
+            let newBirthday = birthdayInput.value.trim();
             let sType = document.getElementById("serviceType").value;
             let facilityId = localStorage.getItem("currentFacilityId");
             let needExcretion = document.getElementById("newNeedExcretion").checked;
 
             if (!newName) { alert("新しいお名前を入力してください。"); return; }
-            if (newBirthday === null) { alert("生年月日は年・月・日をすべて選択するか、すべて未選択にしてください。"); return; }
+            if (!validateDateEntries([birthdayInput])) return;
             if (!facilityId) return;
 
             showToast(`⏳ ${newName} 様の情報を名簿に登録しています...`);
@@ -1989,7 +1944,7 @@
 
                 alert(`🎉 ${newName} 様を名簿に登録しました！`);
                 document.getElementById("newUserName").value = ""; 
-                setBirthdaySelection("newBirthday", "");
+                birthdayInput.value = "";
                 document.getElementById("newFaceInput").value = "";
                 document.getElementById("newNeedExcretion").checked = false; 
                 document.getElementById("newFacePreview").src = defaultIcon;
@@ -2463,7 +2418,7 @@
             let userServices = userData.services || (userData.serviceType ? [userData.serviceType] : ["デイサービス"]);
 
             document.getElementById("editUserName").value = userName;
-            setBirthdaySelection("editUserBirthday", userData.birthday || "");
+            document.getElementById("editUserBirthday").value = userData.birthday || "";
             document.getElementById("editServiceDay").checked = userServices.includes("デイサービス");
             document.getElementById("editServiceShort").checked = userServices.includes("ショートステイ");
             document.getElementById("editServiceResidential").checked = userServices.includes("入所");
@@ -2482,11 +2437,12 @@
         window.saveEditedUser = async function() {
             let oldName = document.getElementById("userName").value;
             let newName = document.getElementById("editUserName").value.trim();
-            let newBirthday = getBirthdaySelection("editUserBirthday");
+            let birthdayInput = document.getElementById("editUserBirthday");
+            let newBirthday = birthdayInput.value.trim();
             let facilityId = localStorage.getItem("currentFacilityId");
 
             if (!newName) { alert("お名前を入力してください。"); return; }
-            if (newBirthday === null) { alert("生年月日は年・月・日をすべて選択するか、すべて未選択にしてください。"); return; }
+            if (!validateDateEntries([birthdayInput])) return;
             let isDay = document.getElementById("editServiceDay").checked;
             let isShort = document.getElementById("editServiceShort").checked;
             let isResidential = document.getElementById("editServiceResidential").checked;
@@ -3419,6 +3375,12 @@
 
         window.saveToBatch = async function() {
             if (batchPreparationInProgress) return;
+            if (!validateDateEntries([
+                document.getElementById("date"),
+                document.getElementById("afterSchoolNextUseDate"),
+                document.getElementById("lastBathDate"),
+                document.getElementById("lastBowelDate")
+            ])) return;
             let userName = document.getElementById("userName").value;
             let date = document.getElementById("date").value;
             let sType = document.getElementById("serviceType").value;
@@ -3496,6 +3458,12 @@
         }
 
         window.sendSingleData = async function() {
+            if (!validateDateEntries([
+                document.getElementById("date"),
+                document.getElementById("afterSchoolNextUseDate"),
+                document.getElementById("lastBathDate"),
+                document.getElementById("lastBowelDate")
+            ])) return;
             let userName = document.getElementById("userName").value;
             let date = document.getElementById("date").value;
             let sType = document.getElementById("serviceType").value;

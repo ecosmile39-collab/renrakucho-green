@@ -31,7 +31,7 @@
         .filter-row:last-child { margin-bottom: 0; }
         .filter-label { font-weight: bold; font-size: 16px; min-width: 140px; color: #2b8a3e; }
         .filter-select { font-size: 16px; padding: 8px 12px; border-radius: 5px; border: 1px solid #40c057; font-weight: bold; }
-        .date-input { font-size: 16px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
+        .date-input { width: 160px; max-width: 100%; box-sizing: border-box; font-size: 16px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
 
         .user-select-box { background-color: #fff; padding: 20px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .user-checkbox-wrapper { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px; margin-bottom: 20px; }
@@ -437,7 +437,7 @@
             <ol>
                 <li><strong>画面を開く</strong><p>入力画面上部の「印刷画面へ」を押します。施設名が表示されていることを確認します。「入力画面へ戻る」「過去データ一覧へ」は、それぞれの画面に戻るリンクです。</p></li>
                 <li><strong>サービス種別を選ぶ</strong><p>「サービス種別」で、印刷したい記録のサービスを選びます。デイサービスなどを選ぶと、対象日の記録を検索します。</p></li>
-                <li><strong>日付を選ぶ</strong><p>ショートステイ・入所・ユニット入所以外は「ご利用日」を1日選びます。これらのサービスは利用期間の開始日と終了日を選びます。開始日は終了日より後にできません。</p></li>
+                <li><strong>日付を入力する</strong><p>ショートステイ・入所・ユニット入所以外は「ご利用日」に1日を入力します。これらのサービスは利用期間の開始日と終了日を入力します。日付は「YYYY-MM-DD」（例：2026-10-23）の形式です。開始日は終了日より後にできません。</p></li>
                 <li><strong>印刷する内容を選ぶ</strong><p>「印刷する内容」から選びます。</p><ul><li>「連絡帳＋誕生日カード」：連絡帳と、選択した方の誕生日カード</li><li>「連絡帳のみ」：連絡帳だけ</li><li>「誕生日カードのみ」：誕生日カードだけ。カードだけを別の用紙に印刷する場合に使います。</li></ul></li>
                 <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
                 <li><strong>印刷する利用者を選ぶ</strong><p>記録がある利用者が「LINE未連携」「LINE連携済み」に分かれて表示されます。LINE連携済みでも印刷できます。「すべて選択／解除」ですべてのチェックをまとめて切り替えられます。印刷しない方はチェックを外します。</p></li>
@@ -465,14 +465,14 @@
 
             <div class="filter-row" id="dayServiceDateRow">
                 <span class="filter-label">📅 ご利用日：</span>
-                <input type="date" id="singleDate" class="date-input" onchange="onDateChanged()">
+                <input type="text" id="singleDate" class="date-input" inputmode="text" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください" onchange="onDateChanged()">
             </div>
 
             <div class="filter-row" id="shortStayDateRow" style="display: none;">
                 <span class="filter-label">📅 ご利用期間：</span>
-                <input type="date" id="startDate" class="date-input" onchange="onDateChanged()">
+                <input type="text" id="startDate" class="date-input" inputmode="text" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください" onchange="onDateChanged()">
                 <span style="font-weight: bold;">～</span>
-                <input type="date" id="endDate" class="date-input" onchange="onDateChanged()">
+                <input type="text" id="endDate" class="date-input" inputmode="text" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" title="日付はYYYY-MM-DD形式で入力してください" onchange="onDateChanged()">
             </div>
             
             <div class="filter-row" style="margin-top: 15px; border-top: 1px dashed #40c057; padding-top: 15px;">
@@ -550,6 +550,12 @@
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { isShortStayService, normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
+
+        function isValidIsoDate(value) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+            const date = new Date(`${value}T00:00:00.000Z`);
+            return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+        }
 
         const firebaseConfig = {
             apiKey: "AIzaSyCLExSyJnb5zvjMbGXv7EsCGFYQf9WZeYg",
@@ -768,7 +774,20 @@
             clearPairingCodeListeners();
             let facilityId = localStorage.getItem("currentFacilityId");
             let sType = document.getElementById("selectServiceType").value;
-            
+            const dateInputs = isShortStayService(sType)
+                ? [document.getElementById("startDate"), document.getElementById("endDate")]
+                : [document.getElementById("singleDate")];
+            for (const input of dateInputs) {
+                const value = input.value.trim();
+                const isValid = !value || isValidIsoDate(value);
+                input.setCustomValidity(isValid ? "" : "実在する日付をYYYY-MM-DD形式で入力してください。");
+                if (!isValid) {
+                    input.reportValidity();
+                    input.focus();
+                    return;
+                }
+            }
+
             let startDate = !isShortStayService(sType) ? document.getElementById("singleDate").value : document.getElementById("startDate").value;
             let endDate = !isShortStayService(sType) ? document.getElementById("singleDate").value : document.getElementById("endDate").value;
 
