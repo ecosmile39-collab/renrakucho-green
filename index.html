@@ -11,6 +11,7 @@
         h3 { border-bottom: 2px solid #2b8a3e; color: #2b8a3e; padding-bottom: 5px; margin-top: 25px; font-size: 18px; }
         label { display: block; margin-top: 15px; font-weight: bold; color: #333; font-size: 15px; }
         input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+        .suggestion-input-control { width: 100%; }
         .flex-box { display: flex; gap: 10px; }
         .flex-box > div { flex: 1; }
         .bp-box { display: flex; align-items: center; gap: 5px; }
@@ -323,7 +324,7 @@
                 <li><strong>利用者を選ぶ</strong><p>「お名前」から記録する方を選びます。年齢や顔写真、保存済み記録が表示されます。「利用終了者も表示する」は、以前利用していた方を選ぶ場合に使います。</p><p>顔写真は「写真 登録/変更」で撮影、「アルバムから写真を選ぶ」から保存済み写真を選べます。緊急連絡先と持病は全施設で利用できます。入力したら「利用者情報に保存」を押してください。</p></li>
                 <li><strong>新しい利用者を登録する</strong><p>名簿にいない方は、画面下の新規登録欄に名前を入力します。生年月日は任意です。必要なら顔写真や排泄記録の設定を選び、「お名前・生年月日・各種設定をまとめて名簿に登録」を押します。</p></li>
                 <li><strong>日付を選ぶ</strong><p>「日付」で、記録する日を選びます。利用者と日付を間違えていないか、この時点で確認してください。入力途中の内容は使用中のブラウザーに下書き保存されますが、まだ正式な保存ではありません。</p></li>
-                <li><strong>記録を入力する</strong><p>表示された欄を上から入力します。デイサービスでは、担当スタッフ、介護日誌、バイタル、食事・水分・服薬・入浴、活動などを記録します。放課後等デイサービス・児童発達支援では、出欠、送迎、活動、おやつ、支援の様子などを記録します。生活介護では専用欄に健康状態や生活支援を記録します。ショートステイ・入所・ユニット入所では共通の欄に入所・退所時の健康状態、食事、夜間の様子、持ち物などを記録します。</p><p>分からない欄は無理に埋めず、施設の記録方法に合わせてください。「要申し送り」「受診対応あり」「体調変化」は、該当するときにチェックし、申し送り内容も入力します。</p></li>
+                <li><strong>記録を入力する</strong><p>表示された欄を上から入力します。デイサービスでは、担当スタッフ、介護日誌、バイタル、食事・水分・服薬・入浴、活動などを記録します。食事・水分・口腔ケアは候補の選択欄から選べます。候補にない内容は「その他を直接入力」を選んで入力できます。放課後等デイサービス・児童発達支援では、出欠、送迎、活動、おやつ、支援の様子などを記録します。生活介護では専用欄に健康状態や生活支援を記録します。ショートステイ・入所・ユニット入所では共通の欄に入所・退所時の健康状態、食事、夜間の様子、持ち物などを記録します。</p><p>分からない欄は無理に埋めず、施設の記録方法に合わせてください。「要申し送り」「受診対応あり」「体調変化」は、該当するときにチェックし、申し送り内容も入力します。</p></li>
                 <li><strong>ご家族への連絡を入力する</strong><p>「施設からの御連絡事項」には施設から伝えることを入力します。定型文がある場合は選んで編集できます。「お客様からの御連絡事項／保護者記入欄」には家庭からの連絡事項を入力します。「施設からのお知らせ・PRを追加する」は必要なときだけ開いて使います。</p></li>
                 <li><strong>写真・動画を選ぶ</strong><p>「施設でのご様子」で撮影するか、アルバムから写真・動画を選びます。プレビューで内容を確認し、他の利用者が写っていないか確認してください。動画は先頭30秒まで、5MB以下に自動調整されます。</p><p>「今すぐ預ける」は任意です。押さなくても、最後の送信時に記録と一緒に保存できます。選んだものを外す場合は、プレビューの「取消」を使います。</p></li>
                 <li><strong>家族向け公開を選ぶ</strong><p>「LINEで家族に公開する」は初期状態ではチェックされています。チェックありなら、記録を保存した後、連携済みの家族がLINEから閲覧できます。<strong>自動でLINE通知が送られるわけではありません。</strong>施設内だけに保存したい場合はチェックを外します。</p></li>
@@ -1099,6 +1100,62 @@
             return true;
         }
 
+        function initializeTextSuggestionSelects() {
+            document.querySelectorAll('input[list][type="text"]').forEach(input => {
+                const dataList = document.getElementById(input.getAttribute("list"));
+                if (!dataList || input.parentElement.classList.contains("suggestion-input-control")) return;
+
+                const wrapper = document.createElement("div");
+                wrapper.className = "suggestion-input-control";
+                const select = document.createElement("select");
+                select.setAttribute("aria-label", "候補から選択");
+                select.add(new Option("候補から選択", ""));
+                Array.from(dataList.options).forEach(option => {
+                    select.add(new Option(option.value, option.value));
+                });
+                select.add(new Option("その他を直接入力", "__custom__"));
+                input.before(wrapper);
+                wrapper.append(select, input);
+                input.hidden = true;
+
+                select.addEventListener("change", () => {
+                    if (select.value === "__custom__") {
+                        input.value = "";
+                        input.hidden = false;
+                        input.focus();
+                    } else {
+                        input.value = select.value;
+                        input.hidden = !select.value;
+                    }
+                });
+                input.addEventListener("input", () => {
+                    if (!input.value) {
+                        select.value = "";
+                        return;
+                    }
+                    input.hidden = false;
+                    select.value = Array.from(select.options).some(option =>
+                        option.value === input.value && option.value !== "__custom__"
+                    ) ? input.value : "__custom__";
+                });
+                input.addEventListener("blur", syncTextSuggestionSelects);
+            });
+        }
+
+        function syncTextSuggestionSelects() {
+            document.querySelectorAll(".suggestion-input-control input[list][type=\"text\"]").forEach(input => {
+                const select = input.parentElement.querySelector("select");
+                if (!select) return;
+                const hasMatchingOption = Array.from(select.options).some(option =>
+                    option.value === input.value && option.value !== "" && option.value !== "__custom__"
+                );
+                select.value = input.value ? (hasMatchingOption ? input.value : "__custom__") : "";
+                input.hidden = !input.value || hasMatchingOption;
+            });
+        }
+
+        initializeTextSuggestionSelects();
+
         function applyFacilityFormCustomization() {
             const hiddenSections = new Set(facilityFormCustomization.hiddenSections);
             for (const section of FORM_CUSTOMIZATION_SECTIONS) {
@@ -1721,26 +1778,6 @@
                 }
             });
             
-            const listInputs = document.querySelectorAll('input[list]');
-            listInputs.forEach(input => {
-                const clearAndShowList = function() {
-                    if (this.value !== '') {
-                        this.dataset.oldValue = this.value;
-                        this.value = '';
-                        this.dispatchEvent(new Event('input'));
-                    }
-                };
-                input.addEventListener('focus', clearAndShowList);
-                input.addEventListener('click', clearAndShowList);
-
-                input.addEventListener('blur', function() {
-                    if (this.value === '' && this.dataset.oldValue) {
-                        this.value = this.dataset.oldValue;
-                        this.dispatchEvent(new Event('input'));
-                    }
-                });
-            });
-
             document.getElementById("mainForm").addEventListener("input", autoSaveDraft);
             document.getElementById("mainForm").addEventListener("change", autoSaveDraft);
 
@@ -2743,6 +2780,7 @@
             window.checkTemp('temp1', 'temp1Alert');
             window.checkTemp('stTempIn', 'stTempInAlert');
             window.checkTemp('stTempOut', 'stTempOutAlert');
+            syncTextSuggestionSelects();
         }
 
         async function fetchServerData(userName, date) {
@@ -2969,6 +3007,7 @@
                 window.checkTemp('temp1', 'temp1Alert');
                 window.checkTemp('stTempIn', 'stTempInAlert');
                 window.checkTemp('stTempOut', 'stTempOutAlert');
+                syncTextSuggestionSelects();
                 return true;
             } catch (e) {
                 console.error("記録データの読込に失敗しました:", e);
@@ -3710,6 +3749,7 @@
             document.getElementById("stMealDinner").value = "";
             document.getElementById("stWater").value = "";
             document.getElementById("stOralCare").value = "";
+            syncTextSuggestionSelects();
 
             document.getElementById("dsBowel").value = "";
             if(document.getElementById("dsBowel1")) document.getElementById("dsBowel1").value = "";
