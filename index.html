@@ -11,13 +11,7 @@
         h3 { border-bottom: 2px solid #2b8a3e; color: #2b8a3e; padding-bottom: 5px; margin-top: 25px; font-size: 18px; }
         label { display: block; margin-top: 15px; font-weight: bold; color: #333; font-size: 15px; }
         input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
-        .suggestion-input-control { position: relative; width: 100%; }
-        .suggestion-input-trigger { display: block; width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; background: #fff; color: #222; font-size: 16px; text-align: left; cursor: pointer; }
-        .suggestion-input-trigger::after { content: "▼"; float: right; font-size: 12px; }
-        .suggestion-input-options { position: fixed; z-index: 10000; max-height: 240px; overflow-y: auto; border: 1px solid #aaa; border-radius: 5px; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,.18); }
-        .suggestion-input-options[hidden] { display: none; }
-        .suggestion-input-options button { display: block; width: 100%; padding: 10px 12px; border: 0; border-bottom: 1px solid #eee; background: #fff; color: #222; text-align: left; font-size: 16px; cursor: pointer; }
-        .suggestion-input-options button:hover, .suggestion-input-options button:focus-visible { background: #e7f5ff; }
+        .suggestion-input-control { width: 100%; }
         .flex-box { display: flex; gap: 10px; }
         .flex-box > div { flex: 1; }
         .bp-box { display: flex; align-items: center; gap: 5px; }
@@ -1106,28 +1100,6 @@
             return true;
         }
 
-        let activeTextSuggestionMenu = null;
-
-        function closeTextSuggestionMenu(menuState) {
-            if (!menuState) return;
-            menuState.menu.hidden = true;
-            menuState.trigger.setAttribute("aria-expanded", "false");
-            if (activeTextSuggestionMenu === menuState) activeTextSuggestionMenu = null;
-        }
-
-        function positionTextSuggestionMenu(trigger, menu) {
-            const bounds = trigger.getBoundingClientRect();
-            const width = Math.min(bounds.width, window.innerWidth - 16);
-            const height = Math.min(menu.scrollHeight, 240);
-            const spaceBelow = window.innerHeight - bounds.bottom;
-            const top = spaceBelow >= height || bounds.top < height
-                ? bounds.bottom
-                : bounds.top - height;
-            menu.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - width - 8))}px`;
-            menu.style.top = `${Math.max(8, top)}px`;
-            menu.style.width = `${width}px`;
-        }
-
         function initializeTextSuggestionSelects() {
             document.querySelectorAll('input[list][type="text"]').forEach(input => {
                 const dataList = document.getElementById(input.getAttribute("list"));
@@ -1135,101 +1107,43 @@
 
                 const wrapper = document.createElement("div");
                 wrapper.className = "suggestion-input-control";
-                const trigger = document.createElement("button");
-                trigger.className = "suggestion-input-trigger";
-                trigger.type = "button";
-                trigger.textContent = "候補から選択";
-                trigger.setAttribute("aria-haspopup", "listbox");
-                trigger.setAttribute("aria-expanded", "false");
-                const menuId = `suggestion-options-${input.id}`;
-                trigger.setAttribute("aria-controls", menuId);
-                const menu = document.createElement("div");
-                menu.id = menuId;
-                menu.className = "suggestion-input-options";
-                menu.hidden = true;
-                menu.setAttribute("role", "listbox");
-                const menuState = { trigger, menu };
+                const select = document.createElement("select");
+                select.setAttribute("aria-label", "候補から選択");
+                select.add(new Option("候補から選択", ""));
                 input.dataset.customEntry = "false";
                 Array.from(dataList.options).forEach(option => {
-                    const button = document.createElement("button");
-                    button.type = "button";
-                    button.textContent = option.value;
-                    button.addEventListener("click", () => {
-                        input.dataset.customEntry = "false";
-                        input.value = option.value;
-                        input.hidden = true;
-                        trigger.textContent = option.value;
-                        closeTextSuggestionMenu(menuState);
-                        syncTextSuggestionSelects();
-                        input.dispatchEvent(new Event("input", { bubbles: true }));
-                    });
-                    menu.append(button);
+                    select.add(new Option(option.value, option.value));
                 });
-                const customButton = document.createElement("button");
-                customButton.type = "button";
-                customButton.textContent = "その他を直接入力";
-                customButton.addEventListener("click", () => {
-                    input.dataset.customEntry = "true";
-                    input.value = "";
-                    input.hidden = false;
-                    trigger.textContent = "その他を直接入力";
-                    closeTextSuggestionMenu(menuState);
-                    input.focus();
-                    syncTextSuggestionSelects();
+                select.add(new Option("その他を直接入力", "__custom__"));
+                input.before(wrapper);
+                wrapper.append(select, input);
+                input.hidden = true;
+                select.addEventListener("change", () => {
+                    const isCustomEntry = select.value === "__custom__";
+                    input.dataset.customEntry = String(isCustomEntry);
+                    input.value = isCustomEntry ? "" : select.value;
+                    input.hidden = !isCustomEntry;
+                    if (isCustomEntry) input.focus();
                     input.dispatchEvent(new Event("input", { bubbles: true }));
                 });
-                menu.append(customButton);
-                input.before(wrapper);
-                wrapper.append(trigger, input);
-                document.body.append(menu);
-                input.hidden = true;
-                trigger.addEventListener("click", () => {
-                    if (activeTextSuggestionMenu?.trigger === trigger) {
-                        closeTextSuggestionMenu(activeTextSuggestionMenu);
-                        return;
-                    }
-                    closeTextSuggestionMenu(activeTextSuggestionMenu);
-                    activeTextSuggestionMenu = menuState;
-                    trigger.setAttribute("aria-expanded", "true");
-                    menu.hidden = false;
-                    positionTextSuggestionMenu(trigger, menu);
-                });
-                input.addEventListener("input", () => {
-                    syncTextSuggestionSelects();
-                });
-                input.addEventListener("blur", () => {
-                    if (!input.value) input.dataset.customEntry = "false";
-                    syncTextSuggestionSelects();
-                });
+                input.addEventListener("input", () => syncTextSuggestionSelects());
             });
-
-            document.addEventListener("keydown", event => {
-                if (event.key !== "Escape" || !activeTextSuggestionMenu) return;
-                closeTextSuggestionMenu(activeTextSuggestionMenu);
-            });
-            window.addEventListener("resize", () => {
-                if (activeTextSuggestionMenu) positionTextSuggestionMenu(activeTextSuggestionMenu.trigger, activeTextSuggestionMenu.menu);
-            });
-            window.addEventListener("scroll", () => {
-                if (activeTextSuggestionMenu) positionTextSuggestionMenu(activeTextSuggestionMenu.trigger, activeTextSuggestionMenu.menu);
-            }, true);
         }
 
         function syncTextSuggestionSelects(resetCustomEntries = false) {
             document.querySelectorAll(".suggestion-input-control input[list][type=\"text\"]").forEach(input => {
-                const wrapper = input.parentElement;
-                const trigger = wrapper.querySelector(".suggestion-input-trigger");
-                if (!trigger) return;
+                const select = input.parentElement.querySelector("select");
+                if (!select) return;
                 if (resetCustomEntries) input.dataset.customEntry = "false";
-                const menu = document.getElementById(trigger.getAttribute("aria-controls"));
-                if (!menu) return;
-                const optionButtons = Array.from(menu.querySelectorAll("button"));
-                const matchingButton = optionButtons.find(button => button.textContent === input.value);
-                optionButtons.forEach(button => {
-                    button.setAttribute("aria-pressed", String(button === matchingButton && input.dataset.customEntry !== "true"));
-                });
-                trigger.textContent = input.value || (input.dataset.customEntry === "true" ? "その他を直接入力" : "候補から選択");
-                input.hidden = input.dataset.customEntry !== "true" && (!input.value || Boolean(matchingButton));
+                const hasMatchingOption = Array.from(select.options).some(option =>
+                    option.value === input.value && option.value !== "" && option.value !== "__custom__"
+                );
+                const isCustomEntry = input.dataset.customEntry === "true" || Boolean(input.value && !hasMatchingOption);
+                input.dataset.customEntry = String(isCustomEntry);
+                select.value = input.value && hasMatchingOption && !isCustomEntry
+                    ? input.value
+                    : isCustomEntry || input.value ? "__custom__" : "";
+                input.hidden = !isCustomEntry;
             });
         }
 
