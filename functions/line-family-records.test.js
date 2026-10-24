@@ -6,12 +6,15 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const vm = require("node:vm");
 const DELETE_FIELD = Symbol("deleteField");
+const RETENTION_NOW = "2026-12-24T12:00:00+09:00";
+const RETENTION_START = "2026-10-24T11:59:59+09:00";
 
 function loadHandlers(entries, options = {}) {
     const documents = new Map(Object.entries(entries));
     const requests = [];
     const sentEmails = [];
     const customTokens = [];
+    const deletedAuthUsers = [];
     const loggedErrors = [];
     function document(referencePath) {
         return {
@@ -28,6 +31,7 @@ function loadHandlers(entries, options = {}) {
                     if (value === DELETE_FIELD) delete next[key];
                     else next[key] = value;
                 }
+
                 documents.set(referencePath, next);
             },
             async set(fields, options) {
@@ -38,7 +42,10 @@ function loadHandlers(entries, options = {}) {
                 }
                 documents.set(referencePath, next);
             },
-            async delete() { documents.delete(referencePath); }
+            async delete() {
+                if (options.deleteDocument) await options.deleteDocument(referencePath);
+                documents.delete(referencePath);
+            }
         };
     }
     function collection(collectionPath, conditions = []) {
@@ -68,23 +75,33 @@ function loadHandlers(entries, options = {}) {
         if (name === "firebase-admin/auth") return { getAuth: () => ({ createCustomToken: async (uid, claims) => {
             customTokens.push({ uid, claims });
             return "test-custom-token";
+        }, deleteUser: async uid => {
+            if (options.deleteAuthUser) await options.deleteAuthUser(uid);
+            deletedAuthUsers.push(uid);
         } }) };
         if (name === "firebase-admin/firestore") return {
             getFirestore: () => ({ collection, batch: () => {
                 const deletions = [];
                 return {
                     delete: reference => deletions.push(reference.path),
-                    commit: async () => deletions.forEach(referencePath => documents.delete(referencePath))
+                    commit: async () => {
+                        if (options.commitDeletion) await options.commitDeletion(deletions);
+                        deletions.forEach(referencePath => documents.delete(referencePath));
+                    }
                 };
-            }, runTransaction: callback => callback({
-                get: reference => reference.get(),
-                set: (reference, fields, options) => reference.set(fields, options),
-                delete: reference => documents.delete(reference.path)
-            }) }), FieldValue: { serverTimestamp: () => "timestamp", delete: () => DELETE_FIELD }
+            }, runTransaction: async callback => {
+                if (options.beforeTransaction) await options.beforeTransaction(documents);
+                return callback({
+                    get: reference => reference.get(),
+                    set: (reference, fields, options) => reference.set(fields, options),
+                    delete: reference => documents.delete(reference.path)
+                });
+            } }), FieldValue: { serverTimestamp: () => "timestamp", delete: () => DELETE_FIELD }
         };
         if (name === "firebase-admin/storage") return {
             getStorage: () => ({ bucket: () => ({
-                getFiles: async () => [options.storageFiles || []]
+                getFiles: async ({ prefix }) => [(options.storageFiles || [])
+                    .filter(file => !file.name || file.name.startsWith(prefix))]
             }) })
         };
         if (name === "firebase-functions/v2/scheduler") return { onSchedule: (...args) => args.at(-1) };
@@ -110,13 +127,17 @@ function loadHandlers(entries, options = {}) {
     };
     const sandbox = {
         exports: {}, require: mockRequire, __dirname, Buffer,
+        ...(options.now ? { Date: class extends Date {
+            constructor(...args) { super(...(args.length ? args : [options.now])); }
+            static now() { return new Date(options.now).getTime(); }
+        } } : {}),
         fetch: async (url, options) => {
             requests.push({ url, body: JSON.parse(options.body) });
             return { ok: true };
         }
     };
     vm.runInNewContext(readFileSync(path.join(__dirname, "index.js"), "utf8"), sandbox);
-    return { handlers: sandbox.exports, documents, requests, sentEmails, customTokens, loggedErrors };
+    return { handlers: sandbox.exports, documents, requests, sentEmails, customTokens, loggedErrors, deletedAuthUsers };
 }
 
 async function sendFamilyEvent(context, userId, text = "連絡帳を見る") {
@@ -335,6 +356,7 @@ test("only MFA administrators can resume and a new billing cycle preserves old i
     const context = loadHandlers({
         "facilities/pause-test": {
             facilityName: "Pause Test", password: "secret", status: "locked", usagePaused: true,
+            usagePausedAt: new Date().toISOString(),
             subscriptionStatus: "active", email: "facility@example.invalid", billingAnchorAt: oldAnchor
         },
         "facilities/pause-test/invoiceHistory/OLD": { status: "sent", paymentStatus: "unpaid" },
@@ -376,6 +398,7 @@ test(`paused ${trialExpired ? "expired" : "unexpired"} trials resume as paid sub
     const context = loadHandlers({
         "facilities/pause-test": {
             facilityName: "Pause Test", password: "secret", status: "locked", usagePaused: true,
+            usagePausedAt: new Date().toISOString(),
             subscriptionStatus: "trial", trialEndsAt, email: "facility@example.invalid"
         }
     });
@@ -772,7 +795,7 @@ test("previously issued viewing links expire no later than three days after crea
 test("new trial registrations disable common LINE and basic info management links by default", async () => {
     const context = loadHandlers({});
     const result = await context.handlers.registerTrialFacility({ data: {
-        registrationKey: "test-secret", acceptedTermsVersion: "2026-10-07-v1",
+        registrationKey: "test-secret", acceptedTermsVersion: "2026-10-24-v1",
         facilityName: "Test Facility", password: "test-password", email: "test@example.invalid", phone: "03-1234-5678",
         contactPerson: "  Test Contact  "
     } });
@@ -1012,7 +1035,7 @@ test("administrator can migrate legacy facility passwords without exposing them 
 test("trial registration requires a contact phone number", async () => {
     const context = loadHandlers({});
     await assert.rejects(context.handlers.registerTrialFacility({ data: {
-        registrationKey: "test-secret", acceptedTermsVersion: "2026-10-07-v1",
+        registrationKey: "test-secret", acceptedTermsVersion: "2026-10-24-v1",
         facilityName: "Test Facility", password: "test-password", email: "test@example.invalid", contactPerson: "Test"
     } }), { code: "invalid-argument" });
 });
@@ -1021,7 +1044,7 @@ test("trial registration rejects missing, blank, non-string and overlong contact
     for (const contactPerson of [undefined, "", "   ", 123, "a".repeat(101)]) {
         const context = loadHandlers({});
         await assert.rejects(context.handlers.registerTrialFacility({ data: {
-            acceptedTermsVersion: "2026-10-07-v1", facilityName: "Test Facility",
+            acceptedTermsVersion: "2026-10-24-v1", facilityName: "Test Facility",
             password: "test-password", email: "test@example.invalid", phone: "03-1234-5678", contactPerson
         } }), { code: "invalid-argument" });
         assert.equal(context.documents.size, 0);
@@ -1047,7 +1070,8 @@ test("manual invoice issuance rejects a missing facility identifier", async () =
 test("manual initial invoice issuance prevents duplicate sent invoices", async () => {
     const context = loadHandlers({
         "facilities/facility-a": {
-            facilityName: "Facility", email: "facility@example.invalid", subscriptionStatus: "trial"
+            facilityName: "Facility", email: "facility@example.invalid", subscriptionStatus: "trial",
+            trialEndsAt: new Date().toISOString()
         },
         "facilities/facility-a/invoiceHistory/INITIAL": { status: "sent", invoiceNumber: "INIT-20261015-FACILITY-A" }
     });
@@ -1592,6 +1616,7 @@ test("manual initial invoices also notify the administrator", async () => {
         "facilities/manual-initial": {
             facilityName: "Manual Initial", email: "facility@example.invalid",
             status: "active", subscriptionStatus: "trial",
+            trialEndsAt: new Date().toISOString(),
             billingServiceTypes: ["デイサービス"]
         }
     });
@@ -1742,4 +1767,282 @@ test("facility can check only its own access status without receiving private da
     assert.equal(missing.status, "missing");
     await assert.rejects(context.handlers.getFacilityAccessStatus({}), { code: "unauthenticated" });
     await assert.rejects(context.handlers.getFacilityAccessStatus({ auth: { uid: "locked", token: { role: "admin" } } }), { code: "unauthenticated" });
+});
+test("automatic cancellation deletes expired trial and paused facilities, including pending applications", async () => {
+    const deletedFiles = [];
+    const expiredIds = ["trial", "paused", "paused-trial"];
+    const entries = {
+        "facilities/trial": { facilityName: "Trial", subscriptionStatus: "trial", trialEndsAt: RETENTION_START,
+            subscriptionApplicationStatus: "pending_payment" },
+        "facilities/paused": { facilityName: "Paused", subscriptionStatus: "active", usagePaused: true,
+            usagePausedAt: RETENTION_START, usageResumeRequestedAt: RETENTION_NOW },
+        "facilities/paused-trial": { facilityName: "Paused Trial", subscriptionStatus: "trial",
+            trialEndsAt: "2030-01-01", usagePaused: true, usagePausedAt: RETENTION_START },
+        "facilities/active": { subscriptionStatus: "active", trialEndsAt: RETENTION_START },
+        "facilities/locked": { subscriptionStatus: "active", status: "locked" },
+        "facilities/boundary": { subscriptionStatus: "trial", trialEndsAt: "2026-10-24T12:00:00+09:00" },
+        "facilities/paused-recently": { subscriptionStatus: "trial", trialEndsAt: RETENTION_START,
+            usagePaused: true, usagePausedAt: RETENTION_NOW },
+        "facilities/active/users/Other": { name: "Other" },
+        "facilities/active/daily_records/record": { facilityId: "active" },
+        "lineRecordLinks/other": { facilityId: "active" }
+    };
+    for (const id of expiredIds) {
+        for (const collection of ["users", "daily_records", "invoiceHistory"]) {
+            entries[`facilities/${id}/${collection}/resident-${id}`] = { name: id };
+        }
+        entries[`facilityCredentials/${id}`] = { passwordHash: "test" };
+        entries[`facilityLineSettings/${id}`] = {};
+        entries[`linePairingCodes/${id}`] = { facilityId: id };
+        entries[`lineRecordLinks/${id}`] = { facilityId: id };
+    }
+    const storageFiles = [
+        ...expiredIds.flatMap(id => ["images", "videos", "faces"].map(prefix => `${prefix}/${id}/test`)),
+        "images/active/keep", "videos/active/keep"
+    ].map(name => ({ name, delete: async () => deletedFiles.push(name) }));
+    const { handlers, documents, deletedAuthUsers } = loadHandlers(entries, { now: RETENTION_NOW, storageFiles });
+    await handlers.deleteExpiredFacilityAccounts();
+    assert.deepEqual(deletedAuthUsers.sort(), expiredIds.sort());
+    assert.equal(deletedFiles.length, 9);
+    assert.equal(deletedFiles.some(name => name.includes("/active/")), false);
+    for (const id of expiredIds) {
+        assert.equal(documents.has(`facilities/${id}`), false);
+        assert.equal([...documents.keys()].some(key => key.startsWith(`facilities/${id}/`)), false);
+        for (const collection of ["facilityCredentials", "facilityLineSettings", "linePairingCodes", "lineRecordLinks"]) {
+            assert.equal(documents.has(`${collection}/${id}`), false);
+        }
+        assert.equal(documents.get(`facilityCancellations/${id}`).status, "completed");
+        assert.equal(documents.get(`facilityCancellations/${id}`).reason, "retention_expired");
+    }
+    for (const id of ["active", "locked", "boundary", "paused-recently"]) {
+        assert.deepEqual(documents.get(`facilities/${id}`), entries[`facilities/${id}`]);
+    }
+    assert.ok(documents.has("facilities/active/users/Other"));
+    assert.ok(documents.has("facilities/active/daily_records/record"));
+    assert.ok(documents.has("lineRecordLinks/other"));
+    await handlers.deleteExpiredFacilityAccounts();
+    assert.equal(deletedAuthUsers.length, 3);
+});
+
+for (const failurePoint of ["storage", "auth", "firestore"]) {
+    test(`automatic cancellation retains a locked retryable facility after ${failurePoint} failure`, async () => {
+        let shouldFail = true;
+        const fail = async () => { if (shouldFail) throw new Error("Simulated deletion failure"); };
+        const { handlers, documents, loggedErrors } = loadHandlers({
+            "facilities/expired": { subscriptionStatus: "trial", trialEndsAt: RETENTION_START },
+            "facilities/expired/users/Resident": {},
+            "facilities/expired/daily_records/record": {}
+        }, {
+            now: RETENTION_NOW,
+            storageFiles: [{ name: "images/expired/file", delete: failurePoint === "storage" ? fail : async () => {} }],
+            deleteAuthUser: failurePoint === "auth" ? fail : undefined,
+            commitDeletion: failurePoint === "firestore" ? fail : undefined
+        });
+        await assert.rejects(handlers.deleteExpiredFacilityAccounts(), /requires attention/);
+        assert.equal(documents.get("facilities/expired").status, "locked");
+        assert.ok(documents.get("facilities/expired").retentionDeletionStartedAt);
+        assert.equal(documents.get("facilityCancellations/expired").status, "failed");
+        assert.ok(loggedErrors.length);
+        shouldFail = false;
+        await handlers.deleteExpiredFacilityAccounts();
+        assert.equal(documents.has("facilities/expired"), false);
+        assert.equal(documents.get("facilityCancellations/expired").status, "completed");
+    });
+}
+
+test("automatic cancellation reports invalid dates and ambiguous legacy ownership without deleting others", async () => {
+    const { handlers, documents, loggedErrors, deletedAuthUsers } = loadHandlers({
+        "facilities/invalid": { subscriptionStatus: "trial", trialEndsAt: null },
+        "facilities/ambiguous": { subscriptionStatus: "trial", trialEndsAt: RETENTION_START },
+        "facilities/ambiguous/users/Shared": {},
+        "facilities/other": { subscriptionStatus: "active" },
+        "facilities/other/users/Shared": {},
+        "facilities/safe": { subscriptionStatus: "trial", trialEndsAt: RETENTION_START }
+    }, { now: RETENTION_NOW });
+    await assert.rejects(handlers.deleteExpiredFacilityAccounts(), /2 facilities/);
+    assert.ok(documents.has("facilities/invalid"));
+    assert.ok(documents.has("facilities/ambiguous/users/Shared"));
+    assert.ok(documents.has("facilities/other/users/Shared"));
+    assert.deepEqual(deletedAuthUsers, ["safe"]);
+    assert.equal(documents.get("facilityCancellations/invalid").status, "failed");
+    assert.equal(documents.get("facilityCancellations/ambiguous").status, "failed");
+    assert.ok(loggedErrors.length >= 2);
+});
+
+test("resumption requests require the password and do not extend the deadline or grant access", async () => {
+    const { handlers, documents, customTokens } = loadHandlers({
+        "facilities/paused": { facilityName: "Paused", password: "secret", usagePaused: true,
+            status: "locked", subscriptionStatus: "active", usagePausedAt: "2026-11-24T12:00:00+09:00" }
+    }, { now: RETENTION_NOW });
+    await assert.rejects(handlers.requestFacilityResumption({
+        data: { facilityName: "Paused", password: "wrong" }
+    }), { code: "unauthenticated" });
+    const request = { data: { facilityName: "Paused", password: "secret" } };
+    const result = await handlers.requestFacilityResumption(request);
+    assert.equal(result.deadline, "2027-01-24T03:00:00.000Z");
+    await handlers.requestFacilityResumption(request);
+    assert.equal(documents.get("facilities/paused").usageResumeRequestedAt, result.requestedAt);
+    assert.equal(documents.get("facilities/paused").status, "locked");
+    assert.equal(documents.get("facilities/paused").usagePaused, true);
+    assert.equal(customTokens.length, 0);
+    await assert.rejects(handlers.createFacilitySession(request), { code: "permission-denied" });
+});
+
+for (const unavailable of [
+    { trialEndsAt: RETENTION_START, usagePausedAt: RETENTION_START },
+    { trialEndsAt: RETENTION_NOW, usagePausedAt: RETENTION_NOW, retentionDeletionStartedAt: RETENTION_NOW }
+]) {
+    test(`expired or deleting facilities cannot activate, resume, request or log in: ${JSON.stringify(unavailable)}`, async () => {
+        const { handlers, documents } = loadHandlers({
+            "facilities/trial": { facilityName: "Trial", password: "secret", subscriptionStatus: "trial", ...unavailable },
+            "facilities/paused": { facilityName: "Paused", password: "secret", subscriptionStatus: "active",
+                usagePaused: true, ...unavailable }
+        }, { now: RETENTION_NOW });
+        const admin = { uid: "admin", token: { role: "admin", mfaVerified: true } };
+        await assert.rejects(handlers.activateFacilitySubscription({
+            auth: admin, data: { facilityId: "trial" }
+        }), { code: "failed-precondition" });
+        await assert.rejects(handlers.resumeFacilityUsage({
+            auth: admin, data: { facilityId: "paused" }
+        }), { code: "failed-precondition" });
+        await assert.rejects(handlers.requestFacilityResumption({
+            data: { facilityName: "Paused", password: "secret" }
+        }), { code: "failed-precondition" });
+        await assert.rejects(handlers.createFacilitySession({
+            data: { facilityName: "Trial", password: "secret" }
+        }), { code: "failed-precondition" });
+        await assert.rejects(handlers.requestFacilitySubscription({
+            auth: { uid: "trial", token: { role: "facility" } }, data: { serviceTypes: ["デイサービス"] }
+        }), { code: "failed-precondition" });
+        assert.ok(documents.has("facilities/trial"));
+    });
+}
+
+test("activation requires MFA and preserves records at the exact retention deadline", async () => {
+    const { handlers, documents } = loadHandlers({
+        "facilities/trial": { subscriptionStatus: "trial", trialEndsAt: "2026-10-24T12:00:00+09:00", status: "locked" },
+        "facilities/trial/daily_records/record": { message: "keep" }
+    }, { now: RETENTION_NOW });
+    await assert.rejects(handlers.activateFacilitySubscription({
+        auth: { uid: "admin", token: { role: "admin" } }, data: { facilityId: "trial" }
+    }), { code: "unauthenticated" });
+    await handlers.activateFacilitySubscription({
+        auth: { uid: "admin", token: { role: "admin", mfaVerified: true } }, data: { facilityId: "trial" }
+    });
+    await handlers.deleteExpiredFacilityAccounts();
+    assert.equal(documents.get("facilities/trial").subscriptionStatus, "active");
+    assert.deepEqual(documents.get("facilities/trial/daily_records/record"), { message: "keep" });
+});
+
+test("automatic cancellation rechecks current state before claiming a stale expired facility", async () => {
+    const context = loadHandlers({
+        "facilities/trial": { subscriptionStatus: "trial", trialEndsAt: RETENTION_START }
+    }, { now: RETENTION_NOW, beforeTransaction: async documents => {
+        documents.set("facilities/trial", { subscriptionStatus: "active" });
+    } });
+    await context.handlers.deleteExpiredFacilityAccounts();
+    assert.equal(context.documents.get("facilities/trial").subscriptionStatus, "active");
+    assert.equal(context.deletedAuthUsers.length, 0);
+    assert.equal(context.documents.has("facilityCancellations/trial"), false);
+});
+
+test("a facility cannot be activated or unlocked after deletion is claimed", async () => {
+    const request = { auth: { uid: "admin", token: { role: "admin", mfaVerified: true } },
+        data: { facilityId: "trial", locked: false } };
+    let tested = false;
+    const context = loadHandlers({
+        "facilities/trial": { subscriptionStatus: "trial", trialEndsAt: RETENTION_START }
+    }, { now: RETENTION_NOW, storageFiles: [{
+        name: "images/trial/file", delete: async () => {
+            await assert.rejects(context.handlers.activateFacilitySubscription(request), { code: "failed-precondition" });
+            await assert.rejects(context.handlers.setFacilityUsageLock(request), { code: "failed-precondition" });
+            tested = true;
+        }
+    }] });
+    await context.handlers.deleteExpiredFacilityAccounts();
+    assert.equal(tested, true);
+    assert.equal(context.documents.has("facilities/trial"), false);
+});
+
+for (const mode of ["initial", "manual"]) {
+    test(`an in-flight ${mode} invoice cannot recreate a facility deleted during mail delivery`, async () => {
+        const context = loadHandlers({
+            "facilities/trial": { facilityName: "Trial", email: "facility@example.invalid", status: "locked",
+                subscriptionStatus: "trial", trialEndsAt: "2026-12-23T12:00:00+09:00" }
+        }, { now: RETENTION_NOW, sendMail: async message => {
+            if (message.to !== "facility@example.invalid" || !message.subject.includes("請求書")) return;
+            context.documents.get("facilities/trial").trialEndsAt = RETENTION_START;
+            await context.handlers.deleteExpiredFacilityAccounts();
+        } });
+        const sending = mode === "initial"
+            ? context.handlers.requestFacilitySubscription({
+                auth: { uid: "trial", token: { role: "facility", registrationOnly: true } },
+                data: { serviceTypes: ["デイサービス"] }
+            })
+            : context.handlers.issueFacilityInvoiceForAdmin({
+                auth: { uid: "admin", token: { role: "admin", mfaVerified: true } }, data: { facilityId: "trial" }
+            });
+        await assert.rejects(sending, { code: mode === "initial" ? "failed-precondition" : "internal" });
+        assert.equal(context.documents.has("facilities/trial"), false);
+        assert.equal([...context.documents.keys()].some(key => key.startsWith("facilities/trial/")), false);
+        assert.equal(context.documents.get("facilityCancellations/trial").status, "completed");
+    });
+}
+
+test("automatic cancellation tolerates a missing Auth account but not other Auth failures", async () => {
+    const context = loadHandlers({
+        "facilities/trial": { subscriptionStatus: "trial", trialEndsAt: RETENTION_START }
+    }, { now: RETENTION_NOW, deleteAuthUser: async () => {
+        const error = new Error("Account already removed");
+        error.code = "auth/user-not-found";
+        throw error;
+    } });
+    await context.handlers.deleteExpiredFacilityAccounts();
+    assert.equal(context.documents.has("facilities/trial"), false);
+    assert.equal(context.documents.get("facilityCancellations/trial").status, "completed");
+});
+
+test("the login resumption form validates credentials, displays deadlines, and reports server errors", async () => {
+    const html = readFileSync(path.join(__dirname, "..", "login.html"), "utf8");
+    const handler = html.match(/        window.requestResumption = async function\(\)[\s\S]*?(?=\n        window.handleRegister)/)[0];
+    const elements = { loginError: { style: {}, textContent: "" },
+        loginFacilityName: { value: "" }, loginPassword: { value: "" } };
+    let calls = 0;
+    let fail = false;
+    const sandbox = {
+        window: {}, functions: {}, confirm: () => true,
+        document: { getElementById: id => elements[id] },
+        httpsCallable: (_, name) => async data => {
+            assert.equal(name, "requestFacilityResumption");
+            assert.equal(data.facilityName, "Paused");
+            assert.equal(data.password, "secret");
+            calls++;
+            if (fail) throw new Error("保存期限を過ぎています");
+            return { data: { deadline: "2027-01-24T03:00:00.000Z" } };
+        }
+    };
+    vm.runInNewContext(handler, sandbox);
+    await sandbox.window.requestResumption();
+    assert.equal(calls, 0);
+    assert.match(elements.loginError.textContent, /施設名とパスワード/);
+    elements.loginFacilityName.value = " Paused ";
+    elements.loginPassword.value = "secret";
+    await sandbox.window.requestResumption();
+    assert.equal(calls, 1);
+    assert.match(elements.loginError.textContent, /2027\/1\/24/);
+    assert.match(elements.loginError.textContent, /申込済みでも期限は延長されません/);
+    fail = true;
+    await sandbox.window.requestResumption();
+    assert.match(elements.loginError.textContent, /保存期限を過ぎています/);
+});
+
+test("registration requires the revised retention terms and all registration screens use that version", async () => {
+    const { handlers, documents } = loadHandlers({});
+    await assert.rejects(handlers.registerTrialFacility({
+        data: { acceptedTermsVersion: "2026-10-07-v1" }
+    }), { code: "failed-precondition" });
+    assert.equal(documents.size, 0);
+    for (const file of ["login.html", "admin.html", "terms.html"]) {
+        assert.match(readFileSync(path.join(__dirname, "..", file), "utf8"), /2026-10-24-v1/);
+    }
 });

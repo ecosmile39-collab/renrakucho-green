@@ -424,7 +424,7 @@
                     subscriptionStatus: "trial",
                     trialStartedAt: trialStartedAt.toISOString(),
                     trialEndsAt: trialEndsAt.toISOString(),
-                    acceptedTermsVersion: "2026-10-07-v1",
+                    acceptedTermsVersion: "2026-10-24-v1",
                     termsAcceptedAt: new Date().toISOString(),
                     termsAcceptanceMethod: "admin-confirmed"
                 });
@@ -718,6 +718,9 @@
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">✉️ メールアドレス：${escapeHtml(facility.email || "未登録")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">📞 電話番号：${escapeHtml(facility.phone || "未登録")}</div>
                     <div style="margin-top: 4px; color: #495057; font-size: 14px;">担当者名：${escapeHtml(facility.contactPerson || "未登録")}</div>
+                    ${facility.usageResumeRequestedAt ? `<div style="margin-top: 6px; color: #c92a2a; font-weight: bold;">利用再開の申込あり：${escapeHtml(formatCancellationDate(facility.usageResumeRequestedAt))}（申込のみでは2か月の期限は延長されません）</div>` : ""}
+                    ${facility.usagePaused === true || isTrial ? `<div style="margin-top: 6px;">本登録・再開完了期限：${escapeHtml(formatCancellationDate(facility.usagePaused === true ? facility.usagePausedAt : facility.trialEndsAt))} から暦で2か月（申込・入金待ちでも延長なし、超過後は自動退会・削除）</div>` : ""}
+                    ${facility.retentionDeletionStartedAt ? '<div class="error">2か月の保存期限超過：退会・削除処理中です。再開できません。削除エラーは退会履歴を確認してください。</div>' : ""}
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 13px;">
                         <strong>請求状況${invoice ? `（${escapeHtml(invoice.invoiceNumber || "最新請求書")}）` : ""}</strong>
                         ${invoiceSent && !invoicePaid ? '<button type="button" class="invoice-sent-alert" disabled>📨 請求書が送信されました</button>' : ""}
@@ -958,12 +961,7 @@
             if (!confirm(`${facilityName} を無料お試しから本利用へ切り替えますか？以後、月次請求の対象になります。`)) return;
 
             try {
-                await updateDoc(doc(db, "facilities", facilityId), {
-                    subscriptionStatus: "active",
-                    status: "active",
-                    subscriptionApplicationStatus: "activated",
-                    planActivatedAt: new Date().toISOString()
-                });
+                await httpsCallable(functions, "activateFacilitySubscription")({ facilityId });
                 facility.subscriptionStatus = "active";
                 facility.status = "active";
                 renderFacilities();
@@ -1299,7 +1297,7 @@ ${invoiceRows}
             return `<div class="facility" style="border-left: 4px solid #000;">
                 <div>
                     <strong>${escapeHtml(record.facilityName || record.facilityId || record.id)}</strong>
-                    <div><button type="button" class="cancellation-alert" disabled>退会申込です</button></div>
+                    <div><button type="button" class="cancellation-alert" disabled>${record.reason === "retention_expired" ? "2か月保存期限超過による自動退会" : "退会申込です"}</button></div>
                     <div>${escapeHtml(statusText)}</div>
                     <div class="muted">申込日時（日本時間）：${escapeHtml(formatCancellationDate(record.requestedAt))}</div>
                     ${record.thankYouEmailStatus === "sent" ? '<div>お礼メール：送信済み</div>' : record.thankYouEmailStatus === "failed" ? '<div class="error">お礼メール：送信できませんでした</div>' : ""}
@@ -1321,7 +1319,7 @@ ${invoiceRows}
                 return `<div style="padding: 12px; margin: 8px 0; border: 1px solid #dee2e6; border-left: 4px solid ${statusColor}; border-radius: 5px;">
                     <strong>${escapeHtml(record.facilityName || record.facilityId || record.id)}</strong>
                     <span style="margin-left: 8px; color: ${statusColor}; font-weight: bold;">${statusText}</span>
-                    <div class="muted">申請（日本時間）：${escapeHtml(requestedAt)} ／ 利用者：${Number(record.usersCount) || 0}件 ／ 記録：${Number(record.recordsCount) || 0}件 ／ Storage：${Number(record.storageFilesCount) || 0}ファイル</div>
+                    <div class="muted">${record.reason === "retention_expired" ? "2か月保存期限超過による自動退会 ／ " : ""}申請（日本時間）：${escapeHtml(requestedAt)} ／ 利用者：${Number(record.usersCount) || 0}件 ／ 記録：${Number(record.recordsCount) || 0}件 ／ Storage：${Number(record.storageFilesCount) || 0}ファイル</div>
                     ${record.errorMessage ? `<div class="error">${escapeHtml(record.errorMessage)}</div>` : ""}
                 </div>`;
             }).join("");
@@ -1344,6 +1342,10 @@ ${invoiceRows}
         window.toggleFacility = async function(encodedId, currentlyLocked) {
             let facilityId = decodeURIComponent(encodedId);
             const currentFacility = facilities.find(item => item.id === facilityId);
+            if (currentFacility?.retentionDeletionStartedAt) {
+                alert("保存期限を過ぎた退会・削除処理中のため、利用停止を解除できません。退会履歴を確認してください。");
+                return;
+            }
             if (currentFacility?.usagePaused === true) {
                 alert("「利用再開を承認する」ボタンから再開してください。");
                 return;
@@ -1351,7 +1353,7 @@ ${invoiceRows}
             let action = currentlyLocked ? "利用停止を解除" : "利用停止";
             if (!confirm(`${facilityId} を${action}しますか？`)) return;
             try {
-                await updateDoc(doc(db, "facilities", facilityId), { status: currentlyLocked ? "active" : "locked" });
+                await httpsCallable(functions, "setFacilityUsageLock")({ facilityId, locked: !currentlyLocked });
                 let facility = facilities.find(item => item.id === facilityId);
                 if (facility) facility.status = currentlyLocked ? "active" : "locked";
                 renderFacilities();

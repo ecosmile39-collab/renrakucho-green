@@ -26,6 +26,7 @@ const {
 } = require("./one-time-invoice-adjustment");
 const { generateInvoicePdf } = require("./invoice-pdf");
 const { daysUntilTrialEnds, isTrialReminderDue } = require("./trial-reminder");
+const { getFacilityRetentionDeadline, isFacilityRetentionExpired } = require("./facility-retention");
 
 initializeApp();
 
@@ -44,7 +45,7 @@ const LINE_CHANNEL_SECRET = defineSecret("LINE_CHANNEL_SECRET");
 const FACILITY_LINE_ENCRYPTION_KEY = defineSecret("FACILITY_LINE_ENCRYPTION_KEY");
 const COMMON_LINE_DISPLAY_NAME = "えこすまいる連絡帳";
 const COMMON_LINE_BASIC_ID = "@805xgtzu";
-const CURRENT_TERMS_VERSION = "2026-10-07-v1";
+const CURRENT_TERMS_VERSION = "2026-10-24-v1";
 const LINE_RECORD_BASE_URL = "https://renrakucho-green.vercel.app/line-record.html";
 const LINE_WEBHOOK_BASE_URL = "https://us-central1-renrakucho-app-6b157.cloudfunctions.net/facilityLineMessagingWebhook";
 const COMMON_LINE_WEBHOOK_URL = "https://us-central1-renrakucho-app-6b157.cloudfunctions.net/lineMessagingWebhook";
@@ -60,6 +61,24 @@ function escapeHtml(value) {
     return String(value || "").replace(/[&<>\"']/g, character => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
     }[character]));
+}
+
+const FACILITY_RETENTION_NOTICE = "トライアル終了・一時停止から暦で2か月以内に本登録・再開が完了しない場合は退会扱いとなり、施設アカウント・利用者名簿・連絡帳・介護日誌・写真・動画を削除します。申込済み・承認待ち・入金待ちでも期限は延長されません。削除したデータは元に戻せません。";
+
+function assertFacilityRetentionAvailable(facility) {
+    if (facility.retentionDeletionStartedAt) {
+        throw new HttpsError("failed-precondition", "保存期限を過ぎたため退会・削除処理中です。再開できません。");
+    }
+    let expired;
+    try {
+        expired = isFacilityRetentionExpired(facility, new Date());
+    } catch (error) {
+        logger.error("Invalid facility retention date", { error });
+        throw new HttpsError("failed-precondition", "保存期限を確認できません。管理者へお問い合わせください。");
+    }
+    if (expired) {
+        throw new HttpsError("failed-precondition", "終了・一時停止から2か月を過ぎています。退会・削除対象のため、本登録・再開はできません。");
+    }
 }
 
 exports.createFacilitySession = onCall(async request => {
@@ -86,6 +105,7 @@ exports.createFacilitySession = onCall(async request => {
     if (!await verifyFacilityPassword(facility, password)) {
         throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
     }
+    assertFacilityRetentionAvailable(data);
     if (data.usagePaused === true) {
         throw new HttpsError("permission-denied", "一時利用停止中です。再開をご希望の場合は管理者へお問い合わせください。");
     }
@@ -126,6 +146,7 @@ exports.createFacilitySessionForAdmin = onCall(async request => {
         throw new HttpsError("not-found", "施設が見つかりません。");
     }
     const data = facilitySnapshot.data();
+    assertFacilityRetentionAvailable(data);
 
     return {
         facilityId: facilitySnapshot.id,
@@ -213,6 +234,7 @@ async function verifyFacilityPassword(facilitySnapshot, suppliedPassword) {
 
         const legacyPassword = latestFacility.data().password;
         if (!plaintextPasswordsMatch(legacyPassword, suppliedPassword)) return false;
+        if (latestFacility.data().retentionDeletionStartedAt) return true;
         transaction.set(credentialRef, {
             passwordHash: await hashFacilityPassword(suppliedPassword),
             updatedAt: FieldValue.serverTimestamp()
@@ -391,6 +413,7 @@ exports.completeFacilityPasswordReset = onCall({
             transaction.delete(challengeRef);
             return "invalid";
         }
+        assertFacilityRetentionAvailable(facility.data());
         transaction.set(credentialRef, {
             passwordHash,
             updatedAt: FieldValue.serverTimestamp()
@@ -515,7 +538,8 @@ exports.migrateLegacyFacilityPasswords = onCall(async request => {
                 transaction.get(facilityRef),
                 transaction.get(credentialRef)
             ]);
-            if (!latestFacility.exists || typeof latestFacility.data().password !== "string") return "unchanged";
+            if (!latestFacility.exists || latestFacility.data().retentionDeletionStartedAt ||
+                typeof latestFacility.data().password !== "string") return "unchanged";
             const existingHash = credential.exists ? credential.data().passwordHash : null;
             const hasValidHash = isSupportedFacilityPasswordHash(existingHash);
             if (!hasValidHash) {
@@ -743,7 +767,7 @@ exports.changeFacilityPassword = onCall(async request => {
     if (newPassword.length < 6 || newPassword.length > 200) {
         throw new HttpsError("invalid-argument", "新しいパスワードは6文字以上で入力してください。");
     }
-    await getFirestore().collection("facilityCredentials").doc(facilityId).set({
+    await writeFacilityData(facilityRef, getFirestore().collection("facilityCredentials").doc(facilityId), {
         passwordHash: await hashFacilityPassword(newPassword),
         updatedAt: FieldValue.serverTimestamp()
     });
@@ -896,6 +920,7 @@ exports.pauseFacilityUsage = onCall(async request => {
             transaction.get(facilityRef.collection("invoiceHistory"))
         ]);
         if (!current.exists) throw new HttpsError("not-found", "施設情報が見つかりません。");
+        assertFacilityRetentionAvailable(current.data());
         if (current.data().usagePaused === true) return;
         if (current.data().status === "locked") {
             throw new HttpsError("failed-precondition", "利用停止中です。管理者へお問い合わせください。");
@@ -906,7 +931,8 @@ exports.pauseFacilityUsage = onCall(async request => {
         transaction.set(facilityRef, {
             status: "locked",
             usagePaused: true,
-            usagePausedAt: new Date().toISOString()
+            usagePausedAt: new Date().toISOString(),
+            usageResumeRequestedAt: FieldValue.delete()
         }, { merge: true });
     });
     return { status: "paused" };
@@ -926,6 +952,7 @@ exports.resumeFacilityUsage = onCall(async request => {
         const snapshot = await transaction.get(facilityRef);
         if (!snapshot.exists) throw new HttpsError("not-found", "施設情報が見つかりません。");
         const facility = snapshot.data();
+        assertFacilityRetentionAvailable(facility);
         if (facility.usagePaused !== true) {
             throw new HttpsError("failed-precondition", "この施設は一時利用停止中ではありません。");
         }
@@ -935,6 +962,7 @@ exports.resumeFacilityUsage = onCall(async request => {
             usagePaused: false,
             usageResumedAt: now,
             usageResumedBy: request.auth.uid,
+            usageResumeRequestedAt: FieldValue.delete(),
             subscriptionStatus: "active",
             subscriptionApplicationStatus: "activated",
             billingAnchorAt: now,
@@ -945,6 +973,81 @@ exports.resumeFacilityUsage = onCall(async request => {
         }, { merge: true });
     });
     return { status: "active" };
+});
+
+exports.requestFacilityResumption = onCall(async request => {
+    const facilityName = typeof request.data?.facilityName === "string" ? request.data.facilityName.trim() : "";
+    const password = typeof request.data?.password === "string" ? request.data.password : "";
+    if (!facilityName || !password || facilityName.length > 200 || password.length > 200) {
+        throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
+    }
+    const db = getFirestore();
+    const matches = await db.collection("facilities").where("facilityName", "==", facilityName).limit(2).get();
+    let facility = matches.docs.length === 1 ? matches.docs[0] : null;
+    if (matches.empty && !facilityName.includes("/")) {
+        const legacy = await db.collection("facilities").doc(facilityName).get();
+        if (legacy.exists && (!legacy.data().facilityName || legacy.data().facilityName === facilityName)) facility = legacy;
+    }
+    if (!facility || matches.size > 1 || !await verifyFacilityPassword(facility, password)) {
+        throw new HttpsError("unauthenticated", "施設名またはパスワードが違います。");
+    }
+    return db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(facility.ref);
+        if (!snapshot.exists || snapshot.data().usagePaused !== true) {
+            throw new HttpsError("failed-precondition", "一時利用停止中の施設ではありません。通常のログインからご利用ください。");
+        }
+        const current = snapshot.data();
+        assertFacilityRetentionAvailable(current);
+        const requestedAt = current.usageResumeRequestedAt || new Date().toISOString();
+        transaction.set(facility.ref, { usageResumeRequestedAt: requestedAt }, { merge: true });
+        return { requestedAt, deadline: getFacilityRetentionDeadline(current).toISOString() };
+    });
+});
+
+exports.activateFacilitySubscription = onCall(async request => {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
+        throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
+    }
+    const facilityId = typeof request.data?.facilityId === "string" ? request.data.facilityId.trim() : "";
+    if (!facilityId || facilityId.length > 200 || facilityId.includes("/")) {
+        throw new HttpsError("invalid-argument", "施設IDが正しくありません。");
+    }
+    const ref = getFirestore().collection("facilities").doc(facilityId);
+    await getFirestore().runTransaction(async transaction => {
+        const snapshot = await transaction.get(ref);
+        if (!snapshot.exists) throw new HttpsError("not-found", "施設が見つかりません。");
+        const facility = snapshot.data();
+        assertFacilityRetentionAvailable(facility);
+        if (facility.usagePaused === true || facility.subscriptionStatus !== "trial") {
+            throw new HttpsError("failed-precondition", "本登録への切替対象ではありません。一時停止中の場合は利用再開を承認してください。");
+        }
+        transaction.set(ref, {
+            subscriptionStatus: "active", status: "active",
+            subscriptionApplicationStatus: "activated", planActivatedAt: new Date().toISOString()
+        }, { merge: true });
+    });
+    return { status: "active" };
+});
+
+exports.setFacilityUsageLock = onCall(async request => {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
+        throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
+    }
+    const facilityId = typeof request.data?.facilityId === "string" ? request.data.facilityId.trim() : "";
+    if (!facilityId || facilityId.length > 200 || facilityId.includes("/") || typeof request.data?.locked !== "boolean") {
+        throw new HttpsError("invalid-argument", "施設IDまたは利用状態が正しくありません。");
+    }
+    const ref = getFirestore().collection("facilities").doc(facilityId);
+    await getFirestore().runTransaction(async transaction => {
+        const snapshot = await transaction.get(ref);
+        if (!snapshot.exists) throw new HttpsError("not-found", "施設情報が見つかりません。");
+        assertFacilityRetentionAvailable(snapshot.data());
+        if (snapshot.data().usagePaused === true) {
+            throw new HttpsError("failed-precondition", "一時停止中です。利用再開を承認してください。");
+        }
+        transaction.set(ref, { status: request.data.locked ? "locked" : "active" }, { merge: true });
+    });
+    return { status: request.data.locked ? "locked" : "active" };
 });
 
 function monthlyInvoiceKey(periodStart, facility) {
@@ -998,13 +1101,20 @@ exports.deleteFacilityAccount = onCall({
         throw new HttpsError("failed-precondition", `他施設と共有の可能性がある旧ファイルがあるため中止しました（該当利用者${plan.ambiguousLegacyNames.length}名）。管理者へお問い合わせください。`);
     }
 
+    return executeFacilityCancellation(facilityId, plan);
+});
+
+async function executeFacilityCancellation(facilityId, plan, automatic = false) {
     const db = getFirestore();
+    const facilityRef = db.collection("facilities").doc(facilityId);
+    const facilityName = plan.facility.facilityName || facilityId;
     const cancellationRef = db.collection("facilityCancellations").doc(facilityId);
     const counts = plan.counts;
     await cancellationRef.set({
         facilityId,
         facilityName,
         status: "processing",
+        reason: automatic ? "retention_expired" : "requested",
         requestedAt: new Date().toISOString(),
         usersCount: counts.users,
         recordsCount: counts.records,
@@ -1037,8 +1147,17 @@ exports.deleteFacilityAccount = onCall({
             db.collection("facilityLineSettings").doc(facilityId).delete(),
             db.collection("facilityCredentials").doc(facilityId).delete()
         ]);
-        await facilityRef.delete();
-        await cancellationRef.set({ status: "completed", completedAt: new Date().toISOString() }, { merge: true });
+        if (automatic) {
+            try {
+                await getAuth().deleteUser(facilityId);
+            } catch (error) {
+                if (error.code !== "auth/user-not-found") throw error;
+            }
+        }
+        await db.runTransaction(async transaction => {
+            transaction.delete(facilityRef);
+            transaction.set(cancellationRef, { status: "completed", completedAt: new Date().toISOString() }, { merge: true });
+        });
     } catch (error) {
         await cancellationRef.set({
             status: "failed",
@@ -1063,7 +1182,7 @@ exports.deleteFacilityAccount = onCall({
             from: { name: "株式会社えこすまいる", address: gmailUser },
             to: recipient,
             subject: "【えこすまいる連絡帳】ご利用のお礼と退会手続き完了のお知らせ",
-            text: `${facilityName} 御中\n\nこれまで「えこすまいる連絡帳」をご利用いただき、誠にありがとうございました。\n日々の大切な記録と、ご家族とのつながりを支えるお手伝いをさせていただきましたこと、心より御礼申し上げます。\n\nお申し込みいただいた退会手続きと、施設アカウント・利用者名簿・連絡帳・関連ファイル等の削除処理が完了しました。\nバックアップや退会処理の履歴等は、プライバシーポリシーおよび保存設定に従い、一定期間残る場合があります。\n\nご利用中にお寄せいただいたご意見やご協力に、重ねて感謝申し上げます。\n今後またお役に立てる機会がございましたら、幸いに存じます。\n皆様のますますのご健勝と、貴施設のご発展を心よりお祈り申し上げます。\n\nご不明な点がございましたら、本メールへの返信にてお問い合わせください。\n\n株式会社えこすまいる`
+            text: `${facilityName} 御中\n\nこれまで「えこすまいる連絡帳」をご利用いただき、誠にありがとうございました。\n日々の大切な記録と、ご家族とのつながりを支えるお手伝いをさせていただきましたこと、心より御礼申し上げます。\n\n${automatic ? "トライアル終了・一時停止から暦で2か月以内に本登録・再開が完了しなかったため、自動退会となりました。" : "お申し込みいただいた退会手続きと、"}施設アカウント・利用者名簿・連絡帳・関連ファイル等の削除処理が完了しました。\n削除したデータは元に戻せません。\nバックアップや退会処理の履歴等は、プライバシーポリシーおよび保存設定に従い、一定期間残る場合があります。\n\nご利用中にお寄せいただいたご意見やご協力に、重ねて感謝申し上げます。\n今後またお役に立てる機会がございましたら、幸いに存じます。\n皆様のますますのご健勝と、貴施設のご発展を心よりお祈り申し上げます。\n\nご不明な点がございましたら、本メールへの返信にてお問い合わせください。\n\n株式会社えこすまいる`
         });
         thankYouEmailStatus = "sent";
         await cancellationRef.set({
@@ -1079,7 +1198,17 @@ exports.deleteFacilityAccount = onCall({
         }, { merge: true }).catch(logError => logger.error("Failed to record cancellation email outcome", { facilityId, error: logError }));
     }
     return { facilityName, ...counts, deletedStorageFiles: storageResults.length, thankYouEmailStatus };
-});
+}
+
+async function writeFacilityData(facilityRef, targetRef, fields) {
+    await getFirestore().runTransaction(async transaction => {
+        const current = await transaction.get(facilityRef);
+        if (!current.exists || current.data().retentionDeletionStartedAt) {
+            throw new HttpsError("failed-precondition", "施設アカウントは退会・削除処理中、または削除済みです。");
+        }
+        transaction.set(targetRef, fields, { merge: true });
+    });
+}
 
 function requireFacilityId(request) {
     const facilityId = request.auth?.uid;
@@ -1155,7 +1284,8 @@ exports.createLinePairingCode = onCall(async request => {
     }
 
     const code = crypto.randomBytes(6).toString("hex").toUpperCase();
-    await getFirestore().collection("linePairingCodes").doc(hashLineCode(code)).set({
+    await writeFacilityData(getFirestore().collection("facilities").doc(facilityId),
+        getFirestore().collection("linePairingCodes").doc(hashLineCode(code)), {
         facilityId,
         userName,
         createdAt: FieldValue.serverTimestamp(),
@@ -1179,7 +1309,8 @@ async function connectLineUser(code, lineUserId, expectedFacilityId = "") {
         const pairing = codeSnapshot.data();
         if (expectedFacilityId && pairing.facilityId !== expectedFacilityId) return { status: "invalid" };
         const facilitySnapshot = await transaction.get(db.collection("facilities").doc(pairing.facilityId));
-        if (!facilitySnapshot.exists || facilitySnapshot.data().lineServiceEnabled === false) {
+        if (!facilitySnapshot.exists || facilitySnapshot.data().retentionDeletionStartedAt ||
+            facilitySnapshot.data().lineServiceEnabled === false) {
             return { status: "disabled" };
         }
         if (!expectedFacilityId) {
@@ -1555,7 +1686,7 @@ exports.saveFacilityLineSettings = onCall({ secrets: [FACILITY_LINE_ENCRYPTION_K
     const currentSnapshot = await settingsRef.get();
     const previousBasicId = currentSnapshot.exists ? currentSnapshot.data().basicId : COMMON_LINE_BASIC_ID;
     const accountChanged = previousBasicId !== botInfo.basicId;
-    await settingsRef.set({
+    await writeFacilityData(getFirestore().collection("facilities").doc(facilityId), settingsRef, {
         encryptedCredentials: encryptFacilityLineCredentials(facilityId, { channelAccessToken, channelSecret }),
         basicId: botInfo.basicId,
         displayName: botInfo.displayName,
@@ -1692,7 +1823,8 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
     const selected = available.sort((first, second) => second.date.localeCompare(first.date)).slice(0, 5);
     const links = await Promise.all(selected.map(async record => {
         const token = crypto.randomBytes(32).toString("hex");
-        await db.collection("lineRecordLinks").doc(hashLineCode(token)).set({
+        await writeFacilityData(db.collection("facilities").doc(record.facilityId),
+            db.collection("lineRecordLinks").doc(hashLineCode(token)), {
             facilityId: record.facilityId,
             userName: record.userName,
             date: record.date,
@@ -2158,7 +2290,7 @@ async function notifyAdminOfSentInvoice({
             adminNotificationFailureMessage: String(error.message || error).slice(0, 500)
         };
     }
-    await invoiceRef.set(notification, { merge: true })
+    await writeFacilityData(getFirestore().collection("facilities").doc(facilityId), invoiceRef, notification)
         .catch(error => logger.error("Failed to record invoice administrator notification status", {
             facilityId, invoiceNumber, error
         }));
@@ -2181,6 +2313,7 @@ exports.requestFacilitySubscription = onCall({
     }
 
     const initialFacility = initialFacilitySnapshot.data();
+    assertFacilityRetentionAvailable(initialFacility);
     if (initialFacility.usagePaused === true) {
         throw new HttpsError("failed-precondition", "一時利用停止中は請求書を発行できません。管理者へ再開をご相談ください。");
     }
@@ -2233,6 +2366,7 @@ exports.requestFacilitySubscription = onCall({
         }
         const facility = facilitySnapshot.data();
         const currentTrialEnd = Date.parse(facility.trialEndsAt || "");
+        assertFacilityRetentionAvailable(facility);
         const currentTrialExpired = Number.isFinite(currentTrialEnd) && currentTrialEnd <= Date.now();
         if (facility.status === "locked" && !currentTrialExpired) {
             throw new HttpsError("failed-precondition", "この施設は利用停止中です。販売元へお問い合わせください。");
@@ -2336,8 +2470,9 @@ exports.requestFacilitySubscription = onCall({
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
         <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能な請求書PDF（<code>請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。印刷して保管される際などにご活用ください。</p>
         <p style="margin-top:28px">このたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。</p>
+        <p>${escapeHtml(FACILITY_RETENTION_NOTICE)}</p>
     </body></html>`;
-    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。`;
+    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。\n\n${FACILITY_RETENTION_NOTICE}`;
 
     let emailResult = null;
     const archivedHtml = html;
@@ -2377,8 +2512,8 @@ exports.requestFacilitySubscription = onCall({
             invoiceNumber, billingPeriodStart, billingPeriodEnd, dueDate, total, textItems
         });
         await Promise.all([
-            invoiceRef.set({ status: "sent", invoiceHtml: archivedHtml, messageId: emailResult.messageId, sentAt: FieldValue.serverTimestamp() }, { merge: true }),
-            facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true }),
+            writeFacilityData(facilityRef, invoiceRef, { status: "sent", invoiceHtml: archivedHtml, messageId: emailResult.messageId, sentAt: FieldValue.serverTimestamp() }),
+            writeFacilityData(facilityRef, facilityRef, { subscriptionApplicationStatus: "pending_payment" }),
             db.collection("invoiceEmailLogs").add({
                 test: false,
                 type: "initial",
@@ -2405,17 +2540,18 @@ exports.requestFacilitySubscription = onCall({
     } catch (error) {
         if (emailResult) {
             await Promise.all([
-                invoiceRef.set({ status: "sent", invoiceHtml: archivedHtml, messageId: emailResult.messageId, sentAt: FieldValue.serverTimestamp() }, { merge: true }),
-                facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true })
+                writeFacilityData(facilityRef, invoiceRef, { status: "sent", invoiceHtml: archivedHtml, messageId: emailResult.messageId, sentAt: FieldValue.serverTimestamp() }),
+                writeFacilityData(facilityRef, facilityRef, { subscriptionApplicationStatus: "pending_payment" })
             ]).catch(logError => logger.error("Failed to finalize sent initial invoice", logError));
             await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, true)
                 .catch(logError => logger.error("Failed to finalize LINE agency fee", { facilityId, error: logError }));
             logger.error("Initial invoice email was sent but finalization failed", { facilityId, recipient, error });
+            if (error.code === "failed-precondition") throw error;
             return { status: "pending_payment", invoiceNumber, recipient };
         }
         await Promise.all([
-            invoiceRef.set({ status: "failed", failedAt: FieldValue.serverTimestamp(), failureMessage: String(error.message || error).slice(0, 500) }, { merge: true }),
-            facilityRef.set({ subscriptionApplicationStatus: "invoice_failed" }, { merge: true })
+            writeFacilityData(facilityRef, invoiceRef, { status: "failed", failedAt: FieldValue.serverTimestamp(), failureMessage: String(error.message || error).slice(0, 500) }),
+            writeFacilityData(facilityRef, facilityRef, { subscriptionApplicationStatus: "invoice_failed" })
         ]).catch(logError => logger.error("Failed to record initial invoice failure", logError));
         await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, false)
             .catch(logError => logger.error("Failed to release LINE agency fee", { facilityId, error: logError }));
@@ -2442,6 +2578,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         throw new HttpsError("not-found", "施設情報が見つかりません。");
     }
     const facility = facilitySnapshot.data();
+    assertFacilityRetentionAvailable(facility);
     if (facility.usagePaused === true) {
         throw new HttpsError("failed-precondition", "一時利用停止中は請求書を発行できません。先に利用再開を承認してください。");
     }
@@ -2513,6 +2650,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             throw new HttpsError("not-found", "施設情報が見つかりません。");
         }
         const currentFacility = currentFacilitySnapshot.data();
+        assertFacilityRetentionAvailable(currentFacility);
         if (currentFacility.usagePaused === true ||
             currentFacility.billingCycleId !== facility.billingCycleId) {
             throw new HttpsError("failed-precondition", "利用状態または請求期間が変更されました。施設一覧を更新してください。");
@@ -2654,12 +2792,12 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             invoiceNumber, billingPeriodStart, billingPeriodEnd, dueDate, total, textItems
         });
         await Promise.all([
-            invoiceRef.set({
+            writeFacilityData(facilityRef, invoiceRef, {
                 status: "sent",
                 invoiceHtml: html,
                 messageId: emailResult.messageId,
                 sentAt: FieldValue.serverTimestamp()
-            }, { merge: true }),
+            }),
             db.collection("invoiceEmailLogs").add({
                 test: false,
                 type: invoiceType,
@@ -2686,37 +2824,37 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         await finalizeOneTimeInvoiceAdjustment(db, facilityRef, oneTimeAdjustment);
         await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, true);
         if (isInitialInvoice) {
-            await facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true });
+            await writeFacilityData(facilityRef, facilityRef, { subscriptionApplicationStatus: "pending_payment" });
         }
         return { invoiceNumber, recipient, type: invoiceType };
     } catch (error) {
         if (emailResult) {
-            await invoiceRef.set({
+            await writeFacilityData(facilityRef, invoiceRef, {
                 status: "sent",
                 invoiceHtml: html,
                 messageId: emailResult.messageId,
                 sentAt: FieldValue.serverTimestamp()
-            }, { merge: true }).catch(logError => logger.error("Failed to finalize manually sent invoice", { facilityId, error: logError }));
+            }).catch(logError => logger.error("Failed to finalize manually sent invoice", { facilityId, error: logError }));
             await finalizeOneTimeInvoiceAdjustment(db, facilityRef, oneTimeAdjustment)
                 .catch(logError => logger.error("Failed to clear sent one-time invoice adjustment", { facilityId, error: logError }));
             await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, true)
                 .catch(logError => logger.error("Failed to finalize LINE agency fee", { facilityId, error: logError }));
             if (isInitialInvoice) {
-                await facilityRef.set({ subscriptionApplicationStatus: "pending_payment" }, { merge: true })
+                await writeFacilityData(facilityRef, facilityRef, { subscriptionApplicationStatus: "pending_payment" })
                     .catch(logError => logger.error("Failed to update initial invoice status", { facilityId, error: logError }));
             }
             logger.error("Manual invoice email sent but finalization failed", { facilityId, recipient, error });
             throw new HttpsError("internal", "請求書メールは送信済みですが、履歴の確定に失敗しました。重複送信を避けるため、請求書履歴をご確認ください。");
         }
-        await invoiceRef.set({
+        await writeFacilityData(facilityRef, invoiceRef, {
             status: "failed",
             failedAt: FieldValue.serverTimestamp(),
             failureMessage: String(error.message || error).slice(0, 500)
-        }, { merge: true }).catch(logError => logger.error("Failed to record manual invoice failure", { facilityId, error: logError }));
+        }).catch(logError => logger.error("Failed to record manual invoice failure", { facilityId, error: logError }));
         await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, false)
             .catch(logError => logger.error("Failed to release LINE agency fee", { facilityId, error: logError }));
         if (isInitialInvoice) {
-            await facilityRef.set({ subscriptionApplicationStatus: "invoice_failed" }, { merge: true })
+            await writeFacilityData(facilityRef, facilityRef, { subscriptionApplicationStatus: "invoice_failed" })
                 .catch(logError => logger.error("Failed to update failed initial invoice status", { facilityId, error: logError }));
         }
         logger.error("Failed to issue manual invoice", { facilityId, recipient, error });
@@ -3199,13 +3337,14 @@ exports.sendTrialExpiryReminders = onSchedule({
             : applicationFailed
                 ? "本登録のお申し込み後、請求書を送信できていません。ログイン画面から連絡帳を開き、「初回請求書を再送する」を押してください。"
                 : "継続してご利用の場合は、下記ログイン画面から連絡帳を開き、「本登録を申し込む」を押してください。";
-        const text = `${facilityName} 御中\n\nえこすまいる連絡帳の無料お試し期間終了日が、あと${daysRemaining}日（${trialEndDate}）です。\n\n${nextStep}\n\nトライアル期間終了までに本登録への切り替えが完了しない場合、システムは自動的に利用停止となります。トライアル中の記録は本登録後も引き継がれます。\n\nログイン画面：https://renrakucho-green.vercel.app/login.html\n\nご不明な点がございましたら、このメールへの返信または販売元までお問い合わせください。\n\n株式会社えこすまいる`;
+        const text = `${facilityName} 御中\n\nえこすまいる連絡帳の無料お試し期間終了日が、あと${daysRemaining}日（${trialEndDate}）です。\n\n${nextStep}\n\nトライアル期間終了までに本登録への切り替えが完了しない場合、システムは自動的に利用停止となります。終了から暦で2か月以内に本登録が完了した場合、削除していない名簿・文字の記録を引き継げます。写真・動画の従来の保存期限は延長しません。\n\n${FACILITY_RETENTION_NOTICE}\n\nログイン画面：https://renrakucho-green.vercel.app/login.html\n\nご不明な点がございましたら、このメールへの返信または販売元までお問い合わせください。\n\n株式会社えこすまいる`;
         const html = `<!doctype html><html lang="ja"><body style="font-family:sans-serif;color:#333;line-height:1.8;max-width:680px;margin:auto;padding:20px">
             <h2 style="color:#e8590c;border-bottom:2px solid #e8590c;padding-bottom:8px">無料お試し期間終了のお知らせ</h2>
             <p><strong>${escapeHtml(facilityName)} 御中</strong></p>
             <p>えこすまいる連絡帳の無料お試し期間終了日が、<strong>あと${daysRemaining}日（${escapeHtml(trialEndDate)}）</strong>です。</p>
             <div style="background:#fff9db;border:1px solid #fab005;border-radius:6px;padding:16px;margin:20px 0">${escapeHtml(nextStep)}</div>
-            <p>トライアル期間終了までに本登録への切り替えが完了しない場合、システムは自動的に利用停止となります。トライアル中の記録は本登録後も引き継がれます。</p>
+            <p>トライアル期間終了までに本登録への切り替えが完了しない場合、システムは自動的に利用停止となります。終了から暦で2か月以内に本登録が完了した場合、削除していない名簿・文字の記録を引き継げます。写真・動画の従来の保存期限は延長しません。</p>
+            <p>${escapeHtml(FACILITY_RETENTION_NOTICE)}</p>
             <p><a href="https://renrakucho-green.vercel.app/login.html" style="display:inline-block;background:#2b8a3e;color:white;text-decoration:none;padding:10px 18px;border-radius:5px">連絡帳にログインする</a></p>
             <p>ご不明な点がございましたら、このメールへの返信または販売元までお問い合わせください。</p>
             <p>株式会社えこすまいる</p>
@@ -3219,19 +3358,19 @@ exports.sendTrialExpiryReminders = onSchedule({
                 text,
                 html
             });
-            await facilityRef.set({
+            await writeFacilityData(facilityRef, facilityRef, {
                 trialReminderStatus: "sent",
                 trialReminderSentAt: FieldValue.serverTimestamp(),
                 trialReminderFailureMessage: FieldValue.delete()
-            }, { merge: true });
+            });
             sentCount++;
         } catch (error) {
             failedCount++;
-            await facilityRef.set({
+            await writeFacilityData(facilityRef, facilityRef, {
                 trialReminderStatus: "failed",
                 trialReminderFailedAt: FieldValue.serverTimestamp(),
                 trialReminderFailureMessage: String(error.message || error).slice(0, 500)
-            }, { merge: true });
+            });
             logger.error("Failed to send trial expiry reminder", { facilityId, recipient, error });
         }
     }
@@ -3242,6 +3381,54 @@ exports.sendTrialExpiryReminders = onSchedule({
         skipped: skippedCount,
         failed: failedCount
     });
+});
+
+exports.deleteExpiredFacilityAccounts = onSchedule({
+    schedule: "every 60 minutes",
+    timeZone: "Asia/Tokyo",
+    maxInstances: 1,
+    concurrency: 1,
+    timeoutSeconds: 540,
+    secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
+}, async () => {
+    const db = getFirestore();
+    const facilities = await db.collection("facilities").get();
+    const failures = [];
+    let deleted = 0;
+    for (const snapshot of facilities.docs) {
+        const facilityId = snapshot.id;
+        try {
+            if (!isFacilityRetentionExpired(snapshot.data(), new Date())) continue;
+            const claimed = await db.runTransaction(async transaction => {
+                const current = await transaction.get(snapshot.ref);
+                if (!current.exists || !isFacilityRetentionExpired(current.data(), new Date())) return false;
+                transaction.set(snapshot.ref, {
+                    status: "locked",
+                    retentionDeletionStartedAt: current.data().retentionDeletionStartedAt || new Date().toISOString()
+                }, { merge: true });
+                return true;
+            });
+            if (!claimed) continue;
+            const plan = await buildFacilityDeletionPlan(facilityId);
+            if (plan.ambiguousLegacyNames.length) {
+                throw new Error(`他施設と共有の可能性がある旧ファイルがあるため、自動削除を保留しました（該当利用者${plan.ambiguousLegacyNames.length}名）。管理者の確認が必要です。`);
+            }
+            await executeFacilityCancellation(facilityId, plan, true);
+            deleted++;
+        } catch (error) {
+            failures.push(facilityId);
+            logger.error("Automatic facility cancellation failed", { facilityId, error });
+            await db.collection("facilityCancellations").doc(facilityId).set({
+                facilityId, facilityName: snapshot.data().facilityName || facilityId,
+                reason: "retention_expired", status: "failed",
+                requestedAt: snapshot.data().retentionDeletionStartedAt || new Date().toISOString(),
+                errorMessage: String(error.message || error).slice(0, 500),
+                updatedAt: new Date().toISOString()
+            }, { merge: true }).catch(logError => logger.error("Failed to record automatic cancellation failure", { facilityId, error: logError }));
+        }
+    }
+    logger.info("Expired facility cancellation completed", { scanned: facilities.size, deleted, failed: failures.length });
+    if (failures.length) throw new Error(`Automatic facility cancellation requires attention for ${failures.length} facilities.`);
 });
 
 exports.lockExpiredTrials = onSchedule("every 60 minutes", async () => {

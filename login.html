@@ -39,6 +39,8 @@
             <input type="text" id="loginFacilityName" placeholder="施設名（例：さくらデイサービス）">
             <input type="password" id="loginPassword" placeholder="パスワード">
             <button onclick="handleLogin()">ログインする</button>
+            <button type="button" onclick="requestResumption()" style="background-color: #2b8a3e; font-size: 15px;">一時停止中の施設：利用再開を申し込む</button>
+            <p style="text-align: left; font-size: 13px; line-height: 1.5;">再開申込には上の施設名・パスワードを入力してください。トライアル終了・一時停止から暦で2か月以内に本登録・再開が完了しない場合は退会扱いとなり、施設アカウント・名簿・記録・写真・動画を削除します。申込済み・入金待ちでも期限は延長されません。削除したデータは元に戻せません。</p>
             <p id="loginError" class="error">エラーメッセージ</p>
             
             <a onclick="toggleForm('register')" class="link">🌱 はじめて利用する方（新規登録）はこちら</a>
@@ -102,7 +104,7 @@
         const auth = getAuth(app);
         const functions = getFunctions(app);
         const db = getFirestore(app);
-        const TERMS_VERSION = "2026-10-07-v1";
+        const TERMS_VERSION = "2026-10-24-v1";
         const FACILITY_PAUSE_MESSAGE = "現在、この施設のシステム利用を停止しています。詳しくは販売元へお問い合わせください。";
         function isTrialExpired(facilityData) {
             if (facilityData.subscriptionStatus !== "trial") return false;
@@ -230,6 +232,7 @@
             const pass = document.getElementById("loginPassword").value.trim();
             const errorMsg = document.getElementById("loginError");
             errorMsg.style.display = "none";
+            errorMsg.style.color = "#c92a2a";
 
             if (!name || !pass) {
                 errorMsg.textContent = "施設名とパスワードを入力してください。";
@@ -242,10 +245,31 @@
                 const result = await createSession({ facilityName: name, password: pass });
                 await loginSuccess(result.data.facilityId, result.data.facilityName, result.data.customToken);
             } catch (error) {
-                errorMsg.textContent = error.code === "functions/unauthenticated" || error.code === "functions/permission-denied"
+                errorMsg.textContent = ["functions/unauthenticated", "functions/permission-denied", "functions/failed-precondition"].includes(error.code)
                     ? error.message
                     : "通信エラーが発生しました。インターネット環境を確認してください。";
                 errorMsg.style.display = "block";
+            }
+        };
+
+        window.requestResumption = async function() {
+            const errorMsg = document.getElementById("loginError");
+            const facilityName = document.getElementById("loginFacilityName").value.trim();
+            const password = document.getElementById("loginPassword").value;
+            errorMsg.style.display = "block";
+            errorMsg.style.color = "#c92a2a";
+            if (!facilityName || !password) {
+                errorMsg.textContent = "施設名とパスワードを入力してください。";
+                return;
+            }
+            if (!confirm("利用再開を申し込みますか？管理者による承認が必要です。申込だけでは暦で2か月の保存期限は延長されません。再開時は通常月額での本利用になります。")) return;
+            try {
+                const result = await httpsCallable(functions, "requestFacilityResumption")({ facilityName, password });
+                const deadline = new Date(result.data.deadline).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+                errorMsg.style.color = "#2b8a3e";
+                errorMsg.textContent = `利用再開のお申し込みを受け付けました。管理者の承認をお待ちください。再開完了期限（日本時間）：${deadline}。申込済みでも期限は延長されません。`;
+            } catch (error) {
+                errorMsg.textContent = "利用再開の申込に失敗しました：" + error.message;
             }
         };
 
@@ -286,7 +310,7 @@
                 alert(`施設の登録が完了しました。無料お試し期間は7日間です。\n終了日時：${new Date(result.data.trialEndsAt).toLocaleString("ja-JP")}`);
                 await loginSuccess(result.data.facilityId, result.data.facilityName, result.data.customToken);
             } catch (error) {
-                errorMsg.textContent = error.code === "functions/permission-denied" || error.code === "functions/already-exists" || error.code === "functions/invalid-argument"
+                errorMsg.textContent = error.code === "functions/permission-denied" || error.code === "functions/already-exists" || error.code === "functions/invalid-argument" || error.code === "functions/failed-precondition"
                     ? error.message
                     : "通信エラーが発生しました。もう一度お試しください。";
                 errorMsg.style.display = "block";
