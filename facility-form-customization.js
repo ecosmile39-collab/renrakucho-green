@@ -47,7 +47,7 @@ export function normalizeFacilityFormCustomization(value) {
             const label = typeof field.label === "string" ? field.label.trim().slice(0, 60) : "";
             const type = CUSTOM_FORM_FIELD_TYPES.includes(field.type) ? field.type : "text";
             if (!/^[a-zA-Z0-9_-]{1,64}$/.test(id) || !label) return [];
-            return [{ id, label, type, familyVisible: field.familyVisible === true }];
+            return [{ id, label: label === "持病歴" ? "既往歴" : label, type, familyVisible: field.familyVisible === true }];
         })
         : [];
     return { hiddenSections, customFields };
