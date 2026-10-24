@@ -420,6 +420,33 @@
             .media-print-box img.photo { max-height: 55mm !important; max-width: 55mm !important; width: auto !important; height: auto !important; object-fit: contain !important; }
             .media-print-box img.qr { width: 80px !important; height: 80px !important; }
         }
+        .group-home-page { font-size: 11px; line-height: 1.25; }
+        .group-home-page table.compact-table { table-layout: fixed; font-size: 11px; margin-bottom: 5px; }
+        .group-home-page table.compact-table th { width: 22%; }
+        .group-home-page table.compact-table td { width: 28%; }
+        .group-home-page table.compact-table th,
+        .group-home-page table.compact-table td { padding: 3px 4px; overflow-wrap: anywhere; }
+        .group-home-page .section-title { font-size: 12px; margin: 6px 0 3px; padding-bottom: 2px; }
+        .group-home-page .text-box { font-size: 11px; line-height: 1.3; min-height: 20px; padding: 4px; margin-bottom: 4px; }
+        .group-home-page .family-box { min-height: 28px; }
+        .group-home-page .media-print-area { gap: 8px; margin-top: 4px; }
+        .group-home-page .media-print-box img.photo { max-height: 85px; max-width: 125px; }
+        .group-home-page .media-print-box img.qr { width: 72px; height: 72px; }
+        .group-home-page .media-print-box .media-label { font-size: 10px; margin-bottom: 2px; }
+        .group-home-page .media-print-box .line-friend-note { font-size: 9px; max-width: 120px; line-height: 1.2; }
+        .group-home-page .birthday-banner { font-size: 11px; padding: 3px; margin-bottom: 4px; }
+        @media print {
+            @page group-home { size: A4 portrait; margin: 0; }
+            .group-home-page { page: group-home; }
+            .group-home-page table.compact-table { font-size: 10px !important; margin-bottom: 3px !important; }
+            .group-home-page table.compact-table th,
+            .group-home-page table.compact-table td { padding: 2px 3px !important; }
+            .group-home-page .section-title { font-size: 11px !important; margin: 4px 0 2px !important; }
+            .group-home-page .text-box { font-size: 10px !important; padding: 3px !important; min-height: 16px !important; margin-bottom: 3px !important; }
+            .group-home-page .family-box { min-height: 24px !important; }
+            .group-home-page .media-print-box img.photo { max-height: 80px !important; max-width: 120px !important; }
+            .group-home-page .media-print-box img.qr { width: 68px !important; height: 68px !important; }
+        }
     </style>
 </head>
 <body>
@@ -1739,7 +1766,7 @@
                     ${adultDataHtml}
                     ${childServiceHtml}
                     ${lifeCareHtml}
-                    ${isGroupHome ? renderGroupHomeRecord(data) : ""}
+                    ${isGroupHome ? renderGroupHomeRecord(data, true) : ""}
                     ${showFacilityMessageSection ? `<div class="section-title">■ ${facilityMessageTitle}${isGroupHome ? "" : ` <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span>`}</div>${finalMessageHtml}` : ""}
                     
                     ${familyMessageHtml}
@@ -1748,6 +1775,7 @@
                     ${familyMessageBottomHtml}
                 `;
 
+                pageDiv.classList.toggle("group-home-page", isGroupHome);
                 container.appendChild(pageDiv);
                 drawChart(chartCanvasId, labels, temps, bpHighs, bpLows);
             }

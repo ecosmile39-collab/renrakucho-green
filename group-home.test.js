@@ -125,6 +125,16 @@ test("group home printing/history retains every field, zero, line breaks and esc
     assert.equal(hidden, "");
 });
 
+test("compact print groups fields in pairs without dropping any recorded values", () => {
+    const html = renderGroupHomeRecord(sample, true);
+    for (const field of GROUP_HOME_FIELDS) {
+        assert.ok(html.includes(field.label), field.id);
+        assert.ok(html.includes(sample[field.id]), field.id);
+    }
+    assert.equal((html.match(/<tr>/g) || []).length, 17);
+    assert.equal((renderGroupHomeRecord(sample).match(/<tr>/g) || []).length, 33);
+});
+
 test("invalid numeric/date/time entries stop group home saving and focus the offending field", () => {
     const { sandbox, elements } = createContext();
     let focused = false;

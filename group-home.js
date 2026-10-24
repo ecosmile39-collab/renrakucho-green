@@ -106,7 +106,7 @@ export function validateGroupHomeFields(document) {
     return true;
 }
 
-export function renderGroupHomeRecord(data) {
+export function renderGroupHomeRecord(data, compact = false) {
     const escape = value => String(value).replace(/[&<>"']/g, char => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[char]));
@@ -114,10 +114,13 @@ export function renderGroupHomeRecord(data) {
     const journal = hidden.has("careJournalArea") ? "" : `
         <div class="section-title">担当スタッフ・介護日誌</div>
         <div class="text-box" style="white-space:pre-wrap;">${escape(data.careStaff || "未入力")}\n${escape(data.careJournal || "未入力")}</div>`;
+    const renderCell = field => `<th>${escape(field.label)}</th><td style="text-align:left;white-space:pre-wrap;">${escape(data[field.id] ?? "") || "未入力"}</td>`;
     return journal + (hidden.has("groupHomeSection") ? "" : GROUP_HOME_SECTIONS.map(section => `
         <div class="section-title">${escape(section.title)}</div>
-        <table class="compact-table history-table">${section.fields.map(field => `
-            <tr><th>${escape(field.label)}</th><td style="text-align:left;white-space:pre-wrap;">${escape(data[field.id] ?? "") || "未入力"}</td></tr>
-        `).join("")}</table>
+        <table class="compact-table history-table">${section.fields.flatMap((field, index) => {
+            if (compact && index % 2) return [];
+            const next = compact ? section.fields[index + 1] : null;
+            return `<tr>${renderCell(field)}${next ? renderCell(next) : compact ? '<td colspan="2"></td>' : ""}</tr>`;
+        }).join("")}</table>
     `).join(""));
 }
