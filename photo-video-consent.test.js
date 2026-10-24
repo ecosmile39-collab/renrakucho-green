@@ -29,3 +29,9 @@ test("document provides printing without including the action controls in print 
     assert.match(page, /@media print\s*\{[\s\S]*?\.actions\s*\{\s*display: none;/);
     assert.match(page, /この画面では同意情報の登録・保存は行いません/);
 });
+
+test("A4 sheet retains internal print margins independently of the browser page margin", () => {
+    assert.match(page, /@page\s*\{\s*size: A4 portrait;\s*margin: 0;/);
+    assert.match(page, /@media print\s*\{[\s\S]*?main\s*\{[^}]*width: 210mm;[^}]*padding: 18mm;/);
+    assert.match(page, /main\s*\{[^}]*min-height: 297mm;/);
+});

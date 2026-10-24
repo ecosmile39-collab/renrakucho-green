@@ -8,9 +8,9 @@
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; padding: 24px 14px; color: #222; background: #f2f7f3; font-family: "Meiryo", "Yu Gothic", sans-serif; }
-        main { max-width: 800px; margin: 0 auto; padding: 32px; background: #fff; }
-        h1 { margin: 0 0 28px; font-size: 22px; text-align: center; }
-        .consent-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.9; }
+        main { width: 210mm; max-width: 100%; min-height: 297mm; margin: 0 auto; padding: 18mm; background: #fff; box-shadow: 0 2px 10px #0002; }
+        h1 { margin: 0 0 20pt; font-size: 16pt; text-align: center; }
+        .consent-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11pt; line-height: 1.7; }
         .actions { max-width: 800px; margin: 0 auto 16px; text-align: center; }
         button { padding: 12px 24px; border: 0; border-radius: 5px; background: #2b8a3e; color: #fff; font-size: 16px; cursor: pointer; }
         .actions p { font-size: 14px; }
@@ -18,13 +18,13 @@
             main { padding: 24px 16px; }
             h1 { font-size: 20px; }
         }
-        @page { size: A4 portrait; margin: 18mm; }
+        @page { size: A4 portrait; margin: 0; }
         @media print {
             body { padding: 0; background: #fff; }
-            main { max-width: none; padding: 0; }
+            main { width: 210mm; max-width: none; min-height: 0; margin: 0; padding: 18mm; box-shadow: none; }
             .actions { display: none; }
-            h1 { font-size: 17pt; margin-bottom: 20pt; }
-            .consent-text { font-size: 10.5pt; line-height: 1.7; }
+            h1 { font-size: 16pt; margin-bottom: 20pt; }
+            .consent-text { font-size: 11pt; line-height: 1.7; }
         }
     </style>
 </head>
