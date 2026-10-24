@@ -5,7 +5,8 @@ export const SERVICE_TYPES = [
     { value: "ユニット入所", label: "🏢 ユニット入所" },
     { value: "放課後等デイサービス", label: "🎒 放課後等デイサービス" },
     { value: "児童発達支援", label: "🧸 児童発達支援" },
-    { value: "生活介護", label: "♿ 生活介護" }
+    { value: "生活介護", label: "♿ 生活介護" },
+    { value: "グループホーム", label: "🏡 グループホーム" }
 ];
 
 export const ALL_SERVICE_TYPE_VALUES = SERVICE_TYPES.map(service => service.value);

@@ -550,6 +550,7 @@
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { isShortStayService, normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
+        import { renderGroupHomeRecord } from "./group-home.js";
 
         function isValidIsoDate(value) {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -1663,19 +1664,20 @@
                 let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
                 let isChildService = ["放課後等デイサービス", "児童発達支援"].includes(data.serviceType);
                 let isLifeCare = data.serviceType === "生活介護";
+                let isGroupHome = data.serviceType === "グループホーム";
                 let childArrivalLabel = data.serviceType === "児童発達支援" ? "事業所への到着" : "学校からの到着";
                 let childDepartureLabel = data.serviceType === "児童発達支援" ? "事業所からの退所" : "事業所からの出発";
-                let facilityMessageTitle = isChildService ? "施設からのお知らせ・次回利用など" : isLifeCare ? "施設からのお知らせ・生活介護の連絡" : "お客様への御連絡事項";
-                let familyMessageTitle = isChildService ? "保護者記入欄（家庭からの連絡・体調）" : isLifeCare ? "ご家族からの連絡事項" : "お客様からの御連絡事項";
+                let facilityMessageTitle = isChildService ? "施設からのお知らせ・次回利用など" : isGroupHome ? "ホームからのお知らせ・ご家族への連絡" : isLifeCare ? "施設からのお知らせ・生活介護の連絡" : "お客様への御連絡事項";
+                let familyMessageTitle = isChildService ? "保護者記入欄（家庭からの連絡・体調）" : isLifeCare || isGroupHome ? "ご家族からの連絡事項" : "お客様からの御連絡事項";
                 let familyMessageHtml = isChildService || isLifeCare || !showFamilyMessageSection ? "" : `
-                    <div class="section-title">■ ${familyMessageTitle} <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
+                    <div class="section-title">■ ${familyMessageTitle} <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">${isGroupHome ? "（面会・外出の予定やご相談など、ご自由にお書きください）" : "（ご家庭でのご様子など、ご自由にお書きください）"}</span></div>
                     <div class="text-box family-box">${familyMessageText}</div>
                 `;
                 let familyMessageBottomHtml = isChildService || isLifeCare ? (showFamilyMessageSection ? `
                     <div class="section-title">■ 家族からの連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
                     <div class="text-box family-box">${familyMessageText}</div>
                 ` : "") : "";
-                let adultDataHtml = isChildService || isLifeCare || !showDayServiceSection ? "" : `
+                let adultDataHtml = isChildService || isLifeCare || isGroupHome || !showDayServiceSection ? "" : `
                     <table class="compact-table">
                         <tr><th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td><th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td><th width="16%">血圧</th><td width="18%">${bpStrDay}</td></tr>
                         <tr><th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td><th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td></tr>
@@ -1722,7 +1724,7 @@
                     <div class="punch-mark">▷</div>
                     <div class="print-header">
                         <div class="facility-name">${facilityName}</div>
-                        <h1>${isChildService || isLifeCare ? `${data.serviceType} 利用記録` : "本日の連絡帳"}</h1>
+                        <h1>${isGroupHome ? "グループホーム連絡帳" : isChildService || isLifeCare ? `${data.serviceType} 利用記録` : "本日の連絡帳"}</h1>
                     </div>
 
                     ${birthdayBannerHtml}
@@ -1737,7 +1739,8 @@
                     ${adultDataHtml}
                     ${childServiceHtml}
                     ${lifeCareHtml}
-                    ${showFacilityMessageSection ? `<div class="section-title">■ ${facilityMessageTitle} <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span></div>${finalMessageHtml}` : ""}
+                    ${isGroupHome ? renderGroupHomeRecord(data) : ""}
+                    ${showFacilityMessageSection ? `<div class="section-title">■ ${facilityMessageTitle}${isGroupHome ? "" : ` <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span>`}</div>${finalMessageHtml}` : ""}
                     
                     ${familyMessageHtml}
 

@@ -23,6 +23,12 @@ test("residential services use the short-stay record format", () => {
     assert.equal(isShortStayService("入所"), true);
     assert.equal(isShortStayService("ユニット入所"), true);
     assert.equal(isShortStayService("デイサービス"), false);
+    assert.equal(isShortStayService("グループホーム"), false);
+});
+
+test("group home is accepted for facility configuration and LINE record publication", () => {
+    assert.deepEqual(validateFacilityServiceTypes(["グループホーム"]), ["グループホーム"]);
+    assert.deepEqual(getFacilityBillingServiceTypes({}), ["デイサービス"]);
 });
 
 test("facility service selection rejects empty, unsupported, and duplicate values", () => {

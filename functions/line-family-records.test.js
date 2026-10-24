@@ -653,6 +653,37 @@ test("LINE family record omits standard fields and media from hidden sections", 
     assert.equal(sharedRecord.attachments.videos.length, 0);
 });
 
+for (const hidden of [false, true]) {
+    test(`LINE group home records ${hidden ? "hide disabled sections" : "include every daily living field without staff handover"}`, async () => {
+        const { GROUP_HOME_FIELDS } = await import("../group-home.js");
+        const token = "f".repeat(64);
+        const hash = crypto.createHash("sha256").update(token).digest("hex");
+        const record = {
+            facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "グループホーム",
+            familyPublished: true, imageCount: 0, videoCount: 0,
+            careStaff: "Staff", careJournal: "Journal", handoverNote: "private-staff-note",
+            hiddenFormSections: hidden ? ["groupHomeSection", "careJournalArea"] : ["dayServiceSection"],
+            ...Object.fromEntries(GROUP_HOME_FIELDS.map(field => [field.id, `value-${field.id}`]))
+        };
+        const context = loadHandlers({
+            "facilities/facility-a": { status: "active", commonLineEnabled: true },
+            "facilities/facility-a/users/User": { lineUserIds: ["family-a"] },
+            "facilities/facility-a/daily_records/2026-10-06_グループホーム_User": record,
+            [`lineRecordLinks/${hash}`]: {
+                facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "グループホーム",
+                expiresAt: new Date(Date.now() + 60000)
+            }
+        });
+        const shared = await context.handlers.getLineSharedRecord({ data: { token } });
+        for (const field of GROUP_HOME_FIELDS) {
+            assert.equal(shared.fields.some(item => item.label === field.label && item.value === record[field.id]), !hidden, field.id);
+        }
+        assert.equal(shared.fields.some(item => item.value === "Journal"), !hidden);
+        assert.equal(shared.fields.some(item => item.value === "Staff"), !hidden);
+        assert.equal(shared.fields.some(item => item.value === "private-staff-note"), false);
+    });
+}
+
 test("removing a facility-specific copy of @805xgtzu preserves existing family links", async () => {
     const context = loadHandlers({
         "facilities/facility-a": { status: "active", commonLineEnabled: true },

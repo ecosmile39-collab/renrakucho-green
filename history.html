@@ -82,7 +82,7 @@
             <h3>過去データ一覧（1ヶ月のまとめ）の使い方</h3>
             <ol>
                 <li><strong>画面上部のリンク</strong><p>「入力画面へ戻る」は記録入力画面へ、「印刷画面へ」は通常の印刷・確認画面へ戻るリンクです。</p></li>
-                <li><strong>サービス種別を選ぶ</strong><p>「デイサービス」「ショートステイ」「入所」「ユニット入所」「放課後等デイサービス」「児童発達支援」「生活介護」から、確認したい記録の種類を選びます。入所・ユニット入所はショートステイと同じ項目で記録を確認します。複数サービスの記録を一度に混ぜて表示する画面ではありません。</p></li>
+                <li><strong>サービス種別を選ぶ</strong><p>「デイサービス」「ショートステイ」「入所」「ユニット入所」「放課後等デイサービス」「児童発達支援」「生活介護」「グループホーム」から、確認したい記録の種類を選びます。入所・ユニット入所はショートステイと同じ項目で記録を確認します。グループホームは朝夕のバイタルや日々の暮らしの記録を表示します。複数サービスの記録を一度に混ぜて表示する画面ではありません。</p></li>
                 <li><strong>確認したい月を選ぶ</strong><p>月の欄で対象年月を選びます。通常は今月が初期表示されています。</p></li>
                 <li><strong>「この月のデータを探す」を押す</strong><p>選んだサービス・月の記録を検索します。正式に保存された記録が対象です。入力画面で一時保存しただけのデータは表示されません。</p></li>
                 <li><strong>利用者を選ぶ</strong><p>検索結果があれば、記録がある利用者の一覧が表示されます。「すべて選択／解除」でまとめて切り替えるか、利用者ごとにチェックします。</p></li>
@@ -175,6 +175,7 @@
         import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { createCsv, rosterTable, selectUsers, selectRecords, recordsTable } from "./csv-export.js";
         import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
+        import { renderGroupHomeRecord } from "./group-home.js";
 
         function isValidIsoDate(value) {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -562,6 +563,11 @@
                         </tr>`;
                     });
                     html += `</table>`;
+                } else if (sType === "グループホーム") {
+                    userRecords.forEach(d => {
+                        html += `<h4>${escapeHtml(d.date)} グループホーム連絡帳</h4>${renderGroupHomeRecord(d)}
+                            <div style="white-space:pre-wrap;">ホームからの連絡：${escapeHtml(d.message || "--")}\nご家族からの連絡：${escapeHtml(d.familyMessage || "--")}</div>`;
+                    });
                 } else if (sType === "生活介護") {
                     html += `<table class="history-table">
                         <tr><th>日付</th><th>利用・時間</th><th>送迎</th><th>健康</th><th>生活支援</th><th>日中活動・個別支援</th><th>職員・本人の様子</th></tr>`;

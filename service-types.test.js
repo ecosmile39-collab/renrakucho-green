@@ -13,6 +13,14 @@ test("unconfigured facilities retain all service types", () => {
     assert.deepEqual(normalizeServiceTypes(undefined), ALL_SERVICE_TYPE_VALUES);
 });
 
+test("group home has its own daily record service without changing billing defaults", () => {
+    assert.ok(ALL_SERVICE_TYPE_VALUES.includes("グループホーム"));
+    assert.deepEqual(normalizeServiceTypes(["グループホーム"]), ["グループホーム"]);
+    assert.equal(isShortStayService("グループホーム"), false);
+    assert.deepEqual(normalizeBillingServiceTypes(undefined), ["デイサービス"]);
+    assert.deepEqual(normalizeBillingServiceTypes(undefined, ["グループホーム"]), ["グループホーム"]);
+});
+
 test("facility service settings keep only supported values without duplicates", () => {
     assert.deepEqual(
         normalizeServiceTypes(["生活介護", "無効なサービス", "デイサービス", "生活介護"]),

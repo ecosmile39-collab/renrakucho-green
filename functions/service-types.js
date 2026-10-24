@@ -5,7 +5,8 @@ const SUPPORTED_SERVICE_TYPES = [
     "ユニット入所",
     "放課後等デイサービス",
     "児童発達支援",
-    "生活介護"
+    "生活介護",
+    "グループホーム"
 ];
 
 function isShortStayService(serviceType) {

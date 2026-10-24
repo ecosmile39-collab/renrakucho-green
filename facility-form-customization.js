@@ -4,6 +4,7 @@ export const FORM_CUSTOMIZATION_SECTIONS = [
     { id: "afterSchoolSection", label: "放課後等デイサービス・児童発達支援の記録" },
     { id: "lifeCareSection", label: "生活介護の記録" },
     { id: "shortStaySection", label: "ショートステイ・入所・ユニット入所の記録" },
+    { id: "groupHomeSection", label: "グループホームの記録" },
     { id: "facilityMessageSection", label: "施設からの連絡・お知らせ" },
     { id: "familyMessageSection", label: "ご家族からの連絡" },
     { id: "facilityPRSection", label: "施設からのお知らせ・PR" },

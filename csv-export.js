@@ -1,6 +1,8 @@
 import Papa from "papaparse";
+import { ALL_SERVICE_TYPE_VALUES } from "./service-types.js";
+import { GROUP_HOME_FIELDS } from "./group-home.js";
 
-const serviceTypes = ["デイサービス", "ショートステイ", "入所", "ユニット入所", "放課後等デイサービス", "児童発達支援", "生活介護"];
+const serviceTypes = ALL_SERVICE_TYPE_VALUES;
 
 export function selectUsers(users, filters) {
     if (!serviceTypes.includes(filters.serviceType)) throw new Error("出力するサービスを選択してください。");
@@ -11,6 +13,7 @@ export function selectUsers(users, filters) {
 }
 
 const recordLabels = {
+    ...Object.fromEntries(GROUP_HOME_FIELDS.map(field => [field.id, `グループホーム・${field.label}`])),
     careStaff: "担当職員", careJournal: "介護日誌", temp1: "来所時体温", temp2: "途中体温",
     pulse: "脈拍", spo2: "酸素飽和度", bpHigh: "血圧（上）", bpLow: "血圧（下）",
     mealMain: "食事（主食）", mealSub: "食事（副食）", water: "水分", medication: "服薬・処置",

@@ -1253,10 +1253,12 @@ function getFamilyVisibleFields(record, formCustomization) {
         familyMessageSection: new Set(["familyMessage"]),
         facilityPRSection: new Set(["facilityPR"])
     };
+    if (record.serviceType === "グループホーム") hiddenFieldGroups.dayServiceSection.delete("careStaff");
     const add = (label, key) => {
         if (Object.entries(hiddenFieldGroups).some(([section, keys]) => hiddenSections.has(section) && keys.has(key))) return;
         if (hiddenSections.has("afterSchoolSection") && key.startsWith("afterSchool")) return;
         if (hiddenSections.has("lifeCareSection") && key.startsWith("lifeCare")) return;
+        if (hiddenSections.has("groupHomeSection") && key.startsWith("gh")) return;
         if (hiddenSections.has("shortStaySection") && (key.startsWith("st") || key.startsWith("num_") || key.startsWith("free_item_"))) return;
         const value = record[key];
         if (Array.isArray(value)) {
@@ -1282,6 +1284,28 @@ function getFamilyVisibleFields(record, formCustomization) {
             ["持ち物・お知らせ", "afterSchoolBelongings"], ["昨晩の睡眠時間", "afterSchoolHomeSleepHours"],
             ["昨晩の睡眠の様子", "afterSchoolHomeSleepQuality"], ["朝の様子", "afterSchoolMorningState"],
             ["保護者確認", "afterSchoolParentSign"], ["ご家族への連絡", "afterSchoolHandover"]
+        ].forEach(([label, key]) => add(label, key));
+    } else if (record.serviceType === "グループホーム") {
+        [
+            ["担当スタッフ", "careStaff"], ["介護日誌", "careJournal"],
+            ["朝・測定時刻", "ghMorningTime"], ["朝・体温（℃）", "ghMorningTemp"],
+            ["朝・脈拍（回/分）", "ghMorningPulse"], ["朝・酸素飽和度（%）", "ghMorningSpo2"],
+            ["朝・血圧 上（mmHg）", "ghMorningBpHigh"], ["朝・血圧 下（mmHg）", "ghMorningBpLow"],
+            ["夕・測定時刻", "ghEveningTime"], ["夕・体温（℃）", "ghEveningTemp"],
+            ["夕・脈拍（回/分）", "ghEveningPulse"], ["夕・酸素飽和度（%）", "ghEveningSpo2"],
+            ["夕・血圧 上（mmHg）", "ghEveningBpHigh"], ["夕・血圧 下（mmHg）", "ghEveningBpLow"],
+            ["朝食", "ghMealBreakfast"], ["昼食", "ghMealLunch"], ["夕食", "ghMealDinner"],
+            ["水分（1日合計・ml）", "ghWater"], ["口腔ケア", "ghOralCare"],
+            ["朝の服薬・処置", "ghMedicationMorning"], ["昼の服薬・処置", "ghMedicationNoon"],
+            ["夕・就寝前の服薬・処置", "ghMedicationEvening"],
+            ["本日の排便", "ghBowel"], ["排便回数（回）", "ghBowelCount"],
+            ["排便の時刻・状態", "ghBowelCondition"], ["最終排便日", "ghLastBowelDate"],
+            ["排尿の回数・状態", "ghUrination"], ["本日の入浴・清潔保持", "ghBath"],
+            ["入浴の様子・未実施理由", "ghBathNote"], ["睡眠・夜間の様子", "ghSleep"],
+            ["一緒に行った家事・ご本人の役割", "ghRoles"],
+            ["得意なこと・参加時の様子・支援内容", "ghRoleResponse"],
+            ["日中の活動・暮らしの様子", "ghDailyLife"],
+            ["日用品の残量・補充依頼", "ghSupplies"], ["新しく持ち込んだ衣類・物品の確認", "ghBelongings"]
         ].forEach(([label, key]) => add(label, key));
     } else if (record.serviceType === "生活介護") {
         [

@@ -7,6 +7,9 @@
     
     <style>
         body { font-family: sans-serif; background-color: #f0f8ff; padding: 10px; margin: 0; }
+        .group-home-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .group-home-wide { grid-column: 1 / -1; }
+        @media (max-width: 480px) { .group-home-fields { grid-template-columns: 1fr; } }
         .form-box { background-color: white; padding: 20px; border-radius: 10px; max-width: 650px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h3 { border-bottom: 2px solid #2b8a3e; color: #2b8a3e; padding-bottom: 5px; margin-top: 25px; font-size: 18px; }
         label { display: block; margin-top: 15px; font-weight: bold; color: #333; font-size: 15px; }
@@ -170,6 +173,9 @@
                 <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
                     <input type="checkbox" id="editServiceLifeCare" style="width: auto; margin-right: 5px;">♿ 生活介護
                 </label>
+                <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" id="editServiceGroupHome" style="width: auto; margin-right: 5px;">🏡 グループホーム
+                </label>
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 25px;">
@@ -319,7 +325,7 @@
             <ol>
                 <li><strong>ログインする</strong><p>ログイン画面で施設名とパスワードを入力し、「ログインする」を押します。</p></li>
                 <li><strong>画面上部を見る</strong><p>上部に施設名が表示されます。「印刷画面へ」は入力済み記録の確認・印刷、「過去データ一覧へ」は以前の記録を見るときに使います。「施設のLINE公式アカウント設定」は設定を変更するとき以外は操作しなくて大丈夫です。</p></li>
-                <li><strong>サービス種別を選ぶ</strong><p>「ご入力するサービス種別を選択してください」で、今回の記録に合うものを選びます。デイサービス、ショートステイ、入所、ユニット入所、放課後等デイサービス、児童発達支援、生活介護があります。入所・ユニット入所はショートステイと同じ入力欄を使用します。</p></li>
+                <li><strong>サービス種別を選ぶ</strong><p>「ご入力するサービス種別を選択してください」で、今回の記録に合うものを選びます。デイサービス、ショートステイ、入所、ユニット入所、放課後等デイサービス、児童発達支援、生活介護、グループホームがあります。入所・ユニット入所はショートステイと同じ入力欄を使用します。グループホームは朝夕の定時バイタルや家事・役割、日用品などの専用欄を使用します。</p></li>
                 <li><strong>送信待ちや申し送りを確認する</strong><p>上部に「送信待ちのお客様」が表示されていたら、前に一時保存した記録があります。画面を再読み込みすると消えることがあるので、作業を続けて最後にまとめて送信してください。「前日の重要申し送り一覧」が表示された場合は、内容を確認します。</p></li>
                 <li><strong>利用者を選ぶ</strong><p>「お名前」から記録する方を選びます。年齢や顔写真、保存済み記録が表示されます。「利用終了者も表示する」は、以前利用していた方を選ぶ場合に使います。</p><p>顔写真は「写真 登録/変更」で撮影、「アルバムから写真を選ぶ」から保存済み写真を選べます。緊急連絡先と持病は全施設で利用できます。入力したら「利用者情報に保存」を押してください。</p></li>
                 <li><strong>新しい利用者を登録する</strong><p>名簿にいない方は、画面下の新規登録欄に名前を入力します。生年月日は任意です。必要なら顔写真や排泄記録の設定を選び、「お名前・生年月日・各種設定をまとめて名簿に登録」を押します。</p></li>
@@ -344,6 +350,7 @@
                 <option value="放課後等デイサービス">🎒 放課後等デイサービス</option>
                 <option value="児童発達支援">🧸 児童発達支援</option>
                 <option value="生活介護">♿ 生活介護（日中活動・生活支援）</option>
+                <option value="グループホーム">🏡 グループホーム（日々の暮らし・入居）</option>
             </select>
         </div>
 
@@ -962,6 +969,12 @@
             <textarea id="stDayActivity" rows="2"></textarea>
         </div>
 
+        <div id="groupHomeSection" style="display: none;">
+            <h3>グループホーム連絡帳</h3>
+            <p>日々の健康と暮らしを記録します。入退所時の持ち物チェックではなく、日用品の補充や新しく持ち込んだ品物を記入できます。</p>
+            <div id="groupHomeFields"></div>
+        </div>
+
         <h3 id="familyContactSectionTitle" style="color: #2b8a3e; border-bottom-color: #2b8a3e;">ご利用いただきありがとうございます（連絡事項）</h3>
         
         <div id="facilityMessageSection">
@@ -1047,6 +1060,9 @@
         } from "./service-types.js";
         import { FORM_CUSTOMIZATION_SECTIONS, getFacilityProfileFieldValue, getFacilityProfileFields, normalizeFacilityFormCustomization } from "./facility-form-customization.js";
         import { removeUndefinedFields } from "./firestore-data.js";
+        import { buildGroupHomeForm, readGroupHomeFields, restoreGroupHomeFields, validateGroupHomeFields } from "./group-home.js";
+
+        buildGroupHomeForm(document.getElementById("groupHomeFields"));
 
         let familyLinePublicationEnabled = true;
         let facilityLineStatusSignature = "";
@@ -1131,7 +1147,7 @@
                 const wrapper = document.createElement("div");
                 wrapper.className = "suggestion-input-control";
                 const select = document.createElement("select");
-                select.setAttribute("aria-label", "候補から選択");
+                select.setAttribute("aria-label", input.labels?.[0]?.textContent.trim() || "候補から選択");
                 select.add(new Option("候補から選択", ""));
                 input.dataset.customEntry = "false";
                 Array.from(dataList.options).forEach(option => {
@@ -1860,10 +1876,12 @@
             let isShortStay = isShortStayService(sType);
             let isAfterSchool = sType === "放課後等デイサービス" || sType === "児童発達支援";
             let isLifeCare = sType === "生活介護";
-            daySec.style.display = isShortStay || isAfterSchool || isLifeCare ? "none" : "block";
+            let isGroupHome = sType === "グループホーム";
+            daySec.style.display = isShortStay || isAfterSchool || isLifeCare || isGroupHome ? "none" : "block";
             stSec.style.display = isShortStay ? "block" : "none";
             afterSchoolSec.style.display = isAfterSchool ? "block" : "none";
             lifeCareSec.style.display = isLifeCare ? "block" : "none";
+            document.getElementById("groupHomeSection").style.display = isGroupHome ? "block" : "none";
             document.getElementById("careJournalArea").style.display = isAfterSchool || isLifeCare ? "none" : "block";
             document.getElementById("facilityPRControl").style.display = isAfterSchool || isLifeCare ? "none" : "block";
             if (isAfterSchool || isLifeCare) document.getElementById("prInputArea").style.display = "none";
@@ -1879,10 +1897,11 @@
             pickupSelect.options[2].value = pickupSelect.options[2].textContent;
             document.getElementById("careStaffLabel").textContent = isAfterSchool ? "担当指導員（記入者）" : isLifeCare ? "担当職員" : "担当スタッフ";
             document.getElementById("careJournalLabel").textContent = isAfterSchool ? "施設での様子・エピソード" : "本日の介護日誌";
-            document.getElementById("familyMessageLabel").textContent = isAfterSchool ? "保護者記入欄（家庭からの連絡・体調）" : isLifeCare ? "ご家族からの連絡事項" : "お客様からの御連絡事項（ご家庭でのご様子など）";
-            document.getElementById("familyContactSectionTitle").textContent = isAfterSchool ? "施設からのお知らせ・保護者記入欄（連絡事項）" : isLifeCare ? "施設からのお知らせ・ご家族への連絡" : "ご利用いただきありがとうございます（連絡事項）";
+            document.getElementById("familyMessageLabel").textContent = isAfterSchool ? "保護者記入欄（家庭からの連絡・体調）" : isLifeCare || isGroupHome ? "ご家族からの連絡事項" : "お客様からの御連絡事項（ご家庭でのご様子など）";
+            document.getElementById("familyContactSectionTitle").textContent = isAfterSchool ? "施設からのお知らせ・保護者記入欄（連絡事項）" : isLifeCare || isGroupHome ? "施設からのお知らせ・ご家族との連絡" : "ご利用いただきありがとうございます（連絡事項）";
             document.getElementById("familyMessage").placeholder = isAfterSchool
                 ? "家庭での体調、睡眠、朝の様子などの連絡事項を入力してください。"
+                : isGroupHome ? "面会・外出の予定、ご家族からのご相談や連絡事項を入力してください。"
                 : isLifeCare ? "家庭での体調や生活の変化、ご家族からの連絡事項を入力してください。"
                 : "ご家族からの連絡事項があれば事前に入力、または空欄にして印刷後に手書きしてください。";
             const facilityMessageLabel = document.getElementById("facilityMessageLabel");
@@ -1894,6 +1913,13 @@
                     <option value="本日もご利用ありがとうございました。活動の様子は下記の記録をご覧ください。">1. 本日もご利用ありがとうございました。活動記録をご覧ください。</option>
                     <option value="次回利用予定と持ち物は、下記のお知らせをご確認ください。">2. 次回利用予定と持ち物をご確認ください。</option>
                     <option value="ご不明な点やご相談がございましたら、施設までお問い合わせください。">3. ご相談は施設までお問い合わせください。</option>`;
+            } else if (isGroupHome) {
+                facilityMessageLabel.textContent = "ホームからのお知らせ・ご家族への連絡";
+                messageTemplate.innerHTML = `
+                    <option value="">📝 定型文を選ぶ</option>
+                    <option value="本日もホームで穏やかに過ごされました。暮らしの様子は下記の記録をご覧ください。">1. ホームでの暮らしの様子をご覧ください。</option>
+                    <option value="日用品の補充について、下記の記録をご確認ください。">2. 日用品の補充についてご確認ください。</option>
+                    <option value="面会や外出についてのご相談は、ホームまでご連絡ください。">3. 面会・外出のご相談はホームまでご連絡ください。</option>`;
             } else if (isLifeCare) {
                 facilityMessageLabel.textContent = "施設からのお知らせ・生活介護の連絡事項";
                 messageTemplate.innerHTML = `
@@ -2484,6 +2510,7 @@
             document.getElementById("editServiceAfterSchool").checked = userServices.includes("放課後等デイサービス");
             document.getElementById("editServiceChildDevelopment").checked = userServices.includes("児童発達支援");
             document.getElementById("editServiceLifeCare").checked = userServices.includes("生活介護");
+            document.getElementById("editServiceGroupHome").checked = userServices.includes("グループホーム");
 
             document.getElementById("editUserModal").style.display = "flex";
         };
@@ -2508,7 +2535,8 @@
             let isAfterSchool = document.getElementById("editServiceAfterSchool").checked;
             let isChildDevelopment = document.getElementById("editServiceChildDevelopment").checked;
             let isLifeCare = document.getElementById("editServiceLifeCare").checked;
-            if (!isDay && !isShort && !isResidential && !isUnitResidential && !isAfterSchool && !isChildDevelopment && !isLifeCare) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
+            let isGroupHome = document.getElementById("editServiceGroupHome").checked;
+            if (!isDay && !isShort && !isResidential && !isUnitResidential && !isAfterSchool && !isChildDevelopment && !isLifeCare && !isGroupHome) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
 
             let newServices = [];
             if (isDay) newServices.push("デイサービス");
@@ -2518,6 +2546,7 @@
             if (isAfterSchool) newServices.push("放課後等デイサービス");
             if (isChildDevelopment) newServices.push("児童発達支援");
             if (isLifeCare) newServices.push("生活介護");
+            if (isGroupHome) newServices.push("グループホーム");
 
             let currentData = window.globalUsersData[oldName] || {};
 
@@ -2623,6 +2652,7 @@
 
             if (draftStr) {
                 let d = JSON.parse(draftStr);
+                restoreGroupHomeFields(document, d);
                 document.getElementById("temp1").value = d.temp1 || "";
                 document.getElementById("temp2").value = d.temp2 || "";
                 document.getElementById("pulse").value = d.pulse || "";
@@ -3007,6 +3037,7 @@
                         if(document.getElementById("stNightState")) document.getElementById("stNightState").value = data.stNightState || "";
                         if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = data.stDayActivity || data.activity || "";
 
+                        restoreGroupHomeFields(document, data);
                         document.getElementById("careStaff").value = data.careStaff || "";
                         document.getElementById("careJournal").value = data.careJournal || "";
                         document.getElementById("handoverRequired").checked = !!data.handoverRequired;
@@ -3233,6 +3264,7 @@
             let sType = document.getElementById("serviceType").value;
             let isChildService = sType === "放課後等デイサービス" || sType === "児童発達支援";
             let isLifeCare = sType === "生活介護";
+            let isGroupHome = sType === "グループホーム";
             const readOptionalValue = id => {
                 const field = document.getElementById(id);
                 return field ? field.value : "";
@@ -3267,7 +3299,9 @@
                 imageFiles: imageFiles, videoFiles: videoFiles
             };
 
-            if (!isShortStayService(sType) && !isLifeCare) {
+            if (isGroupHome) {
+                Object.assign(data, readGroupHomeFields(document));
+            } else if (!isShortStayService(sType) && !isLifeCare) {
                 let bathVal = ""; document.getElementsByName("bath").forEach(r => { if(r.checked) bathVal = r.value; });
                 let tList = []; document.getElementsByName("training").forEach(c => { if(c.checked) tList.push(c.value); });
                 data.temp1 = document.getElementById("temp1").value;
@@ -3435,10 +3469,15 @@
 
         window.saveToBatch = async function() {
             if (batchPreparationInProgress) return;
+            if (document.getElementById("serviceType").value === "グループホーム" && !validateGroupHomeFields(document)) {
+                showToast("⚠️ グループホームの入力値をご確認ください。");
+                return;
+            }
             if (!validateDateEntries([
                 document.getElementById("date"),
                 document.getElementById("afterSchoolNextUseDate"),
                 document.getElementById("lastBathDate"),
+                document.getElementById("ghLastBowelDate"),
                 document.getElementById("lastBowelDate")
             ])) return;
             let userName = document.getElementById("userName").value;
@@ -3518,10 +3557,15 @@
         }
 
         window.sendSingleData = async function() {
+            if (document.getElementById("serviceType").value === "グループホーム" && !validateGroupHomeFields(document)) {
+                showToast("⚠️ グループホームの入力値をご確認ください。");
+                return;
+            }
             if (!validateDateEntries([
                 document.getElementById("date"),
                 document.getElementById("afterSchoolNextUseDate"),
                 document.getElementById("lastBathDate"),
+                document.getElementById("ghLastBowelDate"),
                 document.getElementById("lastBowelDate")
             ])) return;
             let userName = document.getElementById("userName").value;
@@ -3673,6 +3717,7 @@
         };
 
         function resetFormInputs() {
+            restoreGroupHomeFields(document);
             accumulatedFiles = []; 
             document.getElementById("publishToFamilyCheckbox").checked = true;
             document.getElementById("previewArea").innerHTML = "";
@@ -3928,7 +3973,7 @@
                     birthday: `${birthdayYear}-${String(birthdayMonth + 1).padStart(2, "0")}-${String(birthdayDay).padStart(2, "0")}`
                 };
             });
-            const seniorDummyServices = ["デイサービス", "ショートステイ"];
+            const seniorDummyServices = ["デイサービス", "ショートステイ", "グループホーム"];
             const youthServices = ["放課後等デイサービス", "児童発達支援", "生活介護"];
             const dummyPatients = youthServices.includes(sType) ? youthDummyPatients : seniorDummyPatients;
 
@@ -4002,7 +4047,29 @@
 
                         let recordRef = doc(db, "facilities", facilityId, "daily_records", `${targetDateStr}_${sType}_${p.name}`);
 
-                        if (!isShortStayService(sType)) {
+                        if (sType === "グループホーム") {
+                            dayPromises.push(setDoc(recordRef, {
+                                facilityId, userName: p.name, date: targetDateStr, serviceType: sType,
+                                careStaff: "佐藤", careJournal: "ホームで穏やかに過ごされました。",
+                                ghMorningTime: "08:00", ghMorningTemp: t1, ghMorningPulse: pulse,
+                                ghMorningBpHigh: bpHigh, ghMorningBpLow: bpLow, ghMorningSpo2: "98",
+                                ghEveningTime: "17:00", ghEveningTemp: t1, ghEveningPulse: pulse,
+                                ghEveningBpHigh: bpHigh, ghEveningBpLow: bpLow, ghEveningSpo2: "98",
+                                ghMealBreakfast: "100%", ghMealLunch: "100%", ghMealDinner: "75%",
+                                ghWater: "1200", ghOralCare: "毎食後実施",
+                                ghMedicationMorning: "内服確認済み", ghMedicationNoon: "内服確認済み",
+                                ghMedicationEvening: "内服確認済み", ghBowel: "あり", ghBowelCount: "1",
+                                ghBowelCondition: "普通便", ghLastBowelDate: targetDateStr,
+                                ghUrination: "日中5回、夜間1回", ghBath: "一般浴", ghBathNote: "特変なし",
+                                ghSleep: "夜間トイレ後、再入眠されました。",
+                                ghRoles: "洗濯物たたみ・配膳", ghRoleResponse: "笑顔で取り組まれました。",
+                                ghDailyLife: "他の入居者様と談笑し、ゆっくり過ごされました。",
+                                ghSupplies: "ティッシュ残り1箱。補充をお願いします。",
+                                ghBelongings: "長袖シャツ2枚、記名確認済み。",
+                                message: "日用品の補充についてご確認ください。", familyMessage: "",
+                                imageCount: dOffset === 0 ? 1 : 0, videoCount: 0
+                            }));
+                        } else if (!isShortStayService(sType)) {
                             dayPromises.push(setDoc(recordRef, {
                                 facilityId: facilityId, userName: p.name, date: targetDateStr,
                                 serviceType: sType,
