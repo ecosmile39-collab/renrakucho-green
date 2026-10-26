@@ -2,6 +2,9 @@
   "name": "renrakucho-functions",
   "private": true,
   "main": "index.js",
+  "scripts": {
+    "test": "node --test *.test.js"
+  },
   "engines": {
     "node": "22"
   },
