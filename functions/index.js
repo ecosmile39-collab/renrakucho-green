@@ -25,6 +25,7 @@ const {
     normalizeOneTimeInvoiceAdjustment
 } = require("./one-time-invoice-adjustment");
 const { generateInvoicePdf } = require("./invoice-pdf");
+const { findOverdueUnpaidInvoices } = require("./overdue-lock");
 const { daysUntilTrialEnds, isTrialReminderDue } = require("./trial-reminder");
 const { getFacilityRetentionDeadline, isFacilityRetentionExpired } = require("./facility-retention");
 
@@ -63,6 +64,7 @@ function escapeHtml(value) {
     }[character]));
 }
 
+const PAYMENT_SUSPENSION_NOTICE = "お支払期限までにご入金を確認できない場合、期限の翌日からシステムのご利用が一時停止となります。あらかじめご了承ください。";
 const FACILITY_RETENTION_NOTICE = "トライアル終了・一時停止から暦で2か月以内に本登録・再開が完了しない場合は退会扱いとなり、施設アカウント・利用者名簿・連絡帳・介護日誌・写真・動画を削除します。申込済み・承認待ち・入金待ちでも期限は延長されません。削除したデータは元に戻せません。";
 
 function assertFacilityRetentionAvailable(facility) {
@@ -118,6 +120,9 @@ exports.createFacilitySession = onCall(async request => {
         registrationOnly = Date.now() >= trialEndsAt;
     }
     if (data.status === "locked" && !registrationOnly) {
+        if (data.lockReason === "payment_overdue") {
+            throw new HttpsError("permission-denied", "お支払期限までにご入金を確認できなかったため、システムのご利用を一時停止しています。ご入金後、販売元へご連絡ください。");
+        }
         throw new HttpsError("permission-denied", "現在、この施設のシステム利用を停止しています。詳しくは販売元へお問い合わせください。");
     }
 
@@ -1045,7 +1050,9 @@ exports.setFacilityUsageLock = onCall(async request => {
         if (snapshot.data().usagePaused === true) {
             throw new HttpsError("failed-precondition", "一時停止中です。利用再開を承認してください。");
         }
-        transaction.set(ref, { status: request.data.locked ? "locked" : "active" }, { merge: true });
+        transaction.set(ref, request.data.locked
+            ? { status: "locked" }
+            : { status: "active", lockReason: FieldValue.delete() }, { merge: true });
     });
     return { status: request.data.locked ? "locked" : "active" };
 });
@@ -2469,10 +2476,11 @@ exports.requestFacilitySubscription = onCall({
         <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
         <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能な請求書PDF（<code>請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。印刷して保管される際などにご活用ください。</p>
+        <p style="margin-top:20px;padding:12px;background:#fff5f5;border:1px solid #ffa8a8;border-radius:4px;color:#c92a2a;font-weight:bold">${escapeHtml(PAYMENT_SUSPENSION_NOTICE)}</p>
         <p style="margin-top:28px">このたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。</p>
         <p>${escapeHtml(FACILITY_RETENTION_NOTICE)}</p>
     </body></html>`;
-    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。\n\n${FACILITY_RETENTION_NOTICE}`;
+    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n【ご注意】${PAYMENT_SUSPENSION_NOTICE}\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。\n\n${FACILITY_RETENTION_NOTICE}`;
 
     let emailResult = null;
     const archivedHtml = html;
@@ -2491,7 +2499,7 @@ exports.requestFacilitySubscription = onCall({
             tax,
             total,
             issuerEmail: gmailUser,
-            note: "このたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。"
+            note: `${PAYMENT_SUSPENSION_NOTICE}\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。`
         });
         const transporter = nodemailer.createTransport({
             service: "gmail",
@@ -2754,8 +2762,9 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
         <p style="margin-top:20px;padding:12px;background:#e7f5ff;border:1px solid #74c0fc"><strong>A4印刷用の請求書PDFを添付しております。</strong></p>
+        <p style="margin-top:20px;padding:12px;background:#fff5f5;border:1px solid #ffa8a8;border-radius:4px;color:#c92a2a;font-weight:bold">${escapeHtml(PAYMENT_SUSPENSION_NOTICE)}</p>
         <p style="margin-top:28px">${closing}</p></body></html>`;
-    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\nA4印刷用の請求書PDFを添付しております。\n${closing}`;
+    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n【ご注意】${PAYMENT_SUSPENSION_NOTICE}\n\nA4印刷用の請求書PDFを添付しております。\n${closing}`;
     let emailResult = null;
     try {
         const pdfBuffer = await generateInvoicePdf({
@@ -2773,7 +2782,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             tax,
             total,
             issuerEmail: gmailUser,
-            note: closing
+            note: `${PAYMENT_SUSPENSION_NOTICE}\n${closing}`
         });
         const transporter = nodemailer.createTransport({
             service: "gmail",
@@ -3149,9 +3158,10 @@ exports.sendMonthlyInvoices = onSchedule({
             <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
             <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
             <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能な請求書PDF（<code>請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。印刷して保管される際などにご活用ください。</p>
+            <p style="margin-top:20px;padding:12px;background:#fff5f5;border:1px solid #ffa8a8;border-radius:4px;color:#c92a2a;font-weight:bold">${escapeHtml(PAYMENT_SUSPENSION_NOTICE)}</p>
             <p style="margin-top:28px">平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。</p>
         </body></html>`;
-        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(invoiceDueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
+        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(invoiceDueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n【ご注意】${PAYMENT_SUSPENSION_NOTICE}\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
 
         let emailResult = null;
         try {
@@ -3170,7 +3180,7 @@ exports.sendMonthlyInvoices = onSchedule({
                 tax: pricing.tax,
                 total: pricing.total,
                 issuerEmail: gmailUser,
-                note: "平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。"
+                note: `${PAYMENT_SUSPENSION_NOTICE}\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`
             });
             emailResult = await transporter.sendMail({
                 from: { name: "株式会社えこすまいる", address: gmailUser },
@@ -3449,6 +3459,50 @@ exports.lockExpiredTrials = onSchedule("every 60 minutes", async () => {
         await batch.commit();
     }
     if (expiredFacilities.length) logger.info("Expired trial facilities locked", { count: expiredFacilities.length });
+});
+
+function getTokyoDateKey(date = new Date()) {
+    return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(date);
+}
+
+// 入金期限を過ぎても未入金の請求書がある施設を、期限の翌日に自動でロックする。
+// 一度ロックに使った請求書には印を付け、管理者が手動で解除した後に同じ請求書で再ロックしない。
+exports.lockOverdueInvoiceFacilities = onSchedule("every 60 minutes", async () => {
+    const db = getFirestore();
+    const todayKey = getTokyoDateKey();
+    const facilitiesSnapshot = await db.collection("facilities").get();
+    let locked = 0;
+    const failures = [];
+    for (const facilityDoc of facilitiesSnapshot.docs) {
+        const facility = facilityDoc.data();
+        if (facility.status === "locked" || facility.usagePaused === true) continue;
+        try {
+            const invoicesSnapshot = await facilityDoc.ref.collection("invoiceHistory").where("status", "==", "sent").get();
+            const overdueInvoices = findOverdueUnpaidInvoices(invoicesSnapshot.docs, todayKey);
+            if (!overdueInvoices.length) continue;
+            const didLock = await db.runTransaction(async transaction => {
+                const current = await transaction.get(facilityDoc.ref);
+                if (!current.exists || current.data().status === "locked" || current.data().usagePaused === true) return false;
+                const freshInvoices = await Promise.all(overdueInvoices.map(invoiceDoc => transaction.get(invoiceDoc.ref)));
+                const stillOverdue = findOverdueUnpaidInvoices(freshInvoices.filter(invoiceDoc => invoiceDoc.exists), todayKey);
+                if (!stillOverdue.length) return false;
+                transaction.set(facilityDoc.ref, {
+                    status: "locked",
+                    lockReason: "payment_overdue",
+                    paymentOverdueLockedAt: FieldValue.serverTimestamp(),
+                    paymentOverdueInvoiceNumbers: stillOverdue.map(invoiceDoc => invoiceDoc.data().invoiceNumber || invoiceDoc.id)
+                }, { merge: true });
+                stillOverdue.forEach(invoiceDoc => transaction.update(invoiceDoc.ref, { overdueLockAppliedAt: FieldValue.serverTimestamp() }));
+                return true;
+            });
+            if (didLock) locked++;
+        } catch (error) {
+            failures.push(facilityDoc.id);
+            logger.error("Overdue invoice lock failed", { facilityId: facilityDoc.id, error: error.message });
+        }
+    }
+    if (locked) logger.info("Facilities locked for overdue invoices", { count: locked, todayKey });
+    if (failures.length) throw new Error(`Overdue invoice lock failed for ${failures.length} facilities.`);
 });
 
 exports.deleteExpiredVideos = onSchedule("every 60 minutes", async () => {

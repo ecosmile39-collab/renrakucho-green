@@ -670,11 +670,36 @@
                 invoice.paidDate = paidDate;
                 renderUnpaidInvoiceList();
                 renderFacilities();
+                await offerUnlockAfterPayment(facilityId);
             } catch (error) {
                 checkbox.checked = false;
                 checkbox.disabled = false;
                 if (dateInput) dateInput.disabled = false;
                 errorEl.textContent = "入金状況を保存できませんでした: " + (error.message || error);
+            }
+        }
+
+        async function offerUnlockAfterPayment(facilityId) {
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility || facility.status !== "locked" || facility.lockReason !== "payment_overdue" || facility.usagePaused === true) return;
+            const today = getTodayDateKeyInJapan();
+            const stillOverdue = (sentInvoicesByFacility.get(facilityId) || []).some(item => {
+                if (item.paymentStatus === "paid") return false;
+                const dueKey = getInvoiceDueDateKey(item);
+                return dueKey !== "" && dueKey < today;
+            });
+            const name = facility.facilityName || facilityId;
+            const question = stillOverdue
+                ? `${name} は入金期限切れで自動停止中です。まだ期限切れの未入金の請求書があります。それでも利用停止を解除しますか？`
+                : `${name} は入金期限切れで自動停止中です。利用停止を解除しますか？`;
+            if (!confirm(question)) return;
+            try {
+                await httpsCallable(functions, "setFacilityUsageLock")({ facilityId, locked: false });
+                facility.status = "active";
+                delete facility.lockReason;
+                renderFacilities();
+            } catch (error) {
+                document.getElementById("unpaidInvoiceError").textContent = "利用停止を解除できませんでした: " + (error.message || error);
             }
         }
 
@@ -836,7 +861,7 @@
                 let statusClass = isLocked ? "locked" : isTrialExpired ? "trial-expired" : isTrial ? "trial" : "active";
                 const isRegistered = facility.subscriptionStatus === "active" || facility.status === "active" && facility.subscriptionStatus !== "trial";
                 const subscriptionApplicationPending = ["invoice_sending", "pending_payment", "invoice_failed"].includes(facility.subscriptionApplicationStatus);
-                let statusLabel = facility.usagePaused === true ? "一時利用停止中（新規請求停止・再開承認待ち）" : isLocked ? "🔴 利用停止中" : subscriptionApplicationPending ? "🧾 本登録申込済み・入金待ち" : isTrialExpired ? "⏰ 無料期間終了" : isTrial ? `🟠 無料お試し中（残り${trialDaysRemaining}日）` : "🟢 利用中";
+                let statusLabel = facility.usagePaused === true ? "一時利用停止中（新規請求停止・再開承認待ち）" : isLocked ? (facility.lockReason === "payment_overdue" ? "🔴 利用停止中（入金期限切れで自動停止）" : "🔴 利用停止中") : subscriptionApplicationPending ? "🧾 本登録申込済み・入金待ち" : isTrialExpired ? "⏰ 無料期間終了" : isTrial ? `🟠 無料お試し中（残り${trialDaysRemaining}日）` : "🟢 利用中";
                 let invoice = latestInvoiceByFacility.get(facility.id);
                 let invoiceSent = Boolean(invoice);
                 let invoicePaid = invoice?.paymentStatus === "paid";
@@ -1503,7 +1528,10 @@ ${invoiceRows}
             try {
                 await httpsCallable(functions, "setFacilityUsageLock")({ facilityId, locked: !currentlyLocked });
                 let facility = facilities.find(item => item.id === facilityId);
-                if (facility) facility.status = currentlyLocked ? "active" : "locked";
+                if (facility) {
+                    facility.status = currentlyLocked ? "active" : "locked";
+                    if (currentlyLocked) delete facility.lockReason;
+                }
                 renderFacilities();
             } catch (e) {
                 document.getElementById("facilityError").textContent = "状態変更に失敗しました: " + e.message;

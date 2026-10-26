@@ -193,7 +193,10 @@ function generateInvoicePdf({
             // Note / Appreciation block
             if (note) {
                 let noteY = bankY + 90;
-                doc.rect(margin, noteY, contentWidth, 70).fillAndStroke("#fffbf5", "#f08c00");
+                doc.fontSize(9);
+                const noteTextHeight = doc.heightOfString(note, { width: contentWidth - 30, lineGap: 4 });
+                const noteBoxHeight = Math.max(70, Math.ceil(noteTextHeight) + 38);
+                doc.rect(margin, noteY, contentWidth, noteBoxHeight).fillAndStroke("#fffbf5", "#f08c00");
                 doc.fillColor("#7c4a03").fontSize(10).text("【ご案内・備考】", margin + 15, noteY + 10);
                 doc.fillColor("#333333").fontSize(9).text(note, margin + 15, noteY + 28, {
                     width: contentWidth - 30,
