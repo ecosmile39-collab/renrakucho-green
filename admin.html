@@ -589,6 +589,17 @@
             return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
         }
 
+        function getInvoiceDueDateKey(invoice) {
+            if (typeof invoice.dueDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(invoice.dueDate)) return invoice.dueDate;
+            const value = invoice.sentAt;
+            const sent = value && typeof value.toDate === "function" ? value.toDate() : new Date(value || invoice.issueDate || "");
+            if (!Number.isFinite(sent.getTime())) return "";
+            const sentKey = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(sent);
+            const due = new Date(`${sentKey}T00:00:00+09:00`);
+            due.setDate(due.getDate() + 10);
+            return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(due);
+        }
+
         function renderUnpaidInvoiceList() {
             const list = document.getElementById("unpaidInvoiceList");
             const rows = getUnpaidInvoices();
@@ -599,16 +610,24 @@
             }
             const today = getTodayDateKeyInJapan();
             list.innerHTML = `<table class="facility-overview-table">
-                <colgroup><col style="width:22%"><col style="width:16%"><col style="width:13%"><col style="width:13%"><col style="width:16%"><col style="width:10%"><col style="width:10%"></colgroup>
-                <thead><tr><th scope="col">施設名</th><th scope="col">請求書番号</th><th scope="col" style="text-align:right;">請求金額（税込）</th><th scope="col">発送日</th><th scope="col">入金日</th><th scope="col">入金あり</th><th scope="col">未入金</th></tr></thead>
+                <colgroup><col style="width:19%"><col style="width:14%"><col style="width:11%"><col style="width:11%"><col style="width:15%"><col style="width:12%"><col style="width:9%"><col style="width:9%"></colgroup>
+                <thead><tr><th scope="col">施設名</th><th scope="col">請求書番号</th><th scope="col" style="text-align:right;">請求金額（税込）</th><th scope="col">発送日</th><th scope="col">入金日</th><th scope="col">入金期限</th><th scope="col">入金あり</th><th scope="col">未入金</th></tr></thead>
                 <tbody>${rows.map(({ facility, invoice }) => {
                     const key = `${encodeURIComponent(facility.id)}|${encodeURIComponent(invoice.id)}`;
+                    const dueKey = getInvoiceDueDateKey(invoice);
+                    const overdue = dueKey !== "" && dueKey < today;
+                    const dueToday = dueKey === today;
+                    const dueCell = !dueKey ? "—"
+                        : overdue ? `<span style="color:#c92a2a;font-weight:bold;">${escapeHtml(dueKey.replace(/-/g, "/"))}<br>期限切れ</span>`
+                        : dueToday ? `<span style="color:#e8590c;font-weight:bold;">${escapeHtml(dueKey.replace(/-/g, "/"))}<br>本日期限</span>`
+                        : escapeHtml(dueKey.replace(/-/g, "/"));
                     return `<tr>
                         <td>${escapeHtml(facility.facilityName || facility.id)}</td>
                         <td>${escapeHtml(invoice.invoiceNumber || "—")}</td>
                         <td style="text-align:right;">${(Number(invoice.total) || 0).toLocaleString("ja-JP")}円</td>
                         <td>${escapeHtml(formatInvoiceSentDate(invoice))}</td>
                         <td><input type="date" data-unpaid-paid-date="${key}" value="${today}" max="${today}" aria-label="入金日"></td>
+                        <td>${dueCell}</td>
                         <td><label><input type="checkbox" data-unpaid-mark-paid="${key}">入金あり</label></td>
                         <td><label><input type="checkbox" checked disabled>未入金</label></td>
                     </tr>`;
