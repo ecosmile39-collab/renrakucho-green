@@ -31,6 +31,12 @@
         .page-scroll-controls button { width: 48px; height: 48px; padding: 0; border-radius: 50%; background: #e8590c; font-size: 22px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
         #facilityOverviewDialog { box-sizing: border-box; width: min(1100px, calc(100vw - 24px)); max-width: 1100px; max-height: 85vh; border: 1px solid #adb5bd; border-radius: 8px; padding: 12px; }
         #facilityOverviewDialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+        #unpaidInvoiceDialog { box-sizing: border-box; width: min(960px, calc(100vw - 24px)); max-width: 960px; max-height: 85vh; border: 1px solid #adb5bd; border-radius: 8px; padding: 12px; }
+        #unpaidInvoiceDialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+        #unpaidInvoiceDialog .facility-overview-table { font-size: 13px; }
+        #unpaidInvoiceDialog input[type="date"] { width: auto; margin: 0; padding: 4px; }
+        #unpaidInvoiceDialog label { display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer; white-space: nowrap; }
+        #unpaidInvoiceDialog input[type="checkbox"] { width: auto; margin: 0; }
         .facility-overview-table-wrap { width: 100%; }
         .facility-overview-table { width: 100%; table-layout: fixed; border-collapse: collapse; white-space: normal; font-size: 12px; }
         .facility-overview-table th, .facility-overview-table td { padding: 6px 5px; border: 1px solid #dee2e6; text-align: left; overflow-wrap: anywhere; }
@@ -107,6 +113,7 @@
         <section id="facilitySection" class="hidden">
             <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
                 <button type="button" onclick="openFacilityOverview()" style="background: #1864ab;">🏢 施設一覧</button>
+                <button type="button" onclick="openUnpaidInvoices()" style="background: #c67700;">🧾 請求書発行済み（未入金 <span id="unpaidInvoiceCount">0</span>件）</button>
                 <button type="button" onclick="migrateLegacyFacilityPasswords()" style="background: #2b8a3e;">🔒 施設パスワードを安全に移行</button>
                 <button type="button" onclick="logoutAdmin()" style="background: #495057;">管理者からログアウト</button>
             </div>
@@ -188,6 +195,15 @@
             <p class="muted">担当者名はLINE連携代行申込時に登録された情報です。日付情報がない場合は「—」と表示します。</p>
             <div id="facilityOverviewList" class="facility-overview-table-wrap"></div>
         </dialog>
+        <dialog id="unpaidInvoiceDialog" aria-labelledby="unpaidInvoiceTitle">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <h2 id="unpaidInvoiceTitle" style="margin: 0;">請求書発行済み（未入金）</h2>
+                <button type="button" onclick="document.getElementById('unpaidInvoiceDialog').close()" style="background: #868e96;">閉じる</button>
+            </div>
+            <p class="muted">入金日を確認して「入金あり」にチェックすると入金済みとして保存され、この一覧から消えます。入金済みの記録は各施設の「請求書履歴」で確認・取り消しできます。</p>
+            <p id="unpaidInvoiceError" class="error"></p>
+            <div id="unpaidInvoiceList" class="facility-overview-table-wrap"></div>
+        </dialog>
     </main>
     <nav id="pageScrollControls" class="page-scroll-controls hidden" aria-label="ページ移動">
         <button type="button" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" aria-label="ページの先頭へ移動" title="ページの先頭へ">↑</button>
@@ -235,6 +251,7 @@
         let facilities = [];
         let cancellationRecords = [];
         let latestInvoiceByFacility = new Map();
+        let sentInvoicesByFacility = new Map();
         let currentInvoiceHistory = [];
         let currentInvoiceFacilityId = "";
         let dedicatedLineFacilityIds = new Set();
@@ -467,16 +484,18 @@
                             collection(db, "facilities", facility.id, "invoiceHistory"),
                             orderBy("sentAt", "desc")
                         ));
-                        const latestInvoice = history.docs
+                        const sentInvoices = history.docs
                             .map(invoiceDoc => ({ id: invoiceDoc.id, ...invoiceDoc.data() }))
-                            .find(invoice => invoice.test !== true && invoice.status === "sent");
-                        return [facility.id, latestInvoice || null];
+                            .filter(invoice => invoice.test !== true && invoice.status === "sent");
+                        return [facility.id, sentInvoices];
                     } catch (invoiceError) {
                         console.warn("施設の最新請求書状況を取得できませんでした:", facility.id, invoiceError);
-                        return [facility.id, null];
+                        return [facility.id, []];
                     }
                 }));
-                latestInvoiceByFacility = new Map(invoiceEntries);
+                sentInvoicesByFacility = new Map(invoiceEntries);
+                latestInvoiceByFacility = new Map(invoiceEntries.map(([facilityId, sentInvoices]) => [facilityId, sentInvoices[0] || null]));
+                renderUnpaidInvoiceCount();
                 cancellationRecords = cancellationsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
                 cancellationRecords.sort((a, b) => String(b.requestedAt || "").localeCompare(String(a.requestedAt || "")));
                 loading.style.display = "none";
@@ -538,6 +557,112 @@
                 </table>`;
             }
             document.getElementById("facilityOverviewDialog").showModal();
+        };
+
+        function getUnpaidInvoices() {
+            const rows = [];
+            for (const facility of facilities) {
+                for (const invoice of sentInvoicesByFacility.get(facility.id) || []) {
+                    if (invoice.paymentStatus !== "paid") rows.push({ facility, invoice });
+                }
+            }
+            const sentTime = invoice => {
+                const date = invoice.sentAt && typeof invoice.sentAt.toDate === "function" ? invoice.sentAt.toDate() : new Date(invoice.sentAt || invoice.issueDate || 0);
+                return Number.isFinite(date.getTime()) ? date.getTime() : 0;
+            };
+            return rows.sort((a, b) => sentTime(a.invoice) - sentTime(b.invoice));
+        }
+
+        function renderUnpaidInvoiceCount() {
+            const countEl = document.getElementById("unpaidInvoiceCount");
+            if (countEl) countEl.textContent = String(getUnpaidInvoices().length);
+        }
+
+        function getTodayDateKeyInJapan() {
+            return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(new Date());
+        }
+
+        function formatInvoiceSentDate(invoice) {
+            const value = invoice.sentAt;
+            const date = value && typeof value.toDate === "function" ? value.toDate() : new Date(value || invoice.issueDate || "");
+            if (!Number.isFinite(date.getTime())) return invoice.issueDate || "—";
+            return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+        }
+
+        function renderUnpaidInvoiceList() {
+            const list = document.getElementById("unpaidInvoiceList");
+            const rows = getUnpaidInvoices();
+            renderUnpaidInvoiceCount();
+            if (!rows.length) {
+                list.innerHTML = '<p class="muted">未入金の請求書はありません。</p>';
+                return;
+            }
+            const today = getTodayDateKeyInJapan();
+            list.innerHTML = `<table class="facility-overview-table">
+                <colgroup><col style="width:22%"><col style="width:16%"><col style="width:13%"><col style="width:13%"><col style="width:16%"><col style="width:10%"><col style="width:10%"></colgroup>
+                <thead><tr><th scope="col">施設名</th><th scope="col">請求書番号</th><th scope="col" style="text-align:right;">請求金額（税込）</th><th scope="col">発送日</th><th scope="col">入金日</th><th scope="col">入金あり</th><th scope="col">未入金</th></tr></thead>
+                <tbody>${rows.map(({ facility, invoice }) => {
+                    const key = `${encodeURIComponent(facility.id)}|${encodeURIComponent(invoice.id)}`;
+                    return `<tr>
+                        <td>${escapeHtml(facility.facilityName || facility.id)}</td>
+                        <td>${escapeHtml(invoice.invoiceNumber || "—")}</td>
+                        <td style="text-align:right;">${(Number(invoice.total) || 0).toLocaleString("ja-JP")}円</td>
+                        <td>${escapeHtml(formatInvoiceSentDate(invoice))}</td>
+                        <td><input type="date" data-unpaid-paid-date="${key}" value="${today}" max="${today}" aria-label="入金日"></td>
+                        <td><label><input type="checkbox" data-unpaid-mark-paid="${key}">入金あり</label></td>
+                        <td><label><input type="checkbox" checked disabled>未入金</label></td>
+                    </tr>`;
+                }).join("")}</tbody>
+            </table>`;
+            list.querySelectorAll("[data-unpaid-mark-paid]").forEach(checkbox => {
+                checkbox.addEventListener("change", () => markUnpaidInvoiceAsPaid(checkbox));
+            });
+        }
+
+        async function markUnpaidInvoiceAsPaid(checkbox) {
+            if (!checkbox.checked) return;
+            const key = checkbox.dataset.unpaidMarkPaid;
+            const [facilityId, invoiceId] = key.split("|").map(decodeURIComponent);
+            const invoice = (sentInvoicesByFacility.get(facilityId) || []).find(item => item.id === invoiceId);
+            const facility = facilities.find(item => item.id === facilityId);
+            const dateInput = document.querySelector(`[data-unpaid-paid-date="${CSS.escape(key)}"]`);
+            const errorEl = document.getElementById("unpaidInvoiceError");
+            errorEl.textContent = "";
+            if (!invoice) return;
+            const paidDate = dateInput?.value || "";
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(paidDate)) {
+                checkbox.checked = false;
+                errorEl.textContent = "入金日を入力してください。";
+                return;
+            }
+            if (!confirm(`${facility?.facilityName || facilityId}（${invoice.invoiceNumber || "請求書"}／${(Number(invoice.total) || 0).toLocaleString("ja-JP")}円）を、${paidDate.replace(/-/g, "/")} 入金済みにしますか？`)) {
+                checkbox.checked = false;
+                return;
+            }
+            checkbox.disabled = true;
+            if (dateInput) dateInput.disabled = true;
+            try {
+                await updateDoc(doc(db, "facilities", facilityId, "invoiceHistory", invoiceId), {
+                    paymentStatus: "paid",
+                    paidDate,
+                    paymentUpdatedAt: new Date().toISOString()
+                });
+                invoice.paymentStatus = "paid";
+                invoice.paidDate = paidDate;
+                renderUnpaidInvoiceList();
+                renderFacilities();
+            } catch (error) {
+                checkbox.checked = false;
+                checkbox.disabled = false;
+                if (dateInput) dateInput.disabled = false;
+                errorEl.textContent = "入金状況を保存できませんでした: " + (error.message || error);
+            }
+        }
+
+        window.openUnpaidInvoices = function() {
+            document.getElementById("unpaidInvoiceError").textContent = "";
+            renderUnpaidInvoiceList();
+            document.getElementById("unpaidInvoiceDialog").showModal();
         };
 
         window.refreshAdminLists = async function() {
@@ -924,6 +1049,7 @@
                 });
                 invoice.paymentStatus = nextStatus;
                 renderFacilities();
+                renderUnpaidInvoiceCount();
             } catch (error) {
                 invoice.paymentStatus = previousStatus;
                 renderFacilities();
@@ -1009,7 +1135,7 @@
                     </tr></thead><tbody>${currentInvoiceHistory.map((record, index) => {
                         const issueDate = record.issueDate || "日付不明";
                         const paymentTrackable = record.test !== true && record.status === "sent";
-                        const paymentLabel = !paymentTrackable ? "対象外" : record.paymentStatus === "paid" ? "入金済" : "未入金";
+                        const paymentLabel = !paymentTrackable ? "対象外" : record.paymentStatus === "paid" ? `入金済${record.paidDate ? `（${record.paidDate.replace(/-/g, "/")}）` : ""}` : "未入金";
                         return `<tr>
                             <td style="padding: 8px; border: 1px solid #ced4da;">${escapeHtml(record.invoiceNumber)}</td>
                             <td style="padding: 8px; border: 1px solid #ced4da;">${escapeHtml(issueDate)}<br>${escapeHtml(record.billingMonth)}</td>
@@ -1047,6 +1173,9 @@
                 });
                 invoice.paymentStatus = isPaid ? "paid" : "unpaid";
                 statusLabel.textContent = isPaid ? "入金済" : "未入金";
+                const trackedInvoice = (sentInvoicesByFacility.get(currentInvoiceFacilityId) || []).find(item => item.id === invoice.id);
+                if (trackedInvoice) trackedInvoice.paymentStatus = invoice.paymentStatus;
+                renderUnpaidInvoiceCount();
                 const latestInvoice = latestInvoiceByFacility.get(currentInvoiceFacilityId);
                 if (latestInvoice?.id === invoice.id) {
                     latestInvoice.paymentStatus = invoice.paymentStatus;
