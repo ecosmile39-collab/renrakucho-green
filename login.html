@@ -109,7 +109,9 @@
         function isTrialExpired(facilityData) {
             if (facilityData.subscriptionStatus !== "trial") return false;
             const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
-            return !Number.isFinite(trialEndsAt) || Date.now() >= trialEndsAt;
+            const graceEndsAt = Date.parse(facilityData.paymentGraceUntil || "");
+            const accessEndsAt = Number.isFinite(graceEndsAt) ? Math.max(Number.isFinite(trialEndsAt) ? trialEndsAt : 0, graceEndsAt) : trialEndsAt;
+            return !Number.isFinite(accessEndsAt) || Date.now() >= accessEndsAt;
         }
 
         window.onload = async function() {

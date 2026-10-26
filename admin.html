@@ -856,6 +856,8 @@
                 let isLocked = facility.status === "locked";
                 let isTrial = facility.subscriptionStatus === "trial";
                 let trialEndTime = Date.parse(facility.trialEndsAt || "");
+                const graceEndTime = Date.parse(facility.paymentGraceUntil || "");
+                if (Number.isFinite(graceEndTime)) trialEndTime = Number.isFinite(trialEndTime) ? Math.max(trialEndTime, graceEndTime) : graceEndTime;
                 let isTrialExpired = isTrial && (!Number.isFinite(trialEndTime) || Date.now() >= trialEndTime);
                 let trialDaysRemaining = isTrial && !isTrialExpired ? Math.ceil((trialEndTime - Date.now()) / (24 * 60 * 60 * 1000)) : 0;
                 let statusClass = isLocked ? "locked" : isTrialExpired ? "trial-expired" : isTrial ? "trial" : "active";

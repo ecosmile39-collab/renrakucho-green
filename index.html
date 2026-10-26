@@ -1684,7 +1684,7 @@
             }
 
             const facilityData = facilitySnapshot.data();
-            const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
+            const trialEndsAt = getTrialAccessEndTime(facilityData);
             const expiredTrial = facilityData.subscriptionStatus === "trial" &&
                 Number.isFinite(trialEndsAt) && trialEndsAt <= Date.now();
             const tokenResult = await auth.currentUser.getIdTokenResult();
@@ -2111,19 +2111,30 @@
             return fetchServerData(userName, dateStr);
         };
 
+function getTrialAccessEndTime(facilityData) {
+            const trialEnd = Date.parse(facilityData.trialEndsAt || "");
+            const graceEnd = Date.parse(facilityData.paymentGraceUntil || "");
+            if (!Number.isFinite(trialEnd)) return Number.isFinite(graceEnd) ? graceEnd : NaN;
+            return Number.isFinite(graceEnd) ? Math.max(trialEnd, graceEnd) : trialEnd;
+        }
+
         function updateTrialRegistrationControls(facilityData) {
             const notice = document.getElementById("trialNotice");
             const registrationButton = document.getElementById("trialRegistrationButton");
             const isTrial = facilityData.subscriptionStatus === "trial";
             const trialEndsAt = Date.parse(facilityData.trialEndsAt || "");
-            if (!isTrial || !Number.isFinite(trialEndsAt) || trialEndsAt <= Date.now()) {
+            const accessEndsAt = getTrialAccessEndTime(facilityData);
+            if (!isTrial || !Number.isFinite(accessEndsAt) || accessEndsAt <= Date.now()) {
                 notice.hidden = true;
                 registrationButton.hidden = true;
                 return;
             }
 
             if (["invoice_sending", "pending_payment"].includes(facilityData.subscriptionApplicationStatus)) {
-                notice.textContent = "本登録を受け付けました。初回請求書を登録メールへ送信しています。入金確認後に本利用へ切り替わります。";
+                const graceEndsAt = Date.parse(facilityData.paymentGraceUntil || "");
+                notice.textContent = Number.isFinite(graceEndsAt)
+                    ? `本登録を受け付けました。初回請求書のお支払期限（${new Date(graceEndsAt).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })}）まではそのままご利用いただけます。入金確認後に本利用へ切り替わります。`
+                    : "本登録を受け付けました。初回請求書を登録メールへ送信しています。入金確認後に本利用へ切り替わります。";
                 notice.hidden = false;
                 registrationButton.hidden = true;
                 return;

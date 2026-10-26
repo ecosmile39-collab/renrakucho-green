@@ -33,7 +33,7 @@ service cloud.firestore {
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'status', 'subscriptionStatus', 'usagePaused', 'usagePausedAt',
           'usageResumedAt', 'usageResumeRequestedAt', 'trialEndsAt',
-          'retentionDeletionStartedAt'
+          'retentionDeletionStartedAt', 'paymentGraceUntil', 'lockReason'
         ]);
 
       match /users/{userName} {

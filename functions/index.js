@@ -26,6 +26,7 @@ const {
 } = require("./one-time-invoice-adjustment");
 const { generateInvoicePdf } = require("./invoice-pdf");
 const { findOverdueUnpaidInvoices } = require("./overdue-lock");
+const { getTrialAccessEndsAt, isTrialAccessOpen, getPaymentGraceFields } = require("./trial-access");
 const { daysUntilTrialEnds, isTrialReminderDue } = require("./trial-reminder");
 const { getFacilityRetentionDeadline, isFacilityRetentionExpired } = require("./facility-retention");
 
@@ -117,7 +118,7 @@ exports.createFacilitySession = onCall(async request => {
         if (!Number.isFinite(trialEndsAt)) {
             throw new HttpsError("permission-denied", "無料お試し期間が終了しました。利用を続ける場合は販売元へお問い合わせください。");
         }
-        registrationOnly = Date.now() >= trialEndsAt;
+        registrationOnly = !isTrialAccessOpen(data);
     }
     if (data.status === "locked" && !registrationOnly) {
         if (data.lockReason === "payment_overdue") {
@@ -1217,6 +1218,20 @@ async function writeFacilityData(facilityRef, targetRef, fields) {
     });
 }
 
+// 初回請求書の送信後：入金待ちにし、お支払期限の日の終わりまで施設が使えるようにする。
+async function markInitialInvoicePending(facilityRef, dueDate) {
+    await getFirestore().runTransaction(async transaction => {
+        const current = await transaction.get(facilityRef);
+        if (!current.exists || current.data().retentionDeletionStartedAt) {
+            throw new HttpsError("failed-precondition", "施設アカウントは退会・削除処理中、または削除済みです。");
+        }
+        transaction.set(facilityRef, {
+            subscriptionApplicationStatus: "pending_payment",
+            ...getPaymentGraceFields(current.data(), dueDate)
+        }, { merge: true });
+    });
+}
+
 function requireFacilityId(request) {
     const facilityId = request.auth?.uid;
     if (!facilityId || request.auth.token.role !== "facility") {
@@ -1232,8 +1247,7 @@ async function verifyFacilityIsActive(facilityId) {
     }
     const facility = facilitySnapshot.data();
     if (facility.subscriptionStatus === "trial") {
-        const trialEndsAt = Date.parse(facility.trialEndsAt || "");
-        if (!Number.isFinite(trialEndsAt) || Date.now() >= trialEndsAt) {
+        if (!isTrialAccessOpen(facility)) {
             throw new HttpsError("permission-denied", "無料お試し期間が終了しています。");
         }
     }
@@ -1793,8 +1807,7 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
         if (!facilityDocument.exists) continue;
         const facility = facilityDocument.data();
         if (facility.status === "locked") continue;
-        if (facility.subscriptionStatus === "trial" &&
-            !(Date.parse(facility.trialEndsAt || "") > Date.now())) continue;
+        if (facility.subscriptionStatus === "trial" && !isTrialAccessOpen(facility)) continue;
         const users = await facilityDocument.ref.collection("users")
             .where("lineUserIds", "array-contains", lineUserId).get();
         if (facility.lineServiceEnabled === false) {
@@ -2390,6 +2403,7 @@ exports.requestFacilitySubscription = onCall({
                         billingServiceTypesUpdatedAt: new Date().toISOString()
                     } : {}),
                     subscriptionApplicationStatus: "pending_payment",
+                    ...getPaymentGraceFields(facility, invoice.dueDate),
                     subscriptionRequestedAt: facility.subscriptionRequestedAt || requestedAt.toISOString(),
                     billingAnchorAt: facility.billingAnchorAt || billingAnchorAt
                 }, { merge: true });
@@ -2521,7 +2535,7 @@ exports.requestFacilitySubscription = onCall({
         });
         await Promise.all([
             writeFacilityData(facilityRef, invoiceRef, { status: "sent", invoiceHtml: archivedHtml, messageId: emailResult.messageId, sentAt: FieldValue.serverTimestamp() }),
-            writeFacilityData(facilityRef, facilityRef, { subscriptionApplicationStatus: "pending_payment" }),
+            markInitialInvoicePending(facilityRef, dueDate),
             db.collection("invoiceEmailLogs").add({
                 test: false,
                 type: "initial",
@@ -2549,7 +2563,7 @@ exports.requestFacilitySubscription = onCall({
         if (emailResult) {
             await Promise.all([
                 writeFacilityData(facilityRef, invoiceRef, { status: "sent", invoiceHtml: archivedHtml, messageId: emailResult.messageId, sentAt: FieldValue.serverTimestamp() }),
-                writeFacilityData(facilityRef, facilityRef, { subscriptionApplicationStatus: "pending_payment" })
+                markInitialInvoicePending(facilityRef, dueDate)
             ]).catch(logError => logger.error("Failed to finalize sent initial invoice", logError));
             await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, true)
                 .catch(logError => logger.error("Failed to finalize LINE agency fee", { facilityId, error: logError }));
@@ -2833,7 +2847,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         await finalizeOneTimeInvoiceAdjustment(db, facilityRef, oneTimeAdjustment);
         await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, true);
         if (isInitialInvoice) {
-            await writeFacilityData(facilityRef, facilityRef, { subscriptionApplicationStatus: "pending_payment" });
+            await markInitialInvoicePending(facilityRef, dueDate);
         }
         return { invoiceNumber, recipient, type: invoiceType };
     } catch (error) {
@@ -2849,7 +2863,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             await settleLineAgencyFee(db, facilityRef, invoiceRef, lineAgencyFee, true)
                 .catch(logError => logger.error("Failed to finalize LINE agency fee", { facilityId, error: logError }));
             if (isInitialInvoice) {
-                await writeFacilityData(facilityRef, facilityRef, { subscriptionApplicationStatus: "pending_payment" })
+                await markInitialInvoicePending(facilityRef, dueDate)
                     .catch(logError => logger.error("Failed to update initial invoice status", { facilityId, error: logError }));
             }
             logger.error("Manual invoice email sent but finalization failed", { facilityId, recipient, error });
@@ -3280,6 +3294,7 @@ exports.sendTrialExpiryReminders = onSchedule({
     const candidates = facilitiesSnapshot.docs.filter(document => {
         const facility = document.data();
         return facility.status !== "locked" &&
+            !["invoice_sending", "pending_payment"].includes(facility.subscriptionApplicationStatus) &&
             isTrialReminderDue(facility.trialEndsAt, now);
     });
     if (!candidates.length) {
@@ -3314,6 +3329,7 @@ exports.sendTrialExpiryReminders = onSchedule({
             const currentFacility = currentSnapshot.data();
             if (currentFacility.status === "locked" ||
                 currentFacility.subscriptionStatus !== "trial" ||
+                ["invoice_sending", "pending_payment"].includes(currentFacility.subscriptionApplicationStatus) ||
                 !isTrialReminderDue(currentFacility.trialEndsAt, new Date())) {
                 return false;
             }
@@ -3447,8 +3463,8 @@ exports.lockExpiredTrials = onSchedule("every 60 minutes", async () => {
     const expiredFacilities = facilitiesSnapshot.docs.filter(document => {
         const facility = document.data();
         if (facility.status === "locked" || facility.subscriptionStatus !== "trial") return false;
-        const trialEndsAt = Date.parse(facility.trialEndsAt || "");
-        return !Number.isFinite(trialEndsAt) || trialEndsAt <= now;
+        const accessEndsAt = getTrialAccessEndsAt(facility);
+        return !Number.isFinite(accessEndsAt) || accessEndsAt <= now;
     });
     for (let offset = 0; offset < expiredFacilities.length; offset += 400) {
         const batch = getFirestore().batch();
