@@ -15,7 +15,8 @@ export const CUSTOM_FORM_FIELD_TYPES = ["text", "textarea", "number", "date", "c
 export const MAX_CUSTOM_FORM_FIELDS = 20;
 export const DEFAULT_PROFILE_FIELDS = [
     { id: "emergency-contact", label: "緊急連絡先", type: "textarea", familyVisible: false },
-    { id: "medical-history", label: "持病", type: "textarea", familyVisible: false }
+    { id: "medical-history", label: "持病", type: "textarea", familyVisible: false },
+    { id: "past-medical-history", label: "既往歴", type: "textarea", familyVisible: false }
 ];
 
 export function getFacilityProfileFields(customFields = []) {

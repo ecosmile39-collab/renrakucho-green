@@ -16,7 +16,8 @@ test("unconfigured facilities keep the original form and have no custom fields",
 test("emergency contact and medical history fields are available to every facility", () => {
     assert.deepEqual(DEFAULT_PROFILE_FIELDS.map(({ id, label, type, familyVisible }) => ({ id, label, type, familyVisible })), [
         { id: "emergency-contact", label: "緊急連絡先", type: "textarea", familyVisible: false },
-        { id: "medical-history", label: "持病", type: "textarea", familyVisible: false }
+        { id: "medical-history", label: "持病", type: "textarea", familyVisible: false },
+        { id: "past-medical-history", label: "既往歴", type: "textarea", familyVisible: false }
     ]);
     assert.deepEqual(getFacilityProfileFields(), DEFAULT_PROFILE_FIELDS);
 });
@@ -29,7 +30,7 @@ test("default profile fields replace same-label facility fields without losing s
     ];
     const profileFields = getFacilityProfileFields(configuredFields);
     const savedData = { customProfileFields: { "legacy-contact": "家族 090-0000-0000", "legacy-condition": "ぜんそく" } };
-    assert.deepEqual(profileFields.map(field => field.id), ["emergency-contact", "medical-history", "support-note"]);
+    assert.deepEqual(profileFields.map(field => field.id), ["emergency-contact", "medical-history", "past-medical-history", "support-note"]);
     assert.equal(getFacilityProfileFieldValue(savedData, profileFields[0], configuredFields), "家族 090-0000-0000");
     assert.equal(getFacilityProfileFieldValue(savedData, profileFields[1], configuredFields), "ぜんそく");
 });
@@ -69,9 +70,11 @@ test("medical history label is renamed without changing saved field identifiers 
     ]);
     const fields = getFacilityProfileFields(customFields);
     assert.equal(fields.find(field => field.id === "medical-history").label, "持病");
+    // 施設独自の「既往歴」は標準の既往歴欄にまとめられ、保存済みの内容はそのまま表示される
+    assert.equal(fields.filter(field => field.label === "既往歴").length, 1);
     assert.equal(getFacilityProfileFieldValue({
         customProfileFields: { "past-history": "急性大腸炎" }
-    }, fields.find(field => field.id === "past-history"), customFields), "急性大腸炎");
+    }, fields.find(field => field.id === "past-medical-history"), customFields), "急性大腸炎");
 });
 
 test("custom field definitions are limited to twenty", () => {
