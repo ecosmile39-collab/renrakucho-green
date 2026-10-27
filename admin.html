@@ -191,7 +191,7 @@
             <details class="dashboard-box">
                 <summary>📈 施設ごとの使われ具合 <span id="usageWarningCount" class="dashboard-count" hidden>0</span></summary>
                 <p class="muted" style="margin: 6px 0;">最後に記録を入力した日、今月の記録の件数、利用者の数、LINEで連携しているご家族の数です。退会処理中の施設は含みません。この表は30分ごとに更新します（「今すぐ更新」でも更新されます）。</p>
-                <div id="facilityUsageTable"><p class="muted">読み込み中...</p></div>
+                <div id="facilityUsageTable"><p class="muted">この欄を開くと読み込みます。</p></div>
             </details>
 
             <details class="dashboard-box">
@@ -203,7 +203,7 @@
             <details class="dashboard-box">
                 <summary>🗒️ 操作の記録</summary>
                 <p class="muted" style="margin: 6px 0;">この管理画面で行った、ロック・解除、入金登録、請求書の発行などの記録です（新しい順に100件）。</p>
-                <div id="auditLogList"><p class="muted">読み込み中...</p></div>
+                <div id="auditLogList"><p class="muted">この欄を開くと読み込みます。</p></div>
             </details>
 
             <details class="dashboard-box">
@@ -676,7 +676,7 @@
                     action, facilityId, facilityName: facility ? (facility.facilityName || facility.id) : "",
                     detail: String(detail || "").slice(0, 300), at: serverTimestamp(), by: auth.currentUser?.uid || ""
                 });
-                loadAuditLogs();
+                if (document.getElementById("auditLogList").closest("details").open) loadAuditLogs();
             } catch (error) {
                 console.warn("操作の記録を保存できませんでした:", error);
             }
@@ -934,6 +934,11 @@
             }
         };
 
+        [["auditLogList", () => loadAuditLogs()], ["announcementList", () => loadAnnouncements()], ["facilityUsageTable", () => { if (!lastUsageLoadedAt || Date.now() - lastUsageLoadedAt >= 30 * 60 * 1000) loadFacilityUsage(); }]].forEach(([id, load]) => {
+            const details = document.getElementById(id).closest("details");
+            details.addEventListener("toggle", () => { if (details.open) load(); });
+        });
+
         ["facilitySearchInput", "facilityStatusFilter", "facilitySortOrder"].forEach(id => {
             document.getElementById(id).addEventListener(id === "facilitySearchInput" ? "input" : "change", () => {
                 facilityFilter = {
@@ -990,10 +995,12 @@
                 lastAdminRefreshAt = Date.now();
                 updateLastRefreshedLabel();
                 // 使われ具合は全施設の記録を数えるため、読み込みの回数（料金）を抑えて30分ごとにする
-                if (!lastUsageLoadedAt || Date.now() - lastUsageLoadedAt >= 30 * 60 * 1000) loadFacilityUsage();
+                const usageOpen = document.getElementById("facilityUsageTable").closest("details").open;
+                if (usageOpen && (!lastUsageLoadedAt || Date.now() - lastUsageLoadedAt >= 30 * 60 * 1000)) loadFacilityUsage();
                 loadSystemHealth();
-                loadAuditLogs();
-                loadAnnouncements();
+                // 操作の記録とお知らせは、欄を開いているときだけ読み込む（自動更新での読み込み件数を減らす）
+                if (document.getElementById("auditLogList").closest("details").open) loadAuditLogs();
+                if (document.getElementById("announcementList").closest("details").open) loadAnnouncements();
             } catch (e) {
                 loading.style.display = "none";
                 error.textContent = "施設一覧を取得できませんでした: " + e.message;
