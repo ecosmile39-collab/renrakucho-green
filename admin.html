@@ -528,7 +528,7 @@
             if (facilities.length === 0 && cancellationRecords.length === 0) {
                 list.innerHTML = '<p class="muted">登録施設はありません。</p>';
             } else {
-                const rows = facilities.map(facility => {
+                const rows = facilities.map((facility, index) => {
                     const trialStartedAt = facility.trialStartedAt || (facility.subscriptionStatus === "trial" ? facility.createdAt : null);
                     const trialEndsAt = Date.parse(facility.trialEndsAt || "");
                     const isTrialing = facility.subscriptionStatus === "trial" &&
@@ -545,6 +545,7 @@
                         ? formatDate(facility.lineAgencyRequestedAt)
                         : "—";
                     return `<tr>
+                        <td style="text-align: right; color: #495057;">${index + 1}</td>
                         <td>${escapeHtml(facility.facilityName || facility.id)}</td>
                         <td>${escapeHtml(facility.email || "未登録")}</td>
                         <td>${escapeHtml(facility.phone || "未登録")}</td>
@@ -557,8 +558,8 @@
                     </tr>`;
                 }).join("");
                 list.innerHTML = `<table class="facility-overview-table">
-                    <colgroup><col style="width:14%"><col style="width:17%"><col style="width:10%"><col style="width:15%"><col style="width:12%"><col style="width:8%"><col style="width:10%"><col style="width:7%"><col style="width:7%"></colgroup>
-                    <thead><tr><th scope="col">施設名</th><th scope="col">メールアドレス</th><th scope="col">電話番号</th><th scope="col">担当者名</th><th scope="col">トライアル開始日</th><th scope="col">本登録日</th><th scope="col">LINE連携申込</th><th scope="col">申込日</th><th scope="col">LINE連携</th></tr></thead>
+                    <colgroup><col style="width:4%"><col style="width:13%"><col style="width:16%"><col style="width:10%"><col style="width:14%"><col style="width:12%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:7%"></colgroup>
+                    <thead><tr><th scope="col" style="text-align: right;">No.</th><th scope="col">施設名</th><th scope="col">メールアドレス</th><th scope="col">電話番号</th><th scope="col">担当者名</th><th scope="col">トライアル開始日</th><th scope="col">本登録日</th><th scope="col">LINE連携申込</th><th scope="col">申込日</th><th scope="col">LINE連携</th></tr></thead>
                     <tbody>${rows}</tbody>
                 </table>`;
             }
