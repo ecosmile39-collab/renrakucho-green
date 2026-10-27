@@ -170,6 +170,11 @@
                 <button type="button" onclick="logoutAdmin()" style="background: #495057;">管理者からログアウト</button>
             </div>
             <p id="passwordMigrationStatus" class="muted" role="status" aria-live="polite"></p>
+            <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: #495057;">
+                <label style="display: inline-flex; align-items: center; gap: 4px; margin: 0; cursor: pointer;"><input type="checkbox" id="adminAutoRefresh" style="width: auto; margin: 0;" checked> 5分ごとに自動更新</label>
+                <span id="adminLastRefreshed"></span>
+                <button type="button" onclick="refreshAdminDashboardNow()" style="width: auto; margin: 0; padding: 4px 10px; font-size: 12px; background: #495057;">🔄 今すぐ更新</button>
+            </div>
 
             <details class="dashboard-box" open>
                 <summary>📋 今日の要対応 <span id="actionItemCount" class="dashboard-count">0</span></summary>
@@ -185,7 +190,7 @@
 
             <details class="dashboard-box">
                 <summary>📈 施設ごとの使われ具合 <span id="usageWarningCount" class="dashboard-count" hidden>0</span></summary>
-                <p class="muted" style="margin: 6px 0;">最後に記録を入力した日、今月の記録の件数、利用者の数、LINEで連携しているご家族の数です。退会処理中の施設は含みません。</p>
+                <p class="muted" style="margin: 6px 0;">最後に記録を入力した日、今月の記録の件数、利用者の数、LINEで連携しているご家族の数です。退会処理中の施設は含みません。この表は30分ごとに更新します（「今すぐ更新」でも更新されます）。</p>
                 <div id="facilityUsageTable"><p class="muted">読み込み中...</p></div>
             </details>
 
@@ -763,7 +768,9 @@
                 <p class="muted" style="font-size: 12px; margin: 4px 0 0;">本登録は、過去28日間に本登録になった施設の数です（トライアル申込が28日より前の施設も含みます）。</p>`;
         }
 
+        let lastUsageLoadedAt = 0;
         async function loadFacilityUsage() {
+            lastUsageLoadedAt = Date.now();
             const container = document.getElementById("facilityUsageTable");
             const withdrawn = new Set(cancellationRecords.map(record => record.facilityId || record.id));
             const targets = facilities.filter(facility => !withdrawn.has(facility.id) && !facility.retentionDeletionStartedAt);
@@ -980,7 +987,10 @@
                 renderFacilities();
                 renderCancellationRecords();
                 renderDashboard();
-                loadFacilityUsage();
+                lastAdminRefreshAt = Date.now();
+                updateLastRefreshedLabel();
+                // 使われ具合は全施設の記録を数えるため、読み込みの回数（料金）を抑えて30分ごとにする
+                if (!lastUsageLoadedAt || Date.now() - lastUsageLoadedAt >= 30 * 60 * 1000) loadFacilityUsage();
                 loadSystemHealth();
                 loadAuditLogs();
                 loadAnnouncements();
@@ -1194,6 +1204,72 @@
             renderUnpaidInvoiceList();
             document.getElementById("unpaidInvoiceDialog").showModal();
         };
+
+        // ===== 自動更新（5分ごと）=====
+        const AUTO_REFRESH_MS = 5 * 60 * 1000;
+        let lastAdminRefreshAt = 0;
+        let adminRefreshRunning = false;
+        const autoRefreshCheckbox = document.getElementById("adminAutoRefresh");
+        try { autoRefreshCheckbox.checked = localStorage.getItem("adminAutoRefresh") !== "off"; } catch (error) { /* 保存できない端末は既定のまま */ }
+        autoRefreshCheckbox.addEventListener("change", () => {
+            try { localStorage.setItem("adminAutoRefresh", autoRefreshCheckbox.checked ? "on" : "off"); } catch (error) { /* 無視 */ }
+            updateLastRefreshedLabel();
+        });
+
+        function updateLastRefreshedLabel(skippedReason = "") {
+            const label = document.getElementById("adminLastRefreshed");
+            if (!label) return;
+            const time = lastAdminRefreshAt ? new Date(lastAdminRefreshAt).toLocaleTimeString("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" }) : "—";
+            label.textContent = `最終更新 ${time}${skippedReason ? `（${skippedReason}ため自動更新を待っています）` : ""}`;
+        }
+
+        // 入力中・ダイアログ表示中・請求書履歴を開いている間は、書きかけの内容が消えないよう自動更新しない
+        function getAutoRefreshBlocker() {
+            const active = document.activeElement;
+            if (active && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName) && active.id !== "adminAutoRefresh") return "入力中の";
+            if (document.querySelector("dialog[open]")) return "画面を開いている";
+            if (!document.getElementById("invoiceHistoryPanel")?.classList.contains("hidden")) return "請求書履歴を開いている";
+            if (document.querySelector("#facilityList details[open]")) return "施設の設定を開いている";
+            return "";
+        }
+
+        async function refreshAdminDashboard() {
+            if (adminRefreshRunning) return;
+            adminRefreshRunning = true;
+            const scrollY = window.scrollY;
+            try {
+                await Promise.all([loadFacilities(), loadLpAnalytics()]);
+                lastAdminRefreshAt = Date.now();
+                updateLastRefreshedLabel();
+                window.scrollTo(0, scrollY);
+            } finally {
+                adminRefreshRunning = false;
+            }
+        }
+
+        window.refreshAdminDashboardNow = async function() {
+            lastUsageLoadedAt = 0;
+            await refreshAdminDashboard();
+        };
+
+        setInterval(() => {
+            if (!autoRefreshCheckbox.checked || document.hidden) return;
+            if (document.getElementById("facilitySection").classList.contains("hidden")) return;
+            if (Date.now() - lastAdminRefreshAt < AUTO_REFRESH_MS) return;
+            const blocker = getAutoRefreshBlocker();
+            if (blocker) {
+                updateLastRefreshedLabel(blocker);
+                return;
+            }
+            refreshAdminDashboard();
+        }, 30 * 1000);
+
+        // 別のタブから戻ったとき、5分以上たっていればすぐ更新する
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden || !autoRefreshCheckbox.checked) return;
+            if (document.getElementById("facilitySection").classList.contains("hidden")) return;
+            if (Date.now() - lastAdminRefreshAt >= AUTO_REFRESH_MS && !getAutoRefreshBlocker()) refreshAdminDashboard();
+        });
 
         window.refreshAdminLists = async function() {
             document.getElementById("loadingMessage").style.display = "block";
