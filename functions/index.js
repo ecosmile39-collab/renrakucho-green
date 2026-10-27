@@ -510,7 +510,14 @@ exports.verifyAdminLoginCode = onCall({ secrets: [ADMIN_CONTROL_KEY] }, async re
     };
 });
 
-exports.cleanExpiredAdminLoginData = onSchedule("every day 03:00", async () => {
+exports.cleanExpiredAdminLoginData = onSchedule({
+    schedule: "every day 03:00",
+    // 起動直後の一時的な500などで実行自体が失敗したときは、数分後に自動で再実行する
+    // （送信済み・送信中の記録で二重送信を防いでいるため、再実行しても重複しない）
+    retryCount: 3,
+    minBackoffSeconds: 120,
+    maxBackoffSeconds: 600
+}, async () => {
     const db = getFirestore();
     const now = Date.now();
     for (const collectionName of [
@@ -1861,7 +1868,12 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
 exports.deleteExpiredLineLinks = onSchedule({
     schedule: "every day 04:30",
     timeZone: "Asia/Tokyo",
-    maxInstances: 1
+    maxInstances: 1,
+    // 起動直後の一時的な500などで実行自体が失敗したときは、数分後に自動で再実行する
+    // （送信済み・送信中の記録で二重送信を防いでいるため、再実行しても重複しない）
+    retryCount: 3,
+    minBackoffSeconds: 120,
+    maxBackoffSeconds: 600
 }, async () => {
     const db = getFirestore();
     for (const collectionName of ["lineRecordLinks", "linePairingCodes"]) {
@@ -3039,6 +3051,11 @@ exports.sendMonthlyInvoices = onSchedule({
     schedule: "every day 09:00",
     timeZone: "Asia/Tokyo",
     maxInstances: 1,
+    // 起動直後の一時的な500などで実行自体が失敗したときは、数分後に自動で再実行する
+    // （送信済み・送信中の記録で二重送信を防いでいるため、再実行しても重複しない）
+    retryCount: 3,
+    minBackoffSeconds: 120,
+    maxBackoffSeconds: 600,
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async () => {
     const db = getFirestore();
@@ -3078,7 +3095,15 @@ exports.sendMonthlyInvoices = onSchedule({
         );
         if (!period) {
             skippedCount++;
-            logger.warn("Skipping monthly invoice: facility registration date is missing or invalid", { facilityId });
+            const billingStart = facility.billingAnchorAt || facility.planActivatedAt || facility.createdAt;
+            const billingStartTime = billingStart && typeof billingStart.toDate === "function"
+                ? billingStart.toDate().getTime()
+                : new Date(billingStart).getTime();
+            if (Number.isFinite(billingStartTime)) {
+                logger.info("Skipping monthly invoice: no billing period is due yet", { facilityId });
+            } else {
+                logger.warn("Skipping monthly invoice: facility registration date is missing or invalid", { facilityId });
+            }
             continue;
         }
 
@@ -3286,6 +3311,11 @@ exports.sendTrialExpiryReminders = onSchedule({
     schedule: "every day 09:00",
     timeZone: "Asia/Tokyo",
     maxInstances: 1,
+    // 起動直後の一時的な500などで実行自体が失敗したときは、数分後に自動で再実行する
+    // （送信済み・送信中の記録で二重送信を防いでいるため、再実行しても重複しない）
+    retryCount: 3,
+    minBackoffSeconds: 120,
+    maxBackoffSeconds: 600,
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
 }, async () => {
     const db = getFirestore();
