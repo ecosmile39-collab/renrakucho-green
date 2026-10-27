@@ -113,7 +113,7 @@
             <div id="lpAnalyticsSummary" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
             <div id="lpAnalyticsDaily" style="margin-top: 12px;"></div>
             <div id="lpAnalyticsChannels" style="margin-top: 10px; font-size: 13px;"></div>
-            <p class="muted" style="margin: 8px 0 0; font-size: 12px;">Google アナリティクスの数字です。訪問者数は同じ人の重複を除いた人数、閲覧数はページが表示された回数です。数字は数時間遅れて反映されることがあります。</p>
+            <p class="muted" style="margin: 8px 0 0; font-size: 12px;">Google アナリティクスの数字です。訪問者数は同じ人の重複を除いた人数、閲覧数はページが表示された回数です。全期間の合計は、計測を始めた2026年10月27日からの数です。数字は数時間遅れて反映されることがあります。</p>
         </section>
 
         <section id="authSection" class="auth-box">
@@ -486,7 +486,8 @@
             const summary = result?.summary || {};
             const cards = [
                 ["今日", summary.today], ["昨日", summary.yesterday],
-                ["過去7日間", summary.last7Days], ["過去28日間", summary.last28Days]
+                ["過去7日間", summary.last7Days], ["過去28日間", summary.last28Days],
+                ["全期間の合計（2026年10月27日から）", summary.allTime]
             ];
             document.getElementById("lpAnalyticsSummary").innerHTML = cards.map(([label, value]) => `
                 <div style="flex: 1; min-width: 120px; padding: 10px 12px; background: #fff; border: 1px solid #d0bfff; border-radius: 8px;">

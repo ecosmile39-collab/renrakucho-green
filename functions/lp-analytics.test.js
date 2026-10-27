@@ -7,8 +7,9 @@ const { LP_ANALYTICS_PROPERTY_ID, buildLpAnalyticsRequest, parseLpAnalyticsRespo
 test("the request asks for today, yesterday, 7 and 28 days, a 14-day trend and traffic sources", () => {
     const { requests } = buildLpAnalyticsRequest();
     assert.equal(LP_ANALYTICS_PROPERTY_ID, "561014308");
-    assert.deepEqual(requests[0].dateRanges.map(range => range.name), ["today", "yesterday", "last7Days", "last28Days"]);
+    assert.deepEqual(requests[0].dateRanges.map(range => range.name), ["today", "yesterday", "last7Days", "last28Days", "allTime"]);
     assert.deepEqual(requests[0].metrics.map(metric => metric.name), ["activeUsers", "screenPageViews", "sessions"]);
+    assert.equal(requests[0].dateRanges[4].startDate, "2026-10-27");
     assert.equal(requests[1].dimensions[0].name, "date");
     assert.equal(requests[1].dateRanges[0].startDate, "13daysAgo");
     assert.equal(requests[2].dimensions[0].name, "sessionDefaultChannelGroup");
@@ -18,7 +19,8 @@ test("the response is turned into visitor counts, a daily trend and Japanese sou
     const parsed = parseLpAnalyticsResponse({ reports: [
         { rows: [
             { dimensionValues: [{ value: "today" }], metricValues: [{ value: "3" }, { value: "5" }, { value: "4" }] },
-            { dimensionValues: [{ value: "date_range_3" }], metricValues: [{ value: "40" }, { value: "90" }, { value: "55" }] }
+            { dimensionValues: [{ value: "date_range_3" }], metricValues: [{ value: "40" }, { value: "90" }, { value: "55" }] },
+            { dimensionValues: [{ value: "allTime" }], metricValues: [{ value: "120" }, { value: "300" }, { value: "150" }] }
         ] },
         { rows: [
             { dimensionValues: [{ value: "20261027" }], metricValues: [{ value: "3" }] },
@@ -31,6 +33,7 @@ test("the response is turned into visitor counts, a daily trend and Japanese sou
     ] });
     assert.deepEqual(parsed.summary.today, { visitors: 3, pageViews: 5, sessions: 4 });
     assert.deepEqual(parsed.summary.last28Days, { visitors: 40, pageViews: 90, sessions: 55 });
+    assert.deepEqual(parsed.summary.allTime, { visitors: 120, pageViews: 300, sessions: 150 });
     assert.deepEqual(parsed.summary.yesterday, { visitors: 0, pageViews: 0, sessions: 0 });
     assert.deepEqual(parsed.daily, [{ date: "2026-10-26", visitors: 7 }, { date: "2026-10-27", visitors: 3 }]);
     assert.deepEqual(parsed.channels, [

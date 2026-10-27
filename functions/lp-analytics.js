@@ -1,11 +1,14 @@
 // LP（WordPress）の訪問者数を Google アナリティクス 4 の Data API から読む
 const LP_ANALYTICS_PROPERTY_ID = "561014308";
+// 計測を始めた日（Site Kit でアナリティクスを設定した日）。全期間の合計はこの日から数える
+const LP_ANALYTICS_START_DATE = "2026-10-27";
 
 const SUMMARY_RANGES = [
     { name: "today", startDate: "today", endDate: "today" },
     { name: "yesterday", startDate: "yesterday", endDate: "yesterday" },
     { name: "last7Days", startDate: "6daysAgo", endDate: "today" },
-    { name: "last28Days", startDate: "27daysAgo", endDate: "today" }
+    { name: "last28Days", startDate: "27daysAgo", endDate: "today" },
+    { name: "allTime", startDate: LP_ANALYTICS_START_DATE, endDate: "today" }
 ];
 
 function buildLpAnalyticsRequest() {
@@ -77,6 +80,7 @@ function parseLpAnalyticsResponse(response) {
 
 module.exports = {
     LP_ANALYTICS_PROPERTY_ID,
+    LP_ANALYTICS_START_DATE,
     buildLpAnalyticsRequest,
     parseLpAnalyticsResponse
 };
