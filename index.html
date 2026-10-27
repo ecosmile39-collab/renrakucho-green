@@ -507,6 +507,22 @@
 
         <datalist id="mealList"><option value="100%"></option><option value="75%"></option><option value="50%"></option><option value="25%"></option><option value="0%"></option></datalist>
         <datalist id="waterList"><option value="0ml"></option><option value="150ml"></option><option value="300ml"></option><option value="500ml"></option><option value="800ml"></option><option value="1000ml"></option><option value="1200ml"></option><option value="1500ml以上"></option></datalist>
+        <datalist id="waterMlList"><option value="500"></option><option value="800"></option><option value="1000"></option><option value="1200"></option><option value="1500"></option></datalist>
+        <datalist id="bowelCountList"><option value="0"></option><option value="1"></option><option value="2"></option><option value="3"></option></datalist>
+        <datalist id="bowelConditionList"><option value="普通便・中等量"></option><option value="普通便・少量"></option><option value="軟便・少量"></option><option value="硬便・少量"></option><option value="水様便"></option><option value="排便なし"></option></datalist>
+        <datalist id="urinationList"><option value="日中5回・夜間1回、特変なし"></option><option value="日中4〜6回、自立"></option><option value="トイレ誘導にて排尿あり"></option><option value="パッド交換4回、特変なし"></option><option value="尿量少なめ・様子観察"></option></datalist>
+        <datalist id="medicationList"><option value="内服確認済み"></option><option value="服薬介助にて内服"></option><option value="内服なし"></option><option value="軟膏塗布"></option><option value="点眼"></option></datalist>
+        <datalist id="lifeCareMedicationList"><option value="なし"></option><option value="昼食後の内服確認済み"></option><option value="服薬介助にて内服"></option><option value="吸引を実施"></option><option value="経管栄養を実施"></option><option value="軟膏塗布"></option></datalist>
+        <datalist id="lifeCareMealList"><option value="昼食 全量"></option><option value="昼食 8割"></option><option value="昼食 半分"></option><option value="昼食 少量"></option><option value="昼食 摂取なし"></option></datalist>
+        <datalist id="toiletingList"><option value="自立"></option><option value="声かけでトイレ誘導"></option><option value="一部介助"></option><option value="全介助・パッド交換"></option><option value="排泄なし"></option></datalist>
+        <datalist id="bathingList"><option value="入浴（一般浴）"></option><option value="入浴（機械浴）"></option><option value="シャワー浴"></option><option value="清拭"></option><option value="整容（洗面・整髪）"></option><option value="実施なし"></option></datalist>
+        <datalist id="childHealthNoteList"><option value="特に変わりなし"></option><option value="鼻水が少し出ていました"></option><option value="軽い咳がありました"></option><option value="少し疲れた様子でした"></option><option value="転んで膝を擦りむきました（処置済み）"></option></datalist>
+        <datalist id="snackList"><option value="ゼリー"></option><option value="おせんべい"></option><option value="クッキー"></option><option value="果物"></option><option value="ヨーグルト"></option><option value="おにぎり"></option></datalist>
+        <datalist id="lunchList"><option value="給食"></option><option value="お弁当持参"></option><option value="施設の昼食"></option></datalist>
+        <datalist id="sleepHoursList"><option value="7"></option><option value="8"></option><option value="9"></option><option value="10"></option><option value="11"></option></datalist>
+        <datalist id="sleepQualityList"><option value="良好"></option><option value="寝つきが悪かった"></option><option value="夜中に目が覚めた"></option><option value="夜泣きあり"></option></datalist>
+        <datalist id="morningStateList"><option value="元気に過ごしていた"></option><option value="食欲あり"></option><option value="少し眠そう"></option><option value="機嫌がよくない"></option><option value="朝食を少ししか食べなかった"></option></datalist>
+        <datalist id="childBelongingsList"><option value="特になし"></option><option value="着替え一式"></option><option value="水筒"></option><option value="外靴"></option><option value="タオル"></option><option value="上履き"></option></datalist>
         <datalist id="oralCareList"><option value="未実施"></option><option value="歯ブラシ"></option><option value="うがいのみ"></option><option value="スポンジブラシ"></option><option value="義歯洗浄"></option><option value="毎食後実施"></option></datalist>
 
         <div id="dayServiceSection">
@@ -665,22 +681,22 @@
             </div>
             <h4>バイタル・健康チェック</h4>
             <div class="flex-box">
-                <div><label>来所時体温</label><input type="number" step="0.1" id="afterSchoolTemperature" placeholder="例：36.5"></div>
+                <div><label>来所時体温</label><input type="number" step="0.1" id="afterSchoolTemperature" list="temp1List" placeholder="例：36.5"></div>
                 <div><label>検温時刻</label><input type="time" id="afterSchoolTempTime"></div>
                 <div><label>健康状態</label><select id="afterSchoolHealth"><option value="">選択してください</option><option value="良好">良好</option><option value="鼻水・咳">鼻水・咳</option><option value="機嫌不良">機嫌不良</option><option value="怪我・その他">怪我・その他</option></select></div>
             </div>
-            <input type="text" id="afterSchoolHealthNote" placeholder="健康状態・怪我などの補足（任意）">
+            <input type="text" id="afterSchoolHealthNote" list="childHealthNoteList" placeholder="健康状態・怪我などの補足（任意）">
             <h4 id="afterSchoolMealTitle">排泄・水分・おやつ</h4>
             <div class="flex-box">
                 <div><label>トイレ時刻</label><input type="time" id="afterSchoolToiletTime"></div>
                 <div><label>排泄状況</label><select id="afterSchoolToilet"><option value="">選択してください</option><option value="自立排尿">自立排尿</option><option value="促し">促し</option><option value="失敗・着替え">失敗・着替え</option><option value="排便">排便</option><option value="おむつ交換">おむつ交換</option><option value="トイレトレーニング（トイレで成功）">トイレトレーニング（トイレで成功）</option><option value="トイレトレーニング（誘導・声かけ）">トイレトレーニング（誘導・声かけ）</option><option value="なし">なし</option></select></div>
             </div>
             <div class="flex-box">
-                <div><label>提供したおやつ</label><input type="text" id="afterSchoolSnack" placeholder="例：ゼリー・おせんべい"></div>
+                <div><label>提供したおやつ</label><input type="text" id="afterSchoolSnack" list="snackList" placeholder="例：ゼリー・おせんべい"></div>
                 <div><label>おやつ摂取量</label><select id="afterSchoolSnackIntake"><option value="">選択してください</option><option value="完食">完食</option><option value="半分">半分</option><option value="拒否">拒否</option><option value="提供なし">提供なし</option></select></div>
             </div>
             <div class="flex-box" id="afterSchoolLunchRow" style="display: none;">
-                <div><label>昼食の内容</label><input type="text" id="afterSchoolLunch" placeholder="例：給食（カレー・サラダ）、お弁当持参"></div>
+                <div><label>昼食の内容</label><input type="text" id="afterSchoolLunch" list="lunchList" placeholder="例：給食（カレー・サラダ）、お弁当持参"></div>
                 <div><label>昼食の摂取量</label><select id="afterSchoolLunchIntake"><option value="">選択してください</option><option value="完食">完食</option><option value="8割">8割</option><option value="半分">半分</option><option value="少量">少量</option><option value="拒否">拒否</option><option value="提供なし">提供なし</option></select></div>
             </div>
             <h4>本日の活動・集団プログラム</h4>
@@ -709,15 +725,15 @@
             <textarea id="afterSchoolEpisode" rows="4" placeholder="表情、友だちとの関わり、できたこと、支援の様子、怪我や体調変化など"></textarea>
             <div class="flex-box">
                 <div><label>次回利用予定日</label><input type="date" id="afterSchoolNextUseDate"></div>
-                <div><label>持ち物・お知らせ</label><input type="text" id="afterSchoolBelongings" placeholder="例：外靴、水筒、着替え"></div>
+                <div><label>持ち物・お知らせ</label><input type="text" id="afterSchoolBelongings" list="childBelongingsList" placeholder="例：外靴、水筒、着替え"></div>
             </div>
             <h4>保護者記入欄</h4>
             <div class="flex-box">
-                <div><label>昨晩の睡眠時間</label><input type="number" id="afterSchoolHomeSleepHours" min="0" max="24" step="0.5" placeholder="時間"></div>
-                <div><label>昨晩の睡眠の様子</label><input type="text" id="afterSchoolHomeSleepQuality" placeholder="例：良好・夜泣きなし"></div>
+                <div><label>昨晩の睡眠時間</label><input type="number" id="afterSchoolHomeSleepHours" list="sleepHoursList" min="0" max="24" step="0.5" placeholder="時間"></div>
+                <div><label>昨晩の睡眠の様子</label><input type="text" id="afterSchoolHomeSleepQuality" list="sleepQualityList" placeholder="例：良好・夜泣きなし"></div>
             </div>
             <label>朝の様子</label>
-            <input type="text" id="afterSchoolMorningState" placeholder="例：食欲あり、元気に登校">
+            <input type="text" id="afterSchoolMorningState" list="morningStateList" placeholder="例：食欲あり、元気に登校">
             <label>保護者確認印・サイン（任意）</label>
             <input type="text" id="afterSchoolParentSign" placeholder="保護者名など">
             <h4>朝礼申し送り（職員間）</h4>
@@ -748,22 +764,22 @@
             </div>
             <h4>健康・バイタル</h4>
             <div class="flex-box">
-                <div><label>体温</label><input type="number" step="0.1" id="lifeCareTemperature" placeholder="例：36.5"></div>
-                <div><label>脈拍</label><input type="number" id="lifeCarePulse" placeholder="回/分"></div>
-                <div><label>血圧（上／下）</label><div class="bp-box"><input type="number" id="lifeCareBpHigh" placeholder="上"><span>/</span><input type="number" id="lifeCareBpLow" placeholder="下"></div></div>
-                <div><label>酸素飽和度</label><input type="number" id="lifeCareSpo2" placeholder="%"></div>
+                <div><label>体温</label><input type="number" step="0.1" id="lifeCareTemperature" list="temp1List" placeholder="例：36.5"></div>
+                <div><label>脈拍</label><input type="number" id="lifeCarePulse" list="pulseList" placeholder="回/分"></div>
+                <div><label>血圧（上／下）</label><div class="bp-box"><input type="number" id="lifeCareBpHigh" list="bpHighList" placeholder="上"><span>/</span><input type="number" id="lifeCareBpLow" list="bpLowList" placeholder="下"></div></div>
+                <div><label>酸素飽和度</label><input type="number" id="lifeCareSpo2" list="spo2List" placeholder="%"></div>
             </div>
             <label>健康状態・体調変化</label>
             <textarea id="lifeCareHealthNote" rows="2" placeholder="体調や健康面で気付いたこと"></textarea>
             <h4>日常生活の支援</h4>
             <div class="flex-box">
-                <div><label>食事・摂取量</label><input type="text" id="lifeCareMeal" placeholder="例：昼食 8割"></div>
-                <div><label>水分摂取量</label><input type="text" id="lifeCareWater" placeholder="例：約500ml"></div>
-                <div><label>服薬・医療的ケア</label><input type="text" id="lifeCareMedication" placeholder="実施内容・なし"></div>
+                <div><label>食事・摂取量</label><input type="text" id="lifeCareMeal" list="lifeCareMealList" placeholder="例：昼食 8割"></div>
+                <div><label>水分摂取量</label><input type="text" id="lifeCareWater" list="waterList" placeholder="例：約500ml"></div>
+                <div><label>服薬・医療的ケア</label><input type="text" id="lifeCareMedication" list="lifeCareMedicationList" placeholder="実施内容・なし"></div>
             </div>
             <div class="flex-box">
-                <div><label>排泄・トイレ支援</label><input type="text" id="lifeCareToileting" placeholder="例：声かけでトイレ誘導"></div>
-                <div><label>入浴・清潔保持</label><input type="text" id="lifeCareBathing" placeholder="例：入浴、清拭、整容"></div>
+                <div><label>排泄・トイレ支援</label><input type="text" id="lifeCareToileting" list="toiletingList" placeholder="例：声かけでトイレ誘導"></div>
+                <div><label>入浴・清潔保持</label><input type="text" id="lifeCareBathing" list="bathingList" placeholder="例：入浴、清拭、整容"></div>
             </div>
             <h4>日中活動・個別支援</h4>
             <div class="checkbox-group">
@@ -1100,6 +1116,7 @@
         import { removeUndefinedFields } from "./firestore-data.js";
         import { activeAnnouncements } from "./admin-dashboard.js";
         import { buildGroupHomeForm, readGroupHomeFields, restoreGroupHomeFields, validateGroupHomeFields } from "./group-home.js";
+        import { setupSentenceTemplates } from "./sentence-templates.js";
         import { buildResidentialForm, readResidentialFields, restoreResidentialFields, validateResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT } from "./residential-care.js";
 
         buildGroupHomeForm(document.getElementById("groupHomeFields"));
@@ -1266,6 +1283,7 @@
         }
 
         initializeTextSuggestionSelects();
+        setupSentenceTemplates(document, localStorage.getItem("currentServiceType") || "");
 
         function applyFacilityFormCustomization() {
             const hiddenSections = new Set(facilityFormCustomization.hiddenSections);
@@ -2034,6 +2052,7 @@
                     <option value="お食事もしっかりと召し上がり、活気がありました。">2. お食事もしっかりと召し上がり、活気がありました。</option>
                     <option value="他のお客様とも楽しくお話しされ、にこやかに過ごされていました。">3. 他のお客様とも楽しくお話しされ、にこやかに過ごされていました。</option>`;
             }
+            setupSentenceTemplates(document, sType);
                     applyFacilityFormCustomization();
             regTitle.textContent = `➕ 【${sType}】の名簿に新しく登録する`;
 

@@ -1,10 +1,10 @@
 export const vitalFields = (period, label, prefix = "gh") => [
     { id: `${prefix}${period}Time`, label: `${label}・測定時刻`, type: "time" },
-    { id: `${prefix}${period}Temp`, label: `${label}・体温（℃）`, type: "number", step: "0.1" },
-    { id: `${prefix}${period}Pulse`, label: `${label}・脈拍（回/分）`, type: "number" },
-    { id: `${prefix}${period}Spo2`, label: `${label}・酸素飽和度（%）`, type: "number", max: "100" },
-    { id: `${prefix}${period}BpHigh`, label: `${label}・血圧 上（mmHg）`, type: "number" },
-    { id: `${prefix}${period}BpLow`, label: `${label}・血圧 下（mmHg）`, type: "number" }
+    { id: `${prefix}${period}Temp`, label: `${label}・体温（℃）`, type: "number", step: "0.1", list: "temp1List" },
+    { id: `${prefix}${period}Pulse`, label: `${label}・脈拍（回/分）`, type: "number", list: "pulseList" },
+    { id: `${prefix}${period}Spo2`, label: `${label}・酸素飽和度（%）`, type: "number", max: "100", list: "spo2List" },
+    { id: `${prefix}${period}BpHigh`, label: `${label}・血圧 上（mmHg）`, type: "number", list: "bpHighList" },
+    { id: `${prefix}${period}BpLow`, label: `${label}・血圧 下（mmHg）`, type: "number", list: "bpLowList" }
 ];
 
 export const GROUP_HOME_SECTIONS = [
@@ -14,18 +14,18 @@ export const GROUP_HOME_SECTIONS = [
         { id: "ghMealBreakfast", label: "朝食", list: "mealList", placeholder: "例：主食10割・副食8割" },
         { id: "ghMealLunch", label: "昼食", list: "mealList", placeholder: "例：主食10割・副食10割" },
         { id: "ghMealDinner", label: "夕食", list: "mealList", placeholder: "例：主食8割・副食8割" },
-        { id: "ghWater", label: "水分（1日合計・ml）", type: "number" },
+        { id: "ghWater", label: "水分（1日合計・ml）", type: "number", list: "waterMlList" },
         { id: "ghOralCare", label: "口腔ケア", list: "oralCareList", placeholder: "例：毎食後に実施、一部介助" },
-        { id: "ghMedicationMorning", label: "朝の服薬・処置", placeholder: "例：朝食後の内服確認済み" },
-        { id: "ghMedicationNoon", label: "昼の服薬・処置" },
-        { id: "ghMedicationEvening", label: "夕・就寝前の服薬・処置" }
+        { id: "ghMedicationMorning", label: "朝の服薬・処置", list: "medicationList", placeholder: "例：朝食後の内服確認済み" },
+        { id: "ghMedicationNoon", label: "昼の服薬・処置", list: "medicationList" },
+        { id: "ghMedicationEvening", label: "夕・就寝前の服薬・処置", list: "medicationList" }
     ] },
     { title: "毎日の排泄・入浴・睡眠", fields: [
         { id: "ghBowel", label: "本日の排便", type: "select", options: ["あり", "なし"] },
-        { id: "ghBowelCount", label: "排便回数（回）", type: "number" },
-        { id: "ghBowelCondition", label: "排便の時刻・状態", placeholder: "例：10:00 普通便、中等量" },
+        { id: "ghBowelCount", label: "排便回数（回）", type: "number", list: "bowelCountList" },
+        { id: "ghBowelCondition", label: "排便の時刻・状態", list: "bowelConditionList", placeholder: "例：10:00 普通便、中等量" },
         { id: "ghLastBowelDate", label: "最終排便日", type: "date" },
-        { id: "ghUrination", label: "排尿の回数・状態", placeholder: "例：日中5回・夜間1回、特変なし" },
+        { id: "ghUrination", label: "排尿の回数・状態", list: "urinationList", placeholder: "例：日中5回・夜間1回、特変なし" },
         { id: "ghBath", label: "本日の入浴・清潔保持", type: "select", options: ["一般浴", "機械浴", "シャワー浴", "清拭", "実施なし"] },
         { id: "ghBathNote", label: "入浴の様子・未実施理由", type: "textarea" },
         { id: "ghSleep", label: "睡眠・夜間の様子", type: "textarea", placeholder: "例：21時就寝、6時起床。夜間トイレ1回、その後再入眠" }

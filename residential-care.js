@@ -20,18 +20,18 @@ export const RESIDENTIAL_SECTIONS = [
         { id: "rsMealBreakfast", label: "朝食", list: "mealList", placeholder: "例：主食10割・副食8割" },
         { id: "rsMealLunch", label: "昼食", list: "mealList", placeholder: "例：主食10割・副食10割" },
         { id: "rsMealDinner", label: "夕食", list: "mealList", placeholder: "例：主食8割・副食8割" },
-        { id: "rsWater", label: "水分（1日合計・ml）", type: "number" },
+        { id: "rsWater", label: "水分（1日合計・ml）", type: "number", list: "waterMlList" },
         { id: "rsOralCare", label: "口腔ケア", list: "oralCareList", placeholder: "例：毎食後に実施、一部介助" },
-        { id: "rsMedicationMorning", label: "朝の服薬・処置", placeholder: "例：朝食後の内服確認済み" },
-        { id: "rsMedicationNoon", label: "昼の服薬・処置" },
-        { id: "rsMedicationEvening", label: "夕・就寝前の服薬・処置" }
+        { id: "rsMedicationMorning", label: "朝の服薬・処置", list: "medicationList", placeholder: "例：朝食後の内服確認済み" },
+        { id: "rsMedicationNoon", label: "昼の服薬・処置", list: "medicationList" },
+        { id: "rsMedicationEvening", label: "夕・就寝前の服薬・処置", list: "medicationList" }
     ] },
     { title: "毎日の排泄・入浴・睡眠", fields: [
         { id: "rsBowel", label: "本日の排便", type: "select", options: ["あり", "なし"] },
-        { id: "rsBowelCount", label: "排便回数（回）", type: "number" },
-        { id: "rsBowelCondition", label: "排便の時刻・状態", placeholder: "例：10:00 普通便、中等量" },
+        { id: "rsBowelCount", label: "排便回数（回）", type: "number", list: "bowelCountList" },
+        { id: "rsBowelCondition", label: "排便の時刻・状態", list: "bowelConditionList", placeholder: "例：10:00 普通便、中等量" },
         { id: "rsLastBowelDate", label: "最終排便日", type: "date" },
-        { id: "rsUrination", label: "排尿の回数・状態", placeholder: "例：日中5回・夜間1回、パッド交換4回" },
+        { id: "rsUrination", label: "排尿の回数・状態", list: "urinationList", placeholder: "例：日中5回・夜間1回、パッド交換4回" },
         { id: "rsBath", label: "本日の入浴・清潔保持", type: "select", options: ["一般浴", "機械浴", "シャワー浴", "清拭", "実施なし"] },
         { id: "rsBathNote", label: "入浴の様子・未実施理由", type: "textarea" },
         { id: "rsSleep", label: "睡眠・夜間の様子", type: "textarea", placeholder: "例：21時就寝、6時起床。夜間の巡視時は良眠" }
