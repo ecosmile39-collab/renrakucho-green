@@ -549,6 +549,9 @@
             <label style="font-weight: bold; border-bottom: 2px dashed #ccc; padding-bottom: 10px; display: block; cursor: pointer; margin-bottom: 15px;">
                 <input type="checkbox" id="checkAll" checked onchange="toggleAllUsers()"> すべて選択／解除
             </label>
+            <label style="display: block; cursor: pointer; margin: -5px 0 15px; font-size: 14px; color: #495057;">
+                <input type="checkbox" id="showInactiveUsersPrint" onchange="onDateChanged()"> 利用終了者も表示する
+            </label>
             
             <div class="user-checkbox-wrapper" id="userCheckboxes"></div>
             
@@ -870,7 +873,14 @@
                 checkboxesArea.innerHTML = "";
                 document.getElementById("checkAll").checked = true;
 
-                const userNames = Array.from(uniqueUsers).sort();
+                const showInactiveUsers = document.getElementById("showInactiveUsersPrint")?.checked === true;
+                const isInactiveUser = name => window.globalUsersData[name]?.active === false;
+                const hiddenInactiveCount = Array.from(uniqueUsers).filter(isInactiveUser).length;
+                const userNames = Array.from(uniqueUsers).filter(name => showInactiveUsers || !isInactiveUser(name)).sort();
+                if (!userNames.length) {
+                    checkboxesArea.innerHTML = `<span style="color: #c92a2a; font-weight: bold;">この日の【${sType}】の連絡帳は、利用終了の方（${hiddenInactiveCount}名）だけです。印刷する場合は「利用終了者も表示する」にチェックを入れてください。</span>`;
+                    return;
+                }
                 const lineGroups = new Map();
                 for (const linked of [false, true]) {
                     const members = userNames.filter(name => {
@@ -905,7 +915,7 @@
                     
                     let userLbl = document.createElement("label");
                     userLbl.className = "user-checkbox-label";
-                    userLbl.innerHTML = `<input type="checkbox" class="user-chk" value="${userName}" checked> ${userName} 様`;
+                    userLbl.innerHTML = `<input type="checkbox" class="user-chk" value="${userName}" checked> ${userName} 様${isInactiveUser(userName) ? "（利用終了）" : ""}`;
                     div.appendChild(userLbl);
 
                     let linkedLineCount = Array.isArray(uData?.lineUserIds) ? uData.lineUserIds.length : 0;
