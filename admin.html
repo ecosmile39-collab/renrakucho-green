@@ -104,6 +104,18 @@
             </div>
         </div>
 
+        <section id="lpAnalyticsPanel" class="hidden" style="margin-top: 14px; padding: 14px 16px; background: #f3f0ff; border: 1px solid #b197fc; border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <strong style="color: #5f3dc4;">🌐 LP（ホームページ）の訪問者数</strong>
+                <button type="button" id="lpAnalyticsReloadButton" style="width: auto; margin: 0; padding: 6px 14px; font-size: 13px; background: #7048e8;">🔄 更新</button>
+            </div>
+            <p id="lpAnalyticsStatus" class="muted" style="margin: 6px 0 0;">読み込み中...</p>
+            <div id="lpAnalyticsSummary" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
+            <div id="lpAnalyticsDaily" style="margin-top: 12px;"></div>
+            <div id="lpAnalyticsChannels" style="margin-top: 10px; font-size: 13px;"></div>
+            <p class="muted" style="margin: 8px 0 0; font-size: 12px;">Google アナリティクスの数字です。訪問者数は同じ人の重複を除いた人数、閲覧数はページが表示された回数です。数字は数時間遅れて反映されることがあります。</p>
+        </section>
+
         <section id="authSection" class="auth-box">
             <strong>管理者認証</strong>
             <input type="password" id="adminKey" placeholder="管理者キーを入力">
@@ -252,6 +264,7 @@
         const createAdminLoginChallenge = httpsCallable(functions, "createAdminLoginChallenge");
         const verifyAdminLoginCode = httpsCallable(functions, "verifyAdminLoginCode");
         const migrateFacilityPasswords = httpsCallable(functions, "migrateLegacyFacilityPasswords");
+        const getLpAnalyticsSummary = httpsCallable(functions, "getLpAnalyticsSummary");
         const createFacilitySessionForAdmin = httpsCallable(functions, "createFacilitySessionForAdmin");
         let pendingAdminLoginChallengeId = "";
         let facilities = [];
@@ -271,6 +284,8 @@
             document.getElementById("authSection").classList.toggle("hidden", isVisible);
             document.getElementById("facilitySection").classList.toggle("hidden", !isVisible);
             document.getElementById("facilitySummaryBadge").classList.toggle("hidden", !isVisible);
+            document.getElementById("lpAnalyticsPanel").classList.toggle("hidden", !isVisible);
+            if (isVisible) loadLpAnalytics();
             document.getElementById("pageScrollControls").classList.toggle("hidden", !isVisible);
         }
 
@@ -466,6 +481,59 @@
                 button.disabled = false;
             }
         };
+
+        function renderLpAnalytics(result) {
+            const summary = result?.summary || {};
+            const cards = [
+                ["今日", summary.today], ["昨日", summary.yesterday],
+                ["過去7日間", summary.last7Days], ["過去28日間", summary.last28Days]
+            ];
+            document.getElementById("lpAnalyticsSummary").innerHTML = cards.map(([label, value]) => `
+                <div style="flex: 1; min-width: 120px; padding: 10px 12px; background: #fff; border: 1px solid #d0bfff; border-radius: 8px;">
+                    <div style="font-size: 12px; color: #5f3dc4; font-weight: bold;">${label}</div>
+                    <div style="font-size: 22px; font-weight: bold; color: #343a40;">${Number(value?.visitors || 0).toLocaleString("ja-JP")} <span style="font-size: 13px;">人</span></div>
+                    <div style="font-size: 12px; color: #495057;">閲覧数 ${Number(value?.pageViews || 0).toLocaleString("ja-JP")} 回</div>
+                </div>`).join("");
+            const daily = Array.isArray(result?.daily) ? result.daily : [];
+            const maxVisitors = Math.max(1, ...daily.map(day => Number(day.visitors) || 0));
+            document.getElementById("lpAnalyticsDaily").innerHTML = daily.length ? `
+                <div style="font-size: 13px; font-weight: bold; color: #5f3dc4; margin-bottom: 4px;">過去14日間の訪問者数</div>
+                <div style="display: flex; align-items: flex-end; gap: 4px; height: 90px; padding: 4px; background: #fff; border: 1px solid #d0bfff; border-radius: 8px;">
+                    ${daily.map(day => {
+                        const visitors = Number(day.visitors) || 0;
+                        const height = Math.max(2, Math.round(visitors / maxVisitors * 60));
+                        const label = escapeHtml(String(day.date || "").slice(5).replace("-", "/"));
+                        return `<div title="${label}：${visitors}人" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 0;">
+                            <div style="font-size: 10px; color: #495057;">${visitors}</div>
+                            <div style="width: 100%; height: ${height}px; background: #845ef7; border-radius: 3px 3px 0 0;"></div>
+                            <div style="font-size: 9px; color: #868e96; white-space: nowrap;">${label}</div>
+                        </div>`;
+                    }).join("")}
+                </div>` : "";
+            const channels = Array.isArray(result?.channels) ? result.channels : [];
+            document.getElementById("lpAnalyticsChannels").innerHTML = channels.length
+                ? `<strong style="color: #5f3dc4;">どこから来たか（過去28日間）：</strong> ${channels.map(channel => `${escapeHtml(channel.name)} ${Number(channel.visitors) || 0}人`).join(" ／ ")}`
+                : "";
+            const fetchedAt = result?.fetchedAt ? new Date(result.fetchedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "";
+            document.getElementById("lpAnalyticsStatus").textContent = fetchedAt ? `${fetchedAt} 時点` : "";
+        }
+
+        async function loadLpAnalytics() {
+            const status = document.getElementById("lpAnalyticsStatus");
+            const button = document.getElementById("lpAnalyticsReloadButton");
+            status.textContent = "読み込み中...";
+            button.disabled = true;
+            try {
+                const result = await getLpAnalyticsSummary();
+                renderLpAnalytics(result.data);
+            } catch (error) {
+                status.textContent = `LPの訪問者数を読み込めませんでした：${error.message}`;
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        document.getElementById("lpAnalyticsReloadButton").addEventListener("click", loadLpAnalytics);
 
         async function loadFacilities() {
             let list = document.getElementById("facilityList");

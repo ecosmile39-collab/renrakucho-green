@@ -27,6 +27,7 @@ const {
 const { generateInvoicePdf } = require("./invoice-pdf");
 const { findOverdueUnpaidInvoices } = require("./overdue-lock");
 const { getTrialAccessEndsAt, isTrialAccessOpen, getPaymentGraceFields } = require("./trial-access");
+const { LP_ANALYTICS_PROPERTY_ID, buildLpAnalyticsRequest, parseLpAnalyticsResponse } = require("./lp-analytics");
 const { daysUntilTrialEnds, isTrialReminderDue } = require("./trial-reminder");
 const { getFacilityRetentionDeadline, isFacilityRetentionExpired } = require("./facility-retention");
 
@@ -1068,6 +1069,30 @@ exports.setFacilityUsageLock = onCall(async request => {
 function monthlyInvoiceKey(periodStart, facility) {
     return `${periodStart.replace(/-/g, "")}${facility.billingCycleId ? `-${facility.billingCycleId}` : ""}`;
 }
+
+// 管理画面に、LP（WordPress）の訪問者数を Google アナリティクスから読み込んで表示する
+exports.getLpAnalyticsSummary = onCall(async request => {
+    if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
+        throw new HttpsError("unauthenticated", "管理者としてログインしてください。");
+    }
+    try {
+        const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/analytics.readonly"] });
+        const client = await auth.getClient();
+        const response = await client.request({
+            url: `https://analyticsdata.googleapis.com/v1beta/properties/${LP_ANALYTICS_PROPERTY_ID}:batchRunReports`,
+            method: "POST",
+            data: buildLpAnalyticsRequest()
+        });
+        return { ...parseLpAnalyticsResponse(response.data), fetchedAt: new Date().toISOString() };
+    } catch (error) {
+        const status = error?.response?.status;
+        logger.error("Failed to load LP analytics", { status, message: String(error?.message || error).slice(0, 300) });
+        if (status === 403) {
+            throw new HttpsError("permission-denied", "Google アナリティクスを読む権限がありません。アナリティクスの設定を確認してください。");
+        }
+        throw new HttpsError("unavailable", "LPの訪問者数を読み込めませんでした。時間をおいてもう一度お試しください。");
+    }
+});
 
 exports.previewFacilityDeletion = onCall(async request => {
     const facilityId = requireFacilityDeletionId(request);
