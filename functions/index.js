@@ -3558,6 +3558,10 @@ exports.exportDailyRecordsBackup = onSchedule({
     schedule: "every day 03:00",
     timeZone: "Asia/Tokyo",
     maxInstances: 1,
+    // 起動直後の一時的な500で1日分のバックアップが抜けないよう、失敗時は再実行する
+    retryCount: 3,
+    minBackoffSeconds: 120,
+    maxBackoffSeconds: 600,
     serviceAccount: FIRESTORE_BACKUP_SERVICE_ACCOUNT
 }, async () => {
     const now = new Date();
