@@ -1,6 +1,7 @@
 import Papa from "papaparse";
 import { ALL_SERVICE_TYPE_VALUES } from "./service-types.js";
 import { GROUP_HOME_FIELDS } from "./group-home.js";
+import { RESIDENTIAL_FIELDS } from "./residential-care.js";
 
 const serviceTypes = ALL_SERVICE_TYPE_VALUES;
 
@@ -14,6 +15,10 @@ export function selectUsers(users, filters) {
 
 const recordLabels = {
     ...Object.fromEntries(GROUP_HOME_FIELDS.map(field => [field.id, `グループホーム・${field.label}`])),
+    ...Object.fromEntries(RESIDENTIAL_FIELDS.map(field => [field.id, `入所・${field.label}`])),
+    recordLayout: "記録の形式",
+    dsAttendance: "デイ・利用状況", dsPickupTime: "デイ・お迎え時刻", dsDropoffTime: "デイ・お送り時刻",
+    dsPickupType: "デイ・行きの送迎", dsDropoffType: "デイ・帰りの送迎", dsTransportNote: "デイ・送迎の補足",
     careStaff: "担当職員", careJournal: "介護日誌", temp1: "来所時体温", temp2: "途中体温",
     pulse: "脈拍", spo2: "酸素飽和度", bpHigh: "血圧（上）", bpLow: "血圧（下）",
     mealMain: "食事（主食）", mealSub: "食事（副食）", water: "水分", medication: "服薬・処置",
@@ -34,7 +39,8 @@ const recordLabels = {
     afterSchoolToiletTime: "児童支援・排泄時刻", afterSchoolToilet: "児童支援・排泄状況",
     afterSchoolSupport: "児童支援・活動内容", afterSchoolActivityTags: "児童支援・活動種別",
     afterSchoolEpisode: "児童支援・施設での様子", afterSchoolSnack: "児童支援・おやつ",
-    afterSchoolSnackIntake: "児童支援・おやつ摂取量", afterSchoolNextUseDate: "児童支援・次回利用予定日",
+    afterSchoolSnackIntake: "児童支援・おやつ摂取量", afterSchoolLunch: "児童支援・昼食",
+    afterSchoolLunchIntake: "児童支援・昼食摂取量", afterSchoolDomainTags: "児童支援・支援の5領域", afterSchoolNextUseDate: "児童支援・次回利用予定日",
     afterSchoolBelongings: "児童支援・持ち物", afterSchoolHomeSleepHours: "児童支援・睡眠時間",
     afterSchoolHomeSleepQuality: "児童支援・睡眠の様子", afterSchoolMorningState: "児童支援・朝の様子",
     afterSchoolParentSign: "児童支援・保護者確認", afterSchoolHandover: "児童支援・家族への連絡",

@@ -1412,12 +1412,15 @@ function getFamilyVisibleFields(record, formCustomization) {
         familyMessageSection: new Set(["familyMessage"]),
         facilityPRSection: new Set(["facilityPR"])
     };
-    if (record.serviceType === "グループホーム") hiddenFieldGroups.dayServiceSection.delete("careStaff");
+    const isResidentialLayout = ["入所", "ユニット入所"].includes(record.serviceType) && record.recordLayout === "residential";
+    if (record.serviceType === "グループホーム" || isResidentialLayout) hiddenFieldGroups.dayServiceSection.delete("careStaff");
     const add = (label, key) => {
         if (Object.entries(hiddenFieldGroups).some(([section, keys]) => hiddenSections.has(section) && keys.has(key))) return;
         if (hiddenSections.has("afterSchoolSection") && key.startsWith("afterSchool")) return;
         if (hiddenSections.has("lifeCareSection") && key.startsWith("lifeCare")) return;
         if (hiddenSections.has("groupHomeSection") && key.startsWith("gh")) return;
+        if (hiddenSections.has("residentialSection") && key.startsWith("rs")) return;
+        if (hiddenSections.has("dayServiceSection") && key.startsWith("ds")) return;
         if (hiddenSections.has("shortStaySection") && (key.startsWith("st") || key.startsWith("num_") || key.startsWith("free_item_"))) return;
         const value = record[key];
         if (Array.isArray(value)) {
@@ -1438,7 +1441,9 @@ function getFamilyVisibleFields(record, formCustomization) {
             ["健康状態", "afterSchoolHealth"], ["健康状態の補足", "afterSchoolHealthNote"],
             ["排泄時刻", "afterSchoolToiletTime"], ["排泄状況", "afterSchoolToilet"],
             ["おやつ", "afterSchoolSnack"], ["おやつ摂取量", "afterSchoolSnackIntake"],
-            ["本日の活動", "afterSchoolActivityTags"], ["活動内容", "afterSchoolSupport"],
+            ["昼食", "afterSchoolLunch"], ["昼食の摂取量", "afterSchoolLunchIntake"],
+            ["本日の活動", "afterSchoolActivityTags"], ["支援の5領域", "afterSchoolDomainTags"],
+            ["活動内容", "afterSchoolSupport"],
             ["施設での様子", "afterSchoolEpisode"], ["次回利用予定日", "afterSchoolNextUseDate"],
             ["持ち物・お知らせ", "afterSchoolBelongings"], ["昨晩の睡眠時間", "afterSchoolHomeSleepHours"],
             ["昨晩の睡眠の様子", "afterSchoolHomeSleepQuality"], ["朝の様子", "afterSchoolMorningState"],
@@ -1465,6 +1470,27 @@ function getFamilyVisibleFields(record, formCustomization) {
             ["得意なこと・参加時の様子・支援内容", "ghRoleResponse"],
             ["日中の活動・暮らしの様子", "ghDailyLife"],
             ["日用品の残量・補充依頼", "ghSupplies"], ["新しく持ち込んだ衣類・物品の確認", "ghBelongings"]
+        ].forEach(([label, key]) => add(label, key));
+    } else if (isResidentialLayout) {
+        [
+            ["担当スタッフ", "careStaff"], ["介護日誌", "careJournal"],
+            ["朝・測定時刻", "rsMorningTime"], ["朝・体温（℃）", "rsMorningTemp"],
+            ["朝・脈拍（回/分）", "rsMorningPulse"], ["朝・酸素飽和度（%）", "rsMorningSpo2"],
+            ["朝・血圧 上（mmHg）", "rsMorningBpHigh"], ["朝・血圧 下（mmHg）", "rsMorningBpLow"],
+            ["夕・測定時刻", "rsEveningTime"], ["夕・体温（℃）", "rsEveningTemp"],
+            ["夕・脈拍（回/分）", "rsEveningPulse"], ["夕・酸素飽和度（%）", "rsEveningSpo2"],
+            ["夕・血圧 上（mmHg）", "rsEveningBpHigh"], ["夕・血圧 下（mmHg）", "rsEveningBpLow"],
+            ["朝食", "rsMealBreakfast"], ["昼食", "rsMealLunch"], ["夕食", "rsMealDinner"],
+            ["水分（1日合計・ml）", "rsWater"], ["口腔ケア", "rsOralCare"],
+            ["朝の服薬・処置", "rsMedicationMorning"], ["昼の服薬・処置", "rsMedicationNoon"],
+            ["夕・就寝前の服薬・処置", "rsMedicationEvening"],
+            ["本日の排便", "rsBowel"], ["排便回数（回）", "rsBowelCount"],
+            ["排便の時刻・状態", "rsBowelCondition"], ["最終排便日", "rsLastBowelDate"],
+            ["排尿の回数・状態", "rsUrination"], ["本日の入浴・清潔保持", "rsBath"],
+            ["入浴の様子・未実施理由", "rsBathNote"], ["睡眠・夜間の様子", "rsSleep"],
+            ["日中の活動・レクリエーション", "rsDailyActivity"], ["ご本人の様子・表情・会話", "rsDailyState"],
+            ["日用品の残量・補充のお願い", "rsSupplies"], ["お預かりした衣類・物品", "rsBelongings"],
+            ["面会・外出の記録", "rsVisit"]
         ].forEach(([label, key]) => add(label, key));
     } else if (record.serviceType === "生活介護") {
         [
@@ -1493,7 +1519,10 @@ function getFamilyVisibleFields(record, formCustomization) {
         ].forEach(([label, key]) => add(label, key));
     } else {
         [
-            ["担当スタッフ", "careStaff"], ["体温", "temp1"], ["体温（途中）", "temp2"],
+            ["担当スタッフ", "careStaff"], ["利用状況", "dsAttendance"],
+            ["お迎え時刻", "dsPickupTime"], ["お送り時刻", "dsDropoffTime"],
+            ["行きの送迎", "dsPickupType"], ["帰りの送迎", "dsDropoffType"], ["送迎の補足", "dsTransportNote"],
+            ["体温", "temp1"], ["体温（途中）", "temp2"],
             ["脈拍", "pulse"], ["酸素飽和度", "spo2"], ["血圧（上）", "bpHigh"],
             ["血圧（下）", "bpLow"], ["食事（主食）", "mealMain"], ["食事（副食）", "mealSub"],
             ["水分", "water"], ["服薬・処置", "medication"], ["口腔ケア", "oralCare"],

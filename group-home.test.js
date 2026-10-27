@@ -7,6 +7,10 @@ import {
     renderGroupHomeRecord, validateGroupHomeFields
 } from "./group-home.js";
 import { isShortStayService } from "./service-types.js";
+import {
+    RESIDENTIAL_FIELDS, RESIDENTIAL_RECORD_LAYOUT, isLongTermResidentialService,
+    readResidentialFields, restoreResidentialFields
+} from "./residential-care.js";
 import { removeUndefinedFields } from "./firestore-data.js";
 
 const source = readFileSync(new URL("./index.html", import.meta.url), "utf8");
@@ -20,7 +24,7 @@ function extract(start, end) {
 
 function createContext() {
     const ids = [...source.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
-    const elements = new Map([...ids, ...GROUP_HOME_FIELDS.map(field => field.id)].map(id => [id, {
+    const elements = new Map([...ids, ...GROUP_HOME_FIELDS.map(field => field.id), ...RESIDENTIAL_FIELDS.map(field => field.id)].map(id => [id, {
         value: "", checked: false, style: {}, textContent: "", innerHTML: "",
         reportValidity: () => true, focus() {}
     }]));
@@ -42,6 +46,7 @@ function createContext() {
         getCustomProfileFieldValues: () => ({}),
         syncTextSuggestionSelects() {},
         readGroupHomeFields, restoreGroupHomeFields, isShortStayService, removeUndefinedFields,
+        readResidentialFields, restoreResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT,
         serverDataLoadSequence: 0, db: {},
         doc: (...parts) => parts.slice(1).join("/"),
         getDoc: async () => ({ exists: () => true, data: () => sandbox.serverRecord }),

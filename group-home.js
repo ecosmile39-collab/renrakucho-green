@@ -1,10 +1,10 @@
-const vitalFields = (period, label) => [
-    { id: `gh${period}Time`, label: `${label}・測定時刻`, type: "time" },
-    { id: `gh${period}Temp`, label: `${label}・体温（℃）`, type: "number", step: "0.1" },
-    { id: `gh${period}Pulse`, label: `${label}・脈拍（回/分）`, type: "number" },
-    { id: `gh${period}Spo2`, label: `${label}・酸素飽和度（%）`, type: "number", max: "100" },
-    { id: `gh${period}BpHigh`, label: `${label}・血圧 上（mmHg）`, type: "number" },
-    { id: `gh${period}BpLow`, label: `${label}・血圧 下（mmHg）`, type: "number" }
+export const vitalFields = (period, label, prefix = "gh") => [
+    { id: `${prefix}${period}Time`, label: `${label}・測定時刻`, type: "time" },
+    { id: `${prefix}${period}Temp`, label: `${label}・体温（℃）`, type: "number", step: "0.1" },
+    { id: `${prefix}${period}Pulse`, label: `${label}・脈拍（回/分）`, type: "number" },
+    { id: `${prefix}${period}Spo2`, label: `${label}・酸素飽和度（%）`, type: "number", max: "100" },
+    { id: `${prefix}${period}BpHigh`, label: `${label}・血圧 上（mmHg）`, type: "number" },
+    { id: `${prefix}${period}BpLow`, label: `${label}・血圧 下（mmHg）`, type: "number" }
 ];
 
 export const GROUP_HOME_SECTIONS = [
@@ -41,81 +41,82 @@ export const GROUP_HOME_SECTIONS = [
     ] }
 ];
 
-export const GROUP_HOME_FIELDS = GROUP_HOME_SECTIONS.flatMap(section => section.fields);
+export function createStructuredRecord(sections, sectionId) {
+    const fields = sections.flatMap(section => section.fields);
 
-export function buildGroupHomeForm(container) {
-    const document = container.ownerDocument;
-    container.replaceChildren();
-    for (const section of GROUP_HOME_SECTIONS) {
-        const heading = document.createElement("h3");
-        heading.textContent = section.title;
-        const fields = document.createElement("div");
-        fields.className = "group-home-fields";
-        for (const field of section.fields) {
-            const wrapper = document.createElement("div");
-            if (field.type === "textarea") wrapper.className = "group-home-wide";
-            const label = document.createElement("label");
-            label.htmlFor = field.id;
-            label.textContent = field.label;
-            const input = document.createElement(field.type === "textarea" ? "textarea" : field.type === "select" ? "select" : "input");
-            input.id = field.id;
-            if (field.type === "select") {
-                for (const value of ["", ...field.options]) {
-                    const option = document.createElement("option");
-                    option.value = value;
-                    option.textContent = value || "選択してください";
-                    input.appendChild(option);
+    function build(container) {
+        const document = container.ownerDocument;
+        container.replaceChildren();
+        for (const section of sections) {
+            const heading = document.createElement("h3");
+            heading.textContent = section.title;
+            const fieldBox = document.createElement("div");
+            fieldBox.className = "group-home-fields";
+            for (const field of section.fields) {
+                const wrapper = document.createElement("div");
+                if (field.type === "textarea") wrapper.className = "group-home-wide";
+                const label = document.createElement("label");
+                label.htmlFor = field.id;
+                label.textContent = field.label;
+                const input = document.createElement(field.type === "textarea" ? "textarea" : field.type === "select" ? "select" : "input");
+                input.id = field.id;
+                if (field.type === "select") {
+                    for (const value of ["", ...field.options]) {
+                        const option = document.createElement("option");
+                        option.value = value;
+                        option.textContent = value || "選択してください";
+                        input.appendChild(option);
+                    }
+                } else if (field.type === "textarea") {
+                    input.rows = 2;
+                } else {
+                    input.type = field.type || "text";
+                    if (field.type === "number") {
+                        input.min = "0";
+                        input.step = field.step || "1";
+                        if (field.max) input.max = field.max;
+                    }
                 }
-            } else if (field.type === "textarea") {
-                input.rows = 2;
-            } else {
-                input.type = field.type || "text";
-                if (field.type === "number") {
-                    input.min = "0";
-                    input.step = field.step || "1";
-                    if (field.max) input.max = field.max;
-                }
+                if (field.placeholder) input.placeholder = field.placeholder;
+                if (field.list) input.setAttribute("list", field.list);
+                wrapper.append(label, input);
+                fieldBox.appendChild(wrapper);
             }
-            if (field.placeholder) input.placeholder = field.placeholder;
-            if (field.list) input.setAttribute("list", field.list);
-            wrapper.append(label, input);
-            fields.appendChild(wrapper);
-        }
-        container.append(heading, fields);
-    }
-}
-
-export function readGroupHomeFields(document) {
-    return Object.fromEntries(GROUP_HOME_FIELDS.map(field => [field.id, document.getElementById(field.id).value]));
-}
-
-export function restoreGroupHomeFields(document, data = {}) {
-    for (const field of GROUP_HOME_FIELDS) {
-        document.getElementById(field.id).value = data[field.id] ?? "";
-    }
-}
-
-export function validateGroupHomeFields(document) {
-    for (const field of GROUP_HOME_FIELDS) {
-        const input = document.getElementById(field.id);
-        if (!input.reportValidity()) {
-            input.focus();
-            return false;
+            container.append(heading, fieldBox);
         }
     }
-    return true;
-}
 
-export function renderGroupHomeRecord(data, compact = false) {
-    const escape = value => String(value).replace(/[&<>"']/g, char => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    }[char]));
-    const hidden = new Set(data.hiddenFormSections || []);
-    const journal = hidden.has("careJournalArea") ? "" : `
+    function read(document) {
+        return Object.fromEntries(fields.map(field => [field.id, document.getElementById(field.id).value]));
+    }
+
+    function restore(document, data = {}) {
+        for (const field of fields) {
+            document.getElementById(field.id).value = data[field.id] ?? "";
+        }
+    }
+
+    function validate(document) {
+        for (const field of fields) {
+            const input = document.getElementById(field.id);
+            if (!input.reportValidity()) {
+                input.focus();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function render(data, compact = false) {
+        const escape = value => String(value).replace(/[&<>"']/g, char => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[char]));
+        const hidden = new Set(data.hiddenFormSections || []);
+        const journal = hidden.has("careJournalArea") ? "" : `
         <div class="section-title">担当スタッフ・介護日誌</div>
         <div class="text-box" style="white-space:pre-wrap;">${escape(data.careStaff || "未入力")}\n${escape(data.careJournal || "未入力")}</div>`;
-    const renderCell = field => `<th>${escape(field.label)}</th><td style="text-align:left;white-space:pre-wrap;">${escape(data[field.id] ?? "") || "未入力"}</td>`;
-    return journal + (hidden.has("groupHomeSection") ? "" : GROUP_HOME_SECTIONS.map(section => `
+        const renderCell = field => `<th>${escape(field.label)}</th><td style="text-align:left;white-space:pre-wrap;">${escape(data[field.id] ?? "") || "未入力"}</td>`;
+        return journal + (hidden.has(sectionId) ? "" : sections.map(section => `
         <div class="section-title">${escape(section.title)}</div>
         <table class="compact-table history-table">${section.fields.flatMap((field, index) => {
             if (compact && index % 2) return [];
@@ -123,4 +124,16 @@ export function renderGroupHomeRecord(data, compact = false) {
             return `<tr>${renderCell(field)}${next ? renderCell(next) : compact ? '<td colspan="2"></td>' : ""}</tr>`;
         }).join("")}</table>
     `).join(""));
+    }
+
+    return { fields, build, read, restore, validate, render };
 }
+
+const groupHomeRecord = createStructuredRecord(GROUP_HOME_SECTIONS, "groupHomeSection");
+
+export const GROUP_HOME_FIELDS = groupHomeRecord.fields;
+export const buildGroupHomeForm = groupHomeRecord.build;
+export const readGroupHomeFields = groupHomeRecord.read;
+export const restoreGroupHomeFields = groupHomeRecord.restore;
+export const validateGroupHomeFields = groupHomeRecord.validate;
+export const renderGroupHomeRecord = groupHomeRecord.render;

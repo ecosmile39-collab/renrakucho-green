@@ -464,7 +464,7 @@
             <ol>
                 <li><strong>画面を開く</strong><p>入力画面上部の「印刷画面へ」を押します。施設名が表示されていることを確認します。「入力画面へ戻る」「過去データ一覧へ」は、それぞれの画面に戻るリンクです。</p></li>
                 <li><strong>サービス種別を選ぶ</strong><p>「サービス種別」で、印刷したい記録のサービスを選びます。デイサービスなどを選ぶと、対象日の記録を検索します。</p></li>
-                <li><strong>日付を選ぶ</strong><p>ショートステイ・入所・ユニット入所以外は「ご利用日」を1日選びます。これらのサービスは利用期間の開始日と終了日を選びます。開始日は終了日より後にできません。</p></li>
+                <li><strong>日付を選ぶ</strong><p>ショートステイ・入所・ユニット入所以外は「ご利用日」を1日選びます。これらのサービスは利用期間の開始日と終了日を選びます。開始日は終了日より後にできません。入所・ユニット入所は、選んだ期間の記録を1日1枚ずつ印刷します。</p></li>
                 <li><strong>印刷する内容を選ぶ</strong><p>「印刷する内容」から選びます。</p><ul><li>「連絡帳＋誕生日カード」：連絡帳と、選択した方の誕生日カード</li><li>「連絡帳のみ」：連絡帳だけ</li><li>「誕生日カードのみ」：誕生日カードだけ。カードだけを別の用紙に印刷する場合に使います。</li></ul></li>
                 <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
                 <li><strong>印刷する利用者を選ぶ</strong><p>記録がある利用者が「LINE未連携」「LINE連携済み」に分かれて表示されます。LINE連携済みでも印刷できます。「すべて選択／解除」ですべてのチェックをまとめて切り替えられます。印刷しない方はチェックを外します。</p></li>
@@ -581,6 +581,7 @@
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { isShortStayService, normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
         import { renderGroupHomeRecord } from "./group-home.js";
+        import { isResidentialLayoutRecord, renderResidentialRecord } from "./residential-care.js";
 
         function isValidIsoDate(value) {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -1060,12 +1061,22 @@
                     let userMonthRecords = monthlyDataByUser[userName] || userPeriodRecords;
 
                     if (isShortStayService(sType)) {
+                        // 入所・ユニット入所の長期入所用の記録は1日ずつ印刷し、以前の形式の記録は従来の期間まとめで印刷する
+                        let residentialRecords = userPeriodRecords.filter(isResidentialLayoutRecord);
+                        let legacyRecords = userPeriodRecords.filter(record => !isResidentialLayoutRecord(record));
                         let shouldPrintCard = printCardUsers.includes(userName);
                         let staffMsg = shouldPrintCard ? cardMessages[userName] : "";
                         if(shouldPrintCard) {
                             printCardUsers = printCardUsers.filter(u => u !== userName);
                         }
-                        sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, userPeriodRecords, userMonthRecords, chartIndex++, startDate, endDate, shouldPrintCard, staffMsg, printTarget, cardPhotoCount));
+                        if (legacyRecords.length) {
+                            sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, legacyRecords, userMonthRecords, chartIndex++, startDate, endDate, shouldPrintCard, staffMsg, printTarget, cardPhotoCount));
+                            shouldPrintCard = false;
+                        }
+                        residentialRecords.forEach((data, recordIndex) => {
+                            let printCardHere = shouldPrintCard && recordIndex === residentialRecords.length - 1;
+                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, printCardHere, printCardHere ? staffMsg : "", printTarget, cardPhotoCount));
+                        });
                     } else {
                         userPeriodRecords.forEach(data => {
                             let shouldPrintCard = printCardUsers.includes(data.userName);
@@ -1701,10 +1712,11 @@
                 let familyMessageText = data.familyMessage ? data.familyMessage.replace(/\n/g, '<br>') : '';
                 let isChildService = ["放課後等デイサービス", "児童発達支援"].includes(data.serviceType);
                 let isLifeCare = data.serviceType === "生活介護";
-                let isGroupHome = data.serviceType === "グループホーム";
+                let isResidentialPage = isResidentialLayoutRecord(data);
+                let isGroupHome = data.serviceType === "グループホーム" || isResidentialPage;
                 let childArrivalLabel = data.serviceType === "児童発達支援" ? "事業所への到着" : "学校からの到着";
                 let childDepartureLabel = data.serviceType === "児童発達支援" ? "事業所からの退所" : "事業所からの出発";
-                let facilityMessageTitle = isChildService ? "施設からのお知らせ・次回利用など" : isGroupHome ? "ホームからのお知らせ・ご家族への連絡" : isLifeCare ? "施設からのお知らせ・生活介護の連絡" : "お客様への御連絡事項";
+                let facilityMessageTitle = isChildService ? "施設からのお知らせ・次回利用など" : isResidentialPage ? "施設からのお知らせ・ご家族への連絡" : isGroupHome ? "ホームからのお知らせ・ご家族への連絡" : isLifeCare ? "施設からのお知らせ・生活介護の連絡" : "お客様への御連絡事項";
                 let familyMessageTitle = isChildService ? "保護者記入欄（家庭からの連絡・体調）" : isLifeCare || isGroupHome ? "ご家族からの連絡事項" : "お客様からの御連絡事項";
                 let familyMessageHtml = isChildService || isLifeCare || !showFamilyMessageSection ? "" : `
                     <div class="section-title">■ ${familyMessageTitle} <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">${isGroupHome ? "（面会・外出の予定やご相談など、ご自由にお書きください）" : "（ご家庭でのご様子など、ご自由にお書きください）"}</span></div>
@@ -1714,7 +1726,13 @@
                     <div class="section-title">■ 家族からの連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
                     <div class="text-box family-box">${familyMessageText}</div>
                 ` : "") : "";
-                let adultDataHtml = isChildService || isLifeCare || isGroupHome || !showDayServiceSection ? "" : `
+                let hasDayTransport = data.serviceType === "デイサービス" && ["dsAttendance", "dsPickupTime", "dsDropoffTime", "dsPickupType", "dsDropoffType", "dsTransportNote"].some(key => data[key]);
+                let dayTransportHtml = hasDayTransport ? `
+                    <table class="compact-table">
+                        <tr><th width="16%">利用状況</th><td width="17%">${data.dsAttendance || '未入力'}</td><th width="16%">お迎え時刻</th><td width="17%">${data.dsPickupTime || '未入力'}</td><th width="16%">お送り時刻</th><td width="18%">${data.dsDropoffTime || '未入力'}</td></tr>
+                        <tr><th>行きの送迎</th><td>${data.dsPickupType || '未入力'}</td><th>帰りの送迎</th><td>${data.dsDropoffType || '未入力'}</td><th>送迎の補足</th><td>${data.dsTransportNote || ''}</td></tr>
+                    </table>` : "";
+                let adultDataHtml = isChildService || isLifeCare || isGroupHome || !showDayServiceSection ? "" : `${dayTransportHtml}
                     <table class="compact-table">
                         <tr><th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td><th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td><th width="16%">血圧</th><td width="18%">${bpStrDay}</td></tr>
                         <tr><th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td><th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td></tr>
@@ -1736,7 +1754,9 @@
                         <tr><th>来所時の送迎</th><td colspan="2">${data.afterSchoolPickupType || '未入力'} ${data.afterSchoolPickup || ''}</td><th>退所時の送迎</th><td colspan="2">${data.afterSchoolDropoffType || '未入力'} ${data.afterSchoolDropoff || ''}</td></tr>
                         <tr><th>来所時体温</th><td>${data.afterSchoolTemperature ? data.afterSchoolTemperature + '℃' : '未入力'}（${data.afterSchoolTempTime || '未入力'}）</td><th>健康状態</th><td colspan="3">${data.afterSchoolHealth || '未入力'} ${data.afterSchoolHealthNote || ''}</td></tr>
                         <tr><th>排泄</th><td colspan="2">${data.afterSchoolToiletTime || '未入力'} ${data.afterSchoolToilet || ''}</td><th>水分補給</th><td>${data.water || '未入力'}ml</td><th>おやつ</th><td>${data.afterSchoolSnack || '未入力'} ／ ${data.afterSchoolSnackIntake || '未入力'}</td></tr>
+                        ${data.serviceType === "児童発達支援" ? `<tr><th>昼食</th><td colspan="5">${data.afterSchoolLunch || '未入力'} ／ ${data.afterSchoolLunchIntake || '未入力'}</td></tr>` : ""}
                         <tr><th>活動タグ</th><td colspan="5">${(data.afterSchoolActivityTags || []).join("、") || '未入力'}</td></tr>
+                        ${(data.afterSchoolDomainTags || []).length ? `<tr><th>支援の5領域</th><td colspan="5">${data.afterSchoolDomainTags.join("、")}</td></tr>` : ""}
                         <tr><th>次回利用・持ち物</th><td colspan="5">${data.afterSchoolNextUseDate || '未入力'} ／ ${data.afterSchoolBelongings || '未入力'}</td></tr>
                         <tr><th>保護者確認</th><td colspan="5">${data.afterSchoolParentSign || '未入力'}</td></tr>
                     </table>
@@ -1761,7 +1781,7 @@
                     <div class="punch-mark">▷</div>
                     <div class="print-header">
                         <div class="facility-name">${facilityName}</div>
-                        <h1>${isGroupHome ? "グループホーム連絡帳" : isChildService || isLifeCare ? `${data.serviceType} 利用記録` : "本日の連絡帳"}</h1>
+                        <h1>${isResidentialPage ? `${data.serviceType} 連絡帳` : isGroupHome ? "グループホーム連絡帳" : isChildService || isLifeCare ? `${data.serviceType} 利用記録` : "本日の連絡帳"}</h1>
                     </div>
 
                     ${birthdayBannerHtml}
@@ -1776,7 +1796,7 @@
                     ${adultDataHtml}
                     ${childServiceHtml}
                     ${lifeCareHtml}
-                    ${isGroupHome ? renderGroupHomeRecord(data, true) : ""}
+                    ${isResidentialPage ? renderResidentialRecord(data, true) : isGroupHome ? renderGroupHomeRecord(data, true) : ""}
                     ${showFacilityMessageSection ? `<div class="section-title">■ ${facilityMessageTitle}${isGroupHome ? "" : ` <span style="font-size: 13px; font-weight: normal; margin-left: 15px;">本日のご利用ありがとうございました。</span>`}</div>${finalMessageHtml}` : ""}
                     
                     ${familyMessageHtml}

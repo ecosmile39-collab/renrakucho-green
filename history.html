@@ -82,7 +82,7 @@
             <h3>過去データ一覧（1ヶ月のまとめ）の使い方</h3>
             <ol>
                 <li><strong>画面上部のリンク</strong><p>「入力画面へ戻る」は記録入力画面へ、「印刷画面へ」は通常の印刷・確認画面へ戻るリンクです。</p></li>
-                <li><strong>サービス種別を選ぶ</strong><p>「デイサービス」「ショートステイ」「入所」「ユニット入所」「放課後等デイサービス」「児童発達支援」「生活介護」「グループホーム」から、確認したい記録の種類を選びます。入所・ユニット入所はショートステイと同じ項目で記録を確認します。グループホームは朝夕のバイタルや日々の暮らしの記録を表示します。複数サービスの記録を一度に混ぜて表示する画面ではありません。</p></li>
+                <li><strong>サービス種別を選ぶ</strong><p>「デイサービス」「ショートステイ」「入所」「ユニット入所」「放課後等デイサービス」「児童発達支援」「生活介護」「グループホーム」から、確認したい記録の種類を選びます。入所・ユニット入所は、朝夕のバイタルや日中の暮らし、日用品・面会の記録を1日ずつ表示します（以前ショートステイと同じ欄で入力した記録は、従来の表で表示します）。グループホームは朝夕のバイタルや日々の暮らしの記録を表示します。複数サービスの記録を一度に混ぜて表示する画面ではありません。</p></li>
                 <li><strong>確認したい月を選ぶ</strong><p>月の欄で対象年月を選びます。通常は今月が初期表示されています。</p></li>
                 <li><strong>「この月のデータを探す」を押す</strong><p>選んだサービス・月の記録を検索します。正式に保存された記録が対象です。入力画面で一時保存しただけのデータは表示されません。</p></li>
                 <li><strong>利用者を選ぶ</strong><p>検索結果があれば、記録がある利用者の一覧が表示されます。「すべて選択／解除」でまとめて切り替えるか、利用者ごとにチェックします。</p></li>
@@ -176,6 +176,7 @@
         import { createCsv, rosterTable, selectUsers, selectRecords, recordsTable } from "./csv-export.js";
         import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
         import { renderGroupHomeRecord } from "./group-home.js";
+        import { isResidentialLayoutRecord, renderResidentialRecord } from "./residential-care.js";
 
         function isValidIsoDate(value) {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -540,8 +541,9 @@
                         if (d.bowel === "なし") bStr = "なし";
                         else if (d.bowel === "あり") bStr = `あり (${d.bowelCount || ""}/${d.bowelCondition || ""})`;
                         
+                        const dayTransport = [d.dsAttendance, d.dsPickupTime && `迎 ${d.dsPickupTime}`, d.dsDropoffTime && `送 ${d.dsDropoffTime}`].filter(Boolean).map(escapeHtml).join(" ");
                         html += `<tr>
-                            <td>${d.date.substring(5).replace('-','/')}</td>
+                            <td>${d.date.substring(5).replace('-','/')}${dayTransport ? `<br><span style="font-size:11px;">${dayTransport}</span>` : ""}</td>
                             <td>${t}℃</td><td>${p}</td><td>${bp}</td><td>${meal}</td><td>${bath}</td><td>${bStr}</td>
                             <td style="text-align: left; white-space: pre-wrap;">${escapeHtml(d.careStaff || '--')}<br>${escapeHtml(d.careJournal || '記録なし')}</td>
                         </tr>`;
@@ -557,8 +559,8 @@
                             <td>${escapeHtml(d.afterSchoolAttendance || "--")}</td>
                             <td>${escapeHtml(d.afterSchoolProvideStart || "--")}〜${escapeHtml(d.afterSchoolProvideEnd || "--")}<br>${escapeHtml(d.afterSchoolArrivalTime || "--")}／${escapeHtml(d.afterSchoolDepartureTime || "--")}</td>
                             <td>${escapeHtml(d.afterSchoolPickupType || "--")} ${transport}<br>${escapeHtml(d.afterSchoolDropoffType || "")}</td>
-                            <td>体温 ${escapeHtml(d.afterSchoolTemperature || "--")}℃（${escapeHtml(d.afterSchoolTempTime || "--")}） ${escapeHtml(d.afterSchoolHealth || "")}<br>排泄 ${escapeHtml(d.afterSchoolToiletTime || "--")} ${escapeHtml(d.afterSchoolToilet || "--")}<br>おやつ ${escapeHtml(d.afterSchoolSnackIntake || "--")}</td>
-                            <td style="text-align:left;white-space:pre-wrap;">${escapeHtml((d.afterSchoolActivityTags || []).join("、"))}<br>${escapeHtml(d.afterSchoolSupport || "--")}</td>
+                            <td>体温 ${escapeHtml(d.afterSchoolTemperature || "--")}℃（${escapeHtml(d.afterSchoolTempTime || "--")}） ${escapeHtml(d.afterSchoolHealth || "")}<br>排泄 ${escapeHtml(d.afterSchoolToiletTime || "--")} ${escapeHtml(d.afterSchoolToilet || "--")}<br>おやつ ${escapeHtml(d.afterSchoolSnackIntake || "--")}${d.afterSchoolLunchIntake ? `<br>昼食 ${escapeHtml(d.afterSchoolLunchIntake)}` : ""}</td>
+                            <td style="text-align:left;white-space:pre-wrap;">${escapeHtml((d.afterSchoolActivityTags || []).join("、"))}${(d.afterSchoolDomainTags || []).length ? `<br>【5領域】${escapeHtml(d.afterSchoolDomainTags.join("、"))}` : ""}<br>${escapeHtml(d.afterSchoolSupport || "--")}</td>
                             <td style="text-align:left;white-space:pre-wrap;">${escapeHtml(d.afterSchoolEpisode || "")}<br>${escapeHtml(d.afterSchoolHandover || "--")}</td>
                         </tr>`;
                     });
@@ -588,13 +590,20 @@
                     });
                     html += `</table>`;
                 } else {
+                    // 入所・ユニット入所の長期入所用の記録は1日ずつ表示し、以前の形式の記録は従来の表で表示する
+                    userRecords.filter(isResidentialLayoutRecord).forEach(d => {
+                        html += `<h4>${escapeHtml(d.date)} ${escapeHtml(d.serviceType)} 連絡帳</h4>${renderResidentialRecord(d)}
+                            <div style="white-space:pre-wrap;">施設からの連絡：${escapeHtml(d.message || "--")}\nご家族からの連絡：${escapeHtml(d.familyMessage || "--")}</div>`;
+                    });
+                    const legacyRecords = userRecords.filter(record => !isResidentialLayoutRecord(record));
+                    if (legacyRecords.length) {
                     html += `<table class="history-table">
                         <tr>
                             <th width="12%">日付</th><th width="10%">体温</th><th width="10%">脈拍</th>
                             <th width="13%">血圧</th><th width="25%">食事(朝/昼/夕)</th><th width="10%">入浴</th><th width="10%">排泄</th><th width="20%">担当・介護日誌</th>
                         </tr>`;
                     
-                    userRecords.forEach(d => {
+                    legacyRecords.forEach(d => {
                         let t = d.stTempIn || d.stTemp1 || d.temp1 || '--';
                         let p = d.stPulseIn || d.stPulse || d.pulse || '--';
                         let bp = (d.stBpHighIn || d.stBpHigh || d.bpHigh || '--') + '/' + (d.stBpLowIn || d.stBpLow || d.bpLow || '--');
@@ -612,6 +621,7 @@
                         </tr>`;
                     });
                     html += `</table>`;
+                    }
                 }
                 
                 card.innerHTML = html;
