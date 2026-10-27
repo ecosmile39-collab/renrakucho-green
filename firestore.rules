@@ -102,6 +102,24 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // 定期処理の結果（サーバーだけが書き込み、管理者が読む）
+    match /systemStatus/{jobId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // 管理者の操作の記録（追加と閲覧のみ。変更・削除はできない）
+    match /adminAuditLogs/{logId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // 全施設へのお知らせ（管理者が作成し、ログイン中の施設が読む）
+    match /systemAnnouncements/{announcementId} {
+      allow read: if signedIn() && request.auth.token.role in ['facility', 'admin'];
+      allow write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

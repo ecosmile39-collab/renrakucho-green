@@ -8,7 +8,7 @@ const source = readFileSync(path.join(__dirname, "index.js"), "utf8");
 function scheduleOptions(name) {
     const start = source.indexOf(`exports.${name} = onSchedule({`);
     assert.notEqual(start, -1, `${name} must use an options object`);
-    const end = source.indexOf("}, async", start);
+    const end = source.indexOf("}, withJobStatus(", start);
     return source.slice(start, end);
 }
 

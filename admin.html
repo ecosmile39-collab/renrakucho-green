@@ -62,6 +62,24 @@
         .custom-field-row { display: grid; grid-template-columns: minmax(130px, 1fr) 120px auto auto; gap: 8px; align-items: center; margin: 8px 0; }
         @media (max-width: 560px) { .custom-field-row { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 600px) { .panel { margin: 0; min-height: 100vh; border-radius: 0; padding: 22px 18px; } .facility { align-items: flex-start; flex-direction: column; } button.lock, button.unlock { width: 100%; } }
+        .dashboard-box { margin-top: 14px; padding: 12px 14px; border: 1px solid #ced4da; border-radius: 8px; background: #fff; }
+        .dashboard-box > summary { cursor: pointer; font-weight: bold; font-size: 16px; }
+        .dashboard-count { display: inline-block; min-width: 22px; padding: 0 7px; margin-left: 6px; border-radius: 999px; background: #c92a2a; color: #fff; font-size: 13px; text-align: center; }
+        .dashboard-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+        .dashboard-table th, .dashboard-table td { border: 1px solid #dee2e6; padding: 6px 8px; text-align: left; vertical-align: top; }
+        .dashboard-table th { background: #f1f3f5; }
+        .action-item { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; margin: 6px 0; border-radius: 6px; border-left: 5px solid #adb5bd; background: #f8f9fa; font-size: 14px; }
+        .action-item.danger { border-left-color: #e03131; background: #fff5f5; }
+        .action-item.warning { border-left-color: #f08c00; background: #fff9db; }
+        .action-item.info { border-left-color: #1c7ed6; background: #e7f5ff; }
+        .action-tag { flex: 0 0 auto; font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: #495057; color: #fff; }
+        .revenue-cards { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .revenue-card { flex: 1; min-width: 140px; padding: 10px 12px; border: 1px solid #dee2e6; border-radius: 8px; background: #f8f9fa; }
+        .revenue-card .label { font-size: 12px; color: #495057; font-weight: bold; }
+        .revenue-card .value { font-size: 20px; font-weight: bold; }
+        .facility-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin: 8px 0 12px; }
+        .facility-filter-bar label { margin: 0; font-size: 13px; }
+        .facility-filter-bar input, .facility-filter-bar select { margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -113,6 +131,7 @@
             <div id="lpAnalyticsSummary" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
             <div id="lpAnalyticsDaily" style="margin-top: 12px;"></div>
             <div id="lpAnalyticsChannels" style="margin-top: 10px; font-size: 13px;"></div>
+            <div id="lpFunnel" style="margin-top: 12px;"></div>
             <p class="muted" style="margin: 8px 0 0; font-size: 12px;">Google アナリティクスの数字です。訪問者数は同じ人の重複を除いた人数、閲覧数はページが表示された回数です。全期間の合計は、計測を始めた2026年10月27日からの数です。数字は数時間遅れて反映されることがあります。</p>
         </section>
 
@@ -136,6 +155,59 @@
                 <button type="button" onclick="logoutAdmin()" style="background: #495057;">管理者からログアウト</button>
             </div>
             <p id="passwordMigrationStatus" class="muted" role="status" aria-live="polite"></p>
+
+            <details class="dashboard-box" open>
+                <summary>📋 今日の要対応 <span id="actionItemCount" class="dashboard-count">0</span></summary>
+                <div id="actionItemList"><p class="muted">読み込み中...</p></div>
+            </details>
+
+            <details class="dashboard-box">
+                <summary>💴 売上・入金のまとめ</summary>
+                <div id="revenueSummary"><p class="muted">読み込み中...</p></div>
+                <div id="revenueChart" style="margin-top: 12px;"></div>
+                <button type="button" onclick="downloadInvoiceCsv()" style="background: #087f5b; width: auto; margin-top: 10px;">⬇️ 請求一覧をCSVで保存（会計ソフト用）</button>
+            </details>
+
+            <details class="dashboard-box">
+                <summary>📈 施設ごとの使われ具合 <span id="usageWarningCount" class="dashboard-count" hidden>0</span></summary>
+                <p class="muted" style="margin: 6px 0;">最後に記録を入力した日、今月の記録の件数、利用者の数、LINEで連携しているご家族の数です。退会処理中の施設は含みません。</p>
+                <div id="facilityUsageTable"><p class="muted">読み込み中...</p></div>
+            </details>
+
+            <details class="dashboard-box">
+                <summary>🩺 システムの健康状態 <span id="systemHealthBadge" class="dashboard-count" hidden>!</span></summary>
+                <p class="muted" style="margin: 6px 0;">毎日・1時間ごとに自動で動く処理の、最後の結果です。「注意」「失敗」があれば、管理者が確認してください。</p>
+                <div id="systemHealthTable"><p class="muted">読み込み中...</p></div>
+            </details>
+
+            <details class="dashboard-box">
+                <summary>🗒️ 操作の記録</summary>
+                <p class="muted" style="margin: 6px 0;">この管理画面で行った、ロック・解除、入金登録、請求書の発行などの記録です（新しい順に100件）。</p>
+                <div id="auditLogList"><p class="muted">読み込み中...</p></div>
+            </details>
+
+            <details class="dashboard-box">
+                <summary>📢 全施設へのお知らせ</summary>
+                <p class="muted" style="margin: 6px 0;">ここで作ったお知らせは、すべての施設の入力画面の上に表示されます（施設側で「閉じる」を押すまで）。</p>
+                <div style="display: grid; gap: 8px; margin-top: 8px;">
+                    <input type="text" id="announcementTitle" maxlength="60" placeholder="見出し（例：メンテナンスのお知らせ）">
+                    <textarea id="announcementBody" rows="3" maxlength="500" placeholder="本文（例：11月3日 2時〜4時はメンテナンスのため、記録の保存ができません。）"></textarea>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: end;">
+                        <label style="margin: 0; font-size: 13px;">種類
+                            <select id="announcementLevel" style="margin-top: 4px;"><option value="info">お知らせ（青）</option><option value="warning">重要（オレンジ）</option></select>
+                        </label>
+                        <label style="margin: 0; font-size: 13px;">表示開始日
+                            <input type="date" id="announcementStartDate" style="margin-top: 4px;">
+                        </label>
+                        <label style="margin: 0; font-size: 13px;">表示終了日（空欄なら停止するまで）
+                            <input type="date" id="announcementEndDate" style="margin-top: 4px;">
+                        </label>
+                        <button type="button" id="announcementCreateButton" onclick="createAnnouncement()" style="background: #1971c2; width: auto;">お知らせを公開</button>
+                    </div>
+                    <p id="announcementMessage" class="muted" style="margin: 0;"></p>
+                </div>
+                <div id="announcementList" style="margin-top: 10px;"></div>
+            </details>
             <div style="margin-top: 20px; padding: 16px; border: 2px dashed #40a94d; background: #eaf7eb; border-radius: 8px;">
                 <h2 style="margin-top: 0; color: #237032;">➕ 新規施設の登録（アカウント発行）</h2>
                 <p>施設名・初期パスワード・請求書の送付先メールを登録します。施設IDは自動発行され、施設名を変更しても変わりません。</p>
@@ -170,6 +242,30 @@
                 <button type="button" onclick="prepareLegacyStorageAccess()" style="background: #495057;">旧メディアの所有先を確認する</button>
             </div>
             <h2>施設一覧</h2>
+            <div class="facility-filter-bar">
+                <label style="flex: 1; min-width: 200px;">施設を探す
+                    <input type="search" id="facilitySearchInput" placeholder="施設名・メール・電話番号・担当者名で検索">
+                </label>
+                <label>状態
+                    <select id="facilityStatusFilter">
+                        <option value="all">すべて</option>
+                        <option value="trial">トライアル中</option>
+                        <option value="trial_expired">トライアル終了</option>
+                        <option value="pending_payment">本登録申込済み・入金待ち</option>
+                        <option value="active">本登録</option>
+                        <option value="locked">利用停止中</option>
+                        <option value="paused">一時利用停止中</option>
+                    </select>
+                </label>
+                <label>並べ替え
+                    <select id="facilitySortOrder">
+                        <option value="registered_desc">登録日の新しい順</option>
+                        <option value="registered_asc">登録日の古い順</option>
+                        <option value="name">施設名順</option>
+                    </select>
+                </label>
+                <span id="facilityFilterCount" class="muted" style="font-size: 13px;"></span>
+            </div>
             <p id="loadingMessage" class="muted">施設一覧を読み込んでいます...</p>
             <div id="facilityList"></div>
             <dialog id="facilityCustomizationDialog">
@@ -232,7 +328,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { initializeAuth, browserLocalPersistence, browserSessionPersistence, signInWithCustomToken, setPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getStorage, ref, listAll, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-        import { initializeFirestore, collection, getDocs, getDocsFromServer, getDoc, doc, documentId, updateDoc, deleteDoc, addDoc, query, where, orderBy, deleteField } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { initializeFirestore, collection, getDocs, getDocsFromServer, getDoc, doc, documentId, updateDoc, deleteDoc, addDoc, query, where, orderBy, deleteField, limit, getCountFromServer, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import {
             ALL_SERVICE_TYPE_VALUES,
@@ -242,6 +338,10 @@
             SERVICE_TYPES
         } from "./service-types.js";
         import { CUSTOM_FORM_FIELD_TYPES, FORM_CUSTOMIZATION_SECTIONS, normalizeFacilityFormCustomization } from "./facility-form-customization.js";
+        import {
+            ACTION_CATEGORY_LABELS, FACILITY_STATUS_LABELS, activeAnnouncements, buildActionItems, buildFunnel, buildInvoiceCsv,
+            evaluateFacilityUsage, evaluateJobHealth, facilityStatus, filterAndSortFacilities, summarizeRevenue, tokyoDateKey, toDate
+        } from "./admin-dashboard.js";
 
         const COMMON_LINE_BASIC_ID = "@805xgtzu";
 
@@ -274,6 +374,9 @@
         let currentInvoiceHistory = [];
         let currentInvoiceFacilityId = "";
         let dedicatedLineFacilityIds = new Set();
+        let allInvoicesByFacility = new Map();
+        let facilityFilter = { query: "", status: "all", sort: "registered_desc" };
+        let lastLpAnalytics = null;
         let customizingFacilityId = "";
         let facilityCustomizationDraft = { hiddenSections: [], customFields: [] };
 
@@ -473,6 +576,7 @@
                 window.adminTermsOpened = false;
                 message.style.color = "#237032";
                 message.textContent = `${name} を7日間の無料お試しとして登録しました。`;
+                logAdminAction("新規施設を登録", "", name);
                 await loadFacilities();
             } catch (error) {
                 message.style.color = "#c92a2a";
@@ -515,6 +619,8 @@
             document.getElementById("lpAnalyticsChannels").innerHTML = channels.length
                 ? `<strong style="color: #5f3dc4;">どこから来たか（過去28日間）：</strong> ${channels.map(channel => `${escapeHtml(channel.name)} ${Number(channel.visitors) || 0}人`).join(" ／ ")}`
                 : "";
+            lastLpAnalytics = result || null;
+            renderFunnel();
             const fetchedAt = result?.fetchedAt ? new Date(result.fetchedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "";
             document.getElementById("lpAnalyticsStatus").textContent = fetchedAt ? `${fetchedAt} 時点` : "";
         }
@@ -535,6 +641,287 @@
         }
 
         document.getElementById("lpAnalyticsReloadButton").addEventListener("click", loadLpAnalytics);
+
+        // ===== 管理ダッシュボード =====
+        const yen = value => `${Number(value || 0).toLocaleString("ja-JP")}円`;
+        const formatDateTime = value => {
+            const date = toDate(value);
+            return date ? date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+        };
+
+        async function logAdminAction(action, facilityId = "", detail = "") {
+            try {
+                const facility = facilities.find(item => item.id === facilityId);
+                await addDoc(collection(db, "adminAuditLogs"), {
+                    action, facilityId, facilityName: facility ? (facility.facilityName || facility.id) : "",
+                    detail: String(detail || "").slice(0, 300), at: serverTimestamp(), by: auth.currentUser?.uid || ""
+                });
+                loadAuditLogs();
+            } catch (error) {
+                console.warn("操作の記録を保存できませんでした:", error);
+            }
+        }
+
+        function renderDashboard() {
+            renderActionItems();
+            renderRevenue();
+            renderFunnel();
+        }
+
+        function renderActionItems() {
+            const items = buildActionItems({ facilities, invoicesByFacility: allInvoicesByFacility, cancellationRecords, now: new Date() });
+            document.getElementById("actionItemCount").textContent = items.filter(item => item.level !== "info").length;
+            const list = document.getElementById("actionItemList");
+            if (!items.length) {
+                list.innerHTML = '<p class="muted">今日対応が必要なことはありません。</p>';
+                return;
+            }
+            list.innerHTML = items.map(item => `<div class="action-item ${item.level}">
+                <span class="action-tag">${escapeHtml(ACTION_CATEGORY_LABELS[item.category] || "")}</span>
+                <div><strong>${escapeHtml(item.facilityName || "（施設名なし）")}</strong>：${escapeHtml(item.message)}
+                    ${item.amount ? `<span class="muted">（${yen(item.amount)}${item.invoiceNumber ? `・${escapeHtml(item.invoiceNumber)}` : ""}）</span>` : ""}
+                    ${item.phone || item.contactPerson ? `<div class="muted" style="font-size: 12px;">📞 ${escapeHtml(item.phone || "電話番号未登録")}${item.contactPerson ? `（担当：${escapeHtml(item.contactPerson)}様）` : ""}</div>` : ""}
+                    ${item.detail ? `<div class="muted" style="font-size: 12px;">${escapeHtml(item.detail)}</div>` : ""}
+                </div>
+            </div>`).join("");
+        }
+
+        function renderRevenue() {
+            const summary = summarizeRevenue({ facilities, invoicesByFacility: allInvoicesByFacility, now: new Date() });
+            const [year, month] = summary.thisMonth.split("-");
+            document.getElementById("revenueSummary").innerHTML = `
+                <div class="revenue-cards">
+                    <div class="revenue-card"><div class="label">${Number(year)}年${Number(month)}月の請求額（税込）</div><div class="value">${yen(summary.current.billed)}</div><div class="muted" style="font-size: 12px;">${summary.current.count}件</div></div>
+                    <div class="revenue-card"><div class="label">うち入金済み</div><div class="value" style="color: #2b8a3e;">${yen(summary.current.paid)}</div></div>
+                    <div class="revenue-card"><div class="label">うち未入金</div><div class="value" style="color: #c67700;">${yen(summary.current.unpaid)}</div></div>
+                    <div class="revenue-card"><div class="label">うち期限切れ</div><div class="value" style="color: #c92a2a;">${yen(summary.current.overdue)}</div></div>
+                </div>
+                <div class="revenue-cards">
+                    <div class="revenue-card"><div class="label">毎月の見込み売上（本登録 ${summary.billableCount}施設×月額）</div><div class="value">${yen(summary.expectedMonthly)}</div></div>
+                    <div class="revenue-card"><div class="label">未入金の合計（全期間）</div><div class="value" style="color: #c67700;">${yen(summary.outstanding)}</div></div>
+                    <div class="revenue-card"><div class="label">期限切れの合計（全期間）</div><div class="value" style="color: #c92a2a;">${yen(summary.overdueAll)}</div></div>
+                </div>`;
+            const max = Math.max(1, ...summary.monthly.map(item => item.billed));
+            document.getElementById("revenueChart").innerHTML = `
+                <div style="font-size: 13px; font-weight: bold; margin-bottom: 4px;">月ごとの請求額（■請求 ■入金済み・発行日の月で集計）</div>
+                <div style="display: flex; align-items: flex-end; gap: 6px; height: 150px; padding: 6px; border: 1px solid #dee2e6; border-radius: 8px; background: #fff; overflow-x: auto;">
+                    ${summary.monthly.map(item => `<div title="${escapeHtml(item.month)}：請求 ${yen(item.billed)}／入金 ${yen(item.paid)}" style="flex: 1; min-width: 34px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%;">
+                        <div style="font-size: 10px; color: #495057; white-space: nowrap;">${item.billed ? Math.round(item.billed / 1000) + "千" : ""}</div>
+                        <div style="width: 100%; display: flex; gap: 2px; align-items: flex-end; height: ${Math.max(2, Math.round(item.billed / max * 100))}px;">
+                            <div style="flex: 1; height: 100%; background: #74c0fc; border-radius: 3px 3px 0 0;"></div>
+                            <div style="flex: 1; height: ${item.billed ? Math.round(item.paid / item.billed * 100) : 0}%; background: #2b8a3e; border-radius: 3px 3px 0 0;"></div>
+                        </div>
+                        <div style="font-size: 10px; color: #868e96;">${Number(item.month.slice(5))}月</div>
+                    </div>`).join("")}
+                </div>`;
+        }
+
+        window.downloadInvoiceCsv = function() {
+            const csv = buildInvoiceCsv({ facilities, invoicesByFacility: allInvoicesByFacility });
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `請求一覧_${tokyoDateKey(new Date())}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+            logAdminAction("請求一覧をCSVで保存");
+        };
+
+        function renderFunnel() {
+            const container = document.getElementById("lpFunnel");
+            if (!container) return;
+            const visitors = lastLpAnalytics?.summary?.last28Days?.visitors;
+            const funnel = buildFunnel({ facilities, cancellationRecords, lpVisitors: Number.isFinite(visitors) ? visitors : null, now: new Date() });
+            const step = (label, value, note = "") => `<div style="flex: 1; min-width: 120px; padding: 10px; background: #fff; border: 1px solid #d0bfff; border-radius: 8px; text-align: center;">
+                <div style="font-size: 12px; color: #5f3dc4; font-weight: bold;">${label}</div>
+                <div style="font-size: 22px; font-weight: bold;">${value === null ? "—" : Number(value).toLocaleString("ja-JP")}</div>
+                <div class="muted" style="font-size: 12px;">${note}</div></div>`;
+            const arrow = '<div style="align-self: center; font-size: 20px; color: #7048e8;">→</div>';
+            container.innerHTML = `<div style="font-size: 13px; font-weight: bold; color: #5f3dc4; margin-bottom: 4px;">申し込みまでの流れ（過去28日間）</div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    ${step("LPの訪問者", funnel.lpVisitors, "Google アナリティクス")}${arrow}
+                    ${step("トライアル申込", funnel.trials, funnel.trialRate === null ? "" : `訪問者の${funnel.trialRate}%`)}${arrow}
+                    ${step("本登録", funnel.registrations, funnel.registrationRate === null ? "" : `トライアル申込の${funnel.registrationRate}%`)}
+                </div>
+                <p class="muted" style="font-size: 12px; margin: 4px 0 0;">本登録は、過去28日間に本登録になった施設の数です（トライアル申込が28日より前の施設も含みます）。</p>`;
+        }
+
+        async function loadFacilityUsage() {
+            const container = document.getElementById("facilityUsageTable");
+            const withdrawn = new Set(cancellationRecords.map(record => record.facilityId || record.id));
+            const targets = facilities.filter(facility => !withdrawn.has(facility.id) && !facility.retentionDeletionStartedAt);
+            if (!targets.length) {
+                container.innerHTML = '<p class="muted">対象の施設はありません。</p>';
+                return;
+            }
+            container.innerHTML = '<p class="muted">読み込み中...</p>';
+            const now = new Date();
+            const monthStart = `${tokyoDateKey(now).slice(0, 7)}-01`;
+            const rows = await Promise.all(targets.map(async facility => {
+                try {
+                    const recordsRef = collection(db, "facilities", facility.id, "daily_records");
+                    const [lastSnapshot, monthCount, usersSnapshot] = await Promise.all([
+                        getDocs(query(recordsRef, orderBy("date", "desc"), limit(1))),
+                        getCountFromServer(query(recordsRef, where("date", ">=", monthStart))),
+                        getDocs(collection(db, "facilities", facility.id, "users"))
+                    ]);
+                    const users = usersSnapshot.docs.map(userDoc => userDoc.data());
+                    const usage = {
+                        lastRecordDate: lastSnapshot.empty ? "" : String(lastSnapshot.docs[0].data().date || ""),
+                        monthRecords: monthCount.data().count,
+                        users: users.filter(user => user.active !== false).length,
+                        lineFamilies: users.reduce((sum, user) => sum + (Array.isArray(user.lineUserIds) ? user.lineUserIds.length : 0), 0)
+                    };
+                    return { facility, usage: evaluateFacilityUsage(facility, usage, now) };
+                } catch (error) {
+                    return { facility, error: error.message || String(error) };
+                }
+            }));
+            rows.sort((first, second) => (second.usage?.flags.length || 0) - (first.usage?.flags.length || 0) ||
+                String(second.usage?.lastRecordDate || "").localeCompare(String(first.usage?.lastRecordDate || "")));
+            const warningCount = rows.filter(row => row.usage?.flags.length).length;
+            const badge = document.getElementById("usageWarningCount");
+            badge.textContent = warningCount;
+            badge.hidden = !warningCount;
+            container.innerHTML = `<div style="overflow-x: auto;"><table class="dashboard-table">
+                <thead><tr><th>施設名</th><th>状態</th><th>最後の入力日</th><th>今月の記録</th><th>利用者</th><th>LINE連携のご家族</th><th>注意</th></tr></thead>
+                <tbody>${rows.map(({ facility, usage, error }) => error
+                    ? `<tr><td>${escapeHtml(facility.facilityName || facility.id)}</td><td colspan="6" class="error">読み込めませんでした：${escapeHtml(error)}</td></tr>`
+                    : `<tr style="${usage.flags.length ? "background: #fff5f5;" : ""}">
+                        <td>${escapeHtml(facility.facilityName || facility.id)}</td>
+                        <td>${escapeHtml(FACILITY_STATUS_LABELS[facilityStatus(facility, now)] || "")}</td>
+                        <td>${usage.lastRecordDate ? `${escapeHtml(usage.lastRecordDate.replace(/-/g, "/"))}${usage.daysSinceLast ? `<br><span class="muted">${usage.daysSinceLast}日前</span>` : "<br><span class=\"muted\">今日</span>"}` : "なし"}</td>
+                        <td style="text-align: right;">${usage.monthRecords}件</td>
+                        <td style="text-align: right;">${usage.users}人</td>
+                        <td style="text-align: right;">${usage.lineFamilies}人</td>
+                        <td style="color: #c92a2a; font-weight: bold;">${usage.flags.map(escapeHtml).join("<br>")}</td>
+                    </tr>`).join("")}</tbody></table></div>`;
+        }
+
+        async function loadSystemHealth() {
+            const container = document.getElementById("systemHealthTable");
+            try {
+                const snapshot = await getDocs(collection(db, "systemStatus"));
+                const docs = Object.fromEntries(snapshot.docs.map(statusDoc => [statusDoc.id, statusDoc.data()]));
+                const health = evaluateJobHealth(docs, new Date());
+                const problem = health.some(job => job.state === "error" || job.state === "warning");
+                const badge = document.getElementById("systemHealthBadge");
+                badge.hidden = !problem;
+                const stateLabel = { ok: "✅ 正常", warning: "⚠️ 注意", error: "❌ 失敗", unknown: "⏳ 記録待ち" };
+                const describe = details => !details ? "" : [
+                    details.sent !== undefined ? `送信 ${details.sent}件` : "",
+                    details.failed ? `失敗 ${details.failed}件` : "",
+                    details.backupDate ? `${details.backupDate} 分` : ""
+                ].filter(Boolean).join("・");
+                container.innerHTML = `<div style="overflow-x: auto;"><table class="dashboard-table">
+                    <thead><tr><th>処理</th><th>状態</th><th>最後の成功</th><th>内容</th></tr></thead>
+                    <tbody>${health.map(job => `<tr style="${job.state === "error" ? "background: #fff5f5;" : job.state === "warning" ? "background: #fff9db;" : ""}">
+                        <td>${escapeHtml(job.label)}</td>
+                        <td>${stateLabel[job.state]}${job.state === "ok" ? "" : `<div class="muted" style="font-size: 12px;">${escapeHtml(job.message)}</div>`}</td>
+                        <td>${escapeHtml(formatDateTime(job.lastSuccess))}</td>
+                        <td>${escapeHtml(describe(job.details))}</td>
+                    </tr>`).join("")}</tbody></table></div>`;
+            } catch (error) {
+                container.innerHTML = `<p class="error">読み込めませんでした：${escapeHtml(error.message || error)}</p>`;
+            }
+        }
+
+        async function loadAuditLogs() {
+            const container = document.getElementById("auditLogList");
+            try {
+                const snapshot = await getDocs(query(collection(db, "adminAuditLogs"), orderBy("at", "desc"), limit(100)));
+                if (snapshot.empty) {
+                    container.innerHTML = '<p class="muted">まだ記録はありません。</p>';
+                    return;
+                }
+                container.innerHTML = `<div style="overflow-x: auto;"><table class="dashboard-table">
+                    <thead><tr><th>日時</th><th>操作</th><th>施設</th><th>内容</th></tr></thead>
+                    <tbody>${snapshot.docs.map(logDoc => {
+                        const log = logDoc.data();
+                        return `<tr><td style="white-space: nowrap;">${escapeHtml(formatDateTime(log.at))}</td><td>${escapeHtml(log.action || "")}</td><td>${escapeHtml(log.facilityName || log.facilityId || "")}</td><td>${escapeHtml(log.detail || "")}</td></tr>`;
+                    }).join("")}</tbody></table></div>`;
+            } catch (error) {
+                container.innerHTML = `<p class="error">読み込めませんでした：${escapeHtml(error.message || error)}</p>`;
+            }
+        }
+
+        async function loadAnnouncements() {
+            const container = document.getElementById("announcementList");
+            try {
+                const snapshot = await getDocs(collection(db, "systemAnnouncements"));
+                const items = snapshot.docs.map(itemDoc => ({ id: itemDoc.id, ...itemDoc.data() }))
+                    .sort((first, second) => (toDate(second.createdAt)?.getTime() || 0) - (toDate(first.createdAt)?.getTime() || 0));
+                const showingIds = new Set(activeAnnouncements(items, new Date()).map(item => item.id));
+                container.innerHTML = items.length ? items.map(item => `<div class="action-item ${item.active ? (item.level === "warning" ? "warning" : "info") : ""}">
+                    <div style="flex: 1;"><strong>${escapeHtml(item.title || "")}</strong>
+                        <span class="muted" style="font-size: 12px;">（${item.active ? (showingIds.has(item.id) ? "表示中" : "表示期間外") : "停止済み"}・${escapeHtml(item.startDate || "公開日から")}〜${escapeHtml(item.endDate || "停止するまで")}）</span>
+                        <div style="white-space: pre-wrap;">${escapeHtml(item.body || "")}</div></div>
+                    ${item.active ? `<button type="button" style="background: #c92a2a; width: auto; margin: 0;" onclick="stopAnnouncement('${encodeURIComponent(item.id)}')">表示を停止</button>` : ""}
+                </div>`).join("") : '<p class="muted">お知らせはありません。</p>';
+            } catch (error) {
+                container.innerHTML = `<p class="error">読み込めませんでした：${escapeHtml(error.message || error)}</p>`;
+            }
+        }
+
+        window.createAnnouncement = async function() {
+            const title = document.getElementById("announcementTitle").value.trim();
+            const body = document.getElementById("announcementBody").value.trim();
+            const level = document.getElementById("announcementLevel").value === "warning" ? "warning" : "info";
+            const startDate = document.getElementById("announcementStartDate").value || tokyoDateKey(new Date());
+            const endDate = document.getElementById("announcementEndDate").value || "";
+            const message = document.getElementById("announcementMessage");
+            if (!title || !body) {
+                message.textContent = "見出しと本文を入力してください。";
+                return;
+            }
+            if (endDate && endDate < startDate) {
+                message.textContent = "表示終了日は、表示開始日より後にしてください。";
+                return;
+            }
+            if (!confirm(`次のお知らせを、すべての施設に表示しますか？\n\n${title}\n${body}`)) return;
+            const button = document.getElementById("announcementCreateButton");
+            button.disabled = true;
+            try {
+                await addDoc(collection(db, "systemAnnouncements"), {
+                    title: title.slice(0, 60), body: body.slice(0, 500), level, startDate, endDate, active: true, createdAt: serverTimestamp()
+                });
+                logAdminAction("全施設へのお知らせを公開", "", title);
+                document.getElementById("announcementTitle").value = "";
+                document.getElementById("announcementBody").value = "";
+                document.getElementById("announcementEndDate").value = "";
+                message.textContent = "お知らせを公開しました。";
+                await loadAnnouncements();
+            } catch (error) {
+                message.textContent = "公開できませんでした：" + (error.message || error);
+            } finally {
+                button.disabled = false;
+            }
+        };
+
+        window.stopAnnouncement = async function(encodedId) {
+            const id = decodeURIComponent(encodedId);
+            if (!confirm("このお知らせの表示を停止しますか？")) return;
+            try {
+                await updateDoc(doc(db, "systemAnnouncements", id), { active: false, stoppedAt: serverTimestamp() });
+                logAdminAction("全施設へのお知らせを停止", "", id);
+                await loadAnnouncements();
+            } catch (error) {
+                document.getElementById("announcementMessage").textContent = "停止できませんでした：" + (error.message || error);
+            }
+        };
+
+        ["facilitySearchInput", "facilityStatusFilter", "facilitySortOrder"].forEach(id => {
+            document.getElementById(id).addEventListener(id === "facilitySearchInput" ? "input" : "change", () => {
+                facilityFilter = {
+                    query: document.getElementById("facilitySearchInput").value,
+                    status: document.getElementById("facilityStatusFilter").value,
+                    sort: document.getElementById("facilitySortOrder").value
+                };
+                renderFacilities();
+            });
+        });
 
         async function loadFacilities() {
             let list = document.getElementById("facilityList");
@@ -559,16 +946,17 @@
                             collection(db, "facilities", facility.id, "invoiceHistory"),
                             orderBy("sentAt", "desc")
                         ));
-                        const sentInvoices = history.docs
+                        const realInvoices = history.docs
                             .map(invoiceDoc => ({ id: invoiceDoc.id, ...invoiceDoc.data() }))
-                            .filter(invoice => invoice.test !== true && invoice.status === "sent");
-                        return [facility.id, sentInvoices];
+                            .filter(invoice => invoice.test !== true);
+                        return [facility.id, realInvoices.filter(invoice => invoice.status === "sent"), realInvoices];
                     } catch (invoiceError) {
                         console.warn("施設の最新請求書状況を取得できませんでした:", facility.id, invoiceError);
-                        return [facility.id, []];
+                        return [facility.id, [], []];
                     }
                 }));
-                sentInvoicesByFacility = new Map(invoiceEntries);
+                allInvoicesByFacility = new Map(invoiceEntries.map(([facilityId, , realInvoices]) => [facilityId, realInvoices]));
+                sentInvoicesByFacility = new Map(invoiceEntries.map(([facilityId, sentInvoices]) => [facilityId, sentInvoices]));
                 latestInvoiceByFacility = new Map(invoiceEntries.map(([facilityId, sentInvoices]) => [facilityId, sentInvoices[0] || null]));
                 renderUnpaidInvoiceCount();
                 cancellationRecords = cancellationsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
@@ -576,6 +964,11 @@
                 loading.style.display = "none";
                 renderFacilities();
                 renderCancellationRecords();
+                renderDashboard();
+                loadFacilityUsage();
+                loadSystemHealth();
+                loadAuditLogs();
+                loadAnnouncements();
             } catch (e) {
                 loading.style.display = "none";
                 error.textContent = "施設一覧を取得できませんでした: " + e.message;
@@ -742,6 +1135,7 @@
                     paidDate,
                     paymentUpdatedAt: new Date().toISOString()
                 });
+                logAdminAction("入金あり（未入金一覧）", facilityId, `${invoice.invoiceNumber || invoiceId}／入金日 ${paidDate}`);
                 invoice.paymentStatus = "paid";
                 invoice.paidDate = paidDate;
                 renderUnpaidInvoiceList();
@@ -771,6 +1165,7 @@
             if (!confirm(question)) return;
             try {
                 await httpsCallable(functions, "setFacilityUsageLock")({ facilityId, locked: false });
+                logAdminAction("利用停止を解除（入金後）", facilityId);
                 facility.status = "active";
                 delete facility.lockReason;
                 renderFacilities();
@@ -947,7 +1342,10 @@
                 list.innerHTML = '<p class="muted">登録施設はありません。</p>';
                 return;
             }
-            list.innerHTML = facilities.map(facility => {
+            const visibleFacilities = filterAndSortFacilities(facilities, facilityFilter);
+            const filterCountEl = document.getElementById("facilityFilterCount");
+            if (filterCountEl) filterCountEl.textContent = `${visibleFacilities.length} / ${facilities.length} 件を表示`;
+            list.innerHTML = (visibleFacilities.length ? "" : '<p class="muted">条件に合う施設はありません。</p>') + visibleFacilities.map(facility => {
                 let isLocked = facility.status === "locked";
                 let isTrial = facility.subscriptionStatus === "trial";
                 let trialEndTime = Date.parse(facility.trialEndsAt || "");
@@ -1084,6 +1482,7 @@
                     updateFacilityServicePricePreview(facilityId, container);
                 });
             });
+            if (typeof renderDashboard === "function") renderDashboard();
         }
 
         function updateFacilityServicePricePreview(facilityId, container = document.getElementById("facilityBillingServiceSettings-" + encodeURIComponent(facilityId))?.closest(".facility")) {
@@ -1188,6 +1587,7 @@
                     paymentStatus: nextStatus,
                     paymentUpdatedAt: new Date().toISOString()
                 });
+                logAdminAction(nextStatus === "paid" ? "入金済みにした" : "未入金に戻した", facilityId, invoice.invoiceNumber || invoice.id);
                 invoice.paymentStatus = nextStatus;
                 renderFacilities();
                 renderUnpaidInvoiceCount();
@@ -1229,6 +1629,7 @@
 
             try {
                 await httpsCallable(functions, "activateFacilitySubscription")({ facilityId });
+                logAdminAction("本利用へ切り替え", facilityId);
                 facility.subscriptionStatus = "active";
                 facility.status = "active";
                 renderFacilities();
@@ -1312,6 +1713,7 @@
                     paymentStatus: isPaid ? "paid" : "unpaid",
                     paymentUpdatedAt: new Date().toISOString()
                 });
+                logAdminAction(isPaid ? "入金済みにした（請求書履歴）" : "未入金に戻した（請求書履歴）", currentInvoiceFacilityId, invoice.invoiceNumber || invoice.id);
                 invoice.paymentStatus = isPaid ? "paid" : "unpaid";
                 statusLabel.textContent = isPaid ? "入金済" : "未入金";
                 const trackedInvoice = (sentInvoicesByFacility.get(currentInvoiceFacilityId) || []).find(item => item.id === invoice.id);
@@ -1424,6 +1826,7 @@
             button.textContent = "請求書を発行中...";
             try {
                 const result = await issueFacilityInvoice({ facilityId });
+                logAdminAction("請求書を発行", facilityId, `${result.data.invoiceNumber || ""}／宛先 ${result.data.recipient || ""}`);
                 alert(`請求書を発行し、メールを送信しました。\n宛先：${result.data.recipient}\n請求書番号：${result.data.invoiceNumber}`);
                 await loadFacilities();
             } catch (error) {
@@ -1469,6 +1872,7 @@
             button.textContent = "保存中...";
             try {
                 await updateDoc(doc(db, "facilities", facilityId), update);
+                logAdminAction(description ? "一度限りの追加請求を設定" : "一度限りの追加請求を解除", facilityId, description ? `${description}／税抜${amountText}円` : "");
                 await loadFacilities();
                 document.getElementById("facilityError").textContent = description
                     ? `${facility.facilityName || facilityId} の一度限りの追加請求を保存しました。`
@@ -1601,6 +2005,7 @@ ${invoiceRows}
             button.disabled = true;
             try {
                 await httpsCallable(functions, "resumeFacilityUsage")({ facilityId });
+                logAdminAction("利用再開を承認", facilityId);
             } catch (error) {
                 document.getElementById("facilityError").textContent = "利用再開に失敗しました: " + error.message;
                 button.disabled = false;
@@ -1624,6 +2029,7 @@ ${invoiceRows}
             if (!confirm(`${facilityId} を${action}しますか？`)) return;
             try {
                 await httpsCallable(functions, "setFacilityUsageLock")({ facilityId, locked: !currentlyLocked });
+                logAdminAction(currentlyLocked ? "利用停止を解除" : "利用停止（ロック）", facilityId);
                 let facility = facilities.find(item => item.id === facilityId);
                 if (facility) {
                     facility.status = currentlyLocked ? "active" : "locked";
@@ -1660,6 +2066,7 @@ ${invoiceRows}
                 };
                 if (!dedicatedLineConfigured) updates.commonLineEnabled = enabled;
                 await updateDoc(doc(db, "facilities", facilityId), updates);
+                logAdminAction(enabled ? "LINEを許可" : "LINEを停止", facilityId);
                 facility.lineServiceEnabled = enabled;
                 if (!dedicatedLineConfigured) facility.commonLineEnabled = enabled;
                 renderFacilities();
@@ -1978,6 +2385,7 @@ ${invoiceRows}
                     lineSettingsSnapshot ? deleteDoc(lineSettingsSnapshot.ref) : Promise.resolve()
                 ]);
                 await deleteDoc(doc(db, "facilities", facilityId));
+                logAdminAction("登録施設を削除", facilityId);
 
                 facilities = facilities.filter(item => item.id !== facilityId);
                 renderFacilities();

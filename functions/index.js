@@ -28,6 +28,8 @@ const { generateInvoicePdf } = require("./invoice-pdf");
 const { findOverdueUnpaidInvoices } = require("./overdue-lock");
 const { getTrialAccessEndsAt, isTrialAccessOpen, getPaymentGraceFields } = require("./trial-access");
 const { LP_ANALYTICS_PROPERTY_ID, buildLpAnalyticsRequest, parseLpAnalyticsResponse } = require("./lp-analytics");
+const { createJobStatusWrapper } = require("./job-status");
+const withJobStatus = createJobStatusWrapper(() => getFirestore(), logger);
 const { daysUntilTrialEnds, isTrialReminderDue } = require("./trial-reminder");
 const { getFacilityRetentionDeadline, isFacilityRetentionExpired } = require("./facility-retention");
 
@@ -518,7 +520,7 @@ exports.cleanExpiredAdminLoginData = onSchedule({
     retryCount: 3,
     minBackoffSeconds: 120,
     maxBackoffSeconds: 600
-}, async () => {
+}, withJobStatus("cleanExpiredAdminLoginData", async () => {
     const db = getFirestore();
     const now = Date.now();
     for (const collectionName of [
@@ -535,7 +537,7 @@ exports.cleanExpiredAdminLoginData = onSchedule({
             await batch.commit();
         }
     }
-});
+}));
 
 exports.migrateLegacyFacilityPasswords = onCall(async request => {
     if (request.auth?.token.role !== "admin" || request.auth.token.mfaVerified !== true) {
@@ -1928,7 +1930,7 @@ exports.deleteExpiredLineLinks = onSchedule({
     retryCount: 3,
     minBackoffSeconds: 120,
     maxBackoffSeconds: 600
-}, async () => {
+}, withJobStatus("deleteExpiredLineLinks", async () => {
     const db = getFirestore();
     for (const collectionName of ["lineRecordLinks", "linePairingCodes"]) {
         let deletedCount = 0;
@@ -1942,7 +1944,7 @@ exports.deleteExpiredLineLinks = onSchedule({
         }
         logger.info("Expired LINE documents removed", { collectionName, deletedCount });
     }
-});
+}));
 
 async function handleLineMessagingWebhook(request, response, credentials, expectedFacilityId = "") {
     if (request.method === "GET") return response.status(200).send("OK");
@@ -3111,7 +3113,7 @@ exports.sendMonthlyInvoices = onSchedule({
     minBackoffSeconds: 120,
     maxBackoffSeconds: 600,
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
-}, async () => {
+}, withJobStatus("sendMonthlyInvoices", async () => {
     const db = getFirestore();
     const now = new Date();
     const issueDate = dateKey(getTokyoDateParts(now));
@@ -3359,7 +3361,8 @@ exports.sendMonthlyInvoices = onSchedule({
         skipped: skippedCount,
         failed: failedCount
     });
-});
+    return { sent: sentCount, skipped: skippedCount, failed: failedCount };
+}));
 
 exports.sendTrialExpiryReminders = onSchedule({
     schedule: "every day 09:00",
@@ -3371,7 +3374,7 @@ exports.sendTrialExpiryReminders = onSchedule({
     minBackoffSeconds: 120,
     maxBackoffSeconds: 600,
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
-}, async () => {
+}, withJobStatus("sendTrialExpiryReminders", async () => {
     const db = getFirestore();
     const now = new Date();
     const facilitiesSnapshot = await db.collection("facilities").where("subscriptionStatus", "==", "trial").get();
@@ -3491,7 +3494,8 @@ exports.sendTrialExpiryReminders = onSchedule({
         skipped: skippedCount,
         failed: failedCount
     });
-});
+    return { sent: sentCount, skipped: skippedCount, failed: failedCount };
+}));
 
 exports.deleteExpiredFacilityAccounts = onSchedule({
     schedule: "every 60 minutes",
@@ -3500,7 +3504,7 @@ exports.deleteExpiredFacilityAccounts = onSchedule({
     concurrency: 1,
     timeoutSeconds: 540,
     secrets: [INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD]
-}, async () => {
+}, withJobStatus("deleteExpiredFacilityAccounts", async () => {
     const db = getFirestore();
     const facilities = await db.collection("facilities").get();
     const failures = [];
@@ -3539,9 +3543,9 @@ exports.deleteExpiredFacilityAccounts = onSchedule({
     }
     logger.info("Expired facility cancellation completed", { scanned: facilities.size, deleted, failed: failures.length });
     if (failures.length) throw new Error(`Automatic facility cancellation requires attention for ${failures.length} facilities.`);
-});
+}));
 
-exports.lockExpiredTrials = onSchedule("every 60 minutes", async () => {
+exports.lockExpiredTrials = onSchedule("every 60 minutes", withJobStatus("lockExpiredTrials", async () => {
     const facilitiesSnapshot = await getFirestore().collection("facilities").get();
     const now = Date.now();
     const expiredFacilities = facilitiesSnapshot.docs.filter(document => {
@@ -3559,7 +3563,7 @@ exports.lockExpiredTrials = onSchedule("every 60 minutes", async () => {
         await batch.commit();
     }
     if (expiredFacilities.length) logger.info("Expired trial facilities locked", { count: expiredFacilities.length });
-});
+}));
 
 function getTokyoDateKey(date = new Date()) {
     return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(date);
@@ -3567,7 +3571,7 @@ function getTokyoDateKey(date = new Date()) {
 
 // 入金期限を過ぎても未入金の請求書がある施設を、期限の翌日に自動でロックする。
 // 一度ロックに使った請求書には印を付け、管理者が手動で解除した後に同じ請求書で再ロックしない。
-exports.lockOverdueInvoiceFacilities = onSchedule("every 60 minutes", async () => {
+exports.lockOverdueInvoiceFacilities = onSchedule("every 60 minutes", withJobStatus("lockOverdueInvoiceFacilities", async () => {
     const db = getFirestore();
     const todayKey = getTokyoDateKey();
     const facilitiesSnapshot = await db.collection("facilities").get();
@@ -3603,9 +3607,9 @@ exports.lockOverdueInvoiceFacilities = onSchedule("every 60 minutes", async () =
     }
     if (locked) logger.info("Facilities locked for overdue invoices", { count: locked, todayKey });
     if (failures.length) throw new Error(`Overdue invoice lock failed for ${failures.length} facilities.`);
-});
+}));
 
-exports.deleteExpiredVideos = onSchedule("every 60 minutes", async () => {
+exports.deleteExpiredVideos = onSchedule("every 60 minutes", withJobStatus("deleteExpiredVideos", async () => {
     const bucket = getStorage().bucket();
     const [files] = await bucket.getFiles({ prefix: "videos/" });
     const cutoff = Date.now() - VIDEO_RETENTION_MS;
@@ -3636,7 +3640,7 @@ exports.deleteExpiredVideos = onSchedule("every 60 minutes", async () => {
         expired: expiredFiles.length,
         deleted: deletedCount
     });
-});
+}));
 
 exports.exportDailyRecordsBackup = onSchedule({
     schedule: "every day 03:00",
@@ -3647,7 +3651,7 @@ exports.exportDailyRecordsBackup = onSchedule({
     minBackoffSeconds: 120,
     maxBackoffSeconds: 600,
     serviceAccount: FIRESTORE_BACKUP_SERVICE_ACCOUNT
-}, async () => {
+}, withJobStatus("exportDailyRecordsBackup", async () => {
     const now = new Date();
     const backupDate = dateKey(getTokyoDateParts(now));
     const outputUriPrefix = `gs://${FIRESTORE_BACKUP_BUCKET}/firestore/facility_data/${backupDate}_${now.getTime()}`;
@@ -3668,4 +3672,5 @@ exports.exportDailyRecordsBackup = onSchedule({
         outputUriPrefix,
         operationName: response.data.name
     });
-});
+    return { backupDate };
+}));

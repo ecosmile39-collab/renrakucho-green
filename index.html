@@ -260,6 +260,7 @@
     </div>
 
     <div class="form-box" id="mainForm" style="display: none;">
+        <div id="systemAnnouncementArea"></div>
         
         <h2 id="secretTitle" style="user-select: none; cursor: pointer; margin-top: 0; color: #2b8a3e;">🌿 <span id="displayFacilityName">施設名読込中...</span> 連絡帳</h2>
         <div style="text-align: right; margin-bottom: 15px;">
@@ -1097,10 +1098,49 @@
         } from "./service-types.js";
         import { FORM_CUSTOMIZATION_SECTIONS, getFacilityProfileFieldValue, getFacilityProfileFields, normalizeFacilityFormCustomization } from "./facility-form-customization.js";
         import { removeUndefinedFields } from "./firestore-data.js";
+        import { activeAnnouncements } from "./admin-dashboard.js";
         import { buildGroupHomeForm, readGroupHomeFields, restoreGroupHomeFields, validateGroupHomeFields } from "./group-home.js";
         import { buildResidentialForm, readResidentialFields, restoreResidentialFields, validateResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT } from "./residential-care.js";
 
         buildGroupHomeForm(document.getElementById("groupHomeFields"));
+
+        // 管理画面から全施設へ出したお知らせを、入力画面の上に表示する（施設ごとに「閉じる」と次から出ない）
+        async function loadSystemAnnouncements() {
+            const area = document.getElementById("systemAnnouncementArea");
+            try {
+                const snapshot = await getDocs(query(collection(db, "systemAnnouncements"), where("active", "==", true)));
+                const dismissed = (() => {
+                    try { return JSON.parse(localStorage.getItem("dismissedAnnouncements") || "[]"); } catch (error) { return []; }
+                })();
+                const items = activeAnnouncements(snapshot.docs.map(item => ({ id: item.id, ...item.data() })), new Date())
+                    .filter(item => !dismissed.includes(item.id));
+                area.replaceChildren(...items.map(item => {
+                    const box = document.createElement("div");
+                    const warning = item.level === "warning";
+                    box.style.cssText = `margin: 0 0 12px; padding: 12px 14px; border-radius: 8px; border: 1px solid ${warning ? "#f08c00" : "#74c0fc"}; background: ${warning ? "#fff4e6" : "#e7f5ff"}; position: relative;`;
+                    const title = document.createElement("strong");
+                    title.textContent = `${warning ? "⚠️" : "📢"} ${item.title || "お知らせ"}`;
+                    const body = document.createElement("div");
+                    body.style.cssText = "white-space: pre-wrap; margin-top: 4px; font-size: 14px;";
+                    body.textContent = item.body || "";
+                    const close = document.createElement("button");
+                    close.type = "button";
+                    close.textContent = "閉じる";
+                    close.style.cssText = "position: absolute; top: 8px; right: 8px; width: auto; margin: 0; padding: 4px 10px; font-size: 12px; background: #868e96;";
+                    close.addEventListener("click", () => {
+                        try {
+                            const list = JSON.parse(localStorage.getItem("dismissedAnnouncements") || "[]");
+                            localStorage.setItem("dismissedAnnouncements", JSON.stringify([...new Set([...list, item.id])].slice(-50)));
+                        } catch (error) { /* 保存できなくても閉じる */ }
+                        box.remove();
+                    });
+                    box.append(title, body, close);
+                    return box;
+                }));
+            } catch (error) {
+                console.warn("お知らせを読み込めませんでした:", error);
+            }
+        }
         buildResidentialForm(document.getElementById("residentialFields"));
 
         let familyLinePublicationEnabled = true;
@@ -1774,6 +1814,7 @@
             document.getElementById("appStartupStatus").hidden = true;
             document.getElementById("mainForm").style.display = "block";
             document.getElementById("scrollGroup").style.display = "flex";
+            loadSystemAnnouncements();
             document.getElementById("newFacePreview").src = defaultIcon;
             updateLineAgencyButton(facilityData);
             loadFacilityLineSettingsStatus();
