@@ -68,8 +68,14 @@
             50% { background-color: #ffd43b; border-color: #e67700; box-shadow: 0 0 0 6px rgba(250, 176, 5, 0.35); }
         }
         .today-trial-alert { animation: todayTrialBlink 1.2s ease-in-out infinite; border-width: 2px !important; }
+        @keyframes todayActiveBlink {
+            0%, 100% { background-color: #ebfbee; border-color: #69db7c; box-shadow: 0 0 0 0 rgba(47, 158, 68, 0); }
+            50% { background-color: #8ce99a; border-color: #2b8a3e; box-shadow: 0 0 0 6px rgba(47, 158, 68, 0.35); }
+        }
+        .today-active-alert { animation: todayActiveBlink 1.2s ease-in-out infinite; border-width: 2px !important; }
         @media (prefers-reduced-motion: reduce) {
             .today-trial-alert { animation: none; background-color: #ffd43b !important; border-color: #e67700 !important; }
+            .today-active-alert { animation: none; background-color: #8ce99a !important; border-color: #2b8a3e !important; }
         }
         .dashboard-box { margin-top: 14px; padding: 12px 14px; border: 1px solid #ced4da; border-radius: 8px; background: #fff; }
         .dashboard-box > summary { cursor: pointer; font-weight: bold; font-size: 16px; }
@@ -119,7 +125,7 @@
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTodayTrialCount">0</span> 件</div>
                 <div id="summaryTodayTrialNames" style="font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere;">該当なし</div>
             </div>
-            <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #ebfbee; border: 1px solid #69db7c; border-radius: 8px; font-weight: bold; color: #087f23;">
+            <div id="summaryTodayActiveCard" style="flex: 1; min-width: 160px; padding: 12px 16px; background: #ebfbee; border: 1px solid #69db7c; border-radius: 8px; font-weight: bold; color: #087f23;">
                 <div style="font-size: 13px;">📅 本日の本登録</div>
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTodayActiveCount">0</span> 件</div>
                 <div id="summaryTodayActiveNames" style="font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere;">該当なし</div>
@@ -1339,6 +1345,8 @@
             if (summaryTodayTrialNamesEl) summaryTodayTrialNamesEl.textContent = todayTrialNames.join("\n") || "該当なし";
             const summaryTodayTrialCard = document.getElementById("summaryTodayTrialCard");
             if (summaryTodayTrialCard?.classList) summaryTodayTrialCard.classList.toggle("today-trial-alert", todayTrialNames.length > 0);
+            const summaryTodayActiveCard = document.getElementById("summaryTodayActiveCard");
+            if (summaryTodayActiveCard?.classList) summaryTodayActiveCard.classList.toggle("today-active-alert", todayActiveNames.length > 0);
             if (summaryTodayActiveNamesEl) summaryTodayActiveNamesEl.textContent = todayActiveNames.join("\n") || "該当なし";
             if (summaryPausedEl) summaryPausedEl.textContent = pausedNames.length;
             if (summaryPausedNamesEl) summaryPausedNamesEl.textContent = pausedNames.join("\n") || "該当なし";
