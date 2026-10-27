@@ -95,6 +95,7 @@
             <div style="flex: 1; min-width: 140px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 8px; font-weight: bold; color: #495057;">
                 <div style="font-size: 13px;">🏢 全登録施設</div>
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTotalCount">0</span> 件</div>
+                <div id="summaryWithdrawnNote" hidden style="font-size: 12px; margin-top: 6px; font-weight: normal;"></div>
             </div>
         </div>
 
@@ -815,7 +816,12 @@
                 return `${part("year")}-${part("month")}-${part("day")}`;
             };
             const todayKey = getTokyoDateKey(new Date());
-            facilities.forEach(facility => {
+            // 退会した施設（退会処理の記録がある施設・2か月の保存期限超過で削除処理中の施設）は件数に含めない
+            const withdrawnFacilityIds = new Set(cancellationRecords.map(record => record.facilityId || record.id));
+            const isWithdrawnFacility = facility => withdrawnFacilityIds.has(facility.id) || Boolean(facility.retentionDeletionStartedAt);
+            const currentFacilities = facilities.filter(facility => !isWithdrawnFacility(facility));
+            const withdrawnCount = facilities.length - currentFacilities.length;
+            currentFacilities.forEach(facility => {
                 if (facility.usagePaused === true) pausedNames.push(facility.facilityName || facility.id);
                 if (facility.subscriptionStatus === "active" || facility.status === "active" && facility.subscriptionStatus !== "trial") {
                     activeCount++;
@@ -846,7 +852,12 @@
             if (summaryTodayActiveNamesEl) summaryTodayActiveNamesEl.textContent = todayActiveNames.join("\n") || "該当なし";
             if (summaryPausedEl) summaryPausedEl.textContent = pausedNames.length;
             if (summaryPausedNamesEl) summaryPausedNamesEl.textContent = pausedNames.join("\n") || "該当なし";
-            if (summaryTotalEl) summaryTotalEl.textContent = facilities.length;
+            if (summaryTotalEl) summaryTotalEl.textContent = currentFacilities.length;
+            const summaryWithdrawnNoteEl = document.getElementById("summaryWithdrawnNote");
+            if (summaryWithdrawnNoteEl) {
+                summaryWithdrawnNoteEl.textContent = withdrawnCount ? `退会処理中の${withdrawnCount}件は含みません` : "";
+                summaryWithdrawnNoteEl.hidden = !withdrawnCount;
+            }
 
             if (facilities.length === 0) {
                 list.innerHTML = '<p class="muted">登録施設はありません。</p>';
