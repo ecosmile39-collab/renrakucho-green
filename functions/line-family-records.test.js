@@ -209,7 +209,8 @@ test("daily facility summaries show matching names with Tokyo dates and reset em
     const elements = new Map();
     for (const id of ["facilityList", "summaryTrialCount", "summaryActiveCount",
         "summaryTodayTrialCount", "summaryTodayActiveCount", "summaryTodayTrialNames",
-        "summaryTodayActiveNames", "summaryPausedCount", "summaryPausedNames", "summaryTotalCount"]) {
+        "summaryTodayActiveNames", "summaryPausedCount", "summaryPausedNames", "summaryTotalCount",
+        "summaryTrialExpiredCount", "summaryTrialExpiredNames", "summaryWithdrawnNote"]) {
         assert.ok(html.includes(`id="${id}"`));
         elements.set(id, { textContent: "" });
     }
@@ -220,6 +221,7 @@ test("daily facility summaries show matching names with Tokyo dates and reset em
             static now() { return now.getTime(); }
         },
         document: { getElementById: id => elements.get(id) },
+        cancellationRecords: [],
         facilities: [
             { id: "trial", facilityName: "<b>Trial</b>", subscriptionStatus: "trial", trialStartedAt: "2026-10-15T15:00:00Z" },
             { id: "legacy", subscriptionStatus: "trial", createdAt: "2026-10-16T14:59:59Z" },
@@ -241,6 +243,22 @@ test("daily facility summaries show matching names with Tokyo dates and reset em
     assert.equal(elements.get("summaryTodayActiveNames").textContent, "Active");
     assert.equal(elements.get("summaryPausedCount").textContent, 2);
     assert.equal(elements.get("summaryPausedNames").textContent, "<b>Paused</b>\npaused-active");
+    // 終了日のないお試し施設はトライアル終了（停止中）に入る。一時停止中の施設は入れない
+    assert.equal(elements.get("summaryTrialExpiredCount").textContent, 4);
+    assert.equal(elements.get("summaryTrialExpiredNames").textContent, "<b>Trial</b>\nlegacy\nyesterday\ninvalid");
+    assert.equal(elements.get("summaryTotalCount").textContent, 10);
+    assert.equal(elements.get("summaryWithdrawnNote").hidden, true);
+    // 退会処理の記録がある施設と、保存期限超過で削除処理中の施設は件数から除く
+    const allFacilities = sandbox.facilities;
+    sandbox.cancellationRecords = [{ facilityId: "active" }];
+    sandbox.facilities = [...allFacilities, { id: "deleting", subscriptionStatus: "trial", retentionDeletionStartedAt: "2026-10-10T00:00:00Z" }];
+    sandbox.renderFacilities();
+    assert.equal(elements.get("summaryTotalCount").textContent, 9);
+    assert.equal(elements.get("summaryTodayActiveCount").textContent, 0);
+    assert.equal(elements.get("summaryWithdrawnNote").textContent, "退会処理中の2件は含みません");
+    assert.equal(elements.get("summaryWithdrawnNote").hidden, false);
+    sandbox.cancellationRecords = [];
+    sandbox.facilities = allFacilities;
     sandbox.facilities = sandbox.facilities.map(facility => ({ ...facility, usagePaused: false }));
     sandbox.renderFacilities();
     assert.equal(elements.get("summaryPausedCount").textContent, 0);
