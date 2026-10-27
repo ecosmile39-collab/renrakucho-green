@@ -82,6 +82,11 @@
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryPausedCount">0</span> 件</div>
                 <div id="summaryPausedNames" style="font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere;">該当なし</div>
             </div>
+            <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #fff5f5; border: 1px solid #fa5252; border-radius: 8px; font-weight: bold; color: #c92a2a;">
+                <div style="font-size: 13px;">⏰ トライアル終了（停止中）</div>
+                <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTrialExpiredCount">0</span> 件</div>
+                <div id="summaryTrialExpiredNames" style="font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere;">該当なし</div>
+            </div>
             <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #fff9db; border: 1px solid #fab005; border-radius: 8px; font-weight: bold; color: #8a5b00;">
                 <div style="font-size: 13px;">📅 本日のトライアル申込</div>
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTodayTrialCount">0</span> 件</div>
@@ -802,6 +807,7 @@
             const todayTrialNames = [];
             const todayActiveNames = [];
             const pausedNames = [];
+            const trialExpiredNames = [];
             const tokyoDateFormatter = new Intl.DateTimeFormat("en", {
                 timeZone: "Asia/Tokyo",
                 year: "numeric",
@@ -827,8 +833,12 @@
                     activeCount++;
                 } else if (facility.subscriptionStatus === "trial") {
                     let trialEndTime = Date.parse(facility.trialEndsAt || "");
+                    const graceEndTime = Date.parse(facility.paymentGraceUntil || "");
+                    if (Number.isFinite(graceEndTime)) trialEndTime = Number.isFinite(trialEndTime) ? Math.max(trialEndTime, graceEndTime) : graceEndTime;
                     if (Number.isFinite(trialEndTime) && Date.now() < trialEndTime && facility.status !== "locked") {
                         trialCount++;
+                    } else if (facility.usagePaused !== true) {
+                        trialExpiredNames.push(facility.facilityName || facility.id);
                     }
                 }
                 const trialApplicationAt = facility.trialStartedAt || (facility.subscriptionStatus === "trial" ? facility.createdAt : null);
@@ -844,6 +854,10 @@
             const summaryPausedEl = document.getElementById("summaryPausedCount");
             const summaryPausedNamesEl = document.getElementById("summaryPausedNames");
             const summaryTotalEl = document.getElementById("summaryTotalCount");
+            const summaryTrialExpiredEl = document.getElementById("summaryTrialExpiredCount");
+            const summaryTrialExpiredNamesEl = document.getElementById("summaryTrialExpiredNames");
+            if (summaryTrialExpiredEl) summaryTrialExpiredEl.textContent = trialExpiredNames.length;
+            if (summaryTrialExpiredNamesEl) summaryTrialExpiredNamesEl.textContent = trialExpiredNames.join("\n") || "該当なし";
             if (summaryTrialEl) summaryTrialEl.textContent = trialCount;
             if (summaryActiveEl) summaryActiveEl.textContent = activeCount;
             if (summaryTodayTrialEl) summaryTodayTrialEl.textContent = todayTrialNames.length;
