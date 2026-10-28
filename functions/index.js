@@ -1453,7 +1453,7 @@ function getFamilyVisibleFields(record, formCustomization) {
         if (Array.isArray(value)) {
             if (value.length) fields.push({ label, value: value.join("、") });
         } else if (value !== undefined && value !== null && String(value).trim() !== "") {
-            fields.push({ label, value: String(value) });
+            fields.push({ label, value: markFeverTemperature(key, value) });
         }
     };
 
@@ -1568,6 +1568,19 @@ function getFamilyVisibleFields(record, formCustomization) {
         if (value.trim()) fields.push({ label: field.label, value });
     }
     return fields;
+}
+
+// 体温が37.0℃以上なら、ご家族の画面でも「★37.2」のように目立たせる
+const FAMILY_TEMPERATURE_KEYS = new Set([
+    "temp1", "temp2", "stTempIn", "stTempOut", "afterSchoolTemperature", "lifeCareTemperature",
+    "ghMorningTemp", "ghEveningTemp", "rsMorningTemp", "rsEveningTemp"
+]);
+
+function markFeverTemperature(key, value) {
+    const text = String(value);
+    const trimmed = text.trim();
+    if (!FAMILY_TEMPERATURE_KEYS.has(key) || !/^\d+(\.\d+)?$/.test(trimmed)) return text;
+    return Number(trimmed) >= 37 ? `★${trimmed}` : text;
 }
 
 async function getLineAttachment(filePath, linkDate, expiresAt, checkUploadDate = false) {

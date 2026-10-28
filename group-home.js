@@ -1,6 +1,8 @@
+import { temperatureHtml } from "./fever.js";
+
 export const vitalFields = (period, label, prefix = "gh") => [
     { id: `${prefix}${period}Time`, label: `${label}・測定時刻`, type: "time" },
-    { id: `${prefix}${period}Temp`, label: `${label}・体温（℃）`, type: "number", step: "0.1", list: "temp1List" },
+    { id: `${prefix}${period}Temp`, label: `${label}・体温（℃）`, type: "number", step: "0.1", list: "temp1List", temperature: true },
     { id: `${prefix}${period}Pulse`, label: `${label}・脈拍（回/分）`, type: "number", list: "pulseList" },
     { id: `${prefix}${period}Spo2`, label: `${label}・酸素飽和度（%）`, type: "number", max: "100", list: "spo2List" },
     { id: `${prefix}${period}BpHigh`, label: `${label}・血圧 上（mmHg）`, type: "number", list: "bpHighList" },
@@ -115,7 +117,10 @@ export function createStructuredRecord(sections, sectionId) {
         const journal = hidden.has("careJournalArea") ? "" : `
         <div class="section-title">担当スタッフ・介護日誌</div>
         <div class="text-box" style="white-space:pre-wrap;">${escape(data.careStaff || "未入力")}\n${escape(data.careJournal || "未入力")}</div>`;
-        const renderCell = field => `<th>${escape(field.label)}</th><td style="text-align:left;white-space:pre-wrap;">${escape(data[field.id] ?? "") || "未入力"}</td>`;
+        const cellValue = field => field.temperature
+            ? temperatureHtml(data[field.id], { unit: "", empty: "未入力" })
+            : escape(data[field.id] ?? "") || "未入力";
+        const renderCell = field => `<th>${escape(field.label)}</th><td style="text-align:left;white-space:pre-wrap;">${cellValue(field)}</td>`;
         return journal + (hidden.has(sectionId) ? "" : sections.map(section => `
         <div class="section-title">${escape(section.title)}</div>
         <table class="compact-table history-table">${section.fields.flatMap((field, index) => {

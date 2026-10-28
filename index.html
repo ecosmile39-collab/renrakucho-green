@@ -15,6 +15,11 @@
         label { display: block; margin-top: 15px; font-weight: bold; color: #333; font-size: 15px; }
         input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
         .suggestion-input-control { width: 100%; }
+        .fever-wrap { display: flex; align-items: center; gap: 6px; width: 100%; }
+        .fever-wrap input { flex: 1; min-width: 0; }
+        .fever-badge { display: none; color: #c92a2a; font-size: 22px; font-weight: bold; line-height: 1; }
+        .fever-wrap.is-fever .fever-badge { display: inline; }
+        .fever-wrap.is-fever input { color: #c92a2a; background-color: #ffeef0; font-weight: bold; border-color: #c92a2a; }
         .flex-box { display: flex; gap: 10px; }
         .flex-box > div { flex: 1; }
         .bp-box { display: flex; align-items: center; gap: 5px; }
@@ -1117,6 +1122,7 @@
         import { activeAnnouncements } from "./admin-dashboard.js";
         import { buildGroupHomeForm, readGroupHomeFields, restoreGroupHomeFields, validateGroupHomeFields } from "./group-home.js";
         import { setupSentenceTemplates } from "./sentence-templates.js";
+        import { TEMPERATURE_FIELD_IDS, isFever } from "./fever.js";
         import { buildResidentialForm, readResidentialFields, restoreResidentialFields, validateResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT } from "./residential-care.js";
 
         buildGroupHomeForm(document.getElementById("groupHomeFields"));
@@ -1284,6 +1290,33 @@
 
         initializeTextSuggestionSelects();
         setupSentenceTemplates(document, localStorage.getItem("currentServiceType") || "");
+
+        // 体温が37.0℃以上なら、欄の前に「★」を出して赤く目立たせる（全サービスの体温欄。選んだとき・書いたとき・保存済みを開いたとき）
+        function updateFeverMarks() {
+            for (const id of TEMPERATURE_FIELD_IDS) {
+                const input = document.getElementById(id);
+                if (!input) continue;
+                let wrap = input.parentElement;
+                if (!wrap.classList.contains("fever-wrap")) {
+                    wrap = document.createElement("span");
+                    wrap.className = "fever-wrap";
+                    const badge = document.createElement("span");
+                    badge.className = "fever-badge";
+                    badge.textContent = "★";
+                    badge.setAttribute("aria-label", "37.0℃以上");
+                    input.before(wrap);
+                    wrap.append(badge, input);
+                }
+                wrap.classList.toggle("is-fever", isFever(input.value));
+            }
+            document.querySelectorAll("#temp1Alert, #temp2Alert, #stTempInAlert, #stTempOutAlert").forEach(span => { span.textContent = ""; });
+        }
+        window.updateFeverMarks = updateFeverMarks;
+        updateFeverMarks();
+        document.getElementById("mainForm").addEventListener("input", event => {
+            if (TEMPERATURE_FIELD_IDS.includes(event.target.id)) updateFeverMarks();
+        });
+
 
         function applyFacilityFormCustomization() {
             const hiddenSections = new Set(facilityFormCustomization.hiddenSections);
@@ -3984,6 +4017,7 @@ function getTrialAccessEndTime(facilityData) {
             document.getElementById("stWater").value = "";
             document.getElementById("stOralCare").value = "";
             syncTextSuggestionSelects(true);
+            window.checkTemp();
 
             document.getElementById("dsBowel").value = "";
             if(document.getElementById("dsBowel1")) document.getElementById("dsBowel1").value = "";
@@ -4019,15 +4053,8 @@ function getTrialAccessEndTime(facilityData) {
             if(document.getElementById("dummyActFiles")) document.getElementById("dummyActFiles").value = "";
         }
 
-        window.checkTemp = function(inputId, alertId) {
-            let el = document.getElementById(inputId);
-            let val = parseFloat(el.value);
-            let alertSpan = document.getElementById(alertId);
-            if (!isNaN(val) && val >= 37.0) {
-                el.style.color = "red"; el.style.backgroundColor = "#ffeef0"; alertSpan.textContent = "★";
-            } else {
-                el.style.color = ""; el.style.backgroundColor = ""; alertSpan.textContent = "";
-            }
+        window.checkTemp = function() {
+            window.updateFeverMarks?.();
         };
 
         window.insertTemplate = function() {

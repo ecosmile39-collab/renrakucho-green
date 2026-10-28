@@ -103,6 +103,10 @@
                     label.textContent = field.label;
                     const value = document.createElement("dd");
                     value.textContent = field.value;
+                    if (/^★\d/.test(String(field.value))) {
+                        value.style.color = "#c92a2a";
+                        value.style.fontWeight = "bold";
+                    }
                     row.append(label, value);
                     fieldList.appendChild(row);
                 }

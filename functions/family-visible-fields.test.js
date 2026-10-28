@@ -52,3 +52,17 @@ test("day service shows attendance and transport times, and child development sh
     assert.equal(child["昼食の摂取量"], "完食");
     assert.equal(child["支援の5領域"], "健康・生活、人間関係・社会性");
 });
+
+test("temperatures of 37.0 or more get a star for families, lower ones and other values stay as they are", () => {
+    const fields = visible({ serviceType: "デイサービス", temp1: "37.0", temp2: "36.9", pulse: "37" });
+    assert.equal(fields["体温"], "★37.0");
+    assert.equal(fields["体温（途中）"], "36.9");
+    assert.equal(fields["脈拍"], "37");
+    const life = visible({ serviceType: "生活介護", lifeCareTemperature: "38.2" });
+    assert.equal(life["体温"], "★38.2");
+    const home = visible({ serviceType: "グループホーム", ghEveningTemp: "37.4", ghMorningTemp: "36.2" });
+    assert.equal(home["夕・体温（℃）"], "★37.4");
+    assert.equal(home["朝・体温（℃）"], "36.2");
+    const child = visible({ serviceType: "児童発達支援", afterSchoolTemperature: "37.5" });
+    assert.equal(child["来所時体温"], "★37.5");
+});

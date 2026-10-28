@@ -176,6 +176,7 @@
         import { createCsv, rosterTable, selectUsers, selectRecords, recordsTable } from "./csv-export.js";
         import { normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
         import { renderGroupHomeRecord } from "./group-home.js";
+        import { temperatureHtml } from "./fever.js";
         import { isResidentialLayoutRecord, renderResidentialRecord } from "./residential-care.js";
 
         function isValidIsoDate(value) {
@@ -531,7 +532,7 @@
                         </tr>`;
                     
                     userRecords.forEach(d => {
-                        let t = d.temp1 || '--';
+                        let t = d.temp1 || '';
                         let p = d.pulse || '--';
                         let bp = (d.bpHigh || '--') + '/' + (d.bpLow || '--');
                         let meal = (d.mealMain || '--') + '/' + (d.mealSub || '--');
@@ -544,7 +545,7 @@
                         const dayTransport = [d.dsAttendance, d.dsPickupTime && `迎 ${d.dsPickupTime}`, d.dsDropoffTime && `送 ${d.dsDropoffTime}`].filter(Boolean).map(escapeHtml).join(" ");
                         html += `<tr>
                             <td>${d.date.substring(5).replace('-','/')}${dayTransport ? `<br><span style="font-size:11px;">${dayTransport}</span>` : ""}</td>
-                            <td>${t}℃</td><td>${p}</td><td>${bp}</td><td>${meal}</td><td>${bath}</td><td>${bStr}</td>
+                            <td>${temperatureHtml(t)}</td><td>${p}</td><td>${bp}</td><td>${meal}</td><td>${bath}</td><td>${bStr}</td>
                             <td style="text-align: left; white-space: pre-wrap;">${escapeHtml(d.careStaff || '--')}<br>${escapeHtml(d.careJournal || '記録なし')}</td>
                         </tr>`;
                     });
@@ -559,7 +560,7 @@
                             <td>${escapeHtml(d.afterSchoolAttendance || "--")}</td>
                             <td>${escapeHtml(d.afterSchoolProvideStart || "--")}〜${escapeHtml(d.afterSchoolProvideEnd || "--")}<br>${escapeHtml(d.afterSchoolArrivalTime || "--")}／${escapeHtml(d.afterSchoolDepartureTime || "--")}</td>
                             <td>${escapeHtml(d.afterSchoolPickupType || "--")} ${transport}<br>${escapeHtml(d.afterSchoolDropoffType || "")}</td>
-                            <td>体温 ${escapeHtml(d.afterSchoolTemperature || "--")}℃（${escapeHtml(d.afterSchoolTempTime || "--")}） ${escapeHtml(d.afterSchoolHealth || "")}<br>排泄 ${escapeHtml(d.afterSchoolToiletTime || "--")} ${escapeHtml(d.afterSchoolToilet || "--")}<br>おやつ ${escapeHtml(d.afterSchoolSnackIntake || "--")}${d.afterSchoolLunchIntake ? `<br>昼食 ${escapeHtml(d.afterSchoolLunchIntake)}` : ""}</td>
+                            <td>体温 ${temperatureHtml(d.afterSchoolTemperature)}（${escapeHtml(d.afterSchoolTempTime || "--")}） ${escapeHtml(d.afterSchoolHealth || "")}<br>排泄 ${escapeHtml(d.afterSchoolToiletTime || "--")} ${escapeHtml(d.afterSchoolToilet || "--")}<br>おやつ ${escapeHtml(d.afterSchoolSnackIntake || "--")}${d.afterSchoolLunchIntake ? `<br>昼食 ${escapeHtml(d.afterSchoolLunchIntake)}` : ""}</td>
                             <td style="text-align:left;white-space:pre-wrap;">${escapeHtml((d.afterSchoolActivityTags || []).join("、"))}${(d.afterSchoolDomainTags || []).length ? `<br>【5領域】${escapeHtml(d.afterSchoolDomainTags.join("、"))}` : ""}<br>${escapeHtml(d.afterSchoolSupport || "--")}</td>
                             <td style="text-align:left;white-space:pre-wrap;">${escapeHtml(d.afterSchoolEpisode || "")}<br>${escapeHtml(d.afterSchoolHandover || "--")}</td>
                         </tr>`;
@@ -576,7 +577,7 @@
                     userRecords.forEach(d => {
                         const pickup = [d.lifeCarePickupType, d.lifeCarePickupNote].filter(Boolean).map(escapeHtml).join(" ") || "--";
                         const dropoff = [d.lifeCareDropoffType, d.lifeCareDropoffNote].filter(Boolean).map(escapeHtml).join(" ") || "--";
-                        const health = `体温 ${escapeHtml(d.lifeCareTemperature || "--")}℃／脈拍 ${escapeHtml(d.lifeCarePulse || "--")}／血圧 ${escapeHtml(d.lifeCareBpHigh || "--")}/${escapeHtml(d.lifeCareBpLow || "--")}／SpO2 ${escapeHtml(d.lifeCareSpo2 || "--")}%<br>${escapeHtml(d.lifeCareHealthNote || "")}`;
+                        const health = `体温 ${temperatureHtml(d.lifeCareTemperature)}／脈拍 ${escapeHtml(d.lifeCarePulse || "--")}／血圧 ${escapeHtml(d.lifeCareBpHigh || "--")}/${escapeHtml(d.lifeCareBpLow || "--")}／SpO2 ${escapeHtml(d.lifeCareSpo2 || "--")}%<br>${escapeHtml(d.lifeCareHealthNote || "")}`;
                         const dailySupport = `食事 ${escapeHtml(d.lifeCareMeal || "--")}／水分 ${escapeHtml(d.lifeCareWater || "--")}<br>服薬 ${escapeHtml(d.lifeCareMedication || "--")}／排泄 ${escapeHtml(d.lifeCareToileting || "--")}／入浴 ${escapeHtml(d.lifeCareBathing || "--")}`;
                         html += `<tr>
                             <td>${escapeHtml(d.date.substring(5).replace('-', '/'))}</td>
@@ -604,7 +605,7 @@
                         </tr>`;
                     
                     legacyRecords.forEach(d => {
-                        let t = d.stTempIn || d.stTemp1 || d.temp1 || '--';
+                        let t = d.stTempIn || d.stTemp1 || d.temp1 || '';
                         let p = d.stPulseIn || d.stPulse || d.pulse || '--';
                         let bp = (d.stBpHighIn || d.stBpHigh || d.bpHigh || '--') + '/' + (d.stBpLowIn || d.stBpLow || d.bpLow || '--');
                         let meal = (d.stMealBreakfast || '--') + '/' + (d.stMealLunch || d.mealMain || '--') + '/' + (d.stMealDinner || '--');
@@ -616,7 +617,7 @@
                         
                         html += `<tr>
                             <td>${d.date.substring(5).replace('-','/')}</td>
-                            <td>${t}℃</td><td>${p}</td><td>${bp}</td><td>${meal}</td><td>${bath}</td><td>${bStr}</td>
+                            <td>${temperatureHtml(t)}</td><td>${p}</td><td>${bp}</td><td>${meal}</td><td>${bath}</td><td>${bStr}</td>
                             <td style="text-align: left; white-space: pre-wrap;">${escapeHtml(d.careStaff || '--')}<br>${escapeHtml(d.careJournal || '記録なし')}</td>
                         </tr>`;
                     });

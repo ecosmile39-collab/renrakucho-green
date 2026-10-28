@@ -581,6 +581,7 @@
         import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
         import { isShortStayService, normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
         import { renderGroupHomeRecord } from "./group-home.js";
+        import { temperatureHtml } from "./fever.js";
         import { isResidentialLayoutRecord, renderResidentialRecord } from "./residential-care.js";
 
         function isValidIsoDate(value) {
@@ -1303,7 +1304,7 @@
 
                 periodRecords.forEach(d => {
                     let md = d.date.substring(5).replace('-', '/'); 
-                    let tM = d.stTempIn || d.stTemp1 || d.temp1 || '--';
+                    let tM = d.stTempIn || d.stTemp1 || d.temp1 || '';
                     let p = d.stPulseIn || d.stPulse || d.pulse || '--';
                     
                     let bpHigh = d.stBpHighIn || d.stBpHigh || d.bpHigh ? (d.stBpHighIn || d.stBpHigh || d.bpHigh) : '';
@@ -1339,7 +1340,7 @@
                     tableRows += `
                     <tr>
                         <td>${md}</td>
-                        <td>${tM}℃</td>
+                        <td>${temperatureHtml(tM)}</td>
                         <td>${p}</td>
                         <td>${bp}</td>
                         <td>${mB} / ${mL} / ${mD}</td>
@@ -1447,14 +1448,14 @@
                     <table class="compact-table admission-vitals-table" style="margin-bottom: 8px;">
                         <tr>
                             <th width="12%">【入所時】</th>
-                            <th width="12%">体温</th><td width="10%">${firstData.stTempIn ? firstData.stTempIn + '℃' : '--'}</td>
+                            <th width="12%">体温</th><td width="10%">${temperatureHtml(firstData.stTempIn)}</td>
                             <th width="12%">脈拍</th><td width="10%">${firstData.stPulseIn ? firstData.stPulseIn + '回' : '--'}</td>
                             <th width="12%">SpO2</th><td width="10%">${firstData.stSpo2In ? firstData.stSpo2In + '%' : '--'}</td>
                             <th width="12%">血圧</th><td width="10%">${bpIn}</td>
                         </tr>
                         <tr>
                             <th>【退所時】</th>
-                            <th>体温</th><td>${lastData.stTempOut ? lastData.stTempOut + '℃' : '--'}</td>
+                            <th>体温</th><td>${temperatureHtml(lastData.stTempOut)}</td>
                             <th>脈拍</th><td>${lastData.stPulseOut ? lastData.stPulseOut + '回' : '--'}</td>
                             <th>SpO2</th><td>${lastData.stSpo2Out ? lastData.stSpo2Out + '%' : '--'}</td>
                             <th>血圧</th><td>${bpOut}</td>
@@ -1734,7 +1735,7 @@
                     </table>` : "";
                 let adultDataHtml = isChildService || isLifeCare || isGroupHome || !showDayServiceSection ? "" : `${dayTransportHtml}
                     <table class="compact-table">
-                        <tr><th width="16%">体温(来所時)</th><td width="17%">${data.temp1 ? data.temp1 + '℃' : '未入力'}</td><th width="16%">体温(途中)</th><td width="17%">${data.temp2 ? data.temp2 + '℃' : '未入力'}</td><th width="16%">血圧</th><td width="18%">${bpStrDay}</td></tr>
+                        <tr><th width="16%">体温(来所時)</th><td width="17%">${temperatureHtml(data.temp1, { empty: '未入力' })}</td><th width="16%">体温(途中)</th><td width="17%">${temperatureHtml(data.temp2, { empty: '未入力' })}</td><th width="16%">血圧</th><td width="18%">${bpStrDay}</td></tr>
                         <tr><th>脈拍</th><td>${data.pulse ? data.pulse + '回/分' : '未入力'}</td><th>酸素飽和度</th><td colspan="3">${data.spo2 ? data.spo2 + '%' : '未入力'}</td></tr>
                     </table>
                     <table class="compact-table">
@@ -1752,7 +1753,7 @@
                         <tr><th>利用日・提供時間</th><td>${data.date}</td><th>提供時間</th><td>${data.afterSchoolProvideStart || '未入力'}〜${data.afterSchoolProvideEnd || '未入力'}</td><th>担当指導員</th><td>${data.careStaff || '未入力'}</td></tr>
                         <tr><th>出欠状況</th><td>${data.afterSchoolAttendance || '未入力'}</td><th>${childArrivalLabel}</th><td>${data.afterSchoolArrivalTime || '未入力'}</td><th>${childDepartureLabel}</th><td>${data.afterSchoolDepartureTime || '未入力'}</td></tr>
                         <tr><th>来所時の送迎</th><td colspan="2">${data.afterSchoolPickupType || '未入力'} ${data.afterSchoolPickup || ''}</td><th>退所時の送迎</th><td colspan="2">${data.afterSchoolDropoffType || '未入力'} ${data.afterSchoolDropoff || ''}</td></tr>
-                        <tr><th>来所時体温</th><td>${data.afterSchoolTemperature ? data.afterSchoolTemperature + '℃' : '未入力'}（${data.afterSchoolTempTime || '未入力'}）</td><th>健康状態</th><td colspan="3">${data.afterSchoolHealth || '未入力'} ${data.afterSchoolHealthNote || ''}</td></tr>
+                        <tr><th>来所時体温</th><td>${temperatureHtml(data.afterSchoolTemperature, { empty: '未入力' })}（${data.afterSchoolTempTime || '未入力'}）</td><th>健康状態</th><td colspan="3">${data.afterSchoolHealth || '未入力'} ${data.afterSchoolHealthNote || ''}</td></tr>
                         <tr><th>排泄</th><td colspan="2">${data.afterSchoolToiletTime || '未入力'} ${data.afterSchoolToilet || ''}</td><th>水分補給</th><td>${data.water || '未入力'}ml</td><th>おやつ</th><td>${data.afterSchoolSnack || '未入力'} ／ ${data.afterSchoolSnackIntake || '未入力'}</td></tr>
                         ${data.serviceType === "児童発達支援" ? `<tr><th>昼食</th><td colspan="5">${data.afterSchoolLunch || '未入力'} ／ ${data.afterSchoolLunchIntake || '未入力'}</td></tr>` : ""}
                         <tr><th>活動タグ</th><td colspan="5">${(data.afterSchoolActivityTags || []).join("、") || '未入力'}</td></tr>
@@ -1768,7 +1769,7 @@
                     <table class="compact-table">
                         <tr><th>利用状況</th><td>${data.lifeCareAttendance || '未入力'}</td><th>提供時間</th><td>${data.lifeCareStartTime || '未入力'}〜${data.lifeCareEndTime || '未入力'}</td><th>担当職員</th><td>${data.lifeCareStaff || '未入力'}</td></tr>
                         <tr><th>来所／退所時刻</th><td>${data.lifeCareArrivalTime || '未入力'}／${data.lifeCareDepartureTime || '未入力'}</td><th>送迎（来所）</th><td>${data.lifeCarePickupType || '未入力'} ${data.lifeCarePickupNote || ''}</td><th>送迎（退所）</th><td>${data.lifeCareDropoffType || '未入力'} ${data.lifeCareDropoffNote || ''}</td></tr>
-                        <tr><th>健康・バイタル</th><td colspan="5">体温 ${data.lifeCareTemperature || '未入力'}℃／脈拍 ${data.lifeCarePulse || '未入力'}／血圧 ${data.lifeCareBpHigh || '--'}/${data.lifeCareBpLow || '--'}／SpO2 ${data.lifeCareSpo2 || '未入力'}%<br>${data.lifeCareHealthNote || ''}</td></tr>
+                        <tr><th>健康・バイタル</th><td colspan="5">体温 ${temperatureHtml(data.lifeCareTemperature, { empty: '未入力' })}／脈拍 ${data.lifeCarePulse || '未入力'}／血圧 ${data.lifeCareBpHigh || '--'}/${data.lifeCareBpLow || '--'}／SpO2 ${data.lifeCareSpo2 || '未入力'}%<br>${data.lifeCareHealthNote || ''}</td></tr>
                         <tr><th>食事・水分</th><td colspan="2">${data.lifeCareMeal || '未入力'}／${data.lifeCareWater || '未入力'}</td><th>服薬・医療的ケア</th><td colspan="3">${data.lifeCareMedication || '未入力'}</td></tr>
                         <tr><th>排泄・入浴</th><td colspan="5">${data.lifeCareToileting || '未入力'}／${data.lifeCareBathing || '未入力'}</td></tr>
                         <tr><th>日中活動タグ</th><td colspan="5">${(data.lifeCareActivityTags || []).join('、') || '未入力'}</td></tr>
