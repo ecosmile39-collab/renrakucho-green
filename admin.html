@@ -75,6 +75,13 @@
         .today-active-alert { animation: todayActiveBlink 1.2s ease-in-out infinite; border-width: 2px !important; }
         .today-ack-button { display: block; width: 100%; margin: 4px 0 0; padding: 6px 8px; font-size: 13px; font-weight: bold; text-align: left; color: inherit; background: rgba(255, 255, 255, 0.85); border: 1px solid currentColor; border-radius: 6px; cursor: pointer; white-space: normal; }
         .today-ack-button.is-checked { color: #868e96; border-color: #ced4da; background: #fff; font-weight: normal; }
+        @keyframes inboxBlink {
+            0%, 100% { background-color: #fff4e6; border-color: #fd7e14; }
+            50% { background-color: #ffc078; border-color: #d9480f; }
+        }
+        .inbox-alert { animation: inboxBlink 1.2s ease-in-out infinite; border-width: 2px !important; }
+        @media (prefers-reduced-motion: reduce) { .inbox-alert { animation: none; background-color: #ffc078 !important; border-color: #d9480f !important; } }
+        .inbox-type { display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: 4px; font-size: 11px; background: #fff; border: 1px solid currentColor; }
         .today-ack-hint { margin-top: 6px; font-size: 11px; font-weight: normal; color: #868e96; }
         @media (prefers-reduced-motion: reduce) {
             .today-trial-alert { animation: none; background-color: #ffd43b !important; border-color: #e67700 !important; }
@@ -105,6 +112,10 @@
         <h1>👑 管理者専用 コントロールパネル</h1>
         <p class="description">施設の利用状態を確認し、必要な場合のみロック・解除を行えます。</p>
         <div id="facilitySummaryBadge" class="hidden" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px;">
+            <div id="inboxCard" style="flex: 1 1 100%; padding: 12px 16px; background: #fff4e6; border: 1px solid #fd7e14; border-radius: 8px; font-weight: bold; color: #c2410c;">
+                <div style="font-size: 13px;">📨 新着の申込・お問い合わせ（メールあり）　未確認 <span id="inboxUncheckedCount">0</span> 件</div>
+                <div id="inboxItems" style="font-size: 13px; margin-top: 6px;">該当なし</div>
+            </div>
             <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #fff3bf; border: 1px solid #f08c00; border-radius: 8px; font-weight: bold; color: #8a5b00;">
                 <div style="font-size: 13px;">🟠 トライアル中</div>
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTrialCount">0</span> 件</div>
@@ -364,7 +375,8 @@
         import { CUSTOM_FORM_FIELD_TYPES, FORM_CUSTOMIZATION_SECTIONS, normalizeFacilityFormCustomization } from "./facility-form-customization.js";
         import {
             ACTION_CATEGORY_LABELS, FACILITY_STATUS_LABELS, activeAnnouncements, buildActionItems, buildFunnel, buildInvoiceCsv,
-            evaluateFacilityUsage, evaluateJobHealth, facilityStatus, filterAndSortFacilities, summarizeRevenue, todayApplications, tokyoDateKey, toDate
+            evaluateFacilityUsage, evaluateJobHealth, facilityStatus, filterAndSortFacilities, summarizeRevenue, todayApplications, tokyoDateKey, toDate,
+            buildInboxItems, INBOX_START_AT, INBOX_TYPE_LABELS
         } from "./admin-dashboard.js";
 
         const COMMON_LINE_BASIC_ID = "@805xgtzu";
@@ -392,6 +404,7 @@
         const createFacilitySessionForAdmin = httpsCallable(functions, "createFacilitySessionForAdmin");
         let pendingAdminLoginChallengeId = "";
         let facilities = [];
+        let lpInquiries = [];
         let cancellationRecords = [];
         let latestInvoiceByFacility = new Map();
         let sentInvoicesByFacility = new Map();
@@ -998,6 +1011,12 @@
                 sentInvoicesByFacility = new Map(invoiceEntries.map(([facilityId, sentInvoices]) => [facilityId, sentInvoices]));
                 latestInvoiceByFacility = new Map(invoiceEntries.map(([facilityId, sentInvoices]) => [facilityId, sentInvoices[0] || null]));
                 renderUnpaidInvoiceCount();
+                try {
+                    const inquirySnapshot = await getDocs(query(collection(db, "adminInbox"), where("receivedAt", ">=", INBOX_START_AT), orderBy("receivedAt", "desc"), limit(100)));
+                    lpInquiries = inquirySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+                } catch (inquiryError) {
+                    console.warn("LPフォームの新着を読み込めませんでした:", inquiryError);
+                }
                 cancellationRecords = cancellationsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
                 cancellationRecords.sort((a, b) => String(b.requestedAt || "").localeCompare(String(a.requestedAt || "")));
                 loading.style.display = "none";
@@ -1396,15 +1415,67 @@
             }
         }
 
+        function renderInbox() {
+            const container = document.getElementById("inboxItems");
+            const card = document.getElementById("inboxCard");
+            if (!container || !card) return;
+            const withdrawn = new Set(cancellationRecords.map(record => record.facilityId || record.id));
+            const inbox = buildInboxItems({ facilities: facilities.filter(facility => !withdrawn.has(facility.id)), inquiries: lpInquiries });
+            document.getElementById("inboxUncheckedCount").textContent = inbox.uncheckedCount;
+            card.classList.toggle("inbox-alert", inbox.blink);
+            if (!inbox.items.length) {
+                container.textContent = "該当なし";
+                return;
+            }
+            container.replaceChildren(...inbox.items.map(item => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = `today-ack-button${item.checked ? " is-checked" : ""}`;
+                const type = document.createElement("span");
+                type.className = "inbox-type";
+                type.textContent = INBOX_TYPE_LABELS[item.type];
+                const when = toDate(item.receivedAt);
+                const time = when ? when.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+                const text = document.createTextNode(`${item.checked ? "✓" : "🔔"} ${item.name}${item.detail ? `（${item.detail}）` : ""}　${time}${item.checked ? "　確認済み" : ""}`);
+                button.append(type, text);
+                button.title = item.checked ? "押すと未確認に戻します" : "押すと確認済みにします";
+                button.addEventListener("click", () => toggleInboxItem(item, !item.checked));
+                return button;
+            }));
+            if (inbox.blink) {
+                const hint = document.createElement("div");
+                hint.className = "today-ack-hint";
+                hint.textContent = "内容はメールで確認し、施設名を押すと確認済みになります。すべて確認済みになると点滅が止まります";
+                container.appendChild(hint);
+            }
+        }
+
+        async function toggleInboxItem(item, checked) {
+            if (item.type !== "inquiry") {
+                await toggleTodayApplicationCheck(item.facilityId, item.type, checked);
+                return;
+            }
+            const inquiry = lpInquiries.find(entry => entry.id === item.inquiryId);
+            if (!inquiry) return;
+            try {
+                await updateDoc(doc(db, "adminInbox", inquiry.id), { checkedAt: checked ? new Date().toISOString() : deleteField() });
+                if (checked) inquiry.checkedAt = new Date().toISOString(); else delete inquiry.checkedAt;
+                logAdminAction(`LPフォームのお問い合わせを${checked ? "確認済み" : "未確認"}にした`, "", inquiry.facilityName || "");
+                renderFacilities();
+            } catch (error) {
+                alert("確認済みの保存に失敗しました: " + error.message);
+            }
+        }
+
         async function toggleTodayApplicationCheck(facilityId, kind, checked) {
-            const field = kind === "trial" ? "adminCheckedTrialAt" : "adminCheckedActiveAt";
+            const field = { trial: "adminCheckedTrialAt", active: "adminCheckedActiveAt", application: "adminCheckedApplicationAt" }[kind];
             const facility = facilities.find(item => item.id === facilityId);
             if (!facility) return;
             const value = checked ? new Date().toISOString() : null;
             try {
                 await updateDoc(doc(db, "facilities", facilityId), { [field]: checked ? value : deleteField() });
                 if (checked) facility[field] = value; else delete facility[field];
-                logAdminAction(`本日の${kind === "trial" ? "トライアル申込" : "本登録"}を${checked ? "確認済み" : "未確認"}にした`, facilityId, facility.facilityName || facilityId);
+                logAdminAction(`${{ trial: "トライアル申込", active: "本日の本登録", application: "本登録の申込" }[kind]}を${checked ? "確認済み" : "未確認"}にした`, facilityId, facility.facilityName || facilityId);
                 renderFacilities();
             } catch (error) {
                 alert("確認済みの保存に失敗しました: " + error.message);
@@ -1483,6 +1554,7 @@
             if (summaryTodayTrialCard?.classList) summaryTodayTrialCard.classList.toggle("today-trial-alert", today.trialBlink);
             const summaryTodayActiveCard = document.getElementById("summaryTodayActiveCard");
             if (summaryTodayActiveCard?.classList) summaryTodayActiveCard.classList.toggle("today-active-alert", today.activeBlink);
+            if (typeof renderInbox === "function") renderInbox();
             if (summaryPausedEl) summaryPausedEl.textContent = pausedNames.length;
             if (summaryPausedNamesEl) summaryPausedNamesEl.textContent = pausedNames.join("\n") || "該当なし";
             if (summaryTotalEl) summaryTotalEl.textContent = currentFacilities.length;

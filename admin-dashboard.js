@@ -363,3 +363,39 @@ export function todayApplications(facilities = [], now = new Date()) {
         activeBlink: active.some(item => !item.checked)
     };
 }
+
+// 「新着の申込・お問い合わせ」：トライアル申込・本登録の申込・LPフォームのお問い合わせのうち、
+// 未確認のものはすべて、確認済みのものは今日の分だけを、新しい順に並べる。
+export const INBOX_START_AT = "2026-10-28T00:00:00+09:00";
+export const INBOX_TYPE_LABELS = { trial: "無料トライアル申込", application: "本登録の申込", inquiry: "LPフォーム" };
+
+export function buildInboxItems({ facilities = [], inquiries = [], now = new Date(), since = INBOX_START_AT } = {}) {
+    const sinceTime = toDate(since)?.getTime() ?? 0;
+    const todayKey = tokyoDateKey(now);
+    const items = [];
+    const push = item => {
+        const received = toDate(item.receivedAt);
+        if (!received || received.getTime() < sinceTime) return;
+        if (item.checked && tokyoDateKey(received) !== todayKey) return;
+        items.push({ ...item, receivedTime: received.getTime() });
+    };
+    for (const facility of facilities) {
+        const trialAt = facility.trialStartedAt || (facility.subscriptionStatus === "trial" ? facility.createdAt : null);
+        if (trialAt) {
+            push({ key: `trial:${facility.id}`, type: "trial", facilityId: facility.id, field: "adminCheckedTrialAt",
+                name: facilityName(facility), receivedAt: trialAt, checked: isAcknowledged(trialAt, facility.adminCheckedTrialAt) });
+        }
+        if (facility.subscriptionRequestedAt) {
+            push({ key: `application:${facility.id}`, type: "application", facilityId: facility.id, field: "adminCheckedApplicationAt",
+                name: facilityName(facility), receivedAt: facility.subscriptionRequestedAt,
+                checked: isAcknowledged(facility.subscriptionRequestedAt, facility.adminCheckedApplicationAt) });
+        }
+    }
+    for (const inquiry of inquiries) {
+        push({ key: `inquiry:${inquiry.id}`, type: "inquiry", inquiryId: inquiry.id,
+            name: inquiry.facilityName || "（施設名なし）", detail: [inquiry.kind, inquiry.contactName ? `${inquiry.contactName} 様` : ""].filter(Boolean).join("・"),
+            receivedAt: inquiry.receivedAt, checked: Boolean(inquiry.checkedAt) });
+    }
+    items.sort((first, second) => second.receivedTime - first.receivedTime);
+    return { items, blink: items.some(item => !item.checked), uncheckedCount: items.filter(item => !item.checked).length };
+}

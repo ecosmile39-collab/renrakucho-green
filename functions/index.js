@@ -28,6 +28,7 @@ const { generateInvoicePdf } = require("./invoice-pdf");
 const { findOverdueUnpaidInvoices } = require("./overdue-lock");
 const { getTrialAccessEndsAt, isTrialAccessOpen, getPaymentGraceFields } = require("./trial-access");
 const { LP_ANALYTICS_PROPERTY_ID, buildLpAnalyticsRequest, parseLpAnalyticsResponse, buildLpRealtimeRequest, parseLpRealtimeResponse } = require("./lp-analytics");
+const { LP_INQUIRY_ORIGIN, LP_INQUIRY_HOURLY_LIMIT, parseLpInquiry } = require("./lp-inquiry");
 const { createJobStatusWrapper } = require("./job-status");
 const withJobStatus = createJobStatusWrapper(() => getFirestore(), logger);
 const { daysUntilTrialEnds, isTrialReminderDue } = require("./trial-reminder");
@@ -1101,6 +1102,43 @@ exports.getLpAnalyticsSummary = onCall(async request => {
             throw new HttpsError("permission-denied", "Google アナリティクスを読む権限がありません。アナリティクスの設定を確認してください。");
         }
         throw new HttpsError("unavailable", "LPの訪問者数を読み込めませんでした。時間をおいてもう一度お試しください。");
+    }
+});
+
+// LPのお問い合わせフォームが送信されたら、管理画面の「新着の申込・お問い合わせ」に載せる（adminInbox）
+exports.receiveLpInquiry = onRequest({ cors: [LP_INQUIRY_ORIGIN], maxInstances: 2 }, async (req, res) => {
+    if (req.method !== "POST") {
+        res.status(405).send("");
+        return;
+    }
+    const inquiry = parseLpInquiry(req.body);
+    if (!inquiry) {
+        res.status(400).send("");
+        return;
+    }
+    const ip = String(req.headers["x-forwarded-for"] || req.ip || "").split(",")[0].trim();
+    const hourKey = new Date().toISOString().slice(0, 13);
+    const rateId = crypto.createHash("sha256").update(`${ip}|${hourKey}`).digest("hex");
+    const db = getFirestore();
+    try {
+        const accepted = await db.runTransaction(async transaction => {
+            const rateRef = db.collection("lpInquiryRate").doc(rateId);
+            const rateSnapshot = await transaction.get(rateRef);
+            const count = rateSnapshot.exists ? Number(rateSnapshot.data().count) || 0 : 0;
+            if (count >= LP_INQUIRY_HOURLY_LIMIT) return false;
+            transaction.set(rateRef, { count: count + 1, hour: hourKey }, { merge: true });
+            transaction.set(db.collection("adminInbox").doc(), {
+                type: "inquiry",
+                source: "lp-form",
+                ...inquiry,
+                receivedAt: new Date().toISOString()
+            });
+            return true;
+        });
+        res.status(accepted ? 204 : 429).send("");
+    } catch (error) {
+        logger.error("Failed to record LP inquiry", { message: String(error?.message || error).slice(0, 300) });
+        res.status(500).send("");
     }
 });
 

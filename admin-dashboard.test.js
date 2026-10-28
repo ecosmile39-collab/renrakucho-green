@@ -206,3 +206,37 @@ test("today's applications keep blinking until every facility is marked as check
     assert.equal(isAcknowledged("2026-10-28T06:00:00Z", "2026-10-28T04:59:00Z"), false);
     assert.equal(isAcknowledged("2026-10-28T06:00:00Z", null), false);
 });
+
+test("new applications and LP inquiries stay listed and blinking until each one is checked", async () => {
+    const { buildInboxItems } = await import("./admin-dashboard.js");
+    const now = new Date("2026-10-30T03:00:00Z");
+    const facilities = [
+        { id: "a", facilityName: "あまみやホーム", subscriptionStatus: "trial", trialStartedAt: "2026-10-29T01:00:00Z" },
+        { id: "b", facilityName: "みどり苑", subscriptionStatus: "trial", trialStartedAt: "2026-10-30T01:00:00Z", adminCheckedTrialAt: "2026-10-30T02:00:00Z",
+            subscriptionRequestedAt: "2026-10-30T02:30:00Z" },
+        { id: "c", facilityName: "昔の施設", subscriptionStatus: "active", trialStartedAt: "2026-10-01T00:00:00Z" },
+        { id: "d", facilityName: "昨日確認済み", subscriptionStatus: "trial", trialStartedAt: "2026-10-29T00:00:00Z", adminCheckedTrialAt: "2026-10-29T05:00:00Z" }
+    ];
+    const inquiries = [
+        { id: "q1", facilityName: "ひまわり園", contactName: "山田", kind: "お問い合わせ", receivedAt: "2026-10-30T02:50:00Z" },
+        { id: "q2", facilityName: "確認済み園", kind: "無料トライアル", receivedAt: "2026-10-29T02:00:00Z", checkedAt: "2026-10-29T03:00:00Z" }
+    ];
+    const inbox = buildInboxItems({ facilities, inquiries, now });
+    assert.deepEqual(inbox.items.map(item => [item.type, item.name, item.checked]), [
+        ["inquiry", "ひまわり園", false],
+        ["application", "みどり苑", false],
+        ["trial", "みどり苑", true],
+        ["trial", "あまみやホーム", false]
+    ]);
+    assert.equal(inbox.items[0].detail, "お問い合わせ・山田 様");
+    assert.equal(inbox.blink, true);
+    assert.equal(inbox.uncheckedCount, 3);
+
+    facilities[0].adminCheckedTrialAt = "2026-10-30T03:00:00Z";
+    facilities[1].adminCheckedApplicationAt = "2026-10-30T03:00:00Z";
+    inquiries[0].checkedAt = "2026-10-30T03:00:00Z";
+    const done = buildInboxItems({ facilities, inquiries, now });
+    assert.equal(done.blink, false);
+    // 確認済みは今日届いた分だけ残す（昨日届いて今日確認したあまみやホームは消える）
+    assert.deepEqual(done.items.map(item => item.name), ["ひまわり園", "みどり苑", "みどり苑"]);
+});

@@ -120,6 +120,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // LPのお問い合わせフォームの新着（サーバーが作成し、管理者が読む・確認済みにするだけ）
+    match /adminInbox/{itemId} {
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checkedAt']);
+      allow create, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
