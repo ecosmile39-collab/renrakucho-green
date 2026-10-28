@@ -332,3 +332,34 @@ export function activeAnnouncements(announcements = [], now = new Date()) {
         (!item.startDate || item.startDate <= today) && (!item.endDate || item.endDate >= today))
         .sort((first, second) => String(second.startDate || "").localeCompare(String(first.startDate || "")));
 }
+
+// 本日のトライアル申込・本登録の「確認済み」。確認した時刻が申込（本登録）時刻より後なら確認済み。
+// 同じ施設が後で申し込み直した場合は、また未確認に戻る。
+export function isAcknowledged(eventAt, checkedAt) {
+    const event = toDate(eventAt);
+    const checked = toDate(checkedAt);
+    if (!event || !checked) return false;
+    return checked.getTime() >= event.getTime();
+}
+
+// 本日分の申込・本登録の一覧と、未確認があるか（点滅させるか）
+export function todayApplications(facilities = [], now = new Date()) {
+    const todayKey = tokyoDateKey(now);
+    const trial = [];
+    const active = [];
+    for (const facility of facilities) {
+        const trialAt = facility.trialStartedAt || (facility.subscriptionStatus === "trial" ? facility.createdAt : null);
+        if (trialAt && tokyoDateKey(trialAt) === todayKey) {
+            trial.push({ id: facility.id, name: facilityName(facility), checked: isAcknowledged(trialAt, facility.adminCheckedTrialAt) });
+        }
+        if (facility.planActivatedAt && tokyoDateKey(facility.planActivatedAt) === todayKey) {
+            active.push({ id: facility.id, name: facilityName(facility), checked: isAcknowledged(facility.planActivatedAt, facility.adminCheckedActiveAt) });
+        }
+    }
+    return {
+        trial,
+        active,
+        trialBlink: trial.some(item => !item.checked),
+        activeBlink: active.some(item => !item.checked)
+    };
+}

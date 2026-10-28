@@ -73,6 +73,9 @@
             50% { background-color: #8ce99a; border-color: #2b8a3e; box-shadow: 0 0 0 6px rgba(47, 158, 68, 0.35); }
         }
         .today-active-alert { animation: todayActiveBlink 1.2s ease-in-out infinite; border-width: 2px !important; }
+        .today-ack-button { display: block; width: 100%; margin: 4px 0 0; padding: 6px 8px; font-size: 13px; font-weight: bold; text-align: left; color: inherit; background: rgba(255, 255, 255, 0.85); border: 1px solid currentColor; border-radius: 6px; cursor: pointer; white-space: normal; }
+        .today-ack-button.is-checked { color: #868e96; border-color: #ced4da; background: #fff; font-weight: normal; }
+        .today-ack-hint { margin-top: 6px; font-size: 11px; font-weight: normal; color: #868e96; }
         @media (prefers-reduced-motion: reduce) {
             .today-trial-alert { animation: none; background-color: #ffd43b !important; border-color: #e67700 !important; }
             .today-active-alert { animation: none; background-color: #8ce99a !important; border-color: #2b8a3e !important; }
@@ -361,7 +364,7 @@
         import { CUSTOM_FORM_FIELD_TYPES, FORM_CUSTOMIZATION_SECTIONS, normalizeFacilityFormCustomization } from "./facility-form-customization.js";
         import {
             ACTION_CATEGORY_LABELS, FACILITY_STATUS_LABELS, activeAnnouncements, buildActionItems, buildFunnel, buildInvoiceCsv,
-            evaluateFacilityUsage, evaluateJobHealth, facilityStatus, filterAndSortFacilities, summarizeRevenue, tokyoDateKey, toDate
+            evaluateFacilityUsage, evaluateJobHealth, facilityStatus, filterAndSortFacilities, summarizeRevenue, todayApplications, tokyoDateKey, toDate
         } from "./admin-dashboard.js";
 
         const COMMON_LINE_BASIC_ID = "@805xgtzu";
@@ -1370,6 +1373,44 @@
             }
         };
 
+        function renderTodayApplicationNames(container, items, kind) {
+            if (!container) return;
+            if (!items.length) {
+                container.textContent = "該当なし";
+                return;
+            }
+            container.replaceChildren(...items.map(item => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = `today-ack-button${item.checked ? " is-checked" : ""}`;
+                button.textContent = item.checked ? `✓ ${item.name}（確認済み）` : `🔔 ${item.name}`;
+                button.title = item.checked ? "押すと未確認に戻します" : "押すと確認済みにします";
+                button.addEventListener("click", () => toggleTodayApplicationCheck(item.id, kind, !item.checked));
+                return button;
+            }));
+            if (items.some(item => !item.checked)) {
+                const hint = document.createElement("div");
+                hint.className = "today-ack-hint";
+                hint.textContent = "施設名を押すと確認済みになります";
+                container.appendChild(hint);
+            }
+        }
+
+        async function toggleTodayApplicationCheck(facilityId, kind, checked) {
+            const field = kind === "trial" ? "adminCheckedTrialAt" : "adminCheckedActiveAt";
+            const facility = facilities.find(item => item.id === facilityId);
+            if (!facility) return;
+            const value = checked ? new Date().toISOString() : null;
+            try {
+                await updateDoc(doc(db, "facilities", facilityId), { [field]: checked ? value : deleteField() });
+                if (checked) facility[field] = value; else delete facility[field];
+                logAdminAction(`本日の${kind === "trial" ? "トライアル申込" : "本登録"}を${checked ? "確認済み" : "未確認"}にした`, facilityId, facility.facilityName || facilityId);
+                renderFacilities();
+            } catch (error) {
+                alert("確認済みの保存に失敗しました: " + error.message);
+            }
+        }
+
         function renderFacilities() {
             let list = document.getElementById("facilityList");
 
@@ -1434,12 +1475,14 @@
             if (summaryActiveEl) summaryActiveEl.textContent = activeCount;
             if (summaryTodayTrialEl) summaryTodayTrialEl.textContent = todayTrialNames.length;
             if (summaryTodayActiveEl) summaryTodayActiveEl.textContent = todayActiveNames.length;
-            if (summaryTodayTrialNamesEl) summaryTodayTrialNamesEl.textContent = todayTrialNames.join("\n") || "該当なし";
+            // 本日の申込・本登録：施設名を押すと「確認済み」になり、全部確認済みになると点滅が止まる
+            const today = todayApplications(currentFacilities);
+            renderTodayApplicationNames(summaryTodayTrialNamesEl, today.trial, "trial");
+            renderTodayApplicationNames(summaryTodayActiveNamesEl, today.active, "active");
             const summaryTodayTrialCard = document.getElementById("summaryTodayTrialCard");
-            if (summaryTodayTrialCard?.classList) summaryTodayTrialCard.classList.toggle("today-trial-alert", todayTrialNames.length > 0);
+            if (summaryTodayTrialCard?.classList) summaryTodayTrialCard.classList.toggle("today-trial-alert", today.trialBlink);
             const summaryTodayActiveCard = document.getElementById("summaryTodayActiveCard");
-            if (summaryTodayActiveCard?.classList) summaryTodayActiveCard.classList.toggle("today-active-alert", todayActiveNames.length > 0);
-            if (summaryTodayActiveNamesEl) summaryTodayActiveNamesEl.textContent = todayActiveNames.join("\n") || "該当なし";
+            if (summaryTodayActiveCard?.classList) summaryTodayActiveCard.classList.toggle("today-active-alert", today.activeBlink);
             if (summaryPausedEl) summaryPausedEl.textContent = pausedNames.length;
             if (summaryPausedNamesEl) summaryPausedNamesEl.textContent = pausedNames.join("\n") || "該当なし";
             if (summaryTotalEl) summaryTotalEl.textContent = currentFacilities.length;

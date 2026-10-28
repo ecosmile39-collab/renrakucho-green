@@ -203,7 +203,8 @@ test("failed facility data deletion does not send a thank-you email", async () =
     assert.equal(context.sentEmails.length, 0);
 });
 
-test("daily facility summaries show matching names with Tokyo dates and reset empty lists", () => {
+test("daily facility summaries show matching names with Tokyo dates and reset empty lists", async () => {
+    const { todayApplications } = await import("../admin-dashboard.js");
     const html = readFileSync(path.join(__dirname, "..", "admin.html"), "utf8");
     const summary = html.match(/        function renderFacilities\(\) \{[\s\S]*?(?=\n            if \(facilities.length === 0\))/)[0] + "\n}";
     const elements = new Map();
@@ -221,6 +222,10 @@ test("daily facility summaries show matching names with Tokyo dates and reset em
             static now() { return now.getTime(); }
         },
         document: { getElementById: id => elements.get(id) },
+        todayApplications: facilities => todayApplications(facilities, now),
+        renderTodayApplicationNames: (element, items) => {
+            element.textContent = items.map(item => item.name).join("\n") || "該当なし";
+        },
         cancellationRecords: [],
         facilities: [
             { id: "trial", facilityName: "<b>Trial</b>", subscriptionStatus: "trial", trialStartedAt: "2026-10-15T15:00:00Z" },

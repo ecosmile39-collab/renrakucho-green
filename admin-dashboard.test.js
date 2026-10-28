@@ -183,3 +183,26 @@ test("admin screen uses the dashboard and records important operations", async (
     assert.match(rules, /match \/systemStatus\/\{jobId\} \{\s*allow read: if isAdmin\(\);\s*allow write: if false;/);
     assert.match(rules, /match \/systemAnnouncements\/\{announcementId\} \{\s*allow read: if signedIn\(\) && request\.auth\.token\.role in \['facility', 'admin'\];\s*allow write: if isAdmin\(\);/);
 });
+
+test("today's applications keep blinking until every facility is marked as checked", async () => {
+    const { todayApplications, isAcknowledged } = await import("./admin-dashboard.js");
+    const now = new Date("2026-10-28T05:00:00Z");
+    const facilities = [
+        { id: "a", facilityName: "あまみやホーム", subscriptionStatus: "trial", trialStartedAt: "2026-10-28T01:00:00Z" },
+        { id: "b", facilityName: "みどり苑", subscriptionStatus: "trial", trialStartedAt: "2026-10-28T02:00:00Z", adminCheckedTrialAt: "2026-10-28T03:00:00Z" },
+        { id: "c", facilityName: "昨日の施設", subscriptionStatus: "trial", trialStartedAt: "2026-10-26T02:00:00Z" },
+        { id: "d", facilityName: "本登録ホーム", subscriptionStatus: "active", planActivatedAt: "2026-10-28T04:00:00Z", adminCheckedActiveAt: "2026-10-28T04:30:00Z" }
+    ];
+    const today = todayApplications(facilities, now);
+    assert.deepEqual(today.trial.map(item => [item.name, item.checked]), [["あまみやホーム", false], ["みどり苑", true]]);
+    assert.equal(today.trialBlink, true);
+    assert.deepEqual(today.active.map(item => [item.name, item.checked]), [["本登録ホーム", true]]);
+    assert.equal(today.activeBlink, false);
+
+    facilities[0].adminCheckedTrialAt = "2026-10-28T04:59:00Z";
+    assert.equal(todayApplications(facilities, now).trialBlink, false);
+
+    // 確認したあとに申し込み直した場合は、また未確認になる
+    assert.equal(isAcknowledged("2026-10-28T06:00:00Z", "2026-10-28T04:59:00Z"), false);
+    assert.equal(isAcknowledged("2026-10-28T06:00:00Z", null), false);
+});
