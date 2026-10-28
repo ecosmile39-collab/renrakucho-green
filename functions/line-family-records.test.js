@@ -2069,3 +2069,62 @@ test("registration requires the revised retention terms and all registration scr
         assert.match(readFileSync(path.join(__dirname, "..", file), "utf8"), /2026-10-24-v1/);
     }
 });
+
+test("a family's free text is saved for the facility, answered for free, and the facility's reply arrives with the next record request", async () => {
+    const record = { facilityId: "facility-a", userName: "User", date: "2026-10-06", serviceType: "service", familyPublished: true };
+    const context = loadHandlers({
+        "facilities/facility-a": { status: "active", facilityName: "Facility" },
+        "facilities/facility-a/users/User": { lineUserIds: ["family-a"] },
+        "facilities/facility-a/daily_records/2026-10-06_service_User": record
+    });
+    await sendFamilyEvent(context, "family-a", "明日は熱があるのでお休みします");
+    const saved = [...context.documents.entries()].filter(([key]) => key.startsWith("facilities/facility-a/familyMessages/"));
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0][1].userName, "User");
+    assert.equal(saved[0][1].text, "明日は熱があるのでお休みします");
+    assert.equal(saved[0][1].checked, false);
+    assert.equal(context.documents.get("facilities/facility-a").familyMessageUncheckedCount, 1);
+    // その場の返事は Reply API だけ（無料）
+    assert.equal(context.requests.length, 1);
+    assert.equal(context.requests[0].url, "https://api.line.me/v2/bot/message/reply");
+    assert.match(context.requests[0].body.messages[0].text, /施設にお伝えしました/);
+
+    const messageId = saved[0][0].split("/").pop();
+    const facilityAuth = { uid: "facility-a", token: { role: "facility" } };
+    await assert.rejects(context.handlers.respondFamilyMessage({ auth: { uid: "facility-b", token: { role: "facility" } },
+        data: { messageId, action: "check" } }), { code: "not-found" });
+    await assert.rejects(context.handlers.respondFamilyMessage({ auth: facilityAuth, data: { messageId, action: "reply", replyText: "  " } }),
+        { code: "invalid-argument" });
+    const result = await context.handlers.respondFamilyMessage({ auth: facilityAuth,
+        data: { messageId, action: "reply", replyText: "承知しました。お大事になさってください。" } });
+    assert.equal(result.uncheckedCount, 0);
+    assert.equal(context.documents.get("facilities/facility-a").familyMessageUncheckedCount, 0);
+    assert.equal(context.documents.get(saved[0][0]).replyDelivered, false);
+    assert.equal(context.requests.length, 1, "saving a reply never sends a LINE message by itself");
+
+    await sendFamilyEvent(context, "family-a");
+    assert.equal(context.requests.length, 2);
+    assert.equal(context.requests[1].url, "https://api.line.me/v2/bot/message/reply");
+    const text = context.requests[1].body.messages[0].text;
+    assert.match(text, /施設からのお返事/);
+    assert.match(text, /承知しました。お大事になさってください。/);
+    assert.equal(context.documents.get(saved[0][0]).replyDelivered, true);
+    // 2回目には同じお返事を付けない
+    await sendFamilyEvent(context, "family-a");
+    assert.doesNotMatch(context.requests[2].body.messages[0].text, /施設からのお返事/);
+});
+
+test("messages from unlinked LINE users are ignored and not stored", async () => {
+    const context = loadHandlers({ "facilities/facility-a": { status: "active" } });
+    await sendFamilyEvent(context, "stranger", "こんにちは");
+    assert.equal([...context.documents.keys()].some(key => key.includes("familyMessages")), false);
+    assert.equal(context.requests.length, 0);
+});
+
+test("only facility sessions can respond to family messages", async () => {
+    const context = loadHandlers({ "facilities/facility-a/familyMessages/m1": { checked: false } });
+    await assert.rejects(context.handlers.respondFamilyMessage({ auth: { uid: "x", token: { role: "admin" } }, data: { messageId: "m1", action: "check" } }),
+        { code: "unauthenticated" });
+    await assert.rejects(context.handlers.respondFamilyMessage({ auth: { uid: "facility-a", token: { role: "facility" } }, data: { messageId: "../x", action: "check" } }),
+        { code: "invalid-argument" });
+});

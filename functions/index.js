@@ -1222,9 +1222,10 @@ async function executeFacilityCancellation(facilityId, plan, automatic = false) 
     }
 
     try {
-        const [pairingCodes, recordLinks] = await Promise.all([
+        const [pairingCodes, recordLinks, familyMessages] = await Promise.all([
             db.collection("linePairingCodes").where("facilityId", "==", facilityId).get(),
-            db.collection("lineRecordLinks").where("facilityId", "==", facilityId).get()
+            db.collection("lineRecordLinks").where("facilityId", "==", facilityId).get(),
+            db.collection("facilities").doc(facilityId).collection("familyMessages").get()
         ]);
         await Promise.all([
             deleteFirestoreDocuments(plan.recordsSnapshot.docs),
@@ -1232,6 +1233,7 @@ async function executeFacilityCancellation(facilityId, plan, automatic = false) 
             deleteFirestoreDocuments(plan.invoiceHistorySnapshot.docs),
             deleteFirestoreDocuments(pairingCodes.docs),
             deleteFirestoreDocuments(recordLinks.docs),
+            deleteFirestoreDocuments(familyMessages.docs),
             db.collection("facilityLineSettings").doc(facilityId).delete(),
             db.collection("facilityCredentials").doc(facilityId).delete()
         ]);
@@ -1916,13 +1918,13 @@ exports.sendLineRecordNotification = onCall(async request => {
     return { recipientCount: lineUserIds.length, published: true };
 });
 
-async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
+// このLINEのご家族が連携している施設・利用者（共通LINE／施設専用LINEの区別、停止中の施設は除く）
+async function findLinkedFamilyUsers(lineUserId, expectedFacilityId) {
     const db = getFirestore();
     const facilities = expectedFacilityId
         ? [await db.collection("facilities").doc(expectedFacilityId).get()]
         : (await db.collection("facilities").where("status", "==", "active").get()).docs;
-    const today = dateKey(getTokyoDateParts(new Date()));
-    const available = [];
+    const linkedUsers = [];
     let linked = false;
     let blocked = false;
     for (const facilityDocument of facilities) {
@@ -1945,23 +1947,33 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
             continue;
         }
         if (!users.empty) linked = true;
-        for (const userDocument of users.docs) {
-            const records = await facilityDocument.ref.collection("daily_records")
-                .where("userName", "==", userDocument.id).get();
-            const matching = records.docs.filter(document => {
-                const record = document.data();
-                return record.facilityId === facilityDocument.id && record.userName === userDocument.id &&
-                    typeof record.serviceType === "string" && record.serviceType.length <= 100 &&
-                    document.id === `${record.date}_${record.serviceType}_${record.userName}`;
-            }).map(document => document.data());
-            for (const record of latestPublishedRecords(matching, today)) {
-                available.push({ ...record, facilityName: facility.facilityName || facilityDocument.id });
-            }
+        for (const userDocument of users.docs) linkedUsers.push({ facilityDocument, facility, userDocument });
+    }
+    return { linkedUsers, linked, blocked };
+}
+
+async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
+    const db = getFirestore();
+    const today = dateKey(getTokyoDateParts(new Date()));
+    const available = [];
+    const { linkedUsers, linked, blocked } = await findLinkedFamilyUsers(lineUserId, expectedFacilityId);
+    for (const { facilityDocument, facility, userDocument } of linkedUsers) {
+        const records = await facilityDocument.ref.collection("daily_records")
+            .where("userName", "==", userDocument.id).get();
+        const matching = records.docs.filter(document => {
+            const record = document.data();
+            return record.facilityId === facilityDocument.id && record.userName === userDocument.id &&
+                typeof record.serviceType === "string" && record.serviceType.length <= 100 &&
+                document.id === `${record.date}_${record.serviceType}_${record.userName}`;
+        }).map(document => document.data());
+        for (const record of latestPublishedRecords(matching, today)) {
+            available.push({ ...record, facilityName: facility.facilityName || facilityDocument.id });
         }
     }
     if (!linked && blocked) return null;
     if (!linked) return "LINE連携が確認できません。施設から案内された連携コードを送信してください。";
-    if (!available.length) return "公開済みの連絡帳はまだありません。時間をおいて再度ご確認ください。";
+    const familyReplies = await takeFamilyMessageReplies(lineUserId, linkedUsers);
+    if (!available.length) return limitLineText(`公開済みの連絡帳はまだありません。時間をおいて再度ご確認ください。${familyReplies}`);
     const selected = available.sort((first, second) => second.date.localeCompare(first.date)).slice(0, 5);
     const links = await Promise.all(selected.map(async record => {
         const token = crypto.randomBytes(32).toString("hex");
@@ -1977,8 +1989,104 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
         });
         return `${record.facilityName}\n${record.userName} 様・${record.date}（${record.serviceType}）\n${LINE_RECORD_BASE_URL}?token=${token}`;
     }));
-    return `最新の公開連絡帳です（最大5件・閲覧リンクは3日間有効）。\n\n${links.join("\n\n")}`;
+    return limitLineText(`最新の公開連絡帳です（最大5件・閲覧リンクは3日間有効）。\n\n${links.join("\n\n")}${familyReplies}`);
 }
+
+// ===== ご家族からのLINEメッセージ =====
+// 費用をかけないため、LINEへは「ご家族がメッセージを送ったとき」「連絡帳を見るを押したとき」の返信（Reply API）だけを使う。
+// 施設のお返事は保存しておき、ご家族が次に「連絡帳を見る」を押したときにいっしょに届ける。
+const FAMILY_MESSAGE_MAX_LENGTH = 1000;
+const FAMILY_MESSAGE_ACK = "メッセージを施設にお伝えしました。\n施設からのお返事は、メニューの「連絡帳を見る」を押すとご確認いただけます。\nお急ぎの場合は、施設へお電話でご連絡ください。";
+
+function limitLineText(text) {
+    return text.length > 4900 ? `${text.slice(0, 4890)}…` : text;
+}
+
+function formatTokyoShortDate(value) {
+    const parts = getTokyoDateParts(new Date(value));
+    return `${Number(parts.month)}/${Number(parts.day)}`;
+}
+
+async function refreshFamilyMessageCount(facilityRef) {
+    const unchecked = await facilityRef.collection("familyMessages").where("checked", "==", false).get();
+    await facilityRef.set({ familyMessageUncheckedCount: unchecked.size }, { merge: true });
+    return unchecked.size;
+}
+
+async function saveFamilyMessage(lineUserId, text, expectedFacilityId) {
+    const { linkedUsers, linked, blocked } = await findLinkedFamilyUsers(lineUserId, expectedFacilityId);
+    if (!linked) return blocked ? null : "";
+    const body = text.trim().slice(0, FAMILY_MESSAGE_MAX_LENGTH);
+    const receivedAt = new Date().toISOString();
+    const facilityRefs = new Map();
+    for (const { facilityDocument, userDocument } of linkedUsers) {
+        await facilityDocument.ref.collection("familyMessages").add({
+            userName: userDocument.id,
+            lineUserId,
+            text: body,
+            receivedAt,
+            checked: false
+        });
+        facilityRefs.set(facilityDocument.id, facilityDocument.ref);
+    }
+    for (const facilityRef of facilityRefs.values()) await refreshFamilyMessageCount(facilityRef);
+    return FAMILY_MESSAGE_ACK;
+}
+
+// まだ届けていない施設のお返事を取り出し、届けたことを記録する
+async function takeFamilyMessageReplies(lineUserId, linkedUsers) {
+    const seen = new Set();
+    const replies = [];
+    for (const { facilityDocument, facility } of linkedUsers) {
+        if (seen.has(facilityDocument.id)) continue;
+        seen.add(facilityDocument.id);
+        const messages = await facilityDocument.ref.collection("familyMessages").where("lineUserId", "==", lineUserId).get();
+        for (const message of messages.docs) {
+            const data = message.data();
+            if (!data.replyText || data.replyDelivered === true) continue;
+            replies.push({ ref: message.ref, facilityName: facility.facilityName || facilityDocument.id, ...data });
+        }
+    }
+    if (!replies.length) return "";
+    replies.sort((first, second) => String(first.repliedAt || "").localeCompare(String(second.repliedAt || "")));
+    const deliveredAt = new Date().toISOString();
+    await Promise.all(replies.map(reply => reply.ref.set({ replyDelivered: true, replyDeliveredAt: deliveredAt }, { merge: true })));
+    return `\n\n📩 施設からのお返事\n${replies.map(reply =>
+        `【${reply.facilityName}・${reply.userName} 様】${reply.repliedAt ? formatTokyoShortDate(reply.repliedAt) : ""}\n${reply.replyText}`
+    ).join("\n\n")}`;
+}
+
+// 施設の画面から：確認済みにする・未確認に戻す・お返事を保存する
+exports.respondFamilyMessage = onCall(async request => {
+    const facilityId = request.auth?.uid;
+    if (!facilityId || request.auth.token.role !== "facility") {
+        throw new HttpsError("unauthenticated", "施設としてログインしてください。");
+    }
+    const messageId = typeof request.data?.messageId === "string" ? request.data.messageId : "";
+    const action = request.data?.action;
+    if (!/^[A-Za-z0-9_-]{1,100}$/.test(messageId) || !["check", "uncheck", "reply"].includes(action)) {
+        throw new HttpsError("invalid-argument", "操作の内容が正しくありません。");
+    }
+    const facilityRef = getFirestore().collection("facilities").doc(facilityId);
+    const messageRef = facilityRef.collection("familyMessages").doc(messageId);
+    const snapshot = await messageRef.get();
+    if (!snapshot.exists) throw new HttpsError("not-found", "メッセージが見つかりません。");
+    if (action === "reply") {
+        const replyText = typeof request.data?.replyText === "string" ? request.data.replyText.trim() : "";
+        if (!replyText || replyText.length > FAMILY_MESSAGE_MAX_LENGTH) {
+            throw new HttpsError("invalid-argument", `お返事は1〜${FAMILY_MESSAGE_MAX_LENGTH}文字で入力してください。`);
+        }
+        await writeFacilityData(facilityRef, messageRef, {
+            replyText, repliedAt: new Date().toISOString(), replyDelivered: false, checked: true, checkedAt: new Date().toISOString()
+        });
+    } else {
+        await writeFacilityData(facilityRef, messageRef, action === "check"
+            ? { checked: true, checkedAt: new Date().toISOString() }
+            : { checked: false });
+    }
+    const uncheckedCount = await refreshFamilyMessageCount(facilityRef);
+    return { ok: true, uncheckedCount };
+});
 
 exports.deleteExpiredLineLinks = onSchedule({
     schedule: "every day 04:30",
@@ -2032,7 +2140,16 @@ async function handleLineMessagingWebhook(request, response, credentials, expect
         }
         if (event.type !== "message" || event.message?.type !== "text" || !event.replyToken || !event.source?.userId) continue;
         const code = event.message.text.trim().toUpperCase();
-        if (!/^[A-F0-9]{12}$/.test(code)) continue;
+        if (!/^[A-F0-9]{12}$/.test(code)) {
+            if (!event.message.text.trim()) continue;
+            try {
+                const reply = await saveFamilyMessage(event.source.userId, event.message.text, expectedFacilityId);
+                if (reply) await replyToLine(event.replyToken, reply, credentials.channelAccessToken);
+            } catch (error) {
+                logger.error("LINE family message failed", { error });
+            }
+            continue;
+        }
         try {
             const result = await connectLineUser(code, event.source.userId, expectedFacilityId);
             if (result.status === "disabled") continue;

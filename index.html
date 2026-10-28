@@ -57,6 +57,19 @@
         #previewArea { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
         .preview-item { display: flex; flex-direction: column; align-items: center; gap: 8px; border: 1px solid #ddd; border-radius: 8px; padding: 8px; background-color: #fff; width: 140px; }
         img.preview-media-tag, video.preview-media-tag { max-width: 100%; max-height: 95px; object-fit: cover; border-radius: 5px; }
+        #familyMessagePanel { margin: 0 0 15px; padding: 12px 14px; background: #f3f0ff; border: 1px solid #9775fa; border-radius: 8px; }
+        #familyMessagePanel summary { cursor: pointer; font-weight: bold; color: #5f3dc4; }
+        #familyMessagePanel.has-unchecked { animation: familyMessageBlink 1.2s ease-in-out infinite; border-width: 2px; }
+        @keyframes familyMessageBlink { 0%, 100% { background-color: #f3f0ff; border-color: #9775fa; } 50% { background-color: #d0bfff; border-color: #6741d9; } }
+        @media (prefers-reduced-motion: reduce) { #familyMessagePanel.has-unchecked { animation: none; background-color: #d0bfff; } }
+        .family-message-note { font-size: 12px; color: #555; margin: 8px 0; }
+        .family-message { background: #fff; border: 1px solid #d0bfff; border-radius: 8px; padding: 10px; margin-top: 8px; }
+        .family-message.is-unchecked { border: 2px solid #7048e8; }
+        .family-message-head { font-size: 13px; font-weight: bold; color: #5f3dc4; }
+        .family-message-text { white-space: pre-wrap; margin: 6px 0; font-size: 15px; }
+        .family-message-reply { white-space: pre-wrap; font-size: 13px; background: #ebfbee; border-radius: 6px; padding: 6px 8px; margin: 6px 0; }
+        .family-message-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+        .family-message-actions button { width: auto; padding: 8px 12px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 13px; }
         .delete-media-btn { background-color: #fa5252; color: white; border: none; border-radius: 4px; padding: 6px; cursor: pointer; font-size: 13px; width: 100%; font-weight: bold; }
         
         .pre-upload-btn { background-color: #12b886; color: white; border: none; padding: 14px; width: 100%; border-radius: 5px; font-weight: bold; font-size: 16px; margin-top: 10px; cursor: pointer; }
@@ -266,6 +279,11 @@
 
     <div class="form-box" id="mainForm" style="display: none;">
         <div id="systemAnnouncementArea"></div>
+        <details id="familyMessagePanel" hidden>
+            <summary>💬 ご家族からのLINEメッセージ　未確認 <span id="familyMessageUncheckedCount">0</span> 件</summary>
+            <p class="family-message-note">ご家族がLINEで送ったメッセージです。お返事を保存すると、ご家族がLINEの「連絡帳を見る」を押したときに届きます（費用はかかりません）。急ぎの連絡はお電話でお願いします。</p>
+            <div id="familyMessageList"></div>
+        </details>
         
         <h2 id="secretTitle" style="user-select: none; cursor: pointer; margin-top: 0; color: #2b8a3e;">🌿 <span id="displayFacilityName">施設名読込中...</span> 連絡帳</h2>
         <div style="text-align: right; margin-bottom: 15px;">
@@ -1109,7 +1127,7 @@
         import { getAuth, signInWithCustomToken, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { hasFacilitySession } from "./facility-auth.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, getMetadata, deleteObject, listAll } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, deleteDoc, onSnapshot, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
         import { MAX_VIDEO_SOURCE_BYTES, VIDEO_ENCODING_PROFILES, getVideoEncodingArguments, isVideoOutputWithinLimit } from "./video-processing-policy.js";
         import {
@@ -1129,6 +1147,90 @@
         import { buildResidentialForm, readResidentialFields, restoreResidentialFields, validateResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT } from "./residential-care.js";
 
         buildGroupHomeForm(document.getElementById("groupHomeFields"));
+
+        // ===== ご家族からのLINEメッセージ =====
+        let familyMessages = [];
+        function watchFamilyMessages(facilityId) {
+            try {
+                onSnapshot(query(collection(db, "facilities", facilityId, "familyMessages"), orderBy("receivedAt", "desc"), limit(30)), snapshot => {
+                    familyMessages = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+                    renderFamilyMessages();
+                }, error => console.warn("ご家族からのメッセージを読み込めませんでした:", error));
+            } catch (error) {
+                console.warn("ご家族からのメッセージを読み込めませんでした:", error);
+            }
+        }
+
+        function formatFamilyMessageTime(value) {
+            const date = new Date(value);
+            return Number.isFinite(date.getTime())
+                ? date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                : "";
+        }
+
+        function renderFamilyMessages() {
+            const panel = document.getElementById("familyMessagePanel");
+            const list = document.getElementById("familyMessageList");
+            const unchecked = familyMessages.filter(message => message.checked !== true).length;
+            panel.hidden = familyMessages.length === 0;
+            panel.classList.toggle("has-unchecked", unchecked > 0);
+            if (unchecked > 0) panel.open = true;
+            document.getElementById("familyMessageUncheckedCount").textContent = unchecked;
+            list.replaceChildren(...familyMessages.map(message => {
+                const card = document.createElement("div");
+                card.className = `family-message${message.checked === true ? "" : " is-unchecked"}`;
+                const head = document.createElement("div");
+                head.className = "family-message-head";
+                head.textContent = `${message.checked === true ? "✓" : "🔔"} ${message.userName} 様のご家族　${formatFamilyMessageTime(message.receivedAt)}${message.checked === true ? "　確認済み" : ""}`;
+                const text = document.createElement("div");
+                text.className = "family-message-text";
+                text.textContent = message.text || "";
+                card.append(head, text);
+                if (message.replyText) {
+                    const reply = document.createElement("div");
+                    reply.className = "family-message-reply";
+                    reply.textContent = `施設のお返事（${formatFamilyMessageTime(message.repliedAt)}）：${message.replyText}\n${message.replyDelivered ? `✅ ${formatFamilyMessageTime(message.replyDeliveredAt)} にご家族へ届きました` : "⏳ ご家族が「連絡帳を見る」を押すと届きます"}`;
+                    card.appendChild(reply);
+                }
+                const replyBox = document.createElement("textarea");
+                replyBox.rows = 2;
+                replyBox.maxLength = 1000;
+                replyBox.placeholder = message.replyText ? "お返事を書き直す（まだ届いていない場合は差し替わります）" : "お返事を書く（例：承知しました。お大事になさってください。）";
+                replyBox.className = "family-message-reply-input";
+                const actions = document.createElement("div");
+                actions.className = "family-message-actions";
+                const replyButton = document.createElement("button");
+                replyButton.type = "button";
+                replyButton.textContent = "お返事を保存";
+                replyButton.style.cssText = "background:#7048e8;color:#fff;";
+                replyButton.addEventListener("click", () => respondToFamilyMessage(message.id, "reply", replyBox, replyButton));
+                const checkButton = document.createElement("button");
+                checkButton.type = "button";
+                checkButton.textContent = message.checked === true ? "未確認に戻す" : "確認済みにする";
+                checkButton.style.cssText = message.checked === true ? "background:#e9ecef;color:#495057;" : "background:#2b8a3e;color:#fff;";
+                checkButton.addEventListener("click", () => respondToFamilyMessage(message.id, message.checked === true ? "uncheck" : "check", null, checkButton));
+                actions.append(replyButton, checkButton);
+                card.append(replyBox, actions);
+                return card;
+            }));
+        }
+
+        async function respondToFamilyMessage(messageId, action, replyBox, button) {
+            const replyText = replyBox ? replyBox.value.trim() : "";
+            if (action === "reply" && !replyText) {
+                alert("お返事を入力してください。");
+                return;
+            }
+            button.disabled = true;
+            try {
+                await httpsCallable(functions, "respondFamilyMessage")({ messageId, action, replyText });
+                if (replyBox) replyBox.value = "";
+            } catch (error) {
+                alert("保存できませんでした: " + (error.message || error));
+            } finally {
+                button.disabled = false;
+            }
+        }
 
         // 管理画面から全施設へ出したお知らせを、入力画面の上に表示する（施設ごとに「閉じる」と次から出ない）
         async function loadSystemAnnouncements() {
@@ -1869,6 +1971,7 @@
             document.getElementById("mainForm").style.display = "block";
             document.getElementById("scrollGroup").style.display = "flex";
             loadSystemAnnouncements();
+            watchFamilyMessages(facilityId);
             document.getElementById("newFacePreview").src = defaultIcon;
             updateLineAgencyButton(facilityData);
             loadFacilityLineSettingsStatus();

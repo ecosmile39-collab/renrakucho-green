@@ -144,6 +144,12 @@
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTodayActiveCount">0</span> 件</div>
                 <div id="summaryTodayActiveNames" style="font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere;">該当なし</div>
             </div>
+            <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #f3f0ff; border: 1px solid #b197fc; border-radius: 8px; font-weight: bold; color: #5f3dc4;">
+                <div style="font-size: 13px;">💬 ご家族からのLINE（施設が未確認）</div>
+                <div style="font-size: 24px; margin-top: 4px;"><span id="summaryFamilyMessageCount">0</span> 件</div>
+                <div id="summaryFamilyMessageNames" style="font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere;">該当なし</div>
+                <div style="font-size: 11px; font-weight: normal; color: #868e96; margin-top: 4px;">内容は各施設の連絡帳画面でだけ見られます</div>
+            </div>
             <div style="flex: 1; min-width: 140px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 8px; font-weight: bold; color: #495057;">
                 <div style="font-size: 13px;">🏢 全登録施設</div>
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTotalCount">0</span> 件</div>
@@ -1555,6 +1561,12 @@
             const summaryTodayActiveCard = document.getElementById("summaryTodayActiveCard");
             if (summaryTodayActiveCard?.classList) summaryTodayActiveCard.classList.toggle("today-active-alert", today.activeBlink);
             if (typeof renderInbox === "function") renderInbox();
+            const familyMessageFacilities = currentFacilities.filter(facility => Number(facility.familyMessageUncheckedCount) > 0);
+            const summaryFamilyMessageCountEl = document.getElementById("summaryFamilyMessageCount");
+            const summaryFamilyMessageNamesEl = document.getElementById("summaryFamilyMessageNames");
+            if (summaryFamilyMessageCountEl) summaryFamilyMessageCountEl.textContent = familyMessageFacilities.reduce((sum, facility) => sum + Number(facility.familyMessageUncheckedCount), 0);
+            if (summaryFamilyMessageNamesEl) summaryFamilyMessageNamesEl.textContent = familyMessageFacilities
+                .map(facility => `${facility.facilityName || facility.id} ${Number(facility.familyMessageUncheckedCount)}件`).join("\n") || "該当なし";
             if (summaryPausedEl) summaryPausedEl.textContent = pausedNames.length;
             if (summaryPausedNamesEl) summaryPausedNamesEl.textContent = pausedNames.join("\n") || "該当なし";
             if (summaryTotalEl) summaryTotalEl.textContent = currentFacilities.length;
