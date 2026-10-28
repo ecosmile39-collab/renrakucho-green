@@ -27,7 +27,7 @@ const {
 const { generateInvoicePdf } = require("./invoice-pdf");
 const { findOverdueUnpaidInvoices } = require("./overdue-lock");
 const { getTrialAccessEndsAt, isTrialAccessOpen, getPaymentGraceFields } = require("./trial-access");
-const { LP_ANALYTICS_PROPERTY_ID, buildLpAnalyticsRequest, parseLpAnalyticsResponse } = require("./lp-analytics");
+const { LP_ANALYTICS_PROPERTY_ID, buildLpAnalyticsRequest, parseLpAnalyticsResponse, buildLpRealtimeRequest, parseLpRealtimeResponse } = require("./lp-analytics");
 const { createJobStatusWrapper } = require("./job-status");
 const withJobStatus = createJobStatusWrapper(() => getFirestore(), logger);
 const { daysUntilTrialEnds, isTrialReminderDue } = require("./trial-reminder");
@@ -1080,12 +1080,20 @@ exports.getLpAnalyticsSummary = onCall(async request => {
     try {
         const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/analytics.readonly"] });
         const client = await auth.getClient();
+        const propertyUrl = `https://analyticsdata.googleapis.com/v1beta/properties/${LP_ANALYTICS_PROPERTY_ID}`;
+        // リアルタイム（過去30分）が読めなくても、ほかの数字は表示する
+        const realtimePromise = client.request({ url: `${propertyUrl}:runRealtimeReport`, method: "POST", data: buildLpRealtimeRequest() })
+            .then(result => parseLpRealtimeResponse(result.data))
+            .catch(error => {
+                logger.warn("Failed to load LP realtime analytics", { status: error?.response?.status, message: String(error?.message || error).slice(0, 300) });
+                return null;
+            });
         const response = await client.request({
-            url: `https://analyticsdata.googleapis.com/v1beta/properties/${LP_ANALYTICS_PROPERTY_ID}:batchRunReports`,
+            url: `${propertyUrl}:batchRunReports`,
             method: "POST",
             data: buildLpAnalyticsRequest()
         });
-        return { ...parseLpAnalyticsResponse(response.data), fetchedAt: new Date().toISOString() };
+        return { ...parseLpAnalyticsResponse(response.data), realtime: await realtimePromise, fetchedAt: new Date().toISOString() };
     } catch (error) {
         const status = error?.response?.status;
         logger.error("Failed to load LP analytics", { status, message: String(error?.message || error).slice(0, 300) });

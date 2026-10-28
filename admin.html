@@ -143,6 +143,7 @@
                 <button type="button" id="lpAnalyticsReloadButton" style="width: auto; margin: 0; padding: 6px 14px; font-size: 13px; background: #7048e8;">🔄 更新</button>
             </div>
             <p id="lpAnalyticsStatus" class="muted" style="margin: 6px 0 0;">読み込み中...</p>
+            <div id="lpAnalyticsRealtime" style="margin-top: 10px;"></div>
             <div id="lpAnalyticsSummary" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
             <div id="lpAnalyticsDaily" style="margin-top: 12px;"></div>
             <div id="lpAnalyticsChannels" style="margin-top: 10px; font-size: 13px;"></div>
@@ -608,6 +609,14 @@
 
         function renderLpAnalytics(result) {
             const summary = result?.summary || {};
+            const realtime = result?.realtime;
+            document.getElementById("lpAnalyticsRealtime").innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; background: #ebfbee; border: 2px solid #40c057; border-radius: 8px;">
+                    <div style="font-size: 13px; color: #2b8a3e; font-weight: bold;">🟢 いま見ている人（過去30分）</div>
+                    <div style="font-size: 24px; font-weight: bold; color: #2b8a3e;">${realtime ? Number(realtime.visitors || 0).toLocaleString("ja-JP") : "--"} <span style="font-size: 13px;">人</span></div>
+                    <div style="font-size: 12px; color: #495057;">${realtime ? `閲覧数 ${Number(realtime.pageViews || 0).toLocaleString("ja-JP")} 回` : "読み込めませんでした"}</div>
+                    <div style="font-size: 11px; color: #868e96; flex-basis: 100%;">1分ほどで反映されます。下の「今日」などの数字は、Googleの集計のため数時間おくれて反映されます。</div>
+                </div>`;
             const cards = [
                 ["今日", summary.today], ["昨日", summary.yesterday],
                 ["過去7日間", summary.last7Days], ["過去28日間", summary.last28Days],

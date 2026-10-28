@@ -88,9 +88,25 @@ function parseLpAnalyticsResponse(response) {
     return { summary, daily, channels };
 }
 
+// いま見ている人（過去30分）。通常のレポートは反映まで数時間かかるが、リアルタイムのレポートは1分ほどで反映される
+function buildLpRealtimeRequest() {
+    return {
+        metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }],
+        minuteRanges: [{ name: "last30Minutes", startMinutesAgo: 29, endMinutesAgo: 0 }]
+    };
+}
+
+function parseLpRealtimeResponse(response) {
+    const row = Array.isArray(response?.rows) ? response.rows[0] : null;
+    const [visitors, pageViews] = (row?.metricValues || []).map(metric => toNumber(metric.value));
+    return { visitors: visitors || 0, pageViews: pageViews || 0 };
+}
+
 module.exports = {
     LP_ANALYTICS_PROPERTY_ID,
     LP_ANALYTICS_START_DATE,
     buildLpAnalyticsRequest,
-    parseLpAnalyticsResponse
+    parseLpAnalyticsResponse,
+    buildLpRealtimeRequest,
+    parseLpRealtimeResponse
 };

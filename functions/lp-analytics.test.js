@@ -60,3 +60,13 @@ test("only MFA-verified administrators can read the LP visitor numbers", () => {
     assert.match(body, /request\.auth\?\.token\.role !== "admin" \|\| request\.auth\.token\.mfaVerified !== true/);
     assert.match(body, /analytics\.readonly/);
 });
+
+test("realtime visitors for the last 30 minutes are read from the realtime report", () => {
+    const { buildLpRealtimeRequest, parseLpRealtimeResponse } = require("./lp-analytics");
+    const request = buildLpRealtimeRequest();
+    assert.deepEqual(request.metrics.map(metric => metric.name), ["activeUsers", "screenPageViews"]);
+    assert.equal(request.minuteRanges[0].startMinutesAgo, 29);
+    assert.equal(request.minuteRanges[0].endMinutesAgo, 0);
+    assert.deepEqual(parseLpRealtimeResponse({ rows: [{ metricValues: [{ value: "2" }, { value: "5" }] }] }), { visitors: 2, pageViews: 5 });
+    assert.deepEqual(parseLpRealtimeResponse({}), { visitors: 0, pageViews: 0 });
+});
