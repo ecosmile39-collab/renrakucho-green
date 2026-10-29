@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>連絡帳 印刷画面</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
@@ -311,8 +314,10 @@
         .layout-vertical8 .dynamic-age-v2,
         .layout-vertical8 .dynamic-staff-msg-v2,
         .card-longevity.layout-vertical8 .dynamic-chouju-v2 {
+            font-family: "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Kaku Gothic StdN", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
             font-weight: 900;
-            -webkit-text-stroke: 0.15cqw currentColor;
+            -webkit-text-stroke: 0.3cqw currentColor;
+            paint-order: stroke fill;
             text-shadow: 0.5cqw 0.5cqw 0 #fff, -0.5cqw -0.5cqw 0 #fff, 0.5cqw -0.5cqw 0 #fff, -0.5cqw 0.5cqw 0 #fff, 0 0.6cqw 0 #fff, 0 -0.6cqw 0 #fff, 0.6cqw 0 0 #fff, -0.6cqw 0 0 #fff, 0 0 1.5cqw #fff, 0 0 1.5cqw #fff;
         }
         .layout-vertical8 .dynamic-name-v2 { font-size: 7cqw; margin-bottom: 1.2cqw; }
