@@ -1,0 +1,8 @@
+{
+  "headers": [
+    {
+      "source": "/tmp-transfer/(.*)",
+      "headers": [{ "key": "Access-Control-Allow-Origin", "value": "https://renrakucyou.ecosmile.xyz" }]
+    }
+  ]
+}
