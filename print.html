@@ -399,11 +399,17 @@
         .layout-vertical4 .card-photo-zone .card-photo .card-photo-main,
         .layout-vertical5 .card-photo-zone .card-photo .card-photo-main,
         .layout-vertical6 .card-photo-zone .card-photo .card-photo-main { position: static; width: auto; height: auto; max-width: 100%; max-height: 100%;
-            -webkit-mask-image: linear-gradient(to right, transparent 0, black 12%, black 88%, transparent 100%), linear-gradient(to bottom, transparent 0, black 12%, black 88%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, transparent 0, black 7%, black 93%, transparent 100%), linear-gradient(to bottom, transparent 0, black 7%, black 93%, transparent 100%);
             -webkit-mask-composite: source-in;
-            mask-image: linear-gradient(to right, transparent 0, black 12%, black 88%, transparent 100%), linear-gradient(to bottom, transparent 0, black 12%, black 88%, transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0, black 7%, black 93%, transparent 100%), linear-gradient(to bottom, transparent 0, black 7%, black 93%, transparent 100%);
             mask-composite: intersect;
             -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        /* 縦型4〜8：写真の後ろに影をつけて、少し浮き出たように見せる */
+        .layout-vertical4 .card-photo-zone,
+        .layout-vertical5 .card-photo-zone,
+        .layout-vertical6 .card-photo-zone,
+        .layout-vertical7 .card-photo-zone,
+        .layout-vertical8 .card-photo-zone { filter: drop-shadow(0.6cqw 1cqw 1.2cqw rgba(0, 0, 0, 0.35)); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         /* 丸い写真（縦型7・8）：周りを丸くぼかして背景になじませる */
         .card-photo-zone.card-photo-round .card-photo { border: 0; background: transparent; box-shadow: none;
             -webkit-mask-image: radial-gradient(circle closest-side, black 62%, transparent 98%); mask-image: radial-gradient(circle closest-side, black 62%, transparent 98%);
