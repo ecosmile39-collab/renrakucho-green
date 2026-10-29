@@ -56,10 +56,10 @@ service cloud.firestore {
         allow read, write: if isAdmin() || isFacility(facilityId);
       }
 
-      // ご家族からのLINEメッセージ：読めるのはその施設だけ（えこすまいるの管理者は件数だけを施設情報で見る）。
+      // ご家族からのLINEメッセージ：読めるのはその施設と、えこすまいるの管理者（運営・サポートのため）。
       // 保存・確認済み・お返事はサーバー（respondFamilyMessage）だけが書く
       match /familyMessages/{messageId} {
-        allow read: if isFacility(facilityId);
+        allow read: if isAdmin() || isFacility(facilityId);
         allow write: if false;
       }
 

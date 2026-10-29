@@ -79,6 +79,14 @@
             0%, 100% { background-color: #fff4e6; border-color: #fd7e14; }
             50% { background-color: #ffc078; border-color: #d9480f; }
         }
+        .family-message-alert { animation: familyMessageAdminBlink 1.2s ease-in-out infinite; border-width: 2px !important; }
+        @keyframes familyMessageAdminBlink { 0%, 100% { background-color: #f3f0ff; border-color: #9775fa; } 50% { background-color: #d0bfff; border-color: #6741d9; } }
+        @media (prefers-reduced-motion: reduce) { .family-message-alert { animation: none; background-color: #d0bfff !important; } }
+        .family-message-item { margin-top: 8px; padding: 8px 10px; background: #fff; border: 1px solid #d0bfff; border-radius: 6px; font-weight: normal; color: #212529; }
+        .family-message-item.is-unchecked { border: 2px solid #7048e8; }
+        .family-message-head { font-weight: bold; color: #5f3dc4; }
+        .family-message-text { margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .family-message-reply { margin-top: 4px; padding-top: 4px; border-top: 1px dashed #d0bfff; color: #495057; white-space: pre-wrap; overflow-wrap: anywhere; }
         .inbox-alert { animation: inboxBlink 1.2s ease-in-out infinite; border-width: 2px !important; }
         @media (prefers-reduced-motion: reduce) { .inbox-alert { animation: none; background-color: #ffc078 !important; border-color: #d9480f !important; } }
         .inbox-type { display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: 4px; font-size: 11px; background: #fff; border: 1px solid currentColor; }
@@ -116,6 +124,11 @@
                 <div style="font-size: 13px;">📨 新着の申込・お問い合わせ（メールあり）　未確認 <span id="inboxUncheckedCount">0</span> 件</div>
                 <div id="inboxItems" style="font-size: 13px; margin-top: 6px;">該当なし</div>
             </div>
+            <div id="familyMessageCard" style="flex: 1 1 100%; padding: 12px 16px; background: #f3f0ff; border: 1px solid #9775fa; border-radius: 8px; font-weight: bold; color: #5f3dc4;">
+                <div style="font-size: 13px;">💬 ご家族からのLINEメッセージ　施設が未確認 <span id="summaryFamilyMessageCount">0</span> 件</div>
+                <div id="familyMessageItems" style="font-size: 13px; margin-top: 6px;">該当なし</div>
+                <div style="font-size: 11px; font-weight: normal; color: #868e96; margin-top: 4px;">直近14日分と、施設がまだ確認していないものを表示します。確認済みにする・お返事は各施設の連絡帳画面で行います</div>
+            </div>
             <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #fff3bf; border: 1px solid #f08c00; border-radius: 8px; font-weight: bold; color: #8a5b00;">
                 <div style="font-size: 13px;">🟠 トライアル中</div>
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTrialCount">0</span> 件</div>
@@ -143,12 +156,6 @@
                 <div style="font-size: 13px;">📅 本日の本登録</div>
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTodayActiveCount">0</span> 件</div>
                 <div id="summaryTodayActiveNames" style="font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere;">該当なし</div>
-            </div>
-            <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #f3f0ff; border: 1px solid #b197fc; border-radius: 8px; font-weight: bold; color: #5f3dc4;">
-                <div style="font-size: 13px;">💬 ご家族からのLINE（施設が未確認）</div>
-                <div style="font-size: 24px; margin-top: 4px;"><span id="summaryFamilyMessageCount">0</span> 件</div>
-                <div id="summaryFamilyMessageNames" style="font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere;">該当なし</div>
-                <div style="font-size: 11px; font-weight: normal; color: #868e96; margin-top: 4px;">内容は各施設の連絡帳画面でだけ見られます</div>
             </div>
             <div style="flex: 1; min-width: 140px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 8px; font-weight: bold; color: #495057;">
                 <div style="font-size: 13px;">🏢 全登録施設</div>
@@ -411,6 +418,7 @@
         let pendingAdminLoginChallengeId = "";
         let facilities = [];
         let lpInquiries = [];
+        let adminFamilyMessages = [];
         let cancellationRecords = [];
         let latestInvoiceByFacility = new Map();
         let sentInvoicesByFacility = new Map();
@@ -1023,6 +1031,7 @@
                 } catch (inquiryError) {
                     console.warn("LPフォームの新着を読み込めませんでした:", inquiryError);
                 }
+                await loadAdminFamilyMessages();
                 cancellationRecords = cancellationsSnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
                 cancellationRecords.sort((a, b) => String(b.requestedAt || "").localeCompare(String(a.requestedAt || "")));
                 loading.style.display = "none";
@@ -1421,6 +1430,63 @@
             }
         }
 
+        // ご家族からのLINEメッセージ：メッセージが届いたことのある施設だけ読み込む（読み込み件数を抑える）
+        async function loadAdminFamilyMessages() {
+            const targets = facilities.filter(facility => facility.familyMessageUncheckedCount !== undefined);
+            const results = await Promise.all(targets.map(async facility => {
+                try {
+                    const snapshot = await getDocs(query(collection(db, "facilities", facility.id, "familyMessages"), orderBy("receivedAt", "desc"), limit(20)));
+                    return snapshot.docs.map(docSnap => ({ id: docSnap.id, facilityId: facility.id, facilityName: facility.facilityName || facility.id, ...docSnap.data() }));
+                } catch (messageError) {
+                    console.warn("ご家族からのLINEメッセージを読み込めませんでした:", facility.id, messageError);
+                    return [];
+                }
+            }));
+            adminFamilyMessages = results.flat();
+        }
+
+        function renderAdminFamilyMessages() {
+            const container = document.getElementById("familyMessageItems");
+            const card = document.getElementById("familyMessageCard");
+            if (!container || !card) return;
+            const withdrawn = new Set(cancellationRecords.map(record => record.facilityId || record.id));
+            const since = Date.now() - 14 * 24 * 60 * 60 * 1000;
+            const shown = adminFamilyMessages
+                .filter(message => !withdrawn.has(message.facilityId))
+                .filter(message => message.checked !== true || (toDate(message.receivedAt)?.getTime() || 0) >= since)
+                .sort((first, second) => String(second.receivedAt || "").localeCompare(String(first.receivedAt || "")))
+                .slice(0, 50);
+            const unchecked = shown.filter(message => message.checked !== true).length;
+            document.getElementById("summaryFamilyMessageCount").textContent = unchecked;
+            card.classList.toggle("family-message-alert", unchecked > 0);
+            if (!shown.length) {
+                container.textContent = "該当なし";
+                return;
+            }
+            const formatTime = value => {
+                const when = toDate(value);
+                return when ? when.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+            };
+            container.replaceChildren(...shown.map(message => {
+                const item = document.createElement("div");
+                item.className = `family-message-item${message.checked === true ? "" : " is-unchecked"}`;
+                const head = document.createElement("div");
+                head.className = "family-message-head";
+                head.textContent = `${message.checked === true ? "✓" : "🔔"} ${message.facilityName}・${message.userName || ""} 様のご家族　${formatTime(message.receivedAt)}　${message.checked === true ? "施設が確認済み" : "施設が未確認"}`;
+                const text = document.createElement("div");
+                text.className = "family-message-text";
+                text.textContent = message.text || "";
+                item.append(head, text);
+                if (message.replyText) {
+                    const reply = document.createElement("div");
+                    reply.className = "family-message-reply";
+                    reply.textContent = `施設のお返事（${formatTime(message.repliedAt)}）：${message.replyText}\n${message.replyDelivered ? "✅ ご家族へ届きました" : "⏳ ご家族が「連絡帳を見る」を押すと届きます"}`;
+                    item.appendChild(reply);
+                }
+                return item;
+            }));
+        }
+
         function renderInbox() {
             const container = document.getElementById("inboxItems");
             const card = document.getElementById("inboxCard");
@@ -1561,12 +1627,7 @@
             const summaryTodayActiveCard = document.getElementById("summaryTodayActiveCard");
             if (summaryTodayActiveCard?.classList) summaryTodayActiveCard.classList.toggle("today-active-alert", today.activeBlink);
             if (typeof renderInbox === "function") renderInbox();
-            const familyMessageFacilities = currentFacilities.filter(facility => Number(facility.familyMessageUncheckedCount) > 0);
-            const summaryFamilyMessageCountEl = document.getElementById("summaryFamilyMessageCount");
-            const summaryFamilyMessageNamesEl = document.getElementById("summaryFamilyMessageNames");
-            if (summaryFamilyMessageCountEl) summaryFamilyMessageCountEl.textContent = familyMessageFacilities.reduce((sum, facility) => sum + Number(facility.familyMessageUncheckedCount), 0);
-            if (summaryFamilyMessageNamesEl) summaryFamilyMessageNamesEl.textContent = familyMessageFacilities
-                .map(facility => `${facility.facilityName || facility.id} ${Number(facility.familyMessageUncheckedCount)}件`).join("\n") || "該当なし";
+            if (typeof renderAdminFamilyMessages === "function") renderAdminFamilyMessages();
             if (summaryPausedEl) summaryPausedEl.textContent = pausedNames.length;
             if (summaryPausedNamesEl) summaryPausedNamesEl.textContent = pausedNames.join("\n") || "該当なし";
             if (summaryTotalEl) summaryTotalEl.textContent = currentFacilities.length;
