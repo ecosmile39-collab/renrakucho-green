@@ -306,13 +306,41 @@
         .card-longevity.layout-vertical6 .dynamic-chouju-v2,
         .card-longevity.layout-vertical7 .dynamic-chouju-v2,
         .card-longevity.layout-vertical8 .dynamic-chouju-v2 { top: 5.5%; font-size: 7cqw; }
-        /* 縦型8：文字を大きく太く、白いふちを厚くして読みやすくする */
+        /* 縦型4〜8：文字を角ゴシックの極太で大きく、白いふちを厚くして読みやすくする */
+        .layout-vertical4 .card-photo-zone,
+        .layout-vertical5 .card-photo-zone,
+        .layout-vertical6 .card-photo-zone,
+        .layout-vertical7 .card-photo-zone,
         .layout-vertical8 .card-photo-zone { top: 14%; height: 45%; }
+        .layout-vertical4 .dynamic-text-area-v2,
+        .layout-vertical5 .dynamic-text-area-v2,
+        .layout-vertical6 .dynamic-text-area-v2,
+        .layout-vertical7 .dynamic-text-area-v2,
         .layout-vertical8 .dynamic-text-area-v2 { top: 61%; left: 6%; width: 88%; height: 34%; }
+        .layout-vertical4 .dynamic-name-v2,
+        .layout-vertical5 .dynamic-name-v2,
+        .layout-vertical6 .dynamic-name-v2,
+        .layout-vertical7 .dynamic-name-v2,
         .layout-vertical8 .dynamic-name-v2,
+        .layout-vertical4 .dynamic-date-v2,
+        .layout-vertical5 .dynamic-date-v2,
+        .layout-vertical6 .dynamic-date-v2,
+        .layout-vertical7 .dynamic-date-v2,
         .layout-vertical8 .dynamic-date-v2,
+        .layout-vertical4 .dynamic-age-v2,
+        .layout-vertical5 .dynamic-age-v2,
+        .layout-vertical6 .dynamic-age-v2,
+        .layout-vertical7 .dynamic-age-v2,
         .layout-vertical8 .dynamic-age-v2,
+        .layout-vertical4 .dynamic-staff-msg-v2,
+        .layout-vertical5 .dynamic-staff-msg-v2,
+        .layout-vertical6 .dynamic-staff-msg-v2,
+        .layout-vertical7 .dynamic-staff-msg-v2,
         .layout-vertical8 .dynamic-staff-msg-v2,
+        .card-longevity.layout-vertical4 .dynamic-chouju-v2,
+        .card-longevity.layout-vertical5 .dynamic-chouju-v2,
+        .card-longevity.layout-vertical6 .dynamic-chouju-v2,
+        .card-longevity.layout-vertical7 .dynamic-chouju-v2,
         .card-longevity.layout-vertical8 .dynamic-chouju-v2 {
             font-family: "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Kaku Gothic StdN", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
             font-weight: 900;
@@ -320,20 +348,52 @@
             paint-order: stroke fill;
             text-shadow: 0.5cqw 0.5cqw 0 #fff, -0.5cqw -0.5cqw 0 #fff, 0.5cqw -0.5cqw 0 #fff, -0.5cqw 0.5cqw 0 #fff, 0 0.6cqw 0 #fff, 0 -0.6cqw 0 #fff, 0.6cqw 0 0 #fff, -0.6cqw 0 0 #fff, 0 0 1.5cqw #fff, 0 0 1.5cqw #fff;
         }
+        .layout-vertical4 .dynamic-name-v2,
+        .layout-vertical5 .dynamic-name-v2,
+        .layout-vertical6 .dynamic-name-v2,
+        .layout-vertical7 .dynamic-name-v2,
         .layout-vertical8 .dynamic-name-v2 { font-size: 7cqw; margin-bottom: 1.2cqw; }
+        .layout-vertical4 .dynamic-date-v2,
+        .layout-vertical5 .dynamic-date-v2,
+        .layout-vertical6 .dynamic-date-v2,
+        .layout-vertical7 .dynamic-date-v2,
         .layout-vertical8 .dynamic-date-v2 { font-size: 5.2cqw; margin-bottom: 1.2cqw; }
+        .layout-vertical4 .dynamic-age-v2,
+        .layout-vertical5 .dynamic-age-v2,
+        .layout-vertical6 .dynamic-age-v2,
+        .layout-vertical7 .dynamic-age-v2,
         .layout-vertical8 .dynamic-age-v2 { font-size: 6.8cqw; line-height: 1.35; margin-bottom: 1cqw; }
+        .layout-vertical4 .dynamic-staff-msg-v2,
+        .layout-vertical5 .dynamic-staff-msg-v2,
+        .layout-vertical6 .dynamic-staff-msg-v2,
+        .layout-vertical7 .dynamic-staff-msg-v2,
         .layout-vertical8 .dynamic-staff-msg-v2 { font-size: 3.8cqw; margin-top: 0.8cqw; }
+        .card-longevity.layout-vertical4 .dynamic-chouju-v2,
+        .card-longevity.layout-vertical5 .dynamic-chouju-v2,
+        .card-longevity.layout-vertical6 .dynamic-chouju-v2,
+        .card-longevity.layout-vertical7 .dynamic-chouju-v2,
         .card-longevity.layout-vertical8 .dynamic-chouju-v2 { top: 3%; font-size: 10cqw; color: #c99a1e; }
+        /* 縦型4〜8：写真の周りをぼかして背景になじませる（白い縁取りなし） */
+        .layout-vertical4 .card-photo-zone .card-photo,
+        .layout-vertical5 .card-photo-zone .card-photo,
+        .layout-vertical6 .card-photo-zone .card-photo,
+        .layout-vertical7 .card-photo-zone .card-photo,
+        .layout-vertical8 .card-photo-zone .card-photo { border: 0; border-radius: 0; background: transparent; box-shadow: none;
+            -webkit-mask-image: linear-gradient(to right, transparent 0, black 14%, black 86%, transparent 100%), linear-gradient(to bottom, transparent 0, black 14%, black 86%, transparent 100%);
+            -webkit-mask-composite: source-in;
+            mask-image: linear-gradient(to right, transparent 0, black 14%, black 86%, transparent 100%), linear-gradient(to bottom, transparent 0, black 14%, black 86%, transparent 100%);
+            mask-composite: intersect;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
         /* 大きな丸い写真1枚（縦型7）：顔が切れないよう、写真の上寄りを丸く切り抜く */
         .card-photo-zone.card-photo-round { grid-template: 1fr / 1fr; justify-items: center; }
         .card-photo-zone.card-photo-round .card-photo { grid-column: auto; height: 100%; aspect-ratio: 1 / 1; border-radius: 50%; border-width: 1.2cqw; }
-        /* 縦型8：丸い写真の周りをぼかして背景になじませる（白い縁取りなし） */
-        .layout-vertical8 .card-photo-zone.card-photo-round .card-photo { border: 0; background: transparent; box-shadow: none;
+        /* 丸い写真（縦型7・8）：周りを丸くぼかして背景になじませる */
+        .card-photo-zone.card-photo-round .card-photo { border: 0; background: transparent; box-shadow: none;
             -webkit-mask-image: radial-gradient(circle closest-side, black 62%, transparent 98%); mask-image: radial-gradient(circle closest-side, black 62%, transparent 98%);
+            -webkit-mask-composite: source-over; mask-composite: add;
             -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .layout-vertical8 .card-photo-zone.card-photo-round .card-photo .card-photo-fill { display: none; }
+        .card-photo-zone.card-photo-round .card-photo .card-photo-fill { display: none; }
         .card-photo-zone.card-photo-round .card-photo .card-photo-main { object-fit: cover; object-position: center 30%; }
         .card-photo-picker { display: block; margin: 6px 0 4px; font-size: 13px; }
         .card-photo-picker summary { cursor: pointer; color: #c2255c; font-weight: bold; }
@@ -540,7 +600,7 @@
                 <li><strong>サービス種別を選ぶ</strong><p>「サービス種別」で、印刷したい記録のサービスを選びます。デイサービスなどを選ぶと、対象日の記録を検索します。</p></li>
                 <li><strong>日付を選ぶ</strong><p>ショートステイ・入所・ユニット入所以外は「ご利用日」を1日選びます。これらのサービスは利用期間の開始日と終了日を選びます。開始日は終了日より後にできません。入所・ユニット入所は、選んだ期間の記録を1日1枚ずつ印刷します。</p></li>
                 <li><strong>印刷する内容を選ぶ</strong><p>「印刷する内容」から選びます。</p><ul><li>「連絡帳＋誕生日カード」：連絡帳と、選択した方の誕生日カード</li><li>「連絡帳のみ」：連絡帳だけ</li><li>「誕生日カードのみ」：誕生日カードだけ。カードだけを別の用紙に印刷する場合に使います。</li></ul></li>
-                <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「縦型4」「縦型5」「縦型6」は写真を3枚（大きい写真1枚と小さい写真2枚）入れられるデザインです。「縦型7」は大きな丸い写真を1枚入れるデザインです（白い縁取り）。「縦型8」は同じ形で、写真の周りをぼかして背景になじませます。連絡帳に保存した写真が順に入り、足りない分は顔写真が入ります。お名前の下の「カードの写真を選ぶ」から、この端末に入っている昔の写真に差し替えることもできます（差し替えた写真は印刷にだけ使い、保存はしません）。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
+                <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「縦型4」「縦型5」「縦型6」は写真を3枚（大きい写真1枚と小さい写真2枚）入れられるデザインです。「縦型7」「縦型8」は大きな丸い写真を1枚入れるデザインです。縦型4〜8は、写真の周りをぼかして背景になじませ、文字は角ゴシックの太字で大きく表示します。連絡帳に保存した写真が順に入り、足りない分は顔写真が入ります。お名前の下の「カードの写真を選ぶ」から、この端末に入っている昔の写真に差し替えることもできます（差し替えた写真は印刷にだけ使い、保存はしません）。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
                 <li><strong>印刷する利用者を選ぶ</strong><p>記録がある利用者が「LINE未連携」「LINE連携済み」に分かれて表示されます。LINE連携済みでも印刷できます。「すべて選択／解除」ですべてのチェックをまとめて切り替えられます。印刷しない方はチェックを外します。</p></li>
                 <li><strong>誕生日カードを選ぶ</strong><p>誕生日カードを付けられる方には「誕生日カードも印刷」が表示されます。必要な方にチェックし、必要なら任意のメッセージを入力します。入力画面でお誕生日の日にデザインを選んだ方は、最初からチェックが入り、「この方のカードのデザイン」に選んだデザインが入ります。ここで方ごとにデザインを選び直せます。「上の『誕生日カードのデザイン』と同じ」にすると、上で選んだデザインになります。</p></li>
                 <li><strong>確認用画面を作る</strong><p>「選んだ人の連絡帳を画面に表示する（確認用）」を押します。作成中は少し待ちます。選んだ人数や写真の数によって時間がかかることがあります。</p></li>
