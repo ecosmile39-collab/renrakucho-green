@@ -420,6 +420,17 @@
         .card-photo-picker { display: block; margin: 6px 0 4px; font-size: 13px; }
         .card-photo-picker summary { cursor: pointer; color: #c2255c; font-weight: bold; }
         .card-photo-picker label { display: block; margin: 4px 0; }
+        .card-photo-hint { margin: 8px 0 4px; color: #495057; font-weight: bold; }
+        .card-photo-slots { display: flex; gap: 8px; flex-wrap: wrap; }
+        .card-photo-slot { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; background: #fff; border: 2px solid #dee2e6; border-radius: 8px; cursor: pointer; font-size: 12px; }
+        .card-photo-slot img { width: 72px; height: 72px; object-fit: cover; border-radius: 4px; }
+        .card-photo-slot.is-main img { width: 96px; height: 96px; }
+        .card-photo-slot.is-active { border-color: #c2255c; background: #fff0f6; font-weight: bold; }
+        .card-photo-candidates { display: flex; gap: 6px; flex-wrap: wrap; }
+        .card-photo-candidate { padding: 0; border: 2px solid #dee2e6; border-radius: 6px; background: #fff; cursor: pointer; }
+        .card-photo-candidate img { width: 64px; height: 64px; object-fit: cover; border-radius: 4px; display: block; }
+        .card-photo-candidate:hover { border-color: #c2255c; }
+        .card-photo-reset { margin-top: 6px; padding: 4px 10px; border: 1px solid #adb5bd; border-radius: 6px; background: #f8f9fa; cursor: pointer; }
 
         .print-only { display: none; }
 
@@ -622,7 +633,7 @@
                 <li><strong>サービス種別を選ぶ</strong><p>「サービス種別」で、印刷したい記録のサービスを選びます。デイサービスなどを選ぶと、対象日の記録を検索します。</p></li>
                 <li><strong>日付を選ぶ</strong><p>ショートステイ・入所・ユニット入所以外は「ご利用日」を1日選びます。これらのサービスは利用期間の開始日と終了日を選びます。開始日は終了日より後にできません。入所・ユニット入所は、選んだ期間の記録を1日1枚ずつ印刷します。</p></li>
                 <li><strong>印刷する内容を選ぶ</strong><p>「印刷する内容」から選びます。</p><ul><li>「連絡帳＋誕生日カード」：連絡帳と、選択した方の誕生日カード</li><li>「連絡帳のみ」：連絡帳だけ</li><li>「誕生日カードのみ」：誕生日カードだけ。カードだけを別の用紙に印刷する場合に使います。</li></ul></li>
-                <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「縦型4」「縦型5」「縦型6」は写真を3枚（大きい写真1枚と小さい写真2枚）入れられるデザインです。「縦型7」「縦型8」は大きな丸い写真を1枚入れるデザインです。縦型4〜8は、写真の周りをぼかして背景になじませ、文字は角ゴシックの太字で大きく表示します。連絡帳に保存した写真が順に入り、足りない分は顔写真が入ります。お名前の下の「カードの写真を選ぶ」から、この端末に入っている昔の写真に差し替えることもできます（差し替えた写真は印刷にだけ使い、保存はしません）。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
+                <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「縦型4」「縦型5」「縦型6」は写真を3枚（大きい写真1枚と小さい写真2枚）入れられるデザインです。「縦型7」「縦型8」は大きな丸い写真を1枚入れるデザインです。縦型4〜8は、写真の周りをぼかして背景になじませ、文字は角ゴシックの太字で大きく表示します。連絡帳に保存した写真が順に入り、足りない分は顔写真が入ります。お名前の下の「カードの写真を選ぶ・入れ替える」を開くと、大きい写真・小さい写真の場所を押してから、使える写真を見ながら入れ替えられます。この端末に入っている昔の写真を追加して使うこともできます（印刷にだけ使い、保存はしません）。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
                 <li><strong>印刷する利用者を選ぶ</strong><p>記録がある利用者が「LINE未連携」「LINE連携済み」に分かれて表示されます。LINE連携済みでも印刷できます。「すべて選択／解除」ですべてのチェックをまとめて切り替えられます。印刷しない方はチェックを外します。</p></li>
                 <li><strong>誕生日カードを選ぶ</strong><p>誕生日カードを付けられる方には「誕生日カードも印刷」が表示されます。必要な方にチェックし、必要なら任意のメッセージを入力します。入力画面でお誕生日の日にデザインを選んだ方は、最初からチェックが入り、「この方のカードのデザイン」に選んだデザインが入ります。ここで方ごとにデザインを選び直せます。「上の『誕生日カードのデザイン』と同じ」にすると、上で選んだデザインになります。</p></li>
                 <li><strong>確認用画面を作る</strong><p>「選んだ人の連絡帳を画面に表示する（確認用）」を押します。作成中は少し待ちます。選んだ人数や写真の数によって時間がかかることがあります。</p></li>
@@ -1163,28 +1174,106 @@
             return Array.from({ length: count }, (_, index) => chosen[index] || saved[index] || face);
         }
 
+        // 写真を見ながら、カードのどの場所（大きい写真・小さい写真）に入れるかを選ぶ
+        const cardPhotoExtras = {};
+        async function loadCardPhotoCandidates(userName) {
+            const urls = [];
+            for (let index = 1; index <= 4; index++) {
+                const url = await getCachedUrl(`images/${facilityId}/${userName}/image_${index}.jpg`);
+                if (url) urls.push(url);
+            }
+            const face = await getCachedUrl(`faces/${facilityId}/${userName}/face.jpg`);
+            if (face) urls.push(face);
+            return [...urls, ...(cardPhotoExtras[userName] || [])].filter((url, index, list) => list.indexOf(url) === index);
+        }
+
         function buildCardPhotoPicker(userName) {
             const details = document.createElement("details");
             details.className = "card-photo-picker";
             const summary = document.createElement("summary");
-            summary.textContent = "📷 カードの写真を選ぶ（縦型4〜8で使います。縦型7・8は写真1だけを使います。選ばなければ連絡帳の写真が入ります）";
+            summary.textContent = "📷 カードの写真を選ぶ・入れ替える（縦型4〜8。縦型7・8は「大きい写真」だけを使います）";
             details.appendChild(summary);
-            ["写真1（大きい写真）", "写真2", "写真3"].forEach((labelText, index) => {
-                const label = document.createElement("label");
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = "image/*";
-                input.addEventListener("change", () => {
-                    const file = input.files && input.files[0];
-                    cardPhotoOverrides[userName] = cardPhotoOverrides[userName] || [];
-                    const previous = cardPhotoOverrides[userName][index];
-                    if (previous) URL.revokeObjectURL(previous);
-                    cardPhotoOverrides[userName][index] = file ? URL.createObjectURL(file) : "";
-                    onCardBgChanged();
+            const body = document.createElement("div");
+            details.appendChild(body);
+            let activeSlot = 0;
+
+            const render = async () => {
+                const slots = await collectCardPhotos(userName, 3);
+                const candidates = await loadCardPhotoCandidates(userName);
+                body.replaceChildren();
+
+                const slotHint = document.createElement("div");
+                slotHint.className = "card-photo-hint";
+                slotHint.textContent = "① 入れ替えたい場所を押す → ② 下の写真から入れたい写真を押す";
+                body.appendChild(slotHint);
+
+                const slotRow = document.createElement("div");
+                slotRow.className = "card-photo-slots";
+                ["大きい写真", "小さい写真（左）", "小さい写真（右）"].forEach((labelText, index) => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = `card-photo-slot${index === activeSlot ? " is-active" : ""}${index === 0 ? " is-main" : ""}`;
+                    const image = document.createElement("img");
+                    image.src = slots[index] || defaultIcon;
+                    image.alt = labelText;
+                    const caption = document.createElement("span");
+                    caption.textContent = labelText;
+                    button.append(image, caption);
+                    button.addEventListener("click", () => { activeSlot = index; render(); });
+                    slotRow.appendChild(button);
                 });
-                label.append(document.createTextNode(`${labelText}：`), input);
-                details.appendChild(label);
-            });
+                body.appendChild(slotRow);
+
+                const listTitle = document.createElement("div");
+                listTitle.className = "card-photo-hint";
+                listTitle.textContent = "使える写真（連絡帳に保存した写真・顔写真・この端末から選んだ写真）";
+                body.appendChild(listTitle);
+                const list = document.createElement("div");
+                list.className = "card-photo-candidates";
+                candidates.forEach(url => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "card-photo-candidate";
+                    const image = document.createElement("img");
+                    image.src = url;
+                    image.alt = "使える写真";
+                    button.appendChild(image);
+                    button.addEventListener("click", () => {
+                        const next = [...slots];
+                        const previousIndex = next.indexOf(url);
+                        // すでに別の場所にある写真なら、場所を入れ替える
+                        if (previousIndex >= 0 && previousIndex !== activeSlot) next[previousIndex] = next[activeSlot];
+                        next[activeSlot] = url;
+                        cardPhotoOverrides[userName] = next;
+                        render();
+                        onCardBgChanged();
+                    });
+                    list.appendChild(button);
+                });
+                body.appendChild(list);
+
+                const fileLabel = document.createElement("label");
+                const fileInput = document.createElement("input");
+                fileInput.type = "file";
+                fileInput.accept = "image/*";
+                fileInput.multiple = true;
+                fileInput.addEventListener("change", () => {
+                    const files = [...(fileInput.files || [])];
+                    if (!files.length) return;
+                    cardPhotoExtras[userName] = [...(cardPhotoExtras[userName] || []), ...files.map(file => URL.createObjectURL(file))];
+                    render();
+                });
+                fileLabel.append(document.createTextNode("この端末から写真を追加："), fileInput);
+                body.appendChild(fileLabel);
+
+                const reset = document.createElement("button");
+                reset.type = "button";
+                reset.className = "card-photo-reset";
+                reset.textContent = "最初の並び（撮った順）に戻す";
+                reset.addEventListener("click", () => { delete cardPhotoOverrides[userName]; activeSlot = 0; render(); onCardBgChanged(); });
+                body.appendChild(reset);
+            };
+            details.addEventListener("toggle", () => { if (details.open) render(); });
             return details;
         }
 
