@@ -1996,7 +1996,7 @@ async function getFamilyRecordReply(lineUserId, expectedFacilityId) {
 // 費用をかけないため、LINEへは「ご家族がメッセージを送ったとき」「連絡帳を見るを押したとき」の返信（Reply API）だけを使う。
 // 施設のお返事は保存しておき、ご家族が次に「連絡帳を見る」を押したときにいっしょに届ける。
 const FAMILY_MESSAGE_MAX_LENGTH = 1000;
-const FAMILY_MESSAGE_ACK = "メッセージを施設にお伝えしました。\n施設からのお返事は、メニューの「連絡帳を見る」を押すとご確認いただけます。\nお急ぎの場合は、施設へお電話でご連絡ください。";
+const FAMILY_MESSAGE_ACK = "メッセージを施設にお伝えしました。\n施設からのお返事は、下に出る「連絡帳を見る」ボタンを押す（または「連絡帳を見る」と送る）とご確認いただけます。\nお急ぎの場合は、施設へお電話でご連絡ください。";
 
 function limitLineText(text) {
     return text.length > 4900 ? `${text.slice(0, 4890)}…` : text;
