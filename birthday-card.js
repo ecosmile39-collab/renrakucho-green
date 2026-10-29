@@ -29,6 +29,30 @@ export function isBirthdayOn(birthday, dateStr) {
     return month === target[2] && day === target[3];
 }
 
+// お誕生日の前後の何日以内に、カードのデザインを選べるようにするか
+export const BIRTHDAY_WINDOW_DAYS = 3;
+
+// 記録の日付が、いちばん近いお誕生日から何日ずれているか（前はマイナス、後はプラス）。
+// 前後 windowDays 日以内なら { offset, birthdayDate: "YYYY-MM-DD", age } を返し、範囲外なら null
+export function birthdayWindow(birthday, dateStr, windowDays = BIRTHDAY_WINDOW_DAYS) {
+    const birth = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(birthday || ""));
+    const target = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || ""));
+    if (!birth || !target) return null;
+    const targetTime = Date.UTC(Number(target[1]), Number(target[2]) - 1, Number(target[3]));
+    const targetYear = Number(target[1]);
+    for (const year of [targetYear, targetYear - 1, targetYear + 1]) {
+        let day = Number(birth[3]);
+        if (birth[2] === "02" && day === 29 && !isLeapYear(year)) day = 28;
+        const birthdayTime = Date.UTC(year, Number(birth[2]) - 1, day);
+        const offset = Math.round((targetTime - birthdayTime) / 86400000);
+        if (Math.abs(offset) <= windowDays) {
+            const birthdayDate = `${year}-${birth[2]}-${String(day).padStart(2, "0")}`;
+            return { offset, birthdayDate, age: year - Number(birth[1]) };
+        }
+    }
+    return null;
+}
+
 export function ageOn(birthday, dateStr) {
     const birth = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(birthday || ""));
     const target = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || ""));

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { BIRTHDAY_CARD_DESIGNS, ageOn, cardDesignFor, chosenCardDesign, isBirthdayOn, isValidCardDesign } from "./birthday-card.js";
+import { BIRTHDAY_CARD_DESIGNS, ageOn, birthdayWindow, cardDesignFor, chosenCardDesign, isBirthdayOn, isValidCardDesign } from "./birthday-card.js";
 
 test("the seven card designs match the print screen choices", () => {
     const print = readFileSync(new URL("./print.html", import.meta.url), "utf8");
@@ -43,4 +43,21 @@ test("the input screen saves the chosen design with the record", () => {
     const index = readFileSync(new URL("./index.html", import.meta.url), "utf8");
     assert.match(index, /id="birthdayCardPicker" hidden/);
     assert.match(index, /birthdayCardDesign: document\.getElementById\("birthdayCardDesign"\)\.value/);
+});
+
+test("the design can be chosen from 3 days before to 3 days after the birthday", () => {
+    assert.deepEqual(birthdayWindow("1937-10-29", "2026-10-29"), { offset: 0, birthdayDate: "2026-10-29", age: 89 });
+    assert.deepEqual(birthdayWindow("1937-10-29", "2026-10-26"), { offset: -3, birthdayDate: "2026-10-29", age: 89 });
+    assert.deepEqual(birthdayWindow("1937-10-29", "2026-11-01"), { offset: 3, birthdayDate: "2026-10-29", age: 89 });
+    assert.equal(birthdayWindow("1937-10-29", "2026-10-25"), null);
+    assert.equal(birthdayWindow("1937-10-29", "2026-11-02"), null);
+    assert.deepEqual(birthdayWindow("1940-12-30", "2027-01-02"), { offset: 3, birthdayDate: "2026-12-30", age: 86 });
+    assert.deepEqual(birthdayWindow("1941-01-02", "2026-12-30"), { offset: -3, birthdayDate: "2027-01-02", age: 86 });
+    assert.equal(birthdayWindow("1940-02-29", "2027-03-03").offset, 3);
+    assert.equal(birthdayWindow("", "2026-10-29"), null);
+});
+
+test("the print screen offers the card from 3 days before to 3 days after the birthday", () => {
+    const print = readFileSync(new URL("./print.html", import.meta.url), "utf8");
+    assert.match(print, /diffDays >= -3 && diffDays <= 3/);
 });

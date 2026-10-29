@@ -936,7 +936,7 @@
                     if (bData) {
                         let cardLbl = document.createElement("label");
                         cardLbl.className = "card-checkbox-label";
-                        let isChecked = (bData.diffDays <= 0 || chosenDesign) ? "checked" : "";
+                        let isChecked = (bData.diffDays === 0 || chosenDesign) ? "checked" : "";
                         cardLbl.innerHTML = `<input type="checkbox" class="card-chk" value="${userName}" ${isChecked}> 🎁 誕生日カードも印刷`;
                         div.appendChild(cardLbl);
                         if (chosenDesign) {
@@ -1180,7 +1180,7 @@
                     const bDate = new Date(y, bMonth - 1, bDay);
                     const age = y - bYear;
                     const diffDays = Math.round((targetDate - bDate) / (1000 * 60 * 60 * 24));
-                    if (diffDays >= 0 && diffDays <= 3) {
+                    if (diffDays >= -3 && diffDays <= 3) {
                         return { isToday: (diffDays === 0), month: bMonth, day: bDay, age: age, diffDays: diffDays };
                     }
                 }
@@ -1203,6 +1203,14 @@
                         return { isToday: true, month: bMonth, day: bDay, age: age, diffDays: 0 };
                     }
                     const diffDaysFromEnd = Math.round((eDate - bDate) / (1000 * 60 * 60 * 24));
+                    // 期間の終わりの3日後まで、または期間の始まりの3日前からのお誕生日
+                    const diffDaysToStart = Math.round((bDate - sDate) / (1000 * 60 * 60 * 24));
+                    if (diffDaysToStart < 0 && diffDaysToStart >= -3) {
+                        return { isToday: false, month: bMonth, day: bDay, age: age, diffDays: -diffDaysToStart };
+                    }
+                    if (diffDaysFromEnd < 0 && diffDaysFromEnd >= -3) {
+                        return { isToday: false, month: bMonth, day: bDay, age: age, diffDays: diffDaysFromEnd };
+                    }
                     if (diffDaysFromEnd > 0 && diffDaysFromEnd <= 3) {
                         return { isToday: false, month: bMonth, day: bDay, age: age, diffDays: diffDaysFromEnd };
                     }

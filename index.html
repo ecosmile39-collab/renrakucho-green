@@ -434,7 +434,7 @@
                 </label>
                 <div id="birthdayCardPicker" hidden>
                     <div id="birthdayCardPickerTitle" class="birthday-card-picker-title">🎂 本日はお誕生日です</div>
-                    <div class="birthday-card-picker-hint">誕生日カードのデザインを選ぶと、印刷確認の画面でそのデザインのカードが表示されます（選び直し・解除もできます）。</div>
+                    <div class="birthday-card-picker-hint">お誕生日の前後3日以内の記録で選べます。誕生日カードのデザインを選ぶと、印刷確認の画面でそのデザインのカードが表示されます（選び直し・解除もできます）。</div>
                     <div id="birthdayCardOptions" class="birthday-card-options"></div>
                     <div id="birthdayCardChosen" class="birthday-card-chosen" role="status"></div>
                     <input type="hidden" id="birthdayCardDesign" value="">
@@ -1161,7 +1161,7 @@
         import { buildGroupHomeForm, readGroupHomeFields, restoreGroupHomeFields, validateGroupHomeFields } from "./group-home.js";
         import { setupSentenceTemplates } from "./sentence-templates.js";
         import { TEMPERATURE_FIELD_IDS, isFever } from "./fever.js";
-        import { BIRTHDAY_CARD_DESIGNS, ageOn, cardDesignFor, isBirthdayOn, isValidCardDesign } from "./birthday-card.js";
+        import { BIRTHDAY_CARD_DESIGNS, birthdayWindow, cardDesignFor, isValidCardDesign } from "./birthday-card.js";
         import { buildResidentialForm, readResidentialFields, restoreResidentialFields, validateResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT } from "./residential-care.js";
 
         buildGroupHomeForm(document.getElementById("groupHomeFields"));
@@ -2134,17 +2134,24 @@
         function updateBirthdayCardPicker(userData, dateStr) {
             const picker = document.getElementById("birthdayCardPicker");
             if (!picker) return;
-            const isBirthday = !!(userData && isBirthdayOn(userData.birthday, dateStr));
-            picker.hidden = !isBirthday;
-            if (!isBirthday) {
+            const window_ = userData ? birthdayWindow(userData.birthday, dateStr) : null;
+            picker.hidden = !window_;
+            if (!window_) {
                 setBirthdayCardDesign("");
                 return;
             }
-            const age = ageOn(userData.birthday, dateStr);
             const now = new Date();
             const todayString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-            const today = dateStr === todayString ? "本日は" : `${Number(dateStr.substring(5, 7))}月${Number(dateStr.substring(8, 10))}日は`;
-            document.getElementById("birthdayCardPickerTitle").textContent = `🎂 ${today}お誕生日です${age !== null ? `（${age}歳）` : ""}`;
+            const birthdayLabel = `${Number(window_.birthdayDate.substring(5, 7))}月${Number(window_.birthdayDate.substring(8, 10))}日`;
+            let title;
+            if (window_.offset === 0) {
+                title = `🎂 ${dateStr === todayString ? "本日" : birthdayLabel}はお誕生日です（${window_.age}歳）`;
+            } else if (window_.offset < 0) {
+                title = `🎂 ${birthdayLabel}がお誕生日です（${-window_.offset}日後・${window_.age}歳）`;
+            } else {
+                title = `🎂 ${birthdayLabel}がお誕生日でした（${window_.offset}日前・${window_.age}歳）`;
+            }
+            document.getElementById("birthdayCardPickerTitle").textContent = title;
             const options = document.getElementById("birthdayCardOptions");
             if (!options.childElementCount) {
                 options.replaceChildren(...BIRTHDAY_CARD_DESIGNS.map(design => {
