@@ -269,10 +269,12 @@
         /* 縦型4・5（写真3枚：大1枚＋小2枚）。写真は上、文字は下の白い板に入れて重ならないようにする */
         .birthday-card-container-v2.layout-vertical4,
         .birthday-card-container-v2.layout-vertical5,
-        .birthday-card-container-v2.layout-vertical6 { aspect-ratio: 2 / 3; }
+        .birthday-card-container-v2.layout-vertical6,
+        .birthday-card-container-v2.layout-vertical7 { aspect-ratio: 2 / 3; }
         .layout-vertical4 .bg-image-layer-v2,
         .layout-vertical5 .bg-image-layer-v2,
-        .layout-vertical6 .bg-image-layer-v2 { object-fit: cover; }
+        .layout-vertical6 .bg-image-layer-v2,
+        .layout-vertical7 .bg-image-layer-v2 { object-fit: cover; }
         .card-photo-zone { position: absolute; z-index: 2; display: grid; gap: 1.6cqw; grid-template: 2fr 1fr / 1fr 1fr; }
         .card-photo-zone .card-photo { position: relative; overflow: hidden; border-radius: 1.4cqw; background: #fff; box-shadow: 0 0.6cqw 1.6cqw rgba(0,0,0,0.25); border: 0.8cqw solid #fff; box-sizing: border-box; min-width: 0; min-height: 0; }
         .card-photo-zone .card-photo:first-child { grid-column: 1 / 3; }
@@ -282,17 +284,24 @@
         .card-photo-zone .card-photo .card-photo-main { object-fit: contain; z-index: 1; }
         .layout-vertical4 .card-photo-zone,
         .layout-vertical5 .card-photo-zone,
-        .layout-vertical6 .card-photo-zone { top: 15%; left: 13%; width: 74%; height: 47%; }
+        .layout-vertical6 .card-photo-zone,
+        .layout-vertical7 .card-photo-zone { top: 15%; left: 13%; width: 74%; height: 47%; }
         .layout-vertical4 .dynamic-text-area-v2,
         .layout-vertical5 .dynamic-text-area-v2,
-        .layout-vertical6 .dynamic-text-area-v2 { top: 65%; left: 12%; width: 76%; height: 27%; justify-content: center; background: rgba(255,255,255,0.55); border-radius: 3cqw; }
-        .layout-vertical4 .dynamic-name-v2, .layout-vertical5 .dynamic-name-v2, .layout-vertical6 .dynamic-name-v2 { font-size: 5cqw; margin-bottom: 1cqw; }
-        .layout-vertical4 .dynamic-date-v2, .layout-vertical5 .dynamic-date-v2, .layout-vertical6 .dynamic-date-v2 { font-size: 3.8cqw; margin-bottom: 1cqw; }
-        .layout-vertical4 .dynamic-age-v2, .layout-vertical5 .dynamic-age-v2, .layout-vertical6 .dynamic-age-v2 { font-size: 5.2cqw; margin-bottom: 0.8cqw; }
-        .layout-vertical4 .dynamic-staff-msg-v2, .layout-vertical5 .dynamic-staff-msg-v2, .layout-vertical6 .dynamic-staff-msg-v2 { font-size: 3.2cqw; margin-top: 0.6cqw; }
+        .layout-vertical6 .dynamic-text-area-v2,
+        .layout-vertical7 .dynamic-text-area-v2 { top: 65%; left: 12%; width: 76%; height: 27%; justify-content: center; background: rgba(255,255,255,0.55); border-radius: 3cqw; }
+        .layout-vertical4 .dynamic-name-v2, .layout-vertical5 .dynamic-name-v2, .layout-vertical6 .dynamic-name-v2, .layout-vertical7 .dynamic-name-v2 { font-size: 5cqw; margin-bottom: 1cqw; }
+        .layout-vertical4 .dynamic-date-v2, .layout-vertical5 .dynamic-date-v2, .layout-vertical6 .dynamic-date-v2, .layout-vertical7 .dynamic-date-v2 { font-size: 3.8cqw; margin-bottom: 1cqw; }
+        .layout-vertical4 .dynamic-age-v2, .layout-vertical5 .dynamic-age-v2, .layout-vertical6 .dynamic-age-v2, .layout-vertical7 .dynamic-age-v2 { font-size: 5.2cqw; margin-bottom: 0.8cqw; }
+        .layout-vertical4 .dynamic-staff-msg-v2, .layout-vertical5 .dynamic-staff-msg-v2, .layout-vertical6 .dynamic-staff-msg-v2, .layout-vertical7 .dynamic-staff-msg-v2 { font-size: 3.2cqw; margin-top: 0.6cqw; }
         .card-longevity.layout-vertical4 .dynamic-chouju-v2,
         .card-longevity.layout-vertical5 .dynamic-chouju-v2,
-        .card-longevity.layout-vertical6 .dynamic-chouju-v2 { top: 5.5%; font-size: 7cqw; }
+        .card-longevity.layout-vertical6 .dynamic-chouju-v2,
+        .card-longevity.layout-vertical7 .dynamic-chouju-v2 { top: 5.5%; font-size: 7cqw; }
+        /* 大きな丸い写真1枚（縦型7）：顔が切れないよう、写真の上寄りを丸く切り抜く */
+        .card-photo-zone.card-photo-round { grid-template: 1fr / 1fr; justify-items: center; }
+        .card-photo-zone.card-photo-round .card-photo { grid-column: auto; height: 100%; aspect-ratio: 1 / 1; border-radius: 50%; border-width: 1.2cqw; }
+        .card-photo-zone.card-photo-round .card-photo .card-photo-main { object-fit: cover; object-position: center 30%; }
         .card-photo-picker { display: block; margin: 6px 0 4px; font-size: 13px; }
         .card-photo-picker summary { cursor: pointer; color: #c2255c; font-weight: bold; }
         .card-photo-picker label { display: block; margin: 4px 0; }
@@ -498,7 +507,7 @@
                 <li><strong>サービス種別を選ぶ</strong><p>「サービス種別」で、印刷したい記録のサービスを選びます。デイサービスなどを選ぶと、対象日の記録を検索します。</p></li>
                 <li><strong>日付を選ぶ</strong><p>ショートステイ・入所・ユニット入所以外は「ご利用日」を1日選びます。これらのサービスは利用期間の開始日と終了日を選びます。開始日は終了日より後にできません。入所・ユニット入所は、選んだ期間の記録を1日1枚ずつ印刷します。</p></li>
                 <li><strong>印刷する内容を選ぶ</strong><p>「印刷する内容」から選びます。</p><ul><li>「連絡帳＋誕生日カード」：連絡帳と、選択した方の誕生日カード</li><li>「連絡帳のみ」：連絡帳だけ</li><li>「誕生日カードのみ」：誕生日カードだけ。カードだけを別の用紙に印刷する場合に使います。</li></ul></li>
-                <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「縦型4」「縦型5」「縦型6」は写真を3枚（大きい写真1枚と小さい写真2枚）入れられるデザインです。連絡帳に保存した写真が順に入り、足りない分は顔写真が入ります。お名前の下の「カードの写真を選ぶ」から、この端末に入っている昔の写真に差し替えることもできます（差し替えた写真は印刷にだけ使い、保存はしません）。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
+                <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「縦型4」「縦型5」「縦型6」は写真を3枚（大きい写真1枚と小さい写真2枚）入れられるデザインです。「縦型7」は大きな丸い写真を1枚入れるデザインです。連絡帳に保存した写真が順に入り、足りない分は顔写真が入ります。お名前の下の「カードの写真を選ぶ」から、この端末に入っている昔の写真に差し替えることもできます（差し替えた写真は印刷にだけ使い、保存はしません）。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
                 <li><strong>印刷する利用者を選ぶ</strong><p>記録がある利用者が「LINE未連携」「LINE連携済み」に分かれて表示されます。LINE連携済みでも印刷できます。「すべて選択／解除」ですべてのチェックをまとめて切り替えられます。印刷しない方はチェックを外します。</p></li>
                 <li><strong>誕生日カードを選ぶ</strong><p>誕生日カードを付けられる方には「誕生日カードも印刷」が表示されます。必要な方にチェックし、必要なら任意のメッセージを入力します。入力画面でお誕生日の日にデザインを選んだ方は、最初からチェックが入り、選んだデザイン名が表示されます。カードもそのデザインで表示されます。</p></li>
                 <li><strong>確認用画面を作る</strong><p>「選んだ人の連絡帳を画面に表示する（確認用）」を押します。作成中は少し待ちます。選んだ人数や写真の数によって時間がかかることがあります。</p></li>
@@ -557,6 +566,7 @@
                     <option value="vertical4">縦型4（パステルの花・写真3枚）</option>
                     <option value="vertical5">縦型5（和風の桜と梅・写真3枚）</option>
                     <option value="vertical6">縦型6（ピンクの花柄・写真3枚）</option>
+                    <option value="vertical7">縦型7（ピンクの花柄・大きな丸い写真1枚）</option>
                 </select>
             </div>
 
@@ -1019,7 +1029,7 @@
         // 写真を何枚も入れるカード（縦型4・5）用：印刷画面で選んだ写真 → 連絡帳に保存した写真 → 顔写真 の順に入れる
         const cardPhotoOverrides = {};
         async function collectCardPhotos(userName, count) {
-            if (count <= 1) return [];
+            if (count < 1) return [];
             const saved = [];
             for (let index = 1; index <= count; index++) {
                 const url = await getCachedUrl(`images/${facilityId}/${userName}/image_${index}.jpg`);
@@ -1034,7 +1044,7 @@
             const details = document.createElement("details");
             details.className = "card-photo-picker";
             const summary = document.createElement("summary");
-            summary.textContent = "📷 カードの写真を選ぶ（縦型4・5・6で使います。選ばなければ連絡帳の写真が入ります）";
+            summary.textContent = "📷 カードの写真を選ぶ（縦型4〜7で使います。縦型7は写真1だけを使います。選ばなければ連絡帳の写真が入ります）";
             details.appendChild(summary);
             ["写真1（大きい写真）", "写真2", "写真3"].forEach((labelText, index) => {
                 const label = document.createElement("label");
@@ -1618,7 +1628,8 @@
                 let cardOrientationChoice = isValidCardDesign(cardDesign) ? cardDesign : document.getElementById("selectCardOrientation").value;
                 let todayImgUrl = await getCachedUrl(`images/${facilityId}/${userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${facilityId}/${userName}/face.jpg`) || defaultIcon;
-                let cardPhotos = await collectCardPhotos(userName, cardDesignFor(cardOrientationChoice).photoCount || 1);
+                let cardDesignInfo = cardDesignFor(cardOrientationChoice);
+                let cardPhotos = (cardDesignInfo.photoCount || 1) > 1 || cardDesignInfo.roundPhoto ? await collectCardPhotos(userName, cardDesignInfo.photoCount || 1) : [];
                 let secondImgUrl = cardOrientationChoice === "horizontal2" && cardPhotoCount === 2
                     ? await getCachedUrl(`images/${facilityId}/${userName}/image_2.jpg`) || await getCachedUrl(`faces/${facilityId}/${userName}/face.jpg`) || defaultIcon
                     : "";
@@ -1645,10 +1656,10 @@
                     <div class="birthday-card-container-v2 ${layoutClass}${Number(bData.age) >= 70 ? " card-longevity" : ""}${secondImgUrl ? " card-two-photos" : ""}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
                         <div class="dynamic-chouju-v2">祝 長 寿</div>
-                        ${cardPhotos.length > 1
-                            ? `<div class="card-photo-zone">${cardPhotos.map((url, photoIndex) => `<div class="card-photo"><img class="card-photo-fill" src="${url}" alt="" aria-hidden="true"><img class="card-photo-main" src="${url}" alt="利用者の写真${photoIndex + 1}"></div>`).join("")}</div>`
+                        ${cardPhotos.length
+                            ? `<div class="card-photo-zone${cardPhotos.length === 1 ? " card-photo-round" : ""}">${cardPhotos.map((url, photoIndex) => `<div class="card-photo"><img class="card-photo-fill" src="${url}" alt="" aria-hidden="true"><img class="card-photo-main" src="${url}" alt="利用者の写真${photoIndex + 1}"></div>`).join("")}</div>`
                             : `<img src="${todayImgUrl}" class="dynamic-photo-v2 dynamic-photo-primary-v2" alt="利用者の写真1">`}
-                        ${secondImgUrl && cardPhotos.length <= 1 ? `<img src="${secondImgUrl}" class="dynamic-photo-v2 dynamic-photo-secondary-v2" alt="利用者の写真2">` : ""}
+                        ${secondImgUrl && !cardPhotos.length ? `<img src="${secondImgUrl}" class="dynamic-photo-v2 dynamic-photo-secondary-v2" alt="利用者の写真2">` : ""}
                         <div class="dynamic-text-area-v2" style="${textAreaStyle}">
                             <div class="dynamic-name-v2">${userName} 様</div>
                             <div class="dynamic-date-v2">${displayDateText}</div>
@@ -1889,7 +1900,8 @@
                 let cardOrientationChoice = isValidCardDesign(cardDesign) ? cardDesign : document.getElementById("selectCardOrientation").value;
                 let todayImgUrl = await getCachedUrl(`images/${facilityId}/${data.userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${facilityId}/${data.userName}/face.jpg`) || defaultIcon;
-                let cardPhotos = await collectCardPhotos(data.userName, cardDesignFor(cardOrientationChoice).photoCount || 1);
+                let cardDesignInfo = cardDesignFor(cardOrientationChoice);
+                let cardPhotos = (cardDesignInfo.photoCount || 1) > 1 || cardDesignInfo.roundPhoto ? await collectCardPhotos(data.userName, cardDesignInfo.photoCount || 1) : [];
                 let secondImgUrl = cardOrientationChoice === "horizontal2" && cardPhotoCount === 2
                     ? await getCachedUrl(`images/${facilityId}/${data.userName}/image_2.jpg`) || await getCachedUrl(`faces/${facilityId}/${data.userName}/face.jpg`) || defaultIcon
                     : "";
@@ -1917,10 +1929,10 @@
                     <div class="birthday-card-container-v2 ${layoutClass}${Number(bData.age) >= 70 ? " card-longevity" : ""}${secondImgUrl ? " card-two-photos" : ""}">
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
                         <div class="dynamic-chouju-v2">祝 長 寿</div>
-                        ${cardPhotos.length > 1
-                            ? `<div class="card-photo-zone">${cardPhotos.map((url, photoIndex) => `<div class="card-photo"><img class="card-photo-fill" src="${url}" alt="" aria-hidden="true"><img class="card-photo-main" src="${url}" alt="利用者の写真${photoIndex + 1}"></div>`).join("")}</div>`
+                        ${cardPhotos.length
+                            ? `<div class="card-photo-zone${cardPhotos.length === 1 ? " card-photo-round" : ""}">${cardPhotos.map((url, photoIndex) => `<div class="card-photo"><img class="card-photo-fill" src="${url}" alt="" aria-hidden="true"><img class="card-photo-main" src="${url}" alt="利用者の写真${photoIndex + 1}"></div>`).join("")}</div>`
                             : `<img src="${todayImgUrl}" class="dynamic-photo-v2 dynamic-photo-primary-v2" alt="利用者の写真1">`}
-                        ${secondImgUrl && cardPhotos.length <= 1 ? `<img src="${secondImgUrl}" class="dynamic-photo-v2 dynamic-photo-secondary-v2" alt="利用者の写真2">` : ""}
+                        ${secondImgUrl && !cardPhotos.length ? `<img src="${secondImgUrl}" class="dynamic-photo-v2 dynamic-photo-secondary-v2" alt="利用者の写真2">` : ""}
                         <div class="dynamic-text-area-v2" style="${textAreaStyle}">
                             <div class="dynamic-name-v2">${data.userName} 様</div>
                             <div class="dynamic-date-v2">${displayDateText}</div>
