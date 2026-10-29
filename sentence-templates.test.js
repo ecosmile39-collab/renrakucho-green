@@ -63,3 +63,9 @@ test("numbers for vitals are suggested in every service that records them", () =
         assert.ok(field.list, `${field.id} needs suggested values`);
     }
 });
+
+test("the care journal has about ten sentence templates", () => {
+    const journal = templatesFor("careJournal", "デイサービス");
+    assert.ok(journal.length >= 10, String(journal.length));
+    assert.match(source, /<textarea id="careJournal"/);
+});
