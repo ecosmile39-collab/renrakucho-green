@@ -274,7 +274,10 @@
         .card-photo-zone { position: absolute; z-index: 2; display: grid; gap: 1.6cqw; grid-template: 2fr 1fr / 1fr 1fr; }
         .card-photo-zone .card-photo { position: relative; overflow: hidden; border-radius: 1.4cqw; background: #fff; box-shadow: 0 0.6cqw 1.6cqw rgba(0,0,0,0.25); border: 0.8cqw solid #fff; box-sizing: border-box; min-width: 0; min-height: 0; }
         .card-photo-zone .card-photo:first-child { grid-column: 1 / 3; }
-        .card-photo-zone .card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* 写真は切らずに全体を表示し、余ったところは同じ写真をぼかして埋める */
+        .card-photo-zone .card-photo img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+        .card-photo-zone .card-photo .card-photo-fill { object-fit: cover; filter: blur(1.5cqw); transform: scale(1.15); opacity: 0.7; }
+        .card-photo-zone .card-photo .card-photo-main { object-fit: contain; z-index: 1; }
         .layout-vertical4 .card-photo-zone,
         .layout-vertical5 .card-photo-zone { top: 15%; left: 13%; width: 74%; height: 47%; }
         .layout-vertical4 .dynamic-text-area-v2,
@@ -1637,7 +1640,7 @@
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
                         <div class="dynamic-chouju-v2">祝 長 寿</div>
                         ${cardPhotos.length > 1
-                            ? `<div class="card-photo-zone">${cardPhotos.map((url, photoIndex) => `<div class="card-photo"><img src="${url}" alt="利用者の写真${photoIndex + 1}"></div>`).join("")}</div>`
+                            ? `<div class="card-photo-zone">${cardPhotos.map((url, photoIndex) => `<div class="card-photo"><img class="card-photo-fill" src="${url}" alt="" aria-hidden="true"><img class="card-photo-main" src="${url}" alt="利用者の写真${photoIndex + 1}"></div>`).join("")}</div>`
                             : `<img src="${todayImgUrl}" class="dynamic-photo-v2 dynamic-photo-primary-v2" alt="利用者の写真1">`}
                         ${secondImgUrl && cardPhotos.length <= 1 ? `<img src="${secondImgUrl}" class="dynamic-photo-v2 dynamic-photo-secondary-v2" alt="利用者の写真2">` : ""}
                         <div class="dynamic-text-area-v2" style="${textAreaStyle}">
@@ -1909,7 +1912,7 @@
                         <img src="${bgImageSrc}" class="bg-image-layer-v2" alt="背景">
                         <div class="dynamic-chouju-v2">祝 長 寿</div>
                         ${cardPhotos.length > 1
-                            ? `<div class="card-photo-zone">${cardPhotos.map((url, photoIndex) => `<div class="card-photo"><img src="${url}" alt="利用者の写真${photoIndex + 1}"></div>`).join("")}</div>`
+                            ? `<div class="card-photo-zone">${cardPhotos.map((url, photoIndex) => `<div class="card-photo"><img class="card-photo-fill" src="${url}" alt="" aria-hidden="true"><img class="card-photo-main" src="${url}" alt="利用者の写真${photoIndex + 1}"></div>`).join("")}</div>`
                             : `<img src="${todayImgUrl}" class="dynamic-photo-v2 dynamic-photo-primary-v2" alt="利用者の写真1">`}
                         ${secondImgUrl && cardPhotos.length <= 1 ? `<img src="${secondImgUrl}" class="dynamic-photo-v2 dynamic-photo-secondary-v2" alt="利用者の写真2">` : ""}
                         <div class="dynamic-text-area-v2" style="${textAreaStyle}">
