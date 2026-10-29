@@ -303,6 +303,24 @@
         .card-longevity.layout-vertical6 .dynamic-chouju-v2,
         .card-longevity.layout-vertical7 .dynamic-chouju-v2,
         .card-longevity.layout-vertical8 .dynamic-chouju-v2 { top: 5.5%; font-size: 7cqw; }
+        /* 縦型8：文字を大きく太く、白いふちを厚くして読みやすくする */
+        .layout-vertical8 .card-photo-zone { top: 14%; height: 45%; }
+        .layout-vertical8 .dynamic-text-area-v2 { top: 61%; left: 6%; width: 88%; height: 34%; }
+        .layout-vertical8 .dynamic-name-v2,
+        .layout-vertical8 .dynamic-date-v2,
+        .layout-vertical8 .dynamic-age-v2,
+        .layout-vertical8 .dynamic-staff-msg-v2,
+        .card-longevity.layout-vertical8 .dynamic-chouju-v2 {
+            font-weight: 900;
+            -webkit-text-stroke: 0.15cqw currentColor;
+            text-shadow: 0.5cqw 0.5cqw 0 #fff, -0.5cqw -0.5cqw 0 #fff, 0.5cqw -0.5cqw 0 #fff, -0.5cqw 0.5cqw 0 #fff, 0 0.6cqw 0 #fff, 0 -0.6cqw 0 #fff, 0.6cqw 0 0 #fff, -0.6cqw 0 0 #fff, 0 0 1.5cqw #fff, 0 0 1.5cqw #fff;
+        }
+        .layout-vertical8 .dynamic-name-v2 { font-size: 7cqw; margin-bottom: 1.2cqw; }
+        .layout-vertical8 .dynamic-date-v2 { font-size: 5.2cqw; margin-bottom: 1.2cqw; }
+        .layout-vertical8 .dynamic-age-v2 { font-size: 6.8cqw; line-height: 1.35; margin-bottom: 1cqw; }
+        .layout-vertical8 .dynamic-staff-msg-v2 { font-size: 3.8cqw; margin-top: 0.8cqw; }
+        .card-longevity.layout-vertical8 .dynamic-chouju-v2 { top: 3%; font-size: 10cqw; color: #c99a1e; }
+
         /* 大きな丸い写真1枚（縦型7）：顔が切れないよう、写真の上寄りを丸く切り抜く */
         .card-photo-zone.card-photo-round { grid-template: 1fr / 1fr; justify-items: center; }
         .card-photo-zone.card-photo-round .card-photo { grid-column: auto; height: 100%; aspect-ratio: 1 / 1; border-radius: 50%; border-width: 1.2cqw; }
