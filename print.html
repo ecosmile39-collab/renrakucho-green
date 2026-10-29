@@ -388,6 +388,22 @@
         /* 大きな丸い写真1枚（縦型7）：顔が切れないよう、写真の上寄りを丸く切り抜く */
         .card-photo-zone.card-photo-round { grid-template: 1fr / 1fr; justify-items: center; }
         .card-photo-zone.card-photo-round .card-photo { grid-column: auto; height: 100%; aspect-ratio: 1 / 1; border-radius: 50%; border-width: 1.2cqw; }
+        /* 写真3枚（縦型4・5・6）：写真の左右・上下を同じ写真のぼかしで埋めず、写真そのものの周りだけをぼかす */
+        .layout-vertical4 .card-photo-zone .card-photo,
+        .layout-vertical5 .card-photo-zone .card-photo,
+        .layout-vertical6 .card-photo-zone .card-photo { display: flex; align-items: center; justify-content: center;
+            -webkit-mask-image: none; mask-image: none; }
+        .layout-vertical4 .card-photo-zone .card-photo .card-photo-fill,
+        .layout-vertical5 .card-photo-zone .card-photo .card-photo-fill,
+        .layout-vertical6 .card-photo-zone .card-photo .card-photo-fill { display: none; }
+        .layout-vertical4 .card-photo-zone .card-photo .card-photo-main,
+        .layout-vertical5 .card-photo-zone .card-photo .card-photo-main,
+        .layout-vertical6 .card-photo-zone .card-photo .card-photo-main { position: static; width: auto; height: auto; max-width: 100%; max-height: 100%;
+            -webkit-mask-image: linear-gradient(to right, transparent 0, black 12%, black 88%, transparent 100%), linear-gradient(to bottom, transparent 0, black 12%, black 88%, transparent 100%);
+            -webkit-mask-composite: source-in;
+            mask-image: linear-gradient(to right, transparent 0, black 12%, black 88%, transparent 100%), linear-gradient(to bottom, transparent 0, black 12%, black 88%, transparent 100%);
+            mask-composite: intersect;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         /* 丸い写真（縦型7・8）：周りを丸くぼかして背景になじませる */
         .card-photo-zone.card-photo-round .card-photo { border: 0; background: transparent; box-shadow: none;
             -webkit-mask-image: radial-gradient(circle closest-side, black 62%, transparent 98%); mask-image: radial-gradient(circle closest-side, black 62%, transparent 98%);
