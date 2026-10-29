@@ -3017,6 +3017,8 @@ function getTrialAccessEndTime(facilityData) {
                 const { imageFiles, videoFiles, ...pendingFields } = pendingRecord;
                 draftStr = JSON.stringify(pendingFields);
             }
+            // 別の方を選ぶ前に、いま選んでいる写真・動画をその方の分として取っておく
+            if (typeof stashSelectedMedia === "function") stashSelectedMedia(draftKey);
             resetFormInputs();
 
             if (draftStr) {
@@ -3204,7 +3206,11 @@ function getTrialAccessEndTime(facilityData) {
                     }
                 }
             }
-            if (pendingRecord) {
+            const stashedMedia = typeof selectedMediaByRecord !== "undefined" ? selectedMediaByRecord.get(draftKey) : null;
+            if (stashedMedia && stashedMedia.length) {
+                accumulatedFiles = [...stashedMedia];
+                if (typeof renderPreviewArea === "function") renderPreviewArea();
+            } else if (pendingRecord) {
                 accumulatedFiles = [...(pendingRecord.imageFiles || []), ...(pendingRecord.videoFiles || [])];
                 if (accumulatedFiles.length && typeof renderPreviewArea === "function") renderPreviewArea();
             }
@@ -3212,6 +3218,17 @@ function getTrialAccessEndTime(facilityData) {
             window.checkTemp('stTempIn', 'stTempInAlert');
             window.checkTemp('stTempOut', 'stTempOutAlert');
             syncTextSuggestionSelects();
+        }
+
+        // 選んだけれど、まだ一時保存・送信していない写真・動画（この画面を開いている間だけ、方ごとに覚えておく）
+        const selectedMediaByRecord = new Map();
+        let currentMediaRecordKey = "";
+        function stashSelectedMedia(nextKey) {
+            if (currentMediaRecordKey) {
+                if (accumulatedFiles.length) selectedMediaByRecord.set(currentMediaRecordKey, [...accumulatedFiles]);
+                else selectedMediaByRecord.delete(currentMediaRecordKey);
+            }
+            currentMediaRecordKey = nextKey;
         }
 
         function findPendingRecord(userName, dateStr, sType) {
@@ -3924,6 +3941,7 @@ function getTrialAccessEndTime(facilityData) {
                 updatePendingListUI();
                 resetFormInputs();
                 localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${sType}_${userName}`);
+                if (typeof selectedMediaByRecord !== "undefined") selectedMediaByRecord.delete(`draft_${recordData.facilityId}_${date}_${sType}_${userName}`);
 
                 const videoNotice = recordData.videoFiles.length
                     ? `動画${recordData.videoFiles.length}本は30秒以内・各5MB以下で準備済みです。`
@@ -4027,6 +4045,7 @@ function getTrialAccessEndTime(facilityData) {
                 updatePendingListUI();
                 resetFormInputs();
                 localStorage.removeItem(`draft_${recordData.facilityId}_${date}_${sType}_${userName}`);
+                if (typeof selectedMediaByRecord !== "undefined") selectedMediaByRecord.delete(`draft_${recordData.facilityId}_${date}_${sType}_${userName}`);
                 document.getElementById("userName").value = "";
                 onUserSelected();
 
@@ -4114,6 +4133,7 @@ function getTrialAccessEndTime(facilityData) {
                     }
                     await setDoc(docRef, saveObj);
                     localStorage.removeItem(`draft_${data.facilityId}_${data.date}_${data.serviceType}_${data.userName}`);
+                    if (typeof selectedMediaByRecord !== "undefined") selectedMediaByRecord.delete(`draft_${data.facilityId}_${data.date}_${data.serviceType}_${data.userName}`);
                 });
 
                 await Promise.all(uploadPromises);
