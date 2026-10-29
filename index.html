@@ -3011,6 +3011,12 @@ function getTrialAccessEndTime(facilityData) {
             let sType = document.getElementById("serviceType").value;
             let draftKey = `draft_${facilityId}_${dateStr}_${sType}_${userName}`;
             let draftStr = localStorage.getItem(draftKey);
+            // 「一時保存して次の方へ」で送信待ちに入れた方は、その内容を入力欄に戻す（写真・動画も）
+            const pendingRecord = typeof findPendingRecord === "function" ? findPendingRecord(userName, dateStr, sType) : null;
+            if (!draftStr && pendingRecord) {
+                const { imageFiles, videoFiles, ...pendingFields } = pendingRecord;
+                draftStr = JSON.stringify(pendingFields);
+            }
             resetFormInputs();
 
             if (draftStr) {
@@ -3198,10 +3204,19 @@ function getTrialAccessEndTime(facilityData) {
                     }
                 }
             }
+            if (pendingRecord) {
+                accumulatedFiles = [...(pendingRecord.imageFiles || []), ...(pendingRecord.videoFiles || [])];
+                if (accumulatedFiles.length && typeof renderPreviewArea === "function") renderPreviewArea();
+            }
             window.checkTemp('temp1', 'temp1Alert');
             window.checkTemp('stTempIn', 'stTempInAlert');
             window.checkTemp('stTempOut', 'stTempOutAlert');
             syncTextSuggestionSelects();
+        }
+
+        function findPendingRecord(userName, dateStr, sType) {
+            const pendingList = typeof batchDataList !== "undefined" ? batchDataList : [];
+            return pendingList.find(record => record.userName === userName && record.date === dateStr && record.serviceType === sType) || null;
         }
 
         async function fetchServerData(userName, date) {
@@ -3222,8 +3237,10 @@ function getTrialAccessEndTime(facilityData) {
                 badge.style.display = "none"; cancelBtn.style.display = "none"; 
 
                 let draftKey = `draft_${facilityId}_${date}_${currentServiceType}_${userName}`;
+                // 下書き、または送信待ちの一時保存がある方は、サーバーの記録で入力欄を上書きしない
+                const hasLocalWork = !!localStorage.getItem(draftKey) || !!(typeof findPendingRecord === "function" && findPendingRecord(userName, date, currentServiceType));
                 if (!docSnap.exists()) {
-                     if (!localStorage.getItem(draftKey)) {
+                     if (!hasLocalWork) {
                          resetFormInputs();
                      }
                      return false;
@@ -3233,7 +3250,7 @@ function getTrialAccessEndTime(facilityData) {
                     let data = docSnap.data();
 
                     if (data.serviceType && data.serviceType !== currentServiceType) {
-                        if (!localStorage.getItem(draftKey)) resetFormInputs(); 
+                        if (!hasLocalWork) resetFormInputs(); 
                             return false;
                     }
 
@@ -3248,7 +3265,7 @@ function getTrialAccessEndTime(facilityData) {
                         badge.innerHTML = txt + "<br><span style='font-size:12px; font-weight:normal;'>夕方は文字の入力だけでOKです！</span>";
                     }
                     
-                    if (!localStorage.getItem(draftKey)) {
+                    if (!hasLocalWork) {
                         document.getElementById("temp1").value = data.temp1 || "";
                         document.getElementById("temp2").value = data.temp2 || "";
                         document.getElementById("pulse").value = data.pulse || "";
