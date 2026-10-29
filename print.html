@@ -92,6 +92,7 @@
             padding-bottom: 6px; 
         }
         .print-header h1 { margin: 0; font-size: 24px; letter-spacing: 1px; text-align: right; }
+        .print-ecotan { display: inline-block; vertical-align: middle; height: 1.4em; width: auto; margin-right: 6px; }
         .facility-name { font-size: 16px; font-weight: bold; color: #2b8a3e; }
         .print-date { text-align: right; font-size: 14px; margin-bottom: 10px; margin-top: 5px; font-weight: bold; color: #2b8a3e; }
         
@@ -1432,7 +1433,7 @@
                     <div class="punch-mark">▷</div>
                     <div class="print-header">
                         <div class="facility-name">${facilityName}</div>
-                        <h1>${firstData.serviceType || "ショートステイ"} ご利用報告書</h1>
+                        <h1><img class="print-ecotan" src="assets/ecotan/ecotan-128.png" alt="">${firstData.serviceType || "ショートステイ"} ご利用報告書</h1>
                     </div>
 
                     ${birthdayBannerHtml}
@@ -1782,7 +1783,7 @@
                     <div class="punch-mark">▷</div>
                     <div class="print-header">
                         <div class="facility-name">${facilityName}</div>
-                        <h1>${isResidentialPage ? `${data.serviceType} 連絡帳` : isGroupHome ? "グループホーム連絡帳" : isChildService || isLifeCare ? `${data.serviceType} 利用記録` : "本日の連絡帳"}</h1>
+                        <h1><img class="print-ecotan" src="assets/ecotan/ecotan-128.png" alt="">${isResidentialPage ? `${data.serviceType} 連絡帳` : isGroupHome ? "グループホーム連絡帳" : isChildService || isLifeCare ? `${data.serviceType} 利用記録` : "本日の連絡帳"}</h1>
                     </div>
 
                     ${birthdayBannerHtml}

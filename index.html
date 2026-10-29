@@ -99,6 +99,7 @@
         .scroll-btn { background-color: #2b8a3e; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; opacity: 0.8; }
 
         #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 16px; font-weight: bold; }
+        #toast .toast-ecotan { width: 40px; height: auto; vertical-align: middle; margin-right: 8px; }
         #toast.show { visibility: visible; -webkit-animation: fadein 0.5s, fadeout 0.5s 4.5s; animation: fadein 0.5s, fadeout 0.5s 4.5s; }
         @-webkit-keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
@@ -123,6 +124,7 @@
         <div id="loadingText">データを送信しています...<br>画面を閉じずにお待ちください</div>
     </div>
     <div id="appStartupStatus" role="status" style="max-width: 650px; margin: 10px auto; padding: 18px; background: white; border: 1px solid #ced4da; border-radius: 6px; text-align: center; color: #495057;">
+        <img src="assets/ecotan/ecotan-256.webp" alt="" width="72" style="display: block; width: 72px; height: auto; margin: 0 auto 8px;">
         <p id="appStartupMessage" style="margin: 0;">ログイン状態と施設情報を確認しています...</p>
         <button type="button" id="appStartupReloadButton" hidden onclick="window.location.reload()" style="margin-top: 12px; background: #1c7ed6;">画面を再読み込み</button>
     </div>
@@ -1314,7 +1316,16 @@
 
         window.showToast = function(message, duration = 3000) {
             let toast = document.getElementById("toast");
-            toast.textContent = message;
+            toast.textContent = "";
+            // うまくいったお知らせには、えこたんを小さく添える（待ち・注意・エラー・管理用は出さない）
+            if (!/^(⏳|⚠️|❌|🔧|🔒|🔓)/.test(String(message))) {
+                const ecotan = document.createElement("img");
+                ecotan.src = "assets/ecotan/ecotan-128.webp";
+                ecotan.alt = "";
+                ecotan.className = "toast-ecotan";
+                toast.appendChild(ecotan);
+            }
+            toast.appendChild(document.createTextNode(message));
             toast.className = "show";
             setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, duration);
         }
