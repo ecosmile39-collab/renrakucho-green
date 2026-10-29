@@ -57,6 +57,21 @@
         #previewArea { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
         .preview-item { display: flex; flex-direction: column; align-items: center; gap: 8px; border: 1px solid #ddd; border-radius: 8px; padding: 8px; background-color: #fff; width: 140px; }
         img.preview-media-tag, video.preview-media-tag { max-width: 100%; max-height: 95px; object-fit: cover; border-radius: 5px; }
+        .ai-consult-panel { margin: 0 0 15px; padding: 14px; background: #f8f0fc; border: 2px solid #7048e8; border-radius: 10px; }
+        .ai-consult-panel h3 { margin: 0 0 4px; color: #5f3dc4; }
+        .ai-consult-note, .ai-consult-hint { font-size: 12px; color: #5c4a72; margin: 4px 0 8px; }
+        .ai-consult-label { font-weight: bold; font-size: 14px; margin: 10px 0 4px; }
+        .ai-consult-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .ai-consult-chips button { padding: 6px 12px; border-radius: 999px; border: 1px solid #9775fa; background: #fff; color: #5f3dc4; font-size: 14px; cursor: pointer; }
+        .ai-consult-chips button[aria-pressed="true"] { background: #7048e8; color: #fff; }
+        .ai-consult-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+        .ai-consult-grid label, .ai-consult-free { font-size: 13px; font-weight: bold; margin: 0; }
+        .ai-consult-free { display: block; margin-top: 10px; }
+        #aiPrompt { width: 100%; box-sizing: border-box; font-size: 14px; line-height: 1.6; border: 1px dashed #9775fa; }
+        .ai-consult-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .ai-consult-actions button { flex: 1 1 140px; padding: 10px; border: 0; border-radius: 6px; color: #fff; font-weight: bold; font-size: 14px; cursor: pointer; }
+        .ai-open-chatgpt { background: #10a37f; } .ai-open-claude { background: #d97757; } .ai-open-gemini { background: #4285f4; } .ai-copy { background: #6c757d; }
+        @media (max-width: 500px) { .ai-consult-grid { grid-template-columns: minmax(0, 1fr); } }
         #birthdayCardPicker { margin: 12px 0 0; padding: 12px; background: #fff0f6; border: 2px solid #f783ac; border-radius: 8px; }
         .birthday-card-picker-title { font-weight: bold; font-size: 17px; color: #c2255c; }
         .birthday-card-picker-hint { font-size: 12px; color: #495057; margin: 4px 0 8px; }
@@ -348,6 +363,7 @@
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <button type="button" id="usageGuideToggleButton" class="usage-guide-toggle" aria-expanded="false" aria-controls="usageGuidePanel" onclick="toggleUsageGuide()" style="margin: 0;">📖 連絡帳の使い方を見る</button>
                 <button type="button" id="openLineAgencyModalButton" onclick="openLineAgencyModal()" style="margin: 0; padding: 10px 14px; background: #087f23; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">🤝 LINE連携代行を申込む</button>
+                <button type="button" id="aiConsultToggleButton" onclick="toggleAiConsult()" aria-expanded="false" aria-controls="aiConsultPanel" style="margin: 0; padding: 10px 14px; background: linear-gradient(90deg, #7048e8, #1c7ed6); color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">🤖 AIに相談する</button>
                 <button type="button" id="openInquiryModalButton" onclick="openInquiryModal()" style="margin: 0; padding: 10px 14px; background: #17a2b8; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer;">✉️ お問合せ</button>
             </div>
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
@@ -355,6 +371,29 @@
                 <button type="button" id="trialRegistrationButton" onclick="openSubscriptionApplicationPanel()" hidden style="padding: 9px 12px; background: #2b8a3e; color: white; border-radius: 4px; font-size: 14px; font-weight: bold; white-space: nowrap;">📝 本登録を申し込む</button>
             </div>
         </div>
+        <section id="aiConsultPanel" class="ai-consult-panel" hidden>
+            <h3>🤖 AIに相談する（無料のAIを使います）</h3>
+            <p class="ai-consult-note">行事やレクリエーションの案を、AIに考えてもらいます。利用者さんのお名前などは入れないでください（入っていても自動で消します）。</p>
+            <div class="ai-consult-label">何を考えますか？</div>
+            <div class="ai-consult-chips" id="aiTopicChips" role="radiogroup"></div>
+            <div class="ai-consult-grid">
+                <label>月<select id="aiMonth"></select></label>
+                <label>参加人数<select id="aiPeople"><option value="">指定しない</option><option>5人くらい</option><option>10人くらい</option><option selected>15人くらい</option><option>20人くらい</option><option>30人くらい</option></select></label>
+                <label>時間<select id="aiMinutes"><option value="">指定しない</option><option>15分</option><option selected>30分</option><option>45分</option><option>1時間</option></select></label>
+            </div>
+            <div class="ai-consult-label">参加される方の様子（いくつでも）</div>
+            <div class="ai-consult-chips" id="aiConditionChips"></div>
+            <label class="ai-consult-free">ほかに伝えたいこと（任意）<input type="text" id="aiNote" placeholder="例：材料は100円ショップでそろえたい／男性の参加者が多い"></label>
+            <div class="ai-consult-label">AIへの質問文（自由に書きかえられます）</div>
+            <textarea id="aiPrompt" rows="5"></textarea>
+            <div class="ai-consult-actions">
+                <button type="button" class="ai-open-chatgpt" onclick="openAiConsult('chatgpt')">ChatGPTで聞く</button>
+                <button type="button" class="ai-open-claude" onclick="openAiConsult('claude')">Claudeで聞く</button>
+                <button type="button" class="ai-open-gemini" onclick="openAiConsult('gemini')">Geminiで聞く</button>
+                <button type="button" class="ai-copy" onclick="copyAiPrompt()">📋 質問文をコピー</button>
+            </div>
+            <p class="ai-consult-hint">押すと、質問文をコピーしてからAIの画面を開きます。質問文が入っていないときは、入力欄に貼り付けて送ってください。どれも無料で使えます（ChatGPT以外は無料のアカウント登録が必要です）。AIの答えはまちがうこともあるので、安全面は職員で確認してください。</p>
+        </section>
         <section id="usageGuidePanel" class="usage-guide-panel" hidden>
             <h3>連絡帳の使い方</h3>
             <ol>
@@ -1161,6 +1200,7 @@
         import { buildGroupHomeForm, readGroupHomeFields, restoreGroupHomeFields, validateGroupHomeFields } from "./group-home.js";
         import { setupSentenceTemplates } from "./sentence-templates.js";
         import { TEMPERATURE_FIELD_IDS, isFever } from "./fever.js";
+        import { AI_CONDITIONS, AI_SERVICES, AI_TOPICS, buildAiPrompt } from "./ai-consult.js";
         import { BIRTHDAY_CARD_DESIGNS, birthdayWindow, cardDesignFor, isValidCardDesign, normalizeCardDesign } from "./birthday-card.js";
         import { buildResidentialForm, readResidentialFields, restoreResidentialFields, validateResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT } from "./residential-care.js";
 
@@ -2085,6 +2125,94 @@
             document.getElementById("mainForm").addEventListener("change", autoSaveDraft);
 
             onServiceTypeChanged(); 
+        };
+
+        // 🤖 AIに相談する（無料のAIを開く）
+        const aiConsultState = { topic: "recreation", conditions: new Set(["車いすの方が多い", "認知症の方も楽しめる"]), edited: false };
+        function setupAiConsult() {
+            const topicChips = document.getElementById("aiTopicChips");
+            if (!topicChips || topicChips.childElementCount) return;
+            Object.entries(AI_TOPICS).forEach(([value, label]) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.textContent = label;
+                button.dataset.topic = value;
+                button.addEventListener("click", () => { aiConsultState.topic = value; aiConsultState.edited = false; refreshAiPrompt(); });
+                topicChips.appendChild(button);
+            });
+            const conditionChips = document.getElementById("aiConditionChips");
+            AI_CONDITIONS.forEach(label => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.textContent = label;
+                button.addEventListener("click", () => {
+                    if (aiConsultState.conditions.has(label)) aiConsultState.conditions.delete(label); else aiConsultState.conditions.add(label);
+                    aiConsultState.edited = false;
+                    refreshAiPrompt();
+                });
+                conditionChips.appendChild(button);
+            });
+            const month = document.getElementById("aiMonth");
+            for (let value = 1; value <= 12; value++) month.add(new Option(`${value}月`, String(value)));
+            const dateValue = document.getElementById("date").value;
+            month.value = String(dateValue ? Number(dateValue.substring(5, 7)) : new Date().getMonth() + 1);
+            ["aiMonth", "aiPeople", "aiMinutes", "aiNote"].forEach(id => document.getElementById(id).addEventListener("input", () => { aiConsultState.edited = false; refreshAiPrompt(); }));
+            document.getElementById("aiPrompt").addEventListener("input", () => { aiConsultState.edited = true; });
+        }
+
+        function refreshAiPrompt() {
+            document.querySelectorAll("#aiTopicChips button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.topic === aiConsultState.topic)));
+            document.querySelectorAll("#aiConditionChips button").forEach(button => button.setAttribute("aria-pressed", String(aiConsultState.conditions.has(button.textContent))));
+            if (aiConsultState.edited) return;
+            const serviceSelect = document.getElementById("serviceType");
+            const serviceLabel = SERVICE_TYPES.find(service => service.value === serviceSelect.value)?.value || serviceSelect.value;
+            document.getElementById("aiPrompt").value = buildAiPrompt({
+                topic: aiConsultState.topic,
+                service: serviceLabel,
+                month: Number(document.getElementById("aiMonth").value),
+                people: document.getElementById("aiPeople").value,
+                minutes: document.getElementById("aiMinutes").value,
+                conditions: [...aiConsultState.conditions],
+                note: document.getElementById("aiNote").value,
+                userNames: Object.keys(window.globalUsersData || {})
+            });
+        }
+
+        window.toggleAiConsult = function() {
+            const panel = document.getElementById("aiConsultPanel");
+            const opening = panel.hidden;
+            panel.hidden = !opening;
+            document.getElementById("aiConsultToggleButton").setAttribute("aria-expanded", String(opening));
+            if (opening) { setupAiConsult(); refreshAiPrompt(); }
+        };
+
+        async function copyTextToClipboard(text) {
+            try { await navigator.clipboard.writeText(text); return true; } catch (error) {
+                const area = document.createElement("textarea");
+                area.value = text; document.body.appendChild(area); area.select();
+                let copied = false; try { copied = document.execCommand("copy"); } catch (copyError) { copied = false; }
+                area.remove(); return copied;
+            }
+        }
+
+        window.copyAiPrompt = async function() {
+            const copied = await copyTextToClipboard(document.getElementById("aiPrompt").value);
+            showToast(copied ? "📋 質問文をコピーしました" : "⚠️ コピーできませんでした。質問文を長押しして選んでください", 4000);
+        };
+
+        window.openAiConsult = async function(serviceKey) {
+            const ai = AI_SERVICES[serviceKey];
+            if (!ai) return;
+            const prompt = document.getElementById("aiPrompt").value.trim();
+            if (!prompt) { showToast("⚠️ 質問文が空です"); return; }
+            const copying = copyTextToClipboard(prompt);
+            const opened = window.open(ai.url(prompt), "_blank");
+            if (opened) opened.opener = null;
+            await copying;
+            showToast(ai.pasteOnly
+                ? `📋 質問文をコピーしました。${ai.label}の入力欄に貼り付けて送ってください`
+                : `📋 質問文をコピーしました。${ai.label}に質問文が入っていないときは、入力欄に貼り付けて送ってください`, 6000);
+            if (!opened) showToast("⚠️ 新しい画面を開けませんでした。ポップアップを許可してください", 6000);
         };
 
         window.togglePRField = function() {
