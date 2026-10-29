@@ -469,7 +469,7 @@
                 <li><strong>印刷する内容を選ぶ</strong><p>「印刷する内容」から選びます。</p><ul><li>「連絡帳＋誕生日カード」：連絡帳と、選択した方の誕生日カード</li><li>「連絡帳のみ」：連絡帳だけ</li><li>「誕生日カードのみ」：誕生日カードだけ。カードだけを別の用紙に印刷する場合に使います。</li></ul></li>
                 <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
                 <li><strong>印刷する利用者を選ぶ</strong><p>記録がある利用者が「LINE未連携」「LINE連携済み」に分かれて表示されます。LINE連携済みでも印刷できます。「すべて選択／解除」ですべてのチェックをまとめて切り替えられます。印刷しない方はチェックを外します。</p></li>
-                <li><strong>誕生日カードを選ぶ</strong><p>誕生日カードを付けられる方には「誕生日カードも印刷」が表示されます。必要な方にチェックし、必要なら任意のメッセージを入力します。</p></li>
+                <li><strong>誕生日カードを選ぶ</strong><p>誕生日カードを付けられる方には「誕生日カードも印刷」が表示されます。必要な方にチェックし、必要なら任意のメッセージを入力します。入力画面でお誕生日の日にデザインを選んだ方は、最初からチェックが入り、選んだデザイン名が表示されます。カードもそのデザインで表示されます。</p></li>
                 <li><strong>確認用画面を作る</strong><p>「選んだ人の連絡帳を画面に表示する（確認用）」を押します。作成中は少し待ちます。選んだ人数や写真の数によって時間がかかることがあります。</p></li>
                 <li><strong>表示内容を確認する</strong><p>利用者名、日付、記録内容、写真などを確認します。LINE未連携の方は、保護者用の友だち追加QRコードや連携コードが表示される場合があります。連携コードの有効期限は24時間です。すでに連携済みの方には、QRコードやコードは表示されません。</p></li>
                 <li><strong>プリンターで印刷する</strong><p>内容に問題がなければ「確認OK！表示されている連絡帳をプリンターで一括印刷する」を押します。ブラウザーの印刷画面で、プリンター、用紙、部数などを確認して印刷します。</p></li>
@@ -514,6 +514,7 @@
             
             <div class="filter-row">
                 <span class="filter-label">📇 誕生日カードのデザイン：</span>
+                <span style="display:block;font-size:12px;color:#c2255c;margin-bottom:4px;">※入力画面でお誕生日の日にデザインを選んだ方は、そのデザインで表示します</span>
                 <select id="selectCardOrientation" class="filter-select" onchange="onCardBgChanged(); updateCardPhotoCountVisibility()">
                     <option value="vertical1" selected>縦型1（鶴亀と松竹梅）</option>
                     <option value="vertical2">縦型2（ピンクの花柄）</option>
@@ -583,6 +584,7 @@
         import { isShortStayService, normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
         import { renderGroupHomeRecord } from "./group-home.js";
         import { temperatureHtml } from "./fever.js";
+        import { cardDesignFor, chosenCardDesign, isValidCardDesign } from "./birthday-card.js";
         import { isResidentialLayoutRecord, renderResidentialRecord } from "./residential-care.js";
 
         function isValidIsoDate(value) {
@@ -930,12 +932,20 @@
                     lineStatus.style.color = linkedLineCount ? "#237032" : "#6c757d";
                     div.appendChild(lineStatus);
 
+                    let chosenDesign = chosenCardDesign(window.matchedRecordsGlobal.filter(record => record.userName === userName));
                     if (bData) {
                         let cardLbl = document.createElement("label");
                         cardLbl.className = "card-checkbox-label";
-                        let isChecked = (bData.diffDays <= 0) ? "checked" : "";
+                        let isChecked = (bData.diffDays <= 0 || chosenDesign) ? "checked" : "";
                         cardLbl.innerHTML = `<input type="checkbox" class="card-chk" value="${userName}" ${isChecked}> 🎁 誕生日カードも印刷`;
                         div.appendChild(cardLbl);
+                        if (chosenDesign) {
+                            let designNote = document.createElement("span");
+                            designNote.className = "card-design-note";
+                            designNote.textContent = `🎂 入力画面で選んだデザイン：${cardDesignFor(chosenDesign).label}`;
+                            designNote.style.cssText = "display:block;font-size:13px;font-weight:bold;color:#c2255c;margin:4px 0;";
+                            div.appendChild(designNote);
+                        }
                         
                         let msgInput = document.createElement("input");
                         msgInput.type = "text";
@@ -1011,9 +1021,7 @@
 
             let cardChks = document.querySelectorAll(".card-chk:checked");
             let printCardUsers = Array.from(cardChks).map(chk => chk.value);
-            let cardPhotoCount = document.getElementById("selectCardOrientation").value === "horizontal2"
-                ? Number(document.getElementById("cardPhotoCount").value)
-                : 1;
+            let cardPhotoCount = Number(document.getElementById("cardPhotoCount").value) || 1;
             
             let cardMessages = {};
             printCardUsers.forEach(u => {
@@ -1061,6 +1069,8 @@
                     let userPeriodRecords = recordsByUser[userName];
                     userPeriodRecords.sort((a, b) => a.date.localeCompare(b.date)); 
                     let userMonthRecords = monthlyDataByUser[userName] || userPeriodRecords;
+                    // 入力画面でお誕生日の日に選んだカードのデザイン（なければ印刷画面で選んだデザイン）
+                    let userCardDesign = chosenCardDesign(userPeriodRecords);
 
                     if (isShortStayService(sType)) {
                         // 入所・ユニット入所の長期入所用の記録は1日ずつ印刷し、以前の形式の記録は従来の期間まとめで印刷する
@@ -1072,12 +1082,12 @@
                             printCardUsers = printCardUsers.filter(u => u !== userName);
                         }
                         if (legacyRecords.length) {
-                            sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, legacyRecords, userMonthRecords, chartIndex++, startDate, endDate, shouldPrintCard, staffMsg, printTarget, cardPhotoCount));
+                            sheetPromises.push(renderGreenShortStayReport(printArea, userName, facilityName, legacyRecords, userMonthRecords, chartIndex++, startDate, endDate, shouldPrintCard, staffMsg, printTarget, cardPhotoCount, userCardDesign));
                             shouldPrintCard = false;
                         }
                         residentialRecords.forEach((data, recordIndex) => {
                             let printCardHere = shouldPrintCard && recordIndex === residentialRecords.length - 1;
-                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, printCardHere, printCardHere ? staffMsg : "", printTarget, cardPhotoCount));
+                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, printCardHere, printCardHere ? staffMsg : "", printTarget, cardPhotoCount, userCardDesign));
                         });
                     } else {
                         userPeriodRecords.forEach(data => {
@@ -1086,7 +1096,7 @@
                             if(shouldPrintCard) {
                                 printCardUsers = printCardUsers.filter(u => u !== data.userName);
                             }
-                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, shouldPrintCard, staffMsg, printTarget, cardPhotoCount));
+                            sheetPromises.push(renderDayServiceSheet(printArea, data, facilityName, userMonthRecords, chartIndex++, shouldPrintCard, staffMsg, printTarget, cardPhotoCount, userCardDesign));
                         });
                     }
                 });
@@ -1206,7 +1216,7 @@
             }
         }
 
-        async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate, shouldPrintCard, cardMessage = "", printTarget = "both", cardPhotoCount = 1) {
+        async function renderGreenShortStayReport(container, userName, facilityName, periodRecords, monthRecords, index, startDate, endDate, shouldPrintCard, cardMessage = "", printTarget = "both", cardPhotoCount = 1, cardDesign = "") {
             let chartCanvasId = `chart_${index}`;
             let bData = getBirthdayData(window.globalUsersData[userName] ? window.globalUsersData[userName].birthday : null, null, true, startDate, endDate, printTarget === "card_only");
             
@@ -1523,7 +1533,7 @@
 
             // ★ 2枚目（誕生日カード）の出力
             if (renderCard && bData) {
-                let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
+                let cardOrientationChoice = isValidCardDesign(cardDesign) ? cardDesign : document.getElementById("selectCardOrientation").value;
                 let todayImgUrl = await getCachedUrl(`images/${facilityId}/${userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${facilityId}/${userName}/face.jpg`) || defaultIcon;
                 let secondImgUrl = cardOrientationChoice === "horizontal2" && cardPhotoCount === 2
@@ -1545,31 +1555,8 @@
                 let cardPageDiv = document.createElement("div");
                 cardPageDiv.className = "print-page page-break"; 
                 
-                let layoutClass = "";
-                let bgImageSrc = "";
-                
-                if (cardOrientationChoice === "vertical1") {
-                    layoutClass = "layout-vertical1";
-                    bgImageSrc = "bg_birthday.jpg";
-                } else if (cardOrientationChoice === "vertical2") {
-                    layoutClass = "layout-vertical2";
-                    bgImageSrc = "bg_birthday_v2.jpg";
-                } else if (cardOrientationChoice === "vertical3") {
-                    layoutClass = "layout-vertical3";
-                    bgImageSrc = "functions/b1.png";
-                } else if (cardOrientationChoice === "horizontal1") {
-                    layoutClass = "layout-horizontal1";
-                    bgImageSrc = "bg_birthday_h_2.jpg"; 
-                } else if (cardOrientationChoice === "horizontal2") {
-                    layoutClass = "layout-horizontal2";
-                    bgImageSrc = "bg_birthday_h_1.jpg"; 
-                } else if (cardOrientationChoice === "horizontal3") {
-                    layoutClass = "layout-horizontal3";
-                    bgImageSrc = "functions/B2.png";
-                } else if (cardOrientationChoice === "horizontal4") {
-                    layoutClass = "layout-horizontal4";
-                    bgImageSrc = "functions/B3.png";
-                }
+                let layoutClass = `layout-${cardDesignFor(cardOrientationChoice).value}`;
+                let bgImageSrc = cardDesignFor(cardOrientationChoice).image;
 
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-container-v2 ${layoutClass}${Number(bData.age) >= 70 ? " card-longevity" : ""}${secondImgUrl ? " card-two-photos" : ""}">
@@ -1589,7 +1576,7 @@
             }
         }
 
-        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard, cardMessage = "", printTarget = "both", cardPhotoCount = 1) {
+        async function renderDayServiceSheet(container, data, facilityName, monthRecords, index, shouldPrintCard, cardMessage = "", printTarget = "both", cardPhotoCount = 1, cardDesign = "") {
             let chartCanvasId = `chart_${index}`;
             let customFieldsHtml = renderCustomFieldPrintHtml(data);
             let showDayServiceSection = isFormSectionVisible(data, "dayServiceSection");
@@ -1814,7 +1801,7 @@
 
             // ★ 2枚目（誕生日カード）の出力
             if (renderCard && bData) {
-                let cardOrientationChoice = document.getElementById("selectCardOrientation").value;
+                let cardOrientationChoice = isValidCardDesign(cardDesign) ? cardDesign : document.getElementById("selectCardOrientation").value;
                 let todayImgUrl = await getCachedUrl(`images/${facilityId}/${data.userName}/image_1.jpg`);
                 if (!todayImgUrl) todayImgUrl = await getCachedUrl(`faces/${facilityId}/${data.userName}/face.jpg`) || defaultIcon;
                 let secondImgUrl = cardOrientationChoice === "horizontal2" && cardPhotoCount === 2
@@ -1837,31 +1824,8 @@
                 cardPageDiv.className = "print-page page-break"; 
                 
                 // ★ 選択されたデザインに応じてクラスと画像を切り替える ★
-                let layoutClass = "";
-                let bgImageSrc = "";
-                
-                if (cardOrientationChoice === "vertical1") {
-                    layoutClass = "layout-vertical1";
-                    bgImageSrc = "bg_birthday.jpg";
-                } else if (cardOrientationChoice === "vertical2") {
-                    layoutClass = "layout-vertical2";
-                    bgImageSrc = "bg_birthday_v2.jpg";
-                } else if (cardOrientationChoice === "vertical3") {
-                    layoutClass = "layout-vertical3";
-                    bgImageSrc = "functions/b1.png";
-                } else if (cardOrientationChoice === "horizontal1") {
-                    layoutClass = "layout-horizontal1";
-                    bgImageSrc = "bg_birthday_h_2.jpg"; 
-                } else if (cardOrientationChoice === "horizontal2") {
-                    layoutClass = "layout-horizontal2";
-                    bgImageSrc = "bg_birthday_h_1.jpg"; 
-                } else if (cardOrientationChoice === "horizontal3") {
-                    layoutClass = "layout-horizontal3";
-                    bgImageSrc = "functions/B2.png";
-                } else if (cardOrientationChoice === "horizontal4") {
-                    layoutClass = "layout-horizontal4";
-                    bgImageSrc = "functions/B3.png";
-                }
+                let layoutClass = `layout-${cardDesignFor(cardOrientationChoice).value}`;
+                let bgImageSrc = cardDesignFor(cardOrientationChoice).image;
 
                 cardPageDiv.innerHTML = `
                     <div class="birthday-card-container-v2 ${layoutClass}${Number(bData.age) >= 70 ? " card-longevity" : ""}${secondImgUrl ? " card-two-photos" : ""}">

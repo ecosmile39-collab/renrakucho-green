@@ -57,6 +57,14 @@
         #previewArea { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
         .preview-item { display: flex; flex-direction: column; align-items: center; gap: 8px; border: 1px solid #ddd; border-radius: 8px; padding: 8px; background-color: #fff; width: 140px; }
         img.preview-media-tag, video.preview-media-tag { max-width: 100%; max-height: 95px; object-fit: cover; border-radius: 5px; }
+        #birthdayCardPicker { margin: 12px 0 0; padding: 12px; background: #fff0f6; border: 2px solid #f783ac; border-radius: 8px; }
+        .birthday-card-picker-title { font-weight: bold; font-size: 17px; color: #c2255c; }
+        .birthday-card-picker-hint { font-size: 12px; color: #495057; margin: 4px 0 8px; }
+        .birthday-card-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+        .birthday-card-option { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; background: #fff; border: 2px solid #dee2e6; border-radius: 8px; cursor: pointer; font-size: 11px; line-height: 1.3; color: #343a40; }
+        .birthday-card-option img { width: 100%; height: 72px; object-fit: contain; background: #f8f9fa; border-radius: 4px; }
+        .birthday-card-option.is-selected { border-color: #c2255c; background: #ffdeeb; font-weight: bold; }
+        .birthday-card-chosen { margin-top: 8px; font-size: 13px; font-weight: bold; color: #c2255c; }
         #familyMessagePanel { margin: 0 0 15px; padding: 12px 14px; background: #f3f0ff; border: 1px solid #9775fa; border-radius: 8px; }
         #familyMessagePanel summary { cursor: pointer; font-weight: bold; color: #5f3dc4; }
         #familyMessagePanel.has-unchecked { animation: familyMessageBlink 1.2s ease-in-out infinite; border-width: 2px; }
@@ -424,6 +432,13 @@
                 <label style="display: block; margin-top: 8px; font-size: 13px; cursor: pointer;">
                     <input type="checkbox" id="showInactiveUsers" onchange="loadUserNames(localStorage.getItem('currentFacilityId'))" style="width: auto; margin-right: 5px;"> 利用終了者も表示する
                 </label>
+                <div id="birthdayCardPicker" hidden>
+                    <div id="birthdayCardPickerTitle" class="birthday-card-picker-title">🎂 本日はお誕生日です</div>
+                    <div class="birthday-card-picker-hint">誕生日カードのデザインを選ぶと、印刷確認の画面でそのデザインのカードが表示されます（選び直し・解除もできます）。</div>
+                    <div id="birthdayCardOptions" class="birthday-card-options"></div>
+                    <div id="birthdayCardChosen" class="birthday-card-chosen" role="status"></div>
+                    <input type="hidden" id="birthdayCardDesign" value="">
+                </div>
                 <div id="customFacilityFields" hidden style="margin: 12px 0 0; padding: 12px; background: #f8f9fa; border: 1px solid #ced4da; border-radius: 6px;">
                     <div id="customFacilityFieldInputs"></div>
                     <button type="button" id="saveCustomFacilityFieldsButton" onclick="saveCustomFacilityFields()" style="margin-top: 8px; padding: 7px 10px; background: #1c7ed6; color: white; border: 0; border-radius: 4px; cursor: pointer;">利用者情報に保存</button>
@@ -1146,6 +1161,7 @@
         import { buildGroupHomeForm, readGroupHomeFields, restoreGroupHomeFields, validateGroupHomeFields } from "./group-home.js";
         import { setupSentenceTemplates } from "./sentence-templates.js";
         import { TEMPERATURE_FIELD_IDS, isFever } from "./fever.js";
+        import { BIRTHDAY_CARD_DESIGNS, ageOn, cardDesignFor, isBirthdayOn, isValidCardDesign } from "./birthday-card.js";
         import { buildResidentialForm, readResidentialFields, restoreResidentialFields, validateResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT } from "./residential-care.js";
 
         buildGroupHomeForm(document.getElementById("groupHomeFields"));
@@ -2108,10 +2124,66 @@
             let userName = document.getElementById("userName").value;
             let dateStr = dateInput.value;
             if (userName && dateStr) {
+                updateBirthdayCardPicker(window.globalUsersData[userName], dateStr);
                 applyDraftOrEmpty(userName, dateStr);
                 fetchServerData(userName, dateStr);
             }
         };
+
+        // その日がお誕生日の方を選ぶと、誕生日カードのデザインを選べる欄を出す
+        function updateBirthdayCardPicker(userData, dateStr) {
+            const picker = document.getElementById("birthdayCardPicker");
+            if (!picker) return;
+            const isBirthday = !!(userData && isBirthdayOn(userData.birthday, dateStr));
+            picker.hidden = !isBirthday;
+            if (!isBirthday) {
+                setBirthdayCardDesign("");
+                return;
+            }
+            const age = ageOn(userData.birthday, dateStr);
+            const now = new Date();
+            const todayString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+            const today = dateStr === todayString ? "本日は" : `${Number(dateStr.substring(5, 7))}月${Number(dateStr.substring(8, 10))}日は`;
+            document.getElementById("birthdayCardPickerTitle").textContent = `🎂 ${today}お誕生日です${age !== null ? `（${age}歳）` : ""}`;
+            const options = document.getElementById("birthdayCardOptions");
+            if (!options.childElementCount) {
+                options.replaceChildren(...BIRTHDAY_CARD_DESIGNS.map(design => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "birthday-card-option";
+                    button.dataset.design = design.value;
+                    const image = document.createElement("img");
+                    image.src = design.image;
+                    image.alt = design.label;
+                    image.loading = "lazy";
+                    const label = document.createElement("span");
+                    label.textContent = design.label;
+                    button.append(image, label);
+                    button.addEventListener("click", () => {
+                        const current = document.getElementById("birthdayCardDesign").value;
+                        setBirthdayCardDesign(current === design.value ? "" : design.value);
+                        autoSaveDraft();
+                    });
+                    return button;
+                }));
+            }
+            setBirthdayCardDesign(document.getElementById("birthdayCardDesign").value);
+        }
+
+        function setBirthdayCardDesign(value) {
+            const input = document.getElementById("birthdayCardDesign");
+            if (!input) return;
+            const picker = document.getElementById("birthdayCardPicker");
+            const design = isValidCardDesign(value) && picker && !picker.hidden ? value : "";
+            input.value = design;
+            document.querySelectorAll(".birthday-card-option").forEach(button => {
+                const selected = button.dataset.design === design;
+                button.classList.toggle("is-selected", selected);
+                button.setAttribute("aria-pressed", selected ? "true" : "false");
+            });
+            const chosen = document.getElementById("birthdayCardChosen");
+            if (chosen) chosen.textContent = design ? `✅ ${cardDesignFor(design).label} を選びました。記録を保存すると、印刷確認の画面に反映されます。` : "";
+        }
 
         window.onServiceTypeChanged = async function() {
             let sType = document.getElementById("serviceType").value;
@@ -2326,6 +2398,7 @@
             if(!userName) {
                 document.getElementById("userFace").style.display = "none";
                 document.getElementById("ageDisplay").textContent = "";
+                updateBirthdayCardPicker(null, dateStr);
                 renderCustomFacilityProfileFields({});
                 userSettingsArea.style.display = "none";
                 userActionBtns.style.display = "none";
@@ -2357,6 +2430,7 @@
             } else {
                 ageDisplay.textContent = "";
             }
+            updateBirthdayCardPicker(userData, dateStr);
 
             userSettingsArea.style.display = "block";
             userActionBtns.style.display = "flex";
@@ -2934,6 +3008,7 @@ function getTrialAccessEndTime(facilityData) {
 
             if (draftStr) {
                 let d = JSON.parse(draftStr);
+                if (typeof setBirthdayCardDesign === "function") setBirthdayCardDesign(d.birthdayCardDesign || "");
                 restoreGroupHomeFields(document, d);
                 restoreResidentialFields(document, d);
                 document.getElementById("temp1").value = d.temp1 || "";
@@ -3330,6 +3405,7 @@ function getTrialAccessEndTime(facilityData) {
                         if(document.getElementById("stNightState")) document.getElementById("stNightState").value = data.stNightState || "";
                         if(document.getElementById("stDayActivity")) document.getElementById("stDayActivity").value = data.stDayActivity || data.activity || "";
 
+                        if (typeof setBirthdayCardDesign === "function") setBirthdayCardDesign(data.birthdayCardDesign || "");
                         restoreGroupHomeFields(document, data);
                         restoreResidentialFields(document, data);
                         document.getElementById("careStaff").value = data.careStaff || "";
@@ -3589,6 +3665,7 @@ function getTrialAccessEndTime(facilityData) {
                 })),
                 hiddenFormSections: [...facilityFormCustomization.hiddenSections],
                 publishToFamily: familyLinePublicationEnabled && document.getElementById("publishToFamilyCheckbox").checked,
+                birthdayCardDesign: document.getElementById("birthdayCardDesign").value || "",
                 imageCount: finalImageCount, videoCount: window.currentVideoCount,
                 imageFiles: imageFiles, videoFiles: videoFiles
             };
@@ -4035,6 +4112,7 @@ function getTrialAccessEndTime(facilityData) {
         };
 
         function resetFormInputs() {
+            if (typeof setBirthdayCardDesign === "function") setBirthdayCardDesign("");
             restoreGroupHomeFields(document);
             restoreResidentialFields(document);
             accumulatedFiles = []; 
