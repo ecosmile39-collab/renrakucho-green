@@ -645,7 +645,7 @@
                 <li><strong>サービス種別を選ぶ</strong><p>「サービス種別」で、印刷したい記録のサービスを選びます。デイサービスなどを選ぶと、対象日の記録を検索します。</p></li>
                 <li><strong>日付を選ぶ</strong><p>ショートステイ・入所・ユニット入所以外は「ご利用日」を1日選びます。これらのサービスは利用期間の開始日と終了日を選びます。開始日は終了日より後にできません。入所・ユニット入所は、選んだ期間の記録を1日1枚ずつ印刷します。</p></li>
                 <li><strong>印刷する内容を選ぶ</strong><p>「印刷する内容」から選びます。</p><ul><li>「連絡帳＋誕生日カード」：連絡帳と、選択した方の誕生日カード</li><li>「連絡帳のみ」：連絡帳だけ</li><li>「誕生日カードのみ」：誕生日カードだけ。カードだけを別の用紙に印刷する場合に使います。</li></ul></li>
-                <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「縦型4」「縦型5」「縦型6」は写真を3枚（大きい写真1枚と小さい写真2枚）入れられるデザインです。「縦型7」は大きな丸い写真を1枚入れるデザインです。縦型4〜7は、写真の周りをぼかして背景になじませ、文字は角ゴシックの太字で大きく表示します。連絡帳に保存した写真が順に入り、足りない分は顔写真が入ります。お名前の下の「カードの写真を選ぶ・入れ替える」を開くと、大きい写真・小さい写真の場所を押してから、使える写真を見ながら入れ替えられます。この端末に入っている昔の写真を追加して使うこともできます（印刷にだけ使い、保存はしません）。<br><strong>撮り方のコツ：</strong>写真3枚のデザインは写真の場所が横長なので、スマホを横に持って撮ると大きく表示されます（特に大きい写真になる1枚目）。丸い写真のデザイン（縦型7）は、顔が写真の真ん中より少し上に来るように撮るときれいに入ります。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
+                <li><strong>誕生日カードのデザインを選ぶ</strong><p>縦型・横型のデザインを選びます。「縦型4」「縦型5」「縦型6」は写真を3枚（大きい写真1枚と小さい写真2枚）入れられるデザインです。「縦型7」は大きな丸い写真を1枚入れるデザインです。縦型4〜7は、写真の周りをぼかして背景になじませ、文字は角ゴシックの太字で大きく表示します。連絡帳に保存した写真が順に入り、足りない分は顔写真が入ります。お名前の下の「カードの写真を選ぶ・入れ替える」を開くと（すべてのデザインで使えます）、大きい写真・小さい写真の場所を押してから、使える写真を見ながら入れ替えられます。この端末に入っている昔の写真を追加して使うこともできます（印刷にだけ使い、保存はしません）。<br><strong>撮り方のコツ：</strong>写真3枚のデザインは写真の場所が横長なので、スマホを横に持って撮ると大きく表示されます（特に大きい写真になる1枚目）。丸い写真のデザイン（縦型7）は、顔が写真の真ん中より少し上に来るように撮るときれいに入ります。「横型2」は写真を1枚または2枚にできます。2枚にすると、入力画面の「その場で写真を撮影する」または「アルバムから写真・動画を選ぶ」から記録に保存した1枚目・2枚目の写真が左右に表示されます。2枚目がない場合は、顔写真が代わりに使われます。「文字背景」は透明か白色を選べます。白色にすると文字が読みやすくなります。</p></li>
                 <li><strong>印刷する利用者を選ぶ</strong><p>記録がある利用者が「LINE未連携」「LINE連携済み」に分かれて表示されます。LINE連携済みでも印刷できます。「すべて選択／解除」ですべてのチェックをまとめて切り替えられます。印刷しない方はチェックを外します。</p></li>
                 <li><strong>誕生日カードを選ぶ</strong><p>誕生日カードを付けられる方には「誕生日カードも印刷」が表示されます。必要な方にチェックし、必要なら任意のメッセージを入力します。入力画面でお誕生日の日にデザインを選んだ方は、最初からチェックが入り、「この方のカードのデザイン」に選んだデザインが入ります。ここで方ごとにデザインを選び直せます。「上で選んだデザインと同じ」にすると、上の「誕生日カードのデザイン」で選んだデザインになります。</p></li>
                 <li><strong>確認用画面を作る</strong><p>「選んだ人の連絡帳を画面に表示する（確認用）」を押します。作成中は少し待ちます。選んだ人数や写真の数によって時間がかかることがあります。</p></li>
@@ -1202,7 +1202,7 @@
             const details = document.createElement("details");
             details.className = "card-photo-picker";
             const summary = document.createElement("summary");
-            summary.textContent = "📷 カードの写真を選ぶ・入れ替える（縦型4〜7。縦型7は「大きい写真」だけを使います）";
+            summary.textContent = "📷 カードの写真を選ぶ・入れ替える（すべてのデザインで使えます。縦型4〜6は3枚、横型2の2枚表示は「大きい写真」と「小さい写真（左）」、ほかのデザインは「大きい写真」を使います）";
             details.appendChild(summary);
             const body = document.createElement("div");
             details.appendChild(body);
@@ -1857,6 +1857,10 @@
                 let secondImgUrl = cardOrientationChoice === "horizontal2" && cardPhotoCount === 2
                     ? await getCachedUrl(`images/${facilityId}/${userName}/image_2.jpg`) || await getCachedUrl(`faces/${facilityId}/${userName}/face.jpg`) || defaultIcon
                     : "";
+                // 印刷画面の「カードの写真を選ぶ・入れ替える」で選んだ写真は、今までのデザインにも使う
+                const chosenCardPhotos = cardPhotoOverrides[userName] || [];
+                if (chosenCardPhotos[0]) todayImgUrl = chosenCardPhotos[0];
+                if (secondImgUrl && chosenCardPhotos[1]) secondImgUrl = chosenCardPhotos[1];
 
                 let currentYear = parseInt(startDate.substring(0,4));
                 let reiwaYear = currentYear - 2018;
@@ -2129,6 +2133,10 @@
                 let secondImgUrl = cardOrientationChoice === "horizontal2" && cardPhotoCount === 2
                     ? await getCachedUrl(`images/${facilityId}/${data.userName}/image_2.jpg`) || await getCachedUrl(`faces/${facilityId}/${data.userName}/face.jpg`) || defaultIcon
                     : "";
+                // 印刷画面の「カードの写真を選ぶ・入れ替える」で選んだ写真は、今までのデザインにも使う
+                const chosenCardPhotos = cardPhotoOverrides[data.userName] || [];
+                if (chosenCardPhotos[0]) todayImgUrl = chosenCardPhotos[0];
+                if (secondImgUrl && chosenCardPhotos[1]) secondImgUrl = chosenCardPhotos[1];
 
                 let currentYear = parseInt(data.date.substring(0,4));
                 let reiwaYear = currentYear - 2018;
