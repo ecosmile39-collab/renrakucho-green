@@ -1,0 +1,11 @@
+# Vercel に載せないもの（Deployment Storage を節約するため）
+# functions/ は Firebase のサーバー側のプログラム。誕生日カードの画像3枚だけはアプリが使うので残す
+functions/*
+!functions/b1.png
+!functions/B2.png
+!functions/B3.png
+tools/
+*.test.js
+*.md
+新規登録説明文.txt
+1.mp4
