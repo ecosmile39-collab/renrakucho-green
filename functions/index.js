@@ -31,6 +31,8 @@ const { LP_ANALYTICS_PROPERTY_ID, buildLpAnalyticsRequest, parseLpAnalyticsRespo
 const { LP_INQUIRY_ORIGIN, LP_INQUIRY_HOURLY_LIMIT, parseLpInquiry } = require("./lp-inquiry");
 const { createJobStatusWrapper } = require("./job-status");
 const withJobStatus = createJobStatusWrapper(() => getFirestore(), logger);
+// メールの署名に添えるマスコット「えこたん」（アプリと同じ場所に置いた画像を読み込む）
+const ECOTAN_EMAIL_HTML = '<img src="https://renrakucho-green.vercel.app/assets/ecotan/ecotan-128.png" alt="えこたん" width="48" height="55" style="width:48px;height:auto;vertical-align:middle;margin-right:8px;border:0">';
 const { daysUntilTrialEnds, isTrialReminderDue } = require("./trial-reminder");
 const { getFacilityRetentionDeadline, isFacilityRetentionExpired } = require("./facility-retention");
 
@@ -746,7 +748,7 @@ exports.registerTrialFacility = onCall({
 
             <hr style="border:none;border-top:1px solid #dee2e6;margin:28px 0">
             <div style="font-size:12px;color:#666">
-                <strong>株式会社えこすまいる</strong><br>
+                ${ECOTAN_EMAIL_HTML}<strong>株式会社えこすまいる</strong><br>
                 〒719-1164 岡山県総社市西郡430-2<br>
                 連絡先：${escapeHtml(gmailUser)}
             </div>
@@ -2731,7 +2733,7 @@ exports.requestFacilitySubscription = onCall({
         <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　${total.toLocaleString("ja-JP")}円</p>
         <table style="width:100%;border-collapse:collapse"><thead><tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">内容</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">金額</th></tr></thead><tbody>
         ${invoiceRows}</tbody></table>
-        <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
+        <div style="margin-top:28px"><h2>発行元</h2><p>${ECOTAN_EMAIL_HTML}株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
         <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能な請求書PDF（<code>請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。印刷して保管される際などにご活用ください。</p>
         <p style="margin-top:20px;padding:12px;background:#fff5f5;border:1px solid #ffa8a8;border-radius:4px;color:#c92a2a;font-weight:bold">${escapeHtml(PAYMENT_SUSPENSION_NOTICE)}</p>
@@ -3017,7 +3019,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　${total.toLocaleString("ja-JP")}円</p>
         <table style="width:100%;border-collapse:collapse"><thead><tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">内容</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">金額</th></tr></thead><tbody>
         ${invoiceRows}</tbody></table>
-        <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
+        <div style="margin-top:28px"><h2>発行元</h2><p>${ECOTAN_EMAIL_HTML}株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
         <p style="margin-top:20px;padding:12px;background:#e7f5ff;border:1px solid #74c0fc"><strong>A4印刷用の請求書PDFを添付しております。</strong></p>
         <p style="margin-top:20px;padding:12px;background:#fff5f5;border:1px solid #ffa8a8;border-radius:4px;color:#c92a2a;font-weight:bold">${escapeHtml(PAYMENT_SUSPENSION_NOTICE)}</p>
@@ -3187,7 +3189,7 @@ exports.sendTestInvoiceEmail = onCall({
             tax: pricing.tax,
             total: pricing.total
         })}</tbody></table>
-        <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
+        <div style="margin-top:28px"><h2>発行元</h2><p>${ECOTAN_EMAIL_HTML}株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
         <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能なテスト請求書PDF（<code>テスト請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。</p>
         <p style="background:#fff4e6;padding:12px">これは送信テストです。実際の請求・お支払いは発生しません。</p>
@@ -3426,7 +3428,7 @@ exports.sendMonthlyInvoices = onSchedule({
             <p style="font-size:20px;font-weight:bold">ご請求金額（税込）　${pricing.total.toLocaleString("ja-JP")}円</p>
             <table style="width:100%;border-collapse:collapse"><thead><tr><th style="border:1px solid #adb5bd;padding:10px;text-align:left">内容</th><th style="border:1px solid #adb5bd;padding:10px;text-align:left">金額</th></tr></thead><tbody>
             ${invoiceRows}</tbody></table>
-            <div style="margin-top:28px"><h2>発行元</h2><p>株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
+            <div style="margin-top:28px"><h2>発行元</h2><p>${ECOTAN_EMAIL_HTML}株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
             <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
             <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能な請求書PDF（<code>請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。印刷して保管される際などにご活用ください。</p>
             <p style="margin-top:20px;padding:12px;background:#fff5f5;border:1px solid #ffa8a8;border-radius:4px;color:#c92a2a;font-weight:bold">${escapeHtml(PAYMENT_SUSPENSION_NOTICE)}</p>
@@ -3636,7 +3638,7 @@ exports.sendTrialExpiryReminders = onSchedule({
             <p>${escapeHtml(FACILITY_RETENTION_NOTICE)}</p>
             <p><a href="https://renrakucho-green.vercel.app/login.html" style="display:inline-block;background:#2b8a3e;color:white;text-decoration:none;padding:10px 18px;border-radius:5px">連絡帳にログインする</a></p>
             <p>ご不明な点がございましたら、このメールへの返信または販売元までお問い合わせください。</p>
-            <p>株式会社えこすまいる</p>
+            <p>${ECOTAN_EMAIL_HTML}株式会社えこすまいる</p>
         </body></html>`;
 
         try {

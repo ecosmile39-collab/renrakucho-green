@@ -4,6 +4,7 @@ const fs = require("fs");
 
 const FONT_PATH = path.join(__dirname, "fonts", "ipaexg.ttf");
 const STAMP_PATH = path.join(__dirname, "company_stamp.png");
+const ECOTAN_PATH = path.join(__dirname, "ecotan.png");
 
 /**
  * Generate an A4 single-page PDF buffer for an invoice.
@@ -189,6 +190,10 @@ function generateInvoicePdf({
                 bankY + 30,
                 { lineGap: 4 }
             );
+            // お振込先の欄の右端に、マスコット「えこたん」を小さく添える
+            if (fs.existsSync(ECOTAN_PATH)) {
+                doc.image(ECOTAN_PATH, margin + contentWidth - 62, bankY + 8, { height: 60 });
+            }
 
             // Note / Appreciation block
             if (note) {
