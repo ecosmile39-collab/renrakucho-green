@@ -300,7 +300,10 @@
         .card-longevity.layout-vertical7 .dynamic-chouju-v2 { top: 5.5%; font-size: 7cqw; }
         /* 大きな丸い写真1枚（縦型7）：顔が切れないよう、写真の上寄りを丸く切り抜く */
         .card-photo-zone.card-photo-round { grid-template: 1fr / 1fr; justify-items: center; }
-        .card-photo-zone.card-photo-round .card-photo { grid-column: auto; height: 100%; aspect-ratio: 1 / 1; border-radius: 50%; border-width: 1.2cqw; }
+        .card-photo-zone.card-photo-round .card-photo { grid-column: auto; height: 100%; aspect-ratio: 1 / 1; border-radius: 50%; border: 0; background: transparent; box-shadow: none;
+            -webkit-mask-image: radial-gradient(circle closest-side, black 62%, transparent 98%); mask-image: radial-gradient(circle closest-side, black 62%, transparent 98%);
+            -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .card-photo-zone.card-photo-round .card-photo .card-photo-fill { display: none; }
         .card-photo-zone.card-photo-round .card-photo .card-photo-main { object-fit: cover; object-position: center 30%; }
         .card-photo-picker { display: block; margin: 6px 0 4px; font-size: 13px; }
         .card-photo-picker summary { cursor: pointer; color: #c2255c; font-weight: bold; }
