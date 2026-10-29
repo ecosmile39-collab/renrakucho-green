@@ -10,16 +10,23 @@ export const BIRTHDAY_CARD_DESIGNS = [
     { value: "vertical4", label: "縦型4（パステルの花・写真3枚）", image: "https://renrakucyou.ecosmile.xyz/lp/wp-content/uploads/2026/10/ecs-card-base-pastel-2k-scaled.jpg", photoCount: 3 },
     { value: "vertical5", label: "縦型5（和風の桜と梅・写真3枚）", image: "https://renrakucyou.ecosmile.xyz/lp/wp-content/uploads/2026/10/ecs-card-base-wafu-2k-scaled.jpg", photoCount: 3 },
     { value: "vertical6", label: "縦型6（ピンクの花柄・写真3枚）", image: "bg_birthday_v2.jpg", photoCount: 3 },
-    { value: "vertical7", label: "縦型7（ピンクの花柄・大きな丸い写真1枚）", image: "bg_birthday_v2.jpg", photoCount: 1, roundPhoto: true },
-    { value: "vertical8", label: "縦型8（ピンクの花柄・丸い写真1枚・周りぼかし）", image: "bg_birthday_v2.jpg", photoCount: 1, roundPhoto: true }
+    { value: "vertical7", label: "縦型7（ピンクの花柄・大きな丸い写真1枚）", image: "bg_birthday_v2.jpg", photoCount: 1, roundPhoto: true }
 ];
 
+// 一覧から外したデザイン → 同じ見た目のデザイン（前に保存した記録もそのまま使えるようにする）
+const RETIRED_DESIGNS = { vertical8: "vertical7" };
+export function normalizeCardDesign(value) {
+    return RETIRED_DESIGNS[value] || value;
+}
+
 export function isValidCardDesign(value) {
-    return BIRTHDAY_CARD_DESIGNS.some(design => design.value === value);
+    const normalized = normalizeCardDesign(value);
+    return BIRTHDAY_CARD_DESIGNS.some(design => design.value === normalized);
 }
 
 export function cardDesignFor(value) {
-    return BIRTHDAY_CARD_DESIGNS.find(design => design.value === value) || BIRTHDAY_CARD_DESIGNS[0];
+    const normalized = normalizeCardDesign(value);
+    return BIRTHDAY_CARD_DESIGNS.find(design => design.value === normalized) || BIRTHDAY_CARD_DESIGNS[0];
 }
 
 const isLeapYear = year => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
@@ -72,5 +79,5 @@ export function chosenCardDesign(records) {
     const chosen = (records || [])
         .filter(record => isValidCardDesign(record?.birthdayCardDesign))
         .sort((first, second) => String(second.date || "").localeCompare(String(first.date || "")));
-    return chosen.length ? chosen[0].birthdayCardDesign : "";
+    return chosen.length ? normalizeCardDesign(chosen[0].birthdayCardDesign) : "";
 }

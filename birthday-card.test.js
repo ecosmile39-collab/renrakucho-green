@@ -5,7 +5,7 @@ import { BIRTHDAY_CARD_DESIGNS, ageOn, birthdayWindow, cardDesignFor, chosenCard
 
 test("every card design matches a print screen choice", () => {
     const print = readFileSync(new URL("./print.html", import.meta.url), "utf8");
-    assert.equal(BIRTHDAY_CARD_DESIGNS.length, 12);
+    assert.equal(BIRTHDAY_CARD_DESIGNS.length, 11);
     assert.deepEqual(BIRTHDAY_CARD_DESIGNS.filter(design => design.photoCount === 3).map(design => design.value), ["vertical4", "vertical5", "vertical6"]);
     for (const design of BIRTHDAY_CARD_DESIGNS) {
         assert.match(print, new RegExp(`<option value="${design.value}"`), design.value);
@@ -61,4 +61,10 @@ test("the design can be chosen from 3 days before to 3 days after the birthday",
 test("the print screen offers the card from 3 days before to 3 days after the birthday", () => {
     const print = readFileSync(new URL("./print.html", import.meta.url), "utf8");
     assert.match(print, /diffDays >= -3 && diffDays <= 3/);
+});
+
+test("a record saved with the retired design 8 is shown as design 7", () => {
+    assert.equal(isValidCardDesign("vertical8"), true);
+    assert.equal(cardDesignFor("vertical8").value, "vertical7");
+    assert.equal(chosenCardDesign([{ date: "2026-10-29", birthdayCardDesign: "vertical8" }]), "vertical7");
 });

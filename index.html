@@ -1161,7 +1161,7 @@
         import { buildGroupHomeForm, readGroupHomeFields, restoreGroupHomeFields, validateGroupHomeFields } from "./group-home.js";
         import { setupSentenceTemplates } from "./sentence-templates.js";
         import { TEMPERATURE_FIELD_IDS, isFever } from "./fever.js";
-        import { BIRTHDAY_CARD_DESIGNS, birthdayWindow, cardDesignFor, isValidCardDesign } from "./birthday-card.js";
+        import { BIRTHDAY_CARD_DESIGNS, birthdayWindow, cardDesignFor, isValidCardDesign, normalizeCardDesign } from "./birthday-card.js";
         import { buildResidentialForm, readResidentialFields, restoreResidentialFields, validateResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT } from "./residential-care.js";
 
         buildGroupHomeForm(document.getElementById("groupHomeFields"));
@@ -2181,7 +2181,7 @@
             const input = document.getElementById("birthdayCardDesign");
             if (!input) return;
             const picker = document.getElementById("birthdayCardPicker");
-            const design = isValidCardDesign(value) && picker && !picker.hidden ? value : "";
+            const design = isValidCardDesign(value) && picker && !picker.hidden ? normalizeCardDesign(value) : "";
             input.value = design;
             document.querySelectorAll(".birthday-card-option").forEach(button => {
                 const selected = button.dataset.design === design;
