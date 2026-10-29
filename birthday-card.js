@@ -8,7 +8,8 @@ export const BIRTHDAY_CARD_DESIGNS = [
     { value: "horizontal3", label: "横型3（折り紙の花・緑）", image: "functions/B2.png" },
     { value: "horizontal4", label: "横型4（折り紙の花・赤）", image: "functions/B3.png" },
     { value: "vertical4", label: "縦型4（パステルの花・写真3枚）", image: "https://renrakucyou.ecosmile.xyz/lp/wp-content/uploads/2026/10/ecs-card-base-pastel-2k-scaled.jpg", photoCount: 3 },
-    { value: "vertical5", label: "縦型5（和風の桜と梅・写真3枚）", image: "https://renrakucyou.ecosmile.xyz/lp/wp-content/uploads/2026/10/ecs-card-base-wafu-2k-scaled.jpg", photoCount: 3 }
+    { value: "vertical5", label: "縦型5（和風の桜と梅・写真3枚）", image: "https://renrakucyou.ecosmile.xyz/lp/wp-content/uploads/2026/10/ecs-card-base-wafu-2k-scaled.jpg", photoCount: 3 },
+    { value: "vertical6", label: "縦型6（ピンクの花柄・写真3枚）", image: "bg_birthday_v2.jpg", photoCount: 3 }
 ];
 
 export function isValidCardDesign(value) {
