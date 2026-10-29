@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { BIRTHDAY_CARD_DESIGNS, ageOn, birthdayWindow, cardDesignFor, chosenCardDesign, isBirthdayOn, isValidCardDesign } from "./birthday-card.js";
 
-test("the seven card designs match the print screen choices", () => {
+test("every card design matches a print screen choice", () => {
     const print = readFileSync(new URL("./print.html", import.meta.url), "utf8");
-    assert.equal(BIRTHDAY_CARD_DESIGNS.length, 7);
+    assert.equal(BIRTHDAY_CARD_DESIGNS.length, 9);
+    assert.deepEqual(BIRTHDAY_CARD_DESIGNS.filter(design => design.photoCount === 3).map(design => design.value), ["vertical4", "vertical5"]);
     for (const design of BIRTHDAY_CARD_DESIGNS) {
         assert.match(print, new RegExp(`<option value="${design.value}"`), design.value);
         assert.match(print, new RegExp(`layout-${design.value}`), design.value);
