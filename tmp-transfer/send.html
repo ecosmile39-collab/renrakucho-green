@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><script>
+(async () => {
+  const files = {};
+  for (const name of ["ecs-ecotan.mp4", "ecs-ecotan-poster.jpg"]) {
+    const response = await fetch(name, { cache: "no-store" });
+    files[name] = await response.blob();
+  }
+  parent.postMessage({ ecotanFiles: files }, "https://renrakucyou.ecosmile.xyz");
+})();
+</script>
