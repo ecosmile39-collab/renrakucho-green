@@ -66,3 +66,27 @@ test("temperatures of 37.0 or more get a star for families, lower ones and other
     const child = visible({ serviceType: "児童発達支援", afterSchoolTemperature: "37.5" });
     assert.equal(child["来所時体温"], "★37.5");
 });
+
+test("day care records show the rehabilitation details to families, and hide them with the day section", () => {
+    const record = {
+        serviceType: "デイケア", careStaff: "佐藤", temp1: "36.5", training: "歩行訓練、バランス訓練",
+        rhStaffRole: "理学療法士（PT）", rhStaffName: "山田", rhItems: "歩行訓練 10m×3回",
+        rhItemRows: [{ name: "歩行訓練", amount: "10m×3回" }],
+        rhGoal: "杖で自宅のトイレまで歩ける", rhChange: "手すりなしで5回立ち上がれた", dsAttendance: "利用"
+    };
+    const fields = visible(record);
+    assert.equal(fields["実施したリハビリ"], "歩行訓練、バランス訓練");
+    assert.equal(fields["機能訓練"], undefined);
+    assert.equal(fields["担当リハビリ職"], "理学療法士（PT）");
+    assert.equal(fields["リハビリ担当者"], "山田");
+    assert.equal(fields["リハビリの内容と量"], "歩行訓練 10m×3回");
+    assert.equal(fields["前回からの変化・できたこと"], "手すりなしで5回立ち上がれた");
+    assert.equal(fields["リハビリの目標"], "杖で自宅のトイレまで歩ける");
+    assert.equal(fields["利用状況"], "利用");
+    const hidden = visible({ ...record, hiddenFormSections: ["dayServiceSection"] });
+    assert.equal(hidden["リハビリの内容と量"], undefined);
+    assert.equal(hidden["担当リハビリ職"], undefined);
+    const dayService = visible({ serviceType: "デイサービス", training: "歩行訓練", rhItems: "古いデータ" });
+    assert.equal(dayService["機能訓練"], "歩行訓練");
+    assert.equal(dayService["リハビリの内容と量"], undefined);
+});

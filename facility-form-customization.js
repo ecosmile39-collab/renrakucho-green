@@ -1,6 +1,6 @@
 export const FORM_CUSTOMIZATION_SECTIONS = [
     { id: "careJournalArea", label: "介護日誌・重要申し送り" },
-    { id: "dayServiceSection", label: "デイサービスの記録" },
+    { id: "dayServiceSection", label: "デイサービス・デイケアの記録" },
     { id: "afterSchoolSection", label: "放課後等デイサービス・児童発達支援の記録" },
     { id: "lifeCareSection", label: "生活介護の記録" },
     { id: "shortStaySection", label: "ショートステイの記録" },

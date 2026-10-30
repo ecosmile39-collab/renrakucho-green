@@ -9,6 +9,7 @@ import {
 } from "./residential-care.js";
 import { isShortStayService } from "./service-types.js";
 import { removeUndefinedFields } from "./firestore-data.js";
+import { fillDayCareRehabFields, readDayCareRehabFields } from "./day-care.js";
 import { FORM_CUSTOMIZATION_SECTIONS } from "./facility-form-customization.js";
 
 const source = readFileSync(new URL("./index.html", import.meta.url), "utf8");
@@ -56,6 +57,7 @@ function createContext(serviceType) {
         syncTextSuggestionSelects() {},
         readGroupHomeFields, restoreGroupHomeFields, isShortStayService, removeUndefinedFields,
         readResidentialFields, restoreResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT,
+        fillDayCareRehabFields, readDayCareRehabFields,
         serverDataLoadSequence: 0, db: {},
         doc: (...parts) => parts.slice(1).join("/"),
         getDoc: async () => ({ exists: () => true, data: () => sandbox.serverRecord }),

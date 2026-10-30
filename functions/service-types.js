@@ -1,5 +1,6 @@
 const SUPPORTED_SERVICE_TYPES = [
     "デイサービス",
+    "デイケア",
     "ショートステイ",
     "入所",
     "ユニット入所",

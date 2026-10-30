@@ -24,6 +24,8 @@ const recordLabels = {
     mealMain: "食事（主食）", mealSub: "食事（副食）", water: "水分", medication: "服薬・処置",
     oralCare: "口腔ケア", bowel: "排便", bowel1: "便性状1", bowel2: "便性状2", bowel3: "便性状3",
     bath: "入浴", bathReason: "入浴の補足", training: "機能訓練", activity: "活動",
+    rhStaffRole: "デイケア・担当リハビリ職", rhStaffName: "デイケア・リハビリ担当者", rhItems: "デイケア・リハビリの内容と量",
+    rhChange: "デイケア・前回からの変化", rhGoal: "デイケア・リハビリの目標",
     message: "施設からの連絡", familyMessage: "家庭からの連絡", facilityPR: "施設からのお知らせ",
     handoverRequired: "要申し送り", medicalVisit: "受診対応あり", conditionChange: "体調変化",
     handoverNote: "職員間申し送り", imageCount: "写真枚数", videoCount: "動画数",
@@ -117,7 +119,7 @@ export function selectRecords(records, filters) {
 }
 
 export function recordsTable(records, facility) {
-    const excluded = new Set(["facilityId", "userName", "date", "serviceType", "imageFiles", "videoFiles", "lineUserIds", "password", "token"]);
+    const excluded = new Set(["facilityId", "userName", "date", "serviceType", "imageFiles", "videoFiles", "lineUserIds", "password", "token", "rhItemRows"]);
     const present = new Set(records.flatMap(record => Object.keys(record)).filter(key => !excluded.has(key)));
     const known = Object.keys(recordLabels).filter(key => present.has(key));
     const extra = [...present].filter(key => !Object.hasOwn(recordLabels, key)).sort();

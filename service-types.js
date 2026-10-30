@@ -1,5 +1,6 @@
 export const SERVICE_TYPES = [
     { value: "デイサービス", label: "☀️ デイサービス（日帰り）" },
+    { value: "デイケア", label: "🏃 デイケア（通所リハビリ）" },
     { value: "ショートステイ", label: "🌙 ショートステイ（宿泊）" },
     { value: "入所", label: "🏠 入所" },
     { value: "ユニット入所", label: "🏢 ユニット入所" },

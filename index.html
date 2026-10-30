@@ -200,6 +200,9 @@
                     <input type="checkbox" id="editServiceDay" style="width: auto; margin-right: 5px;">☀️ デイサービス
                 </label>
                 <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" id="editServiceDayCare" style="width: auto; margin-right: 5px;">🏃 デイケア
+                </label>
+                <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
                     <input type="checkbox" id="editServiceShort" style="width: auto; margin-right: 5px;">🌙 ショートステイ
                 </label>
                 <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
@@ -399,12 +402,12 @@
             <ol>
                 <li><strong>ログインする</strong><p>ログイン画面で施設名とパスワードを入力し、「ログインする」を押します。</p></li>
                 <li><strong>画面上部を見る</strong><p>上部に施設名が表示されます。「印刷画面へ」は入力済み記録の確認・印刷、「過去データ一覧へ」は以前の記録を見るときに使います。「施設のLINE公式アカウント設定」は設定を変更するとき以外は操作しなくて大丈夫です。</p></li>
-                <li><strong>サービス種別を選ぶ</strong><p>「ご入力するサービス種別を選択してください」で、今回の記録に合うものを選びます。デイサービス、ショートステイ、入所、ユニット入所、放課後等デイサービス、児童発達支援、生活介護、グループホームがあります。入所・ユニット入所は、朝夕の定時バイタルや日中の暮らし、日用品の補充・面会などの長期入所用の欄を使用します。グループホームは朝夕の定時バイタルや家事・役割、日用品などの専用欄を使用します。</p></li>
+                <li><strong>サービス種別を選ぶ</strong><p>「ご入力するサービス種別を選択してください」で、今回の記録に合うものを選びます。デイサービス、デイケア、ショートステイ、入所、ユニット入所、放課後等デイサービス、児童発達支援、生活介護、グループホームがあります。入所・ユニット入所は、朝夕の定時バイタルや日中の暮らし、日用品の補充・面会などの長期入所用の欄を使用します。グループホームは朝夕の定時バイタルや家事・役割、日用品などの専用欄を使用します。</p></li>
                 <li><strong>送信待ちや申し送りを確認する</strong><p>上部に「送信待ちのお客様」が表示されていたら、前に一時保存した記録があります。画面を再読み込みすると消えることがあるので、作業を続けて最後にまとめて送信してください。「前日の重要申し送り一覧」が表示された場合は、内容を確認します。</p></li>
                 <li><strong>利用者を選ぶ</strong><p>「お名前」から記録する方を選びます。年齢や顔写真、保存済み記録が表示されます。「利用終了者も表示する」は、以前利用していた方を選ぶ場合に使います。</p><p>顔写真は「写真 登録/変更」で撮影、「アルバムから写真を選ぶ」から保存済み写真を選べます。緊急連絡先・持病・既往歴は全施設で利用できます。入力したら「利用者情報に保存」を押してください。</p></li>
                 <li><strong>新しい利用者を登録する</strong><p>名簿にいない方は、画面下の新規登録欄に名前を入力します。生年月日は任意です。必要なら顔写真や排泄記録の設定を選び、「お名前・生年月日・各種設定をまとめて名簿に登録」を押します。</p></li>
                 <li><strong>日付を選ぶ</strong><p>「日付」で、記録する日を選びます。利用者と日付を間違えていないか、この時点で確認してください。入力途中の内容は使用中のブラウザーに下書き保存されますが、まだ正式な保存ではありません。</p></li>
-                <li><strong>記録を入力する</strong><p>表示された欄を上から入力します。デイサービスでは、担当スタッフ、介護日誌、バイタル、食事・水分・服薬・入浴、活動などを記録します。食事・水分・口腔ケアは候補の選択欄から選べます。候補にない内容は「その他を直接入力」を選んで入力できます。放課後等デイサービス・児童発達支援では、出欠、送迎、活動、支援の5領域、おやつ、支援の様子などを記録します（児童発達支援では昼食も記録します）。デイサービスでは利用状況、お迎え・お送りの時刻、送迎の方法も記録できます。生活介護では専用欄に健康状態や生活支援を記録します。ショートステイでは入所・退所時の健康状態、食事、夜間の様子、持ち物などを記録します。入所・ユニット入所では、毎日の健康と暮らし、日用品の補充、面会などを記録します。</p><p>分からない欄は無理に埋めず、施設の記録方法に合わせてください。「要申し送り」「受診対応あり」「体調変化」は、該当するときにチェックし、申し送り内容も入力します。</p></li>
+                <li><strong>記録を入力する</strong><p>表示された欄を上から入力します。デイサービスでは、担当スタッフ、介護日誌、バイタル、食事・水分・服薬・入浴、活動などを記録します。食事・水分・口腔ケアは候補の選択欄から選べます。候補にない内容は「その他を直接入力」を選んで入力できます。放課後等デイサービス・児童発達支援では、出欠、送迎、活動、支援の5領域、おやつ、支援の様子などを記録します（児童発達支援では昼食も記録します）。デイサービスでは利用状況、お迎え・お送りの時刻、送迎の方法も記録できます。デイケアでは、デイサービスと同じ欄に加えて「リハビリ記録」欄で、担当リハビリ職、リハビリの内容と量（回数・距離・時間）、目標、前回からの変化を記録します。生活介護では専用欄に健康状態や生活支援を記録します。ショートステイでは入所・退所時の健康状態、食事、夜間の様子、持ち物などを記録します。入所・ユニット入所では、毎日の健康と暮らし、日用品の補充、面会などを記録します。</p><p>分からない欄は無理に埋めず、施設の記録方法に合わせてください。「要申し送り」「受診対応あり」「体調変化」は、該当するときにチェックし、申し送り内容も入力します。</p></li>
                 <li><strong>ご家族への連絡を入力する</strong><p>「施設からの御連絡事項」には施設から伝えることを入力します。定型文がある場合は選んで編集できます。「お客様からの御連絡事項／保護者記入欄」には家庭からの連絡事項を入力します。「施設からのお知らせ・PRを追加する」は必要なときだけ開いて使います。</p></li>
                 <li><strong>写真・動画を選ぶ</strong><p>「施設でのご様子」で撮影するか、アルバムから写真・動画を選びます。プレビューで内容を確認し、他の利用者が写っていないか確認してください。動画は先頭30秒まで、5MB以下に自動調整されます。</p><p>「今すぐ預ける」は任意です。押さなくても、最後の送信時に記録と一緒に保存できます。選んだものを外す場合は、プレビューの「取消」を使います。</p></li>
                 <li><strong>家族向け公開を選ぶ</strong><p>「LINEで家族に公開する」は初期状態ではチェックされています。チェックありなら、記録を保存した後、連携済みの家族がLINEから閲覧できます。<strong>自動でLINE通知が送られるわけではありません。</strong>施設内だけに保存したい場合はチェックを外します。</p></li>
@@ -418,6 +421,7 @@
             <label>📌 ご入力するサービス種別を選択してください：</label>
             <select id="serviceType" onchange="onServiceTypeChanged()">
                 <option value="デイサービス">☀️ デイサービス（通所介護・日帰り）</option>
+                <option value="デイケア">🏃 デイケア（通所リハビリ）</option>
                 <option value="ショートステイ">🌙 ショートステイ（短期入所・宿泊）</option>
                 <option value="入所">🏠 入所</option>
                 <option value="ユニット入所">🏢 ユニット入所</option>
@@ -606,7 +610,7 @@
 
         <div id="dayServiceSection">
             <div id="dayAttendanceBlock">
-                <h3>利用状況・送迎（デイサービス）</h3>
+                <h3 id="dayAttendanceTitle">利用状況・送迎（デイサービス）</h3>
                 <div class="flex-box">
                     <div><label>利用状況</label><select id="dsAttendance"><option value="">選択してください</option><option value="利用">利用</option><option value="欠席">欠席</option><option value="遅刻">遅刻</option><option value="早退">早退</option></select></div>
                     <div><label>お迎え時刻</label><input type="time" id="dsPickupTime"></div>
@@ -701,8 +705,8 @@
                 </div>
             </div>
 
-            <h3>機能訓練・活動</h3>
-            <label>機能訓練</label>
+            <h3 id="dayTrainingTitle">機能訓練・活動</h3>
+            <label id="dayTrainingLabel">機能訓練</label>
             <div class="checkbox-group" style="margin-bottom: 15px; padding: 15px; background-color: #f9f9f9; border-radius: 8px; border: 1px solid #e0e0e0;">
                 <div class="training-category" style="margin-top: 0;">基本動作・移動</div>
                 <div class="training-items">
@@ -737,6 +741,35 @@
                 </div>
             </div>
             <textarea id="activity" rows="3" placeholder="その他の活動（例：朝の会、ラジオ体操、脳トレ、集団体操など）"></textarea>
+            <div id="dayCareRehabArea" style="display: none; margin-top: 15px; padding: 15px; background-color: #f0f7ff; border: 1px solid #a5d8ff; border-radius: 8px;">
+                <h3 style="margin-top: 0;">リハビリ記録（デイケア）</h3>
+                <datalist id="rhItemList"><option value="動作訓練（立ち上がり等）"></option><option value="移乗動作訓練"></option><option value="歩行訓練"></option><option value="階段昇降訓練"></option><option value="バランス訓練"></option><option value="更衣動作訓練"></option><option value="入浴動作訓練"></option><option value="排泄動作訓練"></option><option value="手指の巧緻性訓練"></option><option value="上肢のストレッチ・関節可動域訓練"></option><option value="口腔体操・発声練習"></option><option value="咀嚼・嚥下訓練"></option><option value="平行棒内歩行"></option><option value="自転車エルゴメーター"></option><option value="マシントレーニング"></option><option value="マッサージ・ストレッチ"></option><option value="物理療法（温熱など）"></option></datalist>
+                <div class="flex-box">
+                    <div><label>担当リハビリ職</label><select id="rhStaffRole"><option value="">選択してください</option><option value="理学療法士（PT）">理学療法士（PT）</option><option value="作業療法士（OT）">作業療法士（OT）</option><option value="言語聴覚士（ST）">言語聴覚士（ST）</option><option value="看護職員">看護職員</option><option value="介護職員">介護職員</option><option value="その他">その他</option></select></div>
+                    <div><label>担当者のお名前</label><input type="text" id="rhStaffName" placeholder="例：山田"></div>
+                </div>
+                <label>実施したリハビリと量（回数・距離・時間）</label>
+                <div class="flex-box rh-item-row">
+                    <div><input type="text" id="rhItemName1" list="rhItemList" placeholder="例：歩行訓練"></div>
+                    <div><input type="text" id="rhItemAmount1" placeholder="例：10m×3回"></div>
+                </div>
+                <div class="flex-box rh-item-row">
+                    <div><input type="text" id="rhItemName2" list="rhItemList" placeholder="リハビリの内容"></div>
+                    <div><input type="text" id="rhItemAmount2" placeholder="回数・距離・時間"></div>
+                </div>
+                <div class="flex-box rh-item-row">
+                    <div><input type="text" id="rhItemName3" list="rhItemList" placeholder="リハビリの内容"></div>
+                    <div><input type="text" id="rhItemAmount3" placeholder="回数・距離・時間"></div>
+                </div>
+                <div class="flex-box rh-item-row">
+                    <div><input type="text" id="rhItemName4" list="rhItemList" placeholder="リハビリの内容"></div>
+                    <div><input type="text" id="rhItemAmount4" placeholder="回数・距離・時間"></div>
+                </div>
+                <label>リハビリの目標</label>
+                <textarea id="rhGoal" rows="2" placeholder="例：杖を使って、自宅のトイレまでひとりで歩けるようになる"></textarea>
+                <label>前回からの変化・できたこと</label>
+                <textarea id="rhChange" rows="2" placeholder="例：立ち上がりが安定し、手すりなしで5回できました"></textarea>
+            </div>
         </div>
 
         <div id="afterSchoolSection" style="display: none; margin-top: 15px; padding: 15px; background-color: #f3f0ff; border: 1px solid #b197fc; border-radius: 8px;">
@@ -1202,6 +1235,7 @@
         import { TEMPERATURE_FIELD_IDS, isFever } from "./fever.js";
         import { AI_CONDITIONS, AI_SERVICES, AI_TOPICS, buildAiPrompt } from "./ai-consult.js";
         import { BIRTHDAY_CARD_DESIGNS, birthdayWindow, cardDesignFor, isValidCardDesign, normalizeCardDesign } from "./birthday-card.js";
+        import { fillDayCareRehabFields, readDayCareRehabFields } from "./day-care.js";
         import { buildResidentialForm, readResidentialFields, restoreResidentialFields, validateResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT } from "./residential-care.js";
 
         buildGroupHomeForm(document.getElementById("groupHomeFields"));
@@ -2353,7 +2387,12 @@
             });
             document.getElementById("afterSchoolLunchRow").style.display = isEarlyChildhood ? "" : "none";
             document.getElementById("afterSchoolMealTitle").textContent = isEarlyChildhood ? "排泄・食事・おやつ" : "排泄・水分・おやつ";
-            document.getElementById("dayVitalsTitle").textContent = isAfterSchool ? `バイタル（${sType}）` : "バイタル（デイサービス）";
+            const isDayCare = sType === "デイケア";
+            document.getElementById("dayVitalsTitle").textContent = isAfterSchool ? `バイタル（${sType}）` : isDayCare ? "バイタル（デイケア）" : "バイタル（デイサービス）";
+            document.getElementById("dayAttendanceTitle").textContent = isDayCare ? "利用状況・送迎（デイケア）" : "利用状況・送迎（デイサービス）";
+            document.getElementById("dayTrainingTitle").textContent = isDayCare ? "リハビリ・活動" : "機能訓練・活動";
+            document.getElementById("dayTrainingLabel").textContent = isDayCare ? "実施したリハビリ（選択）" : "機能訓練";
+            document.getElementById("dayCareRehabArea").style.display = isDayCare ? "block" : "none";
             document.getElementById("childServiceTitle").textContent = `${isEarlyChildhood ? "🧸" : "🎒"} ${sType}連絡帳`;
             document.getElementById("afterSchoolArrivalLabel").textContent = isEarlyChildhood ? "事業所への到着時刻" : "学校からの到着時刻";
             document.getElementById("afterSchoolDepartureLabel").textContent = isEarlyChildhood ? "事業所からの退所時刻" : "事業所からの出発時刻";
@@ -2995,6 +3034,7 @@ function getTrialAccessEndTime(facilityData) {
             document.getElementById("editUserName").value = userName;
             document.getElementById("editUserBirthday").value = userData.birthday || "";
             document.getElementById("editServiceDay").checked = userServices.includes("デイサービス");
+            document.getElementById("editServiceDayCare").checked = userServices.includes("デイケア");
             document.getElementById("editServiceShort").checked = userServices.includes("ショートステイ");
             document.getElementById("editServiceResidential").checked = userServices.includes("入所");
             document.getElementById("editServiceUnitResidential").checked = userServices.includes("ユニット入所");
@@ -3020,6 +3060,7 @@ function getTrialAccessEndTime(facilityData) {
             if (!newName) { alert("お名前を入力してください。"); return; }
             if (!validateDateEntries([birthdayInput])) return;
             let isDay = document.getElementById("editServiceDay").checked;
+            let isDayCare = document.getElementById("editServiceDayCare").checked;
             let isShort = document.getElementById("editServiceShort").checked;
             let isResidential = document.getElementById("editServiceResidential").checked;
             let isUnitResidential = document.getElementById("editServiceUnitResidential").checked;
@@ -3027,10 +3068,11 @@ function getTrialAccessEndTime(facilityData) {
             let isChildDevelopment = document.getElementById("editServiceChildDevelopment").checked;
             let isLifeCare = document.getElementById("editServiceLifeCare").checked;
             let isGroupHome = document.getElementById("editServiceGroupHome").checked;
-            if (!isDay && !isShort && !isResidential && !isUnitResidential && !isAfterSchool && !isChildDevelopment && !isLifeCare && !isGroupHome) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
+            if (!isDay && !isDayCare && !isShort && !isResidential && !isUnitResidential && !isAfterSchool && !isChildDevelopment && !isLifeCare && !isGroupHome) { alert("ご利用サービス種別を1つ以上選択してください。"); return; }
 
             let newServices = [];
             if (isDay) newServices.push("デイサービス");
+            if (isDayCare) newServices.push("デイケア");
             if (isShort) newServices.push("ショートステイ");
             if (isResidential) newServices.push("入所");
             if (isUnitResidential) newServices.push("ユニット入所");
@@ -3176,6 +3218,7 @@ function getTrialAccessEndTime(facilityData) {
                 let trainingArray = d.training || [];
                 document.getElementsByName("training").forEach(c => c.checked = trainingArray.includes(c.value));
                 document.getElementById("activity").value = d.activity || "";
+                fillDayCareRehabFields(document, d);
                 ["dsAttendance", "dsPickupTime", "dsDropoffTime", "dsPickupType", "dsDropoffType", "dsTransportNote", "afterSchoolLunch", "afterSchoolLunchIntake"].forEach(id => {
                     const field = document.getElementById(id);
                     if (field) field.value = d[id] || "";
@@ -3433,6 +3476,7 @@ function getTrialAccessEndTime(facilityData) {
                         let trainingArray = data.training ? data.training.split("、") : [];
                         document.getElementsByName("training").forEach(c => c.checked = trainingArray.includes(c.value));
                         document.getElementById("activity").value = data.activity || "";
+                        fillDayCareRehabFields(document, data);
                         document.getElementById("afterSchoolAttendance").value = data.afterSchoolAttendance || "";
                         document.getElementById("afterSchoolStaff").value = data.afterSchoolStaff || data.careStaff || "";
                         document.getElementById("afterSchoolProvideStart").value = data.afterSchoolProvideStart || "";
@@ -3868,7 +3912,8 @@ function getTrialAccessEndTime(facilityData) {
                 data.bathReason = document.getElementById("bathReason").value;
                 data.training = tList.join("、");
                 data.activity = document.getElementById("activity").value;
-                if (sType === "デイサービス") {
+                if (sType === "デイケア") Object.assign(data, readDayCareRehabFields(document));
+                if (sType === "デイサービス" || sType === "デイケア") {
                     data.dsAttendance = readOptionalValue("dsAttendance");
                     data.dsPickupTime = readOptionalValue("dsPickupTime");
                     data.dsDropoffTime = readOptionalValue("dsDropoffTime");
@@ -4335,6 +4380,7 @@ function getTrialAccessEndTime(facilityData) {
             document.querySelectorAll('input[name="lifeCareActivityTag"]').forEach(input => { input.checked = false; });
             document.getElementsByName("bath").forEach(r => r.checked = false);
             document.getElementsByName("training").forEach(c => c.checked = false);
+            fillDayCareRehabFields(document, {});
 
             if(document.getElementById("stTempInAlert")) document.getElementById("stTempInAlert").textContent = "";
             if(document.getElementById("stTempIn")) document.getElementById("stTempIn").value = "";

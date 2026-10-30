@@ -82,7 +82,7 @@
             <h3>過去データ一覧（1ヶ月のまとめ）の使い方</h3>
             <ol>
                 <li><strong>画面上部のリンク</strong><p>「入力画面へ戻る」は記録入力画面へ、「印刷画面へ」は通常の印刷・確認画面へ戻るリンクです。</p></li>
-                <li><strong>サービス種別を選ぶ</strong><p>「デイサービス」「ショートステイ」「入所」「ユニット入所」「放課後等デイサービス」「児童発達支援」「生活介護」「グループホーム」から、確認したい記録の種類を選びます。入所・ユニット入所は、朝夕のバイタルや日中の暮らし、日用品・面会の記録を1日ずつ表示します（以前ショートステイと同じ欄で入力した記録は、従来の表で表示します）。グループホームは朝夕のバイタルや日々の暮らしの記録を表示します。複数サービスの記録を一度に混ぜて表示する画面ではありません。</p></li>
+                <li><strong>サービス種別を選ぶ</strong><p>「デイサービス」「デイケア」「ショートステイ」「入所」「ユニット入所」「放課後等デイサービス」「児童発達支援」「生活介護」「グループホーム」から、確認したい記録の種類を選びます。入所・ユニット入所は、朝夕のバイタルや日中の暮らし、日用品・面会の記録を1日ずつ表示します（以前ショートステイと同じ欄で入力した記録は、従来の表で表示します）。グループホームは朝夕のバイタルや日々の暮らしの記録を表示します。複数サービスの記録を一度に混ぜて表示する画面ではありません。</p></li>
                 <li><strong>確認したい月を選ぶ</strong><p>月の欄で対象年月を選びます。通常は今月が初期表示されています。</p></li>
                 <li><strong>「この月のデータを探す」を押す</strong><p>選んだサービス・月の記録を検索します。正式に保存された記録が対象です。入力画面で一時保存しただけのデータは表示されません。</p></li>
                 <li><strong>利用者を選ぶ</strong><p>検索結果があれば、記録がある利用者の一覧が表示されます。「すべて選択／解除」でまとめて切り替えるか、利用者ごとにチェックします。</p></li>
@@ -98,6 +98,7 @@
         <div class="filter-panel">
             <select id="selectServiceType" class="filter-select" onchange="clearResults()">
                 <option value="デイサービス">☀️ デイサービス</option>
+                <option value="デイケア">🏃 デイケア</option>
                 <option value="ショートステイ" selected>🌙 ショートステイ</option>
                 <option value="入所">🏠 入所</option>
                 <option value="ユニット入所">🏢 ユニット入所</option>
@@ -119,6 +120,7 @@
                 <label>終了日<input type="date" id="csvEndDate" required></label>
                 <label>サービス<select id="csvService" onchange="onCsvServiceChanged()">
                     <option value="デイサービス">デイサービス</option>
+                    <option value="デイケア">デイケア</option>
                     <option value="ショートステイ">ショートステイ</option>
                     <option value="入所">入所</option>
                     <option value="ユニット入所">ユニット入所</option>
@@ -524,7 +526,7 @@
                 
                 let html = `<h3>👤 ${userName} 様 （${userRecords.length}日分）</h3>`;
                 
-                if (sType === "デイサービス") {
+                if (sType === "デイサービス" || sType === "デイケア") {
                     html += `<table class="history-table">
                         <tr>
                             <th width="12%">日付</th><th width="10%">体温</th><th width="10%">脈拍</th>
@@ -546,7 +548,7 @@
                         html += `<tr>
                             <td>${d.date.substring(5).replace('-','/')}${dayTransport ? `<br><span style="font-size:11px;">${dayTransport}</span>` : ""}</td>
                             <td>${temperatureHtml(t)}</td><td>${p}</td><td>${bp}</td><td>${meal}</td><td>${bath}</td><td>${bStr}</td>
-                            <td style="text-align: left; white-space: pre-wrap;">${escapeHtml(d.careStaff || '--')}<br>${escapeHtml(d.careJournal || '記録なし')}</td>
+                            <td style="text-align: left; white-space: pre-wrap;">${escapeHtml(d.careStaff || '--')}<br>${escapeHtml(d.careJournal || '記録なし')}${sType === "デイケア" && (d.rhItems || d.rhChange) ? `<br><span style="font-size:11px;">🏃 ${escapeHtml([d.rhItems, d.rhChange].filter(Boolean).join(" ／ "))}</span>` : ""}</td>
                         </tr>`;
                     });
                     html += `</table>`;

@@ -660,6 +660,7 @@
                 <span class="filter-label">📌 サービス種別：</span>
                 <select id="selectServiceType" class="filter-select" onchange="onServiceTypeChanged()">
                     <option value="デイサービス" selected>☀️ デイサービス（日帰り）</option>
+                    <option value="デイケア">🏃 デイケア（通所リハビリ）</option>
                     <option value="ショートステイ">🌙 ショートステイ（宿泊）</option>
                     <option value="入所">🏠 入所</option>
                     <option value="ユニット入所">🏢 ユニット入所</option>
@@ -766,6 +767,7 @@
         import { isShortStayService, normalizeServiceTypes, populateServiceTypeSelect } from "./service-types.js";
         import { renderGroupHomeRecord } from "./group-home.js";
         import { temperatureHtml } from "./fever.js";
+        import { dayCareRehabStaffText } from "./day-care.js";
         import { BIRTHDAY_CARD_DESIGNS, cardDesignFor, chosenCardDesign, isValidCardDesign } from "./birthday-card.js";
         import { isResidentialLayoutRecord, renderResidentialRecord } from "./residential-care.js";
 
@@ -1921,7 +1923,16 @@
                 pageDiv.className = "print-page";
 
                 let trainAct = "";
-                if (data.training) trainAct += "【機能訓練】\n" + data.training + "\n\n";
+                const isDayCareRecord = data.serviceType === "デイケア";
+                if (data.training) trainAct += (isDayCareRecord ? "【実施したリハビリ】\n" : "【機能訓練】\n") + data.training + "\n\n";
+                if (isDayCareRecord) {
+                    const rehabStaff = dayCareRehabStaffText(data);
+                    if (rehabStaff) trainAct += "【担当】" + rehabStaff + "\n";
+                    if (data.rhItems) trainAct += "【リハビリの内容と量】\n" + data.rhItems + "\n";
+                    if (data.rhChange) trainAct += "【前回からの変化・できたこと】\n" + data.rhChange + "\n";
+                    if (data.rhGoal) trainAct += "【リハビリの目標】\n" + data.rhGoal + "\n";
+                    if (rehabStaff || data.rhItems || data.rhChange || data.rhGoal) trainAct += "\n";
+                }
                 if (data.activity) trainAct += "【その他の活動】\n" + data.activity;
 
                 let cloned = [...monthRecords].sort((a, b) => a.date.localeCompare(b.date));
@@ -2039,7 +2050,7 @@
                     <div class="section-title">■ 家族からの連絡事項 <span style="font-size: 12px; font-weight: normal; margin-left: 10px;">（ご家庭でのご様子など、ご自由にお書きください）</span></div>
                     <div class="text-box family-box">${familyMessageText}</div>
                 ` : "") : "";
-                let hasDayTransport = data.serviceType === "デイサービス" && ["dsAttendance", "dsPickupTime", "dsDropoffTime", "dsPickupType", "dsDropoffType", "dsTransportNote"].some(key => data[key]);
+                let hasDayTransport = ["デイサービス", "デイケア"].includes(data.serviceType) && ["dsAttendance", "dsPickupTime", "dsDropoffTime", "dsPickupType", "dsDropoffType", "dsTransportNote"].some(key => data[key]);
                 let dayTransportHtml = hasDayTransport ? `
                     <table class="compact-table">
                         <tr><th width="16%">利用状況</th><td width="17%">${data.dsAttendance || '未入力'}</td><th width="16%">お迎え時刻</th><td width="17%">${data.dsPickupTime || '未入力'}</td><th width="16%">お送り時刻</th><td width="18%">${data.dsDropoffTime || '未入力'}</td></tr>
@@ -2057,7 +2068,7 @@
                     </table>
                     <div class="compact-avg">📊 この1ヶ月の平均値： 体温 ${avgTempStr}℃ ／ 血圧 ${avgBpHighStr}/${avgBpLowStr} ／ 脈拍 ${avgPulseStr}回/分 ／ 酸素飽和度 ${avgSpo2Str}%</div>
                     <div class="chart-container ds-chart"><canvas id="${chartCanvasId}"></canvas><img id="${chartCanvasId}_print_img" class="chart-print-image" style="display:none;width:100%;height:120px;object-fit:contain;"></div>
-                    <div class="section-title">■ 機能訓練・活動の様子</div><div class="text-box">${trainAct || '特になし'}</div>
+                    <div class="section-title">■ ${data.serviceType === "デイケア" ? "リハビリ・活動の様子" : "機能訓練・活動の様子"}</div><div class="text-box">${trainAct || '特になし'}</div>
                 `;
                 let childServiceHtml = isChildService && showAfterSchoolSection ? `
                     <div class="section-title">■ ${data.serviceType}記録</div>

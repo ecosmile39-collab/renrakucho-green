@@ -1497,7 +1497,7 @@ function getFamilyVisibleFields(record, formCustomization) {
         if (hiddenSections.has("lifeCareSection") && key.startsWith("lifeCare")) return;
         if (hiddenSections.has("groupHomeSection") && key.startsWith("gh")) return;
         if (hiddenSections.has("residentialSection") && key.startsWith("rs")) return;
-        if (hiddenSections.has("dayServiceSection") && key.startsWith("ds")) return;
+        if (hiddenSections.has("dayServiceSection") && (key.startsWith("ds") || key.startsWith("rh"))) return;
         if (hiddenSections.has("shortStaySection") && (key.startsWith("st") || key.startsWith("num_") || key.startsWith("free_item_"))) return;
         const value = record[key];
         if (Array.isArray(value)) {
@@ -1603,7 +1603,13 @@ function getFamilyVisibleFields(record, formCustomization) {
             ["脈拍", "pulse"], ["酸素飽和度", "spo2"], ["血圧（上）", "bpHigh"],
             ["血圧（下）", "bpLow"], ["食事（主食）", "mealMain"], ["食事（副食）", "mealSub"],
             ["水分", "water"], ["服薬・処置", "medication"], ["口腔ケア", "oralCare"],
-            ["入浴", "bath"], ["入浴の補足", "bathReason"], ["機能訓練", "training"],
+            ["入浴", "bath"], ["入浴の補足", "bathReason"],
+            [record.serviceType === "デイケア" ? "実施したリハビリ" : "機能訓練", "training"],
+            ...(record.serviceType === "デイケア" ? [
+                ["担当リハビリ職", "rhStaffRole"], ["リハビリ担当者", "rhStaffName"],
+                ["リハビリの内容と量", "rhItems"], ["前回からの変化・できたこと", "rhChange"],
+                ["リハビリの目標", "rhGoal"]
+            ] : []),
             ["活動", "activity"], ["介護日誌", "careJournal"]
         ].forEach(([label, key]) => add(label, key));
     }
