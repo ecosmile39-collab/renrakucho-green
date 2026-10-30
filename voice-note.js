@@ -43,7 +43,11 @@ export function buildVoiceSummaryPrompt({ transcript = "", service = "", userNam
 
 // AIの答えから【見出し】ごとの本文を取り出す
 export function parseVoiceSummary(answer) {
-    const text = String(answer || "").replace(/\r\n?/g, "\n");
+    // ChatGPTからコピーすると、改行の印「\」（日本語の画面では「¥」に見える）が付くことがあるので消す
+    const text = String(answer || "")
+        .replace(/\r\n?/g, "\n")
+        .replace(/[\\¥￥]+[ \t]*(?=\n|$)/g, "")
+        .replace(/\\([*_#`\[\]()\-.!>~|])/g, "$1");
     const labelToKey = Object.fromEntries(Object.entries(VOICE_SECTIONS).map(([key, label]) => [label, key]));
     const result = { careJournal: "", message: "", handoverNote: "", flags: { handoverRequired: false, medicalVisit: false, conditionChange: false } };
     // 見出しを探す。「【介護日誌】」のほか、AIが「## 介護日誌」「**介護日誌：**」と書いた形も見つける。

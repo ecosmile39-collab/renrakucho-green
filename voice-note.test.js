@@ -76,6 +76,15 @@ test("sections that were not asked for (care manager report, notes) are left out
     assert.ok(!JSON.stringify(result).includes("看護職員"));
 });
 
+test("line-break backslashes copied from ChatGPT (shown as ¥) are removed", () => {
+    const result = parseVoiceSummary("【介護日誌】\\\n来所時より顔色不良が見られた。\\\n昼食摂取量は50%であった。\n【ご家族への連絡事項】\\\n本日は顔色がすぐれませんでした。\\*様子を見ます。\n【申し送り】\\\nなし\n【チェック】\\\n体調変化");
+    assert.equal(result.careJournal, "来所時より顔色不良が見られた。\n昼食摂取量は50%であった。");
+    assert.equal(result.message, "本日は顔色がすぐれませんでした。*様子を見ます。");
+    assert.equal(result.handoverNote, "");
+    assert.equal(result.flags.conditionChange, true);
+    assert.equal(parseVoiceSummary("¥\n来所時より顔色不良が見られた。").careJournal, "来所時より顔色不良が見られた。");
+});
+
 test("markdown-style headings without brackets are also found", () => {
     const result = parseVoiceSummary("## 介護日誌\n昼から休まれた。\n\n**ご家族への連絡事項：**\n午後はレクに参加されました。\n\n申し送り\nなし\n\nチェック：\n体調変化");
     assert.equal(result.careJournal, "昼から休まれた。");
