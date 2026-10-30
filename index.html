@@ -72,6 +72,17 @@
         .ai-consult-actions button { flex: 1 1 140px; padding: 10px; border: 0; border-radius: 6px; color: #fff; font-weight: bold; font-size: 14px; cursor: pointer; }
         .ai-open-chatgpt { background: #10a37f; } .ai-open-claude { background: #d97757; } .ai-open-gemini { background: #4285f4; } .ai-copy { background: #6c757d; }
         @media (max-width: 500px) { .ai-consult-grid { grid-template-columns: minmax(0, 1fr); } }
+        .voice-note-panel { margin-top: 15px; padding: 12px 14px; background: #e7f5ff; border: 2px solid #1c7ed6; border-radius: 10px; }
+        .voice-note-panel summary { cursor: pointer; font-weight: bold; font-size: 16px; color: #1864ab; }
+        .voice-note-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+        .voice-record { padding: 12px 20px; border: 0; border-radius: 999px; background: #1c7ed6; color: #fff; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .voice-record.recording { background: #e03131; animation: voicePulse 1.2s ease-in-out infinite; }
+        @keyframes voicePulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(224, 49, 49, .5); } 50% { box-shadow: 0 0 0 10px rgba(224, 49, 49, 0); } }
+        @media (prefers-reduced-motion: reduce) { .voice-record.recording { animation: none; } }
+        .voice-status { font-size: 13px; color: #1864ab; }
+        .voice-apply { background: #2b8a3e; }
+        .voice-preview { margin-top: 8px; padding: 10px; background: #fff; border: 1px solid #a5d8ff; border-radius: 6px; font-size: 13px; white-space: pre-wrap; }
+        .voice-preview strong { color: #1864ab; }
         #birthdayCardPicker { margin: 12px 0 0; padding: 12px; background: #fff0f6; border: 2px solid #f783ac; border-radius: 8px; }
         .birthday-card-picker-title { font-weight: bold; font-size: 17px; color: #c2255c; }
         .birthday-card-picker-hint { font-size: 12px; color: #495057; margin: 4px 0 8px; }
@@ -572,6 +583,32 @@
                 document.getElementById("newBirthday").value = getInitialBirthdayDate(today);
             })();
         </script>
+
+        <details id="voiceNoteArea" class="voice-note-panel">
+            <summary>🎤 話して記録（AIでまとめる・無料）</summary>
+            <p class="ai-consult-note">あったことや気づいたことを話すと、文字になります。AIにまとめてもらい、介護日誌・ご家族への連絡事項・申し送りに入れられます。お名前はAIに送りません（自動で「ご本人」に変えます）。</p>
+            <div class="voice-note-row">
+                <button type="button" id="voiceRecordButton" class="voice-record" onclick="toggleVoiceRecording()">🎤 話す</button>
+                <span id="voiceStatus" class="voice-status" aria-live="polite"></span>
+            </div>
+            <label for="voiceTranscript" class="ai-consult-label">話した内容（直せます）</label>
+            <textarea id="voiceTranscript" rows="4" placeholder="例：午前は体操に参加、昼は全部食べた、午後入浴して気持ちいいと言ってた、少し咳が出てた"></textarea>
+            <div class="ai-consult-label">① AIにまとめてもらう</div>
+            <div class="ai-consult-actions">
+                <button type="button" class="ai-open-chatgpt" onclick="openVoiceSummaryAi('chatgpt')">ChatGPTでまとめる</button>
+                <button type="button" class="ai-open-claude" onclick="openVoiceSummaryAi('claude')">Claudeでまとめる</button>
+                <button type="button" class="ai-open-gemini" onclick="openVoiceSummaryAi('gemini')">Geminiでまとめる</button>
+            </div>
+            <p class="ai-consult-hint">押すと、お願いの文章をコピーしてAIの画面を開きます。AIの入力欄に貼り付けて送ってください。</p>
+            <div class="ai-consult-label">② AIの答えを貼り付ける</div>
+            <textarea id="voiceAiAnswer" rows="5" placeholder="AIの答えを全部コピーして、ここに貼り付けてください"></textarea>
+            <div class="ai-consult-actions">
+                <button type="button" class="ai-copy" onclick="pasteVoiceAiAnswer()">📋 コピーした答えを貼り付け</button>
+                <button type="button" class="voice-apply" onclick="applyVoiceSummary()">✅ 介護日誌などに入れる</button>
+            </div>
+            <div id="voiceSummaryPreview" class="voice-preview" hidden></div>
+            <p class="ai-consult-hint">すでに書いてある内容は消さずに、後ろに足します。入れたあと、内容を確認してから保存してください。AIの答えはまちがうこともあります。</p>
+        </details>
 
         <div id="careJournalArea" style="margin-top: 15px; padding: 15px; background-color: #fff9db; border: 1px solid #ffd43b; border-radius: 8px;">
             <h3 id="careJournalTitle" style="margin-top: 0; color: #8d6e00;">介護日誌</h3>
@@ -1234,6 +1271,7 @@
         import { setupSentenceTemplates } from "./sentence-templates.js";
         import { TEMPERATURE_FIELD_IDS, isFever } from "./fever.js";
         import { AI_CONDITIONS, AI_SERVICES, AI_TOPICS, buildAiPrompt } from "./ai-consult.js";
+        import { appendText, buildVoiceSummaryPrompt, hasVoiceSummary, parseVoiceSummary, VOICE_FLAGS } from "./voice-note.js";
         import { BIRTHDAY_CARD_DESIGNS, birthdayWindow, cardDesignFor, isValidCardDesign, normalizeCardDesign } from "./birthday-card.js";
         import { fillDayCareRehabFields, readDayCareRehabFields } from "./day-care.js";
         import { buildResidentialForm, readResidentialFields, restoreResidentialFields, validateResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT } from "./residential-care.js";
@@ -2249,6 +2287,141 @@
             if (!opened) showToast("⚠️ 新しい画面を開けませんでした。ポップアップを許可してください", 6000);
         };
 
+        // 🎤 話して記録：声を文字にして、無料のAIにまとめてもらう
+        const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const voiceState = { recognition: null, recording: false };
+        function setVoiceStatus(text) { document.getElementById("voiceStatus").textContent = text; }
+        function setVoiceButton(recording) {
+            const button = document.getElementById("voiceRecordButton");
+            button.classList.toggle("recording", recording);
+            button.textContent = recording ? "■ 止める" : "🎤 話す";
+        }
+        function stopVoiceRecording() {
+            voiceState.recording = false;
+            if (voiceState.recognition) { try { voiceState.recognition.stop(); } catch (error) { /* 止まっている */ } }
+            setVoiceButton(false);
+        }
+        window.toggleVoiceRecording = function() {
+            if (voiceState.recording) { stopVoiceRecording(); setVoiceStatus("止めました。内容を確認してください。"); return; }
+            if (!SpeechRecognitionApi) {
+                setVoiceStatus("この端末では、ボタンでの音声入力が使えません。下の欄を押して、キーボードのマイクで話してください。");
+                document.getElementById("voiceTranscript").focus();
+                return;
+            }
+            const recognition = new SpeechRecognitionApi();
+            recognition.lang = "ja-JP";
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.onresult = event => {
+                let interim = "";
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const piece = event.results[i][0].transcript.trim();
+                    if (!piece) continue;
+                    if (event.results[i].isFinal) {
+                        const box = document.getElementById("voiceTranscript");
+                        box.value = box.value.trim() ? `${box.value.trim()}、${piece}` : piece;
+                    } else interim += piece;
+                }
+                setVoiceStatus(interim ? `聞き取り中：${interim}` : "聞いています…");
+            };
+            recognition.onerror = event => {
+                if (event.error === "no-speech") return;
+                stopVoiceRecording();
+                setVoiceStatus(event.error === "not-allowed" || event.error === "service-not-allowed"
+                    ? "マイクが許可されていません。ブラウザーの設定でマイクを許可してください。"
+                    : "音声を聞き取れませんでした。もう一度「話す」を押してください。");
+            };
+            // 黙ると自動で止まるので、「止める」を押すまで聞き続ける
+            recognition.onend = () => {
+                if (voiceState.recording) { try { recognition.start(); } catch (error) { stopVoiceRecording(); } }
+            };
+            voiceState.recognition = recognition;
+            voiceState.recording = true;
+            setVoiceButton(true);
+            setVoiceStatus("聞いています…話し終わったら「止める」を押してください。");
+            try { recognition.start(); } catch (error) { stopVoiceRecording(); setVoiceStatus("音声入力を始められませんでした。"); }
+        };
+
+        window.openVoiceSummaryAi = async function(serviceKey) {
+            const ai = AI_SERVICES[serviceKey];
+            if (!ai) return;
+            if (voiceState.recording) stopVoiceRecording();
+            const transcript = document.getElementById("voiceTranscript").value.trim();
+            if (!transcript) { showToast("⚠️ 先に話すか、話した内容を入力してください"); return; }
+            const prompt = buildVoiceSummaryPrompt({
+                transcript,
+                service: document.getElementById("serviceType").value,
+                userNames: Object.keys(window.globalUsersData || {})
+            });
+            const copying = copyTextToClipboard(prompt);
+            // 記録の中身はURLに入れず、コピーして貼り付けてもらう
+            const homes = { chatgpt: "https://chatgpt.com/", claude: "https://claude.ai/new", gemini: "https://gemini.google.com/app" };
+            const opened = window.open(homes[serviceKey], "_blank");
+            if (opened) opened.opener = null;
+            const copied = await copying;
+            showToast(copied
+                ? `📋 お願いの文章をコピーしました。${ai.label}の入力欄に貼り付けて送り、答えを全部コピーして戻ってきてください`
+                : "⚠️ コピーできませんでした。もう一度押してください", 7000);
+            if (!opened) showToast("⚠️ 新しい画面を開けませんでした。ポップアップを許可してください", 6000);
+        };
+
+        window.pasteVoiceAiAnswer = async function() {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (!text.trim()) { showToast("⚠️ コピーされた内容がありません"); return; }
+                document.getElementById("voiceAiAnswer").value = text;
+                previewVoiceSummary();
+            } catch (error) {
+                showToast("⚠️ 自動で貼り付けできませんでした。欄を長押しして「貼り付け」を選んでください", 6000);
+                document.getElementById("voiceAiAnswer").focus();
+            }
+        };
+
+        function previewVoiceSummary() {
+            const preview = document.getElementById("voiceSummaryPreview");
+            const summary = parseVoiceSummary(document.getElementById("voiceAiAnswer").value);
+            if (!hasVoiceSummary(summary)) { preview.hidden = true; return summary; }
+            const flags = Object.entries(VOICE_FLAGS).filter(([key]) => summary.flags[key]).map(([, label]) => label);
+            const rows = [
+                ["介護日誌", summary.careJournal], ["ご家族への連絡事項", summary.message],
+                ["申し送り", summary.handoverNote], ["チェック", flags.join("、")]
+            ].filter(([, value]) => value);
+            preview.replaceChildren(...rows.flatMap(([label, value], index) => {
+                const head = document.createElement("strong");
+                head.textContent = `${index ? "\n" : ""}【${label}】\n`;
+                return [head, document.createTextNode(value)];
+            }));
+            preview.hidden = false;
+            return summary;
+        }
+
+        window.applyVoiceSummary = function() {
+            const summary = previewVoiceSummary();
+            if (!hasVoiceSummary(summary)) {
+                showToast("⚠️ AIの答えに【介護日誌】などの見出しが見つかりません。答えを全部コピーして貼り付けてください", 6000);
+                return;
+            }
+            const journal = document.getElementById("careJournal");
+            const message = document.getElementById("message");
+            const handover = document.getElementById("handoverNote");
+            journal.value = appendText(journal.value, summary.careJournal);
+            message.value = appendText(message.value, summary.message);
+            handover.value = appendText(handover.value, summary.handoverNote);
+            Object.keys(VOICE_FLAGS).forEach(key => { if (summary.flags[key]) document.getElementById(key).checked = true; });
+            autoSaveDraft();
+            showToast("✅ 介護日誌・連絡事項・申し送りに入れました。内容を確認してから保存してください", 6000);
+            document.getElementById("careJournalArea").scrollIntoView({ behavior: "smooth", block: "start" });
+        };
+        document.getElementById("voiceAiAnswer").addEventListener("input", previewVoiceSummary);
+
+        function clearVoiceNote() {
+            if (voiceState.recording) stopVoiceRecording();
+            document.getElementById("voiceTranscript").value = "";
+            document.getElementById("voiceAiAnswer").value = "";
+            document.getElementById("voiceSummaryPreview").hidden = true;
+            setVoiceStatus("");
+        }
+
         window.togglePRField = function() {
             let prArea = document.getElementById("prInputArea");
             let btn = document.getElementById("togglePRBtn");
@@ -2377,6 +2550,7 @@
             lifeCareSec.style.display = isLifeCare ? "block" : "none";
             document.getElementById("groupHomeSection").style.display = isGroupHome ? "block" : "none";
             document.getElementById("careJournalArea").style.display = isAfterSchool || isLifeCare ? "none" : "block";
+            document.getElementById("voiceNoteArea").style.display = isAfterSchool || isLifeCare ? "none" : "block";
             document.getElementById("facilityPRControl").style.display = isAfterSchool || isLifeCare ? "none" : "block";
             if (isAfterSchool || isLifeCare) document.getElementById("prInputArea").style.display = "none";
             const isEarlyChildhood = sType === "児童発達支援";
@@ -4445,6 +4619,7 @@ function getTrialAccessEndTime(facilityData) {
             if(document.getElementById("stBowel2")) document.getElementById("stBowel2").value = "";
             if(document.getElementById("stBowel3")) document.getElementById("stBowel3").value = "";
 
+            clearVoiceNote();
             document.getElementById("careStaff").value = "";
             document.getElementById("careJournal").value = "";
             document.getElementById("handoverRequired").checked = false;

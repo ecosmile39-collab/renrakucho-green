@@ -48,7 +48,7 @@ function createContext() {
         syncTextSuggestionSelects() {},
         readGroupHomeFields, restoreGroupHomeFields, isShortStayService, removeUndefinedFields,
         readResidentialFields, restoreResidentialFields, isLongTermResidentialService, RESIDENTIAL_RECORD_LAYOUT,
-        fillDayCareRehabFields, readDayCareRehabFields,
+        fillDayCareRehabFields, readDayCareRehabFields, clearVoiceNote() {},
         serverDataLoadSequence: 0, db: {},
         doc: (...parts) => parts.slice(1).join("/"),
         getDoc: async () => ({ exists: () => true, data: () => sandbox.serverRecord }),
