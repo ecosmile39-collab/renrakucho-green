@@ -2398,7 +2398,7 @@
         window.applyVoiceSummary = function() {
             const summary = previewVoiceSummary();
             if (!hasVoiceSummary(summary)) {
-                showToast("⚠️ AIの答えに【介護日誌】などの見出しが見つかりません。答えを全部コピーして貼り付けてください", 6000);
+                showToast("⚠️ AIの答えが入っていません。AIの答えをコピーして貼り付けてください", 6000);
                 return;
             }
             const journal = document.getElementById("careJournal");
@@ -2409,7 +2409,9 @@
             handover.value = appendText(handover.value, summary.handoverNote);
             Object.keys(VOICE_FLAGS).forEach(key => { if (summary.flags[key]) document.getElementById(key).checked = true; });
             autoSaveDraft();
-            showToast("✅ 介護日誌・連絡事項・申し送りに入れました。内容を確認してから保存してください", 6000);
+            showToast(summary.noHeadings
+                ? "✅ 介護日誌に入れました（AIの答えに見出しがなかったため）。ご家族への連絡事項も入れたいときは、AIの答えを最初から最後まで全部コピーしてください"
+                : "✅ 介護日誌・連絡事項・申し送りに入れました。内容を確認してから保存してください", 7000);
             document.getElementById("careJournalArea").scrollIntoView({ behavior: "smooth", block: "start" });
         };
         document.getElementById("voiceAiAnswer").addEventListener("input", previewVoiceSummary);

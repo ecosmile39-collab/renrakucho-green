@@ -42,7 +42,24 @@ test("'なし' leaves the handover empty and no flags checked", () => {
     const result = parseVoiceSummary("【介護日誌】\n穏やかに過ごされた。\n【ご家族への連絡事項】\n穏やかに過ごされました。\n【申し送り】\nなし\n【チェック】\nなし");
     assert.equal(result.handoverNote, "");
     assert.deepEqual(result.flags, { handoverRequired: false, medicalVisit: false, conditionChange: false });
-    assert.equal(hasVoiceSummary(parseVoiceSummary("こんにちは")), false);
+    assert.equal(hasVoiceSummary(parseVoiceSummary("")), false);
+});
+
+test("an answer without headings goes into the journal as it is", () => {
+    const result = parseVoiceSummary("今日は体調が悪く、昼からベッドで休んだ。\n・午後からは体調も良くなり、レクに参加した。");
+    assert.equal(result.careJournal, "今日は体調が悪く、昼からベッドで休んだ。\n・午後からは体調も良くなり、レクに参加した。");
+    assert.equal(result.noHeadings, true);
+    assert.equal(result.message, "");
+    assert.equal(hasVoiceSummary(result), true);
+});
+
+test("markdown-style headings without brackets are also found", () => {
+    const result = parseVoiceSummary("## 介護日誌\n昼から休まれた。\n\n**ご家族への連絡事項：**\n午後はレクに参加されました。\n\n申し送り\nなし\n\nチェック：\n体調変化");
+    assert.equal(result.careJournal, "昼から休まれた。");
+    assert.equal(result.message, "午後はレクに参加されました。");
+    assert.equal(result.handoverNote, "");
+    assert.equal(result.flags.conditionChange, true);
+    assert.equal(result.noHeadings, undefined);
 });
 
 test("filling adds to what is already written instead of replacing it", () => {

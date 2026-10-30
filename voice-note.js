@@ -46,8 +46,15 @@ export function parseVoiceSummary(answer) {
     const text = String(answer || "").replace(/\r\n?/g, "\n");
     const labelToKey = Object.fromEntries(Object.entries(VOICE_SECTIONS).map(([key, label]) => [label, key]));
     const result = { careJournal: "", message: "", handoverNote: "", flags: { handoverRequired: false, medicalVisit: false, conditionChange: false } };
-    const pattern = /[*#\s]*[【\[]\s*(介護日誌|ご家族への連絡事項|申し送り|チェック)\s*[】\]][*：:\s]*/g;
-    const marks = [...text.matchAll(pattern)];
+    // 「【介護日誌】」のほか、AIが「## 介護日誌」「**介護日誌：**」のように書いた見出しも見つける
+    const pattern = /(?:[*#\s]*[【\[]\s*(介護日誌|ご家族への連絡事項|申し送り|チェック)\s*[】\]][*：:\s]*|(?:^|\n)[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?[ \t]*(介護日誌|ご家族への連絡事項|申し送り|チェック)[ \t]*(?:\*\*)?[ \t]*[：:]?[ \t]*(?:\*\*)?[ \t]*(?=\n|$))/g;
+    const marks = [...text.matchAll(pattern)].map(mark => Object.assign(mark, { 1: mark[1] || mark[2] }));
+    // 見出しがない答えは、全部を介護日誌に入れる
+    if (!marks.length) {
+        const body = text.split("\n").map(line => line.replace(/^\s*[*\-]\s+/, "").trimEnd()).join("\n").replace(/\*\*/g, "").trim();
+        if (body) { result.careJournal = body; result.noHeadings = true; }
+        return result;
+    }
     marks.forEach((mark, index) => {
         const start = mark.index + mark[0].length;
         const end = index + 1 < marks.length ? marks[index + 1].index : text.length;
