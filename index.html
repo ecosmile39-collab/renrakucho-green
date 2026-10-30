@@ -593,6 +593,9 @@
             </div>
             <label for="voiceTranscript" class="ai-consult-label">話した内容（直せます）</label>
             <textarea id="voiceTranscript" rows="4" placeholder="例：午前は体操に参加、昼は全部食べた、午後入浴して気持ちいいと言ってた、少し咳が出てた"></textarea>
+            <div class="ai-consult-actions">
+                <button type="button" class="ai-copy" onclick="copyVoiceTranscript()">📋 話した内容をコピー</button>
+            </div>
             <div class="ai-consult-label">① AIにまとめてもらう</div>
             <div class="ai-consult-actions">
                 <button type="button" class="ai-open-chatgpt" onclick="openVoiceSummaryAi('chatgpt')">ChatGPTでまとめる</button>
@@ -2363,6 +2366,14 @@
                 ? `📋 お願いの文章をコピーしました。${ai.label}の入力欄に貼り付けて送り、答えを全部コピーして戻ってきてください`
                 : "⚠️ コピーできませんでした。もう一度押してください", 7000);
             if (!opened) showToast("⚠️ 新しい画面を開けませんでした。ポップアップを許可してください", 6000);
+        };
+
+        window.copyVoiceTranscript = async function() {
+            if (voiceState.recording) stopVoiceRecording();
+            const text = document.getElementById("voiceTranscript").value.trim();
+            if (!text) { showToast("⚠️ コピーする内容がありません。先に話すか、入力してください"); return; }
+            const copied = await copyTextToClipboard(text);
+            showToast(copied ? "📋 話した内容をコピーしました" : "⚠️ コピーできませんでした。欄を長押しして選んでください", 4000);
         };
 
         window.pasteVoiceAiAnswer = async function() {
