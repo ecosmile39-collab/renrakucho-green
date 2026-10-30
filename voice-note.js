@@ -34,7 +34,7 @@ export function buildVoiceSummaryPrompt({ transcript = "", service = "", userNam
         "・話した内容にないことは書かない。推測や病名は書かない。",
         "・数字（体温・量・回数・時間）は話したとおりに書く。",
         "・利用者さんは「ご本人」と書く。お名前は書かない。",
-        "・見出しは【 】のまま、上の4つだけを順に書く。",
+        "・見出しは【 】のまま、上の4つだけを順に書く。ケアマネジャーへの報告や注意点など、ほかの項目は書かない。",
         "",
         "＜話した内容＞",
         spoken
@@ -46,9 +46,17 @@ export function parseVoiceSummary(answer) {
     const text = String(answer || "").replace(/\r\n?/g, "\n");
     const labelToKey = Object.fromEntries(Object.entries(VOICE_SECTIONS).map(([key, label]) => [label, key]));
     const result = { careJournal: "", message: "", handoverNote: "", flags: { handoverRequired: false, medicalVisit: false, conditionChange: false } };
-    // 「【介護日誌】」のほか、AIが「## 介護日誌」「**介護日誌：**」のように書いた見出しも見つける
-    const pattern = /(?:[*#\s]*[【\[]\s*(介護日誌|ご家族への連絡事項|申し送り|チェック)\s*[】\]][*：:\s]*|(?:^|\n)[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?[ \t]*(介護日誌|ご家族への連絡事項|申し送り|チェック)[ \t]*(?:\*\*)?[ \t]*[：:]?[ \t]*(?:\*\*)?[ \t]*(?=\n|$))/g;
-    const marks = [...text.matchAll(pattern)].map(mark => Object.assign(mark, { 1: mark[1] || mark[2] }));
+    // 見出しを探す。「【介護日誌】」のほか、AIが「## 介護日誌」「**介護日誌：**」と書いた形も見つける。
+    // 「【ケアマネジャーへの報告】」のように頼んでいない見出しは、区切りとしてだけ使い、中身は入れない。
+    const found = [];
+    for (const m of text.matchAll(/[*#\s]*【\s*([^】\n]{1,30}?)\s*】[*：:\s]*|[*#\s]*\[\s*(介護日誌|ご家族への連絡事項|申し送り|チェック)\s*\][*：:\s]*/g)) {
+        found.push({ index: m.index, length: m[0].length, label: (m[1] || m[2]).trim() });
+    }
+    for (const m of text.matchAll(/(?:^|\n)[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?[ \t]*(介護日誌|ご家族への連絡事項|申し送り|チェック)[ \t]*(?:\*\*)?[ \t]*[：:]?[ \t]*(?:\*\*)?[ \t]*(?=\n|$)/g)) {
+        found.push({ index: m.index, length: m[0].length, label: m[1] });
+    }
+    found.sort((a, b) => a.index - b.index);
+    const marks = found.filter((mark, i) => i === 0 || mark.index >= found[i - 1].index + found[i - 1].length);
     // 見出しがない答えは、全部を介護日誌に入れる
     if (!marks.length) {
         const body = text.split("\n").map(line => line.replace(/^\s*[*\-]\s+/, "").trimEnd()).join("\n").replace(/\*\*/g, "").trim();
@@ -56,12 +64,13 @@ export function parseVoiceSummary(answer) {
         return result;
     }
     marks.forEach((mark, index) => {
-        const start = mark.index + mark[0].length;
+        const key = labelToKey[mark.label];
+        if (!key) return;
+        const start = mark.index + mark.length;
         const end = index + 1 < marks.length ? marks[index + 1].index : text.length;
         const body = text.slice(start, end)
             .split("\n").map(line => line.replace(/^\s*[*\-・]\s*(?=\S)/, line.trim().startsWith("・") ? "・" : "").trimEnd())
             .join("\n").replace(/\*\*/g, "").trim();
-        const key = labelToKey[mark[1]];
         if (key === "flags") {
             if (!NONE_WORDS.test(body)) {
                 for (const [flag, label] of Object.entries(VOICE_FLAGS)) if (body.includes(label)) result.flags[flag] = true;

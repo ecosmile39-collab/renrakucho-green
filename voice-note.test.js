@@ -53,6 +53,29 @@ test("an answer without headings goes into the journal as it is", () => {
     assert.equal(hasVoiceSummary(result), true);
 });
 
+test("sections that were not asked for (care manager report, notes) are left out", () => {
+    const answer = [
+        "【介護日誌】",
+        "咳が見られ、顔色不良あり。昼食は半量程度摂取される。",
+        "",
+        "【ご家族への連絡事項】",
+        "本日は咳が出ており、顔色もあまり良くありませんでした。引き続き体調の変化に気をつけてまいります。",
+        "",
+        "【ケアマネジャーへの報告】",
+        "咳、顔色不良、熱感が見られ、体調不良の様子あり。引き続き状態観察が必要。",
+        "",
+        "【注意点・申し送り】",
+        "* 体温を測定し、記録する。",
+        "* 体調の変化があれば看護職員へ速やかに報告する。"
+    ].join("\n");
+    const result = parseVoiceSummary(answer);
+    assert.equal(result.careJournal, "咳が見られ、顔色不良あり。昼食は半量程度摂取される。");
+    assert.equal(result.message, "本日は咳が出ており、顔色もあまり良くありませんでした。引き続き体調の変化に気をつけてまいります。");
+    assert.equal(result.handoverNote, "");
+    assert.ok(!JSON.stringify(result).includes("ケアマネジャー"));
+    assert.ok(!JSON.stringify(result).includes("看護職員"));
+});
+
 test("markdown-style headings without brackets are also found", () => {
     const result = parseVoiceSummary("## 介護日誌\n昼から休まれた。\n\n**ご家族への連絡事項：**\n午後はレクに参加されました。\n\n申し送り\nなし\n\nチェック：\n体調変化");
     assert.equal(result.careJournal, "昼から休まれた。");
