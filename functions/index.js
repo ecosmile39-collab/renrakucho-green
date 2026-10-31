@@ -8,7 +8,7 @@ const path = require("path");
 const { promisify } = require("util");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
+const { defineSecret, defineString } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const nodemailer = require("nodemailer");
 const { GoogleAuth } = require("google-auth-library");
@@ -27,6 +27,10 @@ const {
 const { generateInvoicePdf } = require("./invoice-pdf");
 const { findOverdueUnpaidInvoices } = require("./overdue-lock");
 const { getTrialAccessEndsAt, isTrialAccessOpen, getPaymentGraceFields } = require("./trial-access");
+const {
+    buildCardPaymentUrl, buildCheckoutSessionForm, cardPaymentButtonHtml, cardPaymentText, createCardPaymentToken,
+    getCardPaymentBlocker, getPaidInvoiceFromEvent, tokensMatch, verifyStripeSignature, CARD_PAYMENT_RESULT_URL
+} = require("./card-payment");
 const { LP_ANALYTICS_PROPERTY_ID, buildLpAnalyticsRequest, parseLpAnalyticsResponse, buildLpRealtimeRequest, parseLpRealtimeResponse } = require("./lp-analytics");
 const { LP_INQUIRY_ORIGIN, LP_INQUIRY_HOURLY_LIMIT, parseLpInquiry } = require("./lp-inquiry");
 const { createJobStatusWrapper } = require("./job-status");
@@ -51,6 +55,11 @@ const FACILITY_REGISTRATION_KEY = defineSecret("FACILITY_REGISTRATION_KEY");
 const LINE_CHANNEL_ACCESS_TOKEN = defineSecret("LINE_CHANNEL_ACCESS_TOKEN");
 const LINE_CHANNEL_SECRET = defineSecret("LINE_CHANNEL_SECRET");
 const FACILITY_LINE_ENCRYPTION_KEY = defineSecret("FACILITY_LINE_ENCRYPTION_KEY");
+// クレジットカード払い（Stripe）。functions/.env の CARD_PAYMENT_ENABLED=true で請求書メールにボタンを出す
+const STRIPE_SECRET_KEY = defineSecret("STRIPE_SECRET_KEY");
+const STRIPE_WEBHOOK_SECRET = defineSecret("STRIPE_WEBHOOK_SECRET");
+const CARD_PAYMENT_ENABLED = defineString("CARD_PAYMENT_ENABLED", { default: "false" });
+const cardPaymentEnabled = () => CARD_PAYMENT_ENABLED.value() === "true";
 const COMMON_LINE_DISPLAY_NAME = "えこすまいる連絡帳";
 const COMMON_LINE_BASIC_ID = "@805xgtzu";
 const CURRENT_TERMS_VERSION = "2026-10-24-v1";
@@ -2671,6 +2680,9 @@ exports.requestFacilitySubscription = onCall({
 
         const lineAgencyFee = reserveLineAgencyFee(transaction, facilityRef, facility, invoiceRef);
         const pricing = calculateInvoicePricing(4000, serviceTypes, null, lineAgencyFee);
+        const cardPaymentToken = cardPaymentEnabled()
+            ? ((invoiceSnapshot.exists && invoiceSnapshot.data().cardPaymentToken) || createCardPaymentToken())
+            : null;
         transaction.set(facilityRef, {
             enabledServiceTypes: serviceTypes,
             billingServiceTypes: serviceTypes,
@@ -2695,6 +2707,7 @@ exports.requestFacilitySubscription = onCall({
             subtotal: pricing.subtotal,
             tax: pricing.tax,
             total: pricing.total,
+            ...(cardPaymentToken ? { cardPaymentToken } : {}),
             attemptStartedAt: FieldValue.serverTimestamp()
         }, { merge: true });
         transaction.set(facilityRef, {
@@ -2702,7 +2715,7 @@ exports.requestFacilitySubscription = onCall({
             subscriptionRequestedAt: facility.subscriptionRequestedAt || requestedAt.toISOString(),
             billingAnchorAt: facility.billingAnchorAt || billingAnchorAt
         }, { merge: true });
-        return { shouldSend: true, serviceTypes, ...pricing };
+        return { shouldSend: true, serviceTypes, cardPaymentToken, ...pricing };
     });
 
     if (!reservation.shouldSend) {
@@ -2712,7 +2725,8 @@ exports.requestFacilitySubscription = onCall({
     const facilityName = initialFacility.facilityName || facilityId;
     const formattedPeriod = `${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}`;
     const gmailUser = INVOICE_GMAIL_USER.value();
-    const { additionalServiceSubtotal, lineAgencyFee = null, subtotal, tax, total } = reservation;
+    const { additionalServiceSubtotal, lineAgencyFee = null, subtotal, tax, total, cardPaymentToken } = reservation;
+    const cardPaymentUrl = cardPaymentToken ? buildCardPaymentUrl(facilityId, invoiceRef.id, cardPaymentToken) : "";
     const invoiceRows = buildInvoiceItemRows({
         serviceTypes,
         itemTitle: "初回システム利用料",
@@ -2741,12 +2755,13 @@ exports.requestFacilitySubscription = onCall({
         ${invoiceRows}</tbody></table>
         <div style="margin-top:28px"><h2>発行元</h2><p>${ECOTAN_EMAIL_HTML}株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
+        ${cardPaymentUrl ? cardPaymentButtonHtml(cardPaymentUrl) : ""}
         <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能な請求書PDF（<code>請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。印刷して保管される際などにご活用ください。</p>
         <p style="margin-top:20px;padding:12px;background:#fff5f5;border:1px solid #ffa8a8;border-radius:4px;color:#c92a2a;font-weight:bold">${escapeHtml(PAYMENT_SUSPENSION_NOTICE)}</p>
         <p style="margin-top:28px">このたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。</p>
         <p>${escapeHtml(FACILITY_RETENTION_NOTICE)}</p>
     </body></html>`;
-    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n【ご注意】${PAYMENT_SUSPENSION_NOTICE}\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。\n\n${FACILITY_RETENTION_NOTICE}`;
+    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル${cardPaymentUrl ? `\n\n${cardPaymentText(cardPaymentUrl)}` : ""}\n\n【ご注意】${PAYMENT_SUSPENSION_NOTICE}\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。\n\n${FACILITY_RETENTION_NOTICE}`;
 
     let emailResult = null;
     const archivedHtml = html;
@@ -2765,7 +2780,7 @@ exports.requestFacilitySubscription = onCall({
             tax,
             total,
             issuerEmail: gmailUser,
-            note: `${PAYMENT_SUSPENSION_NOTICE}\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。`
+            note: `${cardPaymentUrl ? "クレジットカードでのお支払いは、請求書メールの「クレジットカードで支払う」ボタンからできます。\n" : ""}${PAYMENT_SUSPENSION_NOTICE}\nこのたびは本登録をお申し込みいただき、誠にありがとうございます。ご利用をお申し込みくださったことに心より感謝申し上げます。入金確認後、本利用へ切り替えいたします。今後ともどうぞよろしくお願い申し上げます。`
         });
         const transporter = nodemailer.createTransport({
             service: "gmail",
@@ -2956,6 +2971,9 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         }
         const lineAgencyFee = reserveLineAgencyFee(transaction, facilityRef, currentFacility, invoiceRef);
         const pricing = calculateInvoicePricing(baseSubtotal, serviceTypes, oneTimeAdjustment, lineAgencyFee);
+        const cardPaymentToken = cardPaymentEnabled()
+            ? ((invoiceSnapshot.exists && invoiceSnapshot.data().cardPaymentToken) || createCardPaymentToken())
+            : null;
         transaction.set(invoiceRef, {
             test: false,
             type: invoiceType,
@@ -2976,6 +2994,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             tax: pricing.tax,
             total: pricing.total,
             manualIssuedBy: request.auth.uid,
+            ...(cardPaymentToken ? { cardPaymentToken } : {}),
             attemptStartedAt: FieldValue.serverTimestamp()
         }, { merge: true });
         if (isInitialInvoice) {
@@ -2985,13 +3004,14 @@ exports.issueFacilityInvoiceForAdmin = onCall({
                 billingAnchorAt: currentFacility.billingAnchorAt || `${billingPeriodStart}T00:00:00+09:00`
             }, { merge: true });
         }
-        return { serviceTypes, ...pricing };
+        return { serviceTypes, cardPaymentToken, ...pricing };
     });
     if (!reservation) {
         throw new HttpsError("internal", "請求書の発行を開始できませんでした。");
     }
 
-    const { serviceTypes, additionalServiceSubtotal, oneTimeAdjustment, lineAgencyFee = null, subtotal, tax, total } = reservation;
+    const { serviceTypes, additionalServiceSubtotal, oneTimeAdjustment, lineAgencyFee = null, subtotal, tax, total, cardPaymentToken } = reservation;
+    const cardPaymentUrl = cardPaymentToken ? buildCardPaymentUrl(facilityId, invoiceRef.id, cardPaymentToken) : "";
     const formattedPeriod = `${formatJapaneseDateKey(billingPeriodStart)}〜${formatJapaneseDateKey(billingPeriodEnd)}`;
     const amountLabel = isInitialInvoice ? "初回システム利用料" : "システム利用料";
     const closing = isInitialInvoice
@@ -3027,10 +3047,11 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         ${invoiceRows}</tbody></table>
         <div style="margin-top:28px"><h2>発行元</h2><p>${ECOTAN_EMAIL_HTML}株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
         <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
+        ${cardPaymentUrl ? cardPaymentButtonHtml(cardPaymentUrl) : ""}
         <p style="margin-top:20px;padding:12px;background:#e7f5ff;border:1px solid #74c0fc"><strong>A4印刷用の請求書PDFを添付しております。</strong></p>
         <p style="margin-top:20px;padding:12px;background:#fff5f5;border:1px solid #ffa8a8;border-radius:4px;color:#c92a2a;font-weight:bold">${escapeHtml(PAYMENT_SUSPENSION_NOTICE)}</p>
         <p style="margin-top:28px">${closing}</p></body></html>`;
-    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n【ご注意】${PAYMENT_SUSPENSION_NOTICE}\n\nA4印刷用の請求書PDFを添付しております。\n${closing}`;
+    const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(dueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル${cardPaymentUrl ? `\n\n${cardPaymentText(cardPaymentUrl)}` : ""}\n\n【ご注意】${PAYMENT_SUSPENSION_NOTICE}\n\nA4印刷用の請求書PDFを添付しております。\n${closing}`;
     let emailResult = null;
     try {
         const pdfBuffer = await generateInvoicePdf({
@@ -3048,7 +3069,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             tax,
             total,
             issuerEmail: gmailUser,
-            note: `${PAYMENT_SUSPENSION_NOTICE}\n${closing}`
+            note: `${cardPaymentUrl ? "クレジットカードでのお支払いは、請求書メールの「クレジットカードで支払う」ボタンからできます。\n" : ""}${PAYMENT_SUSPENSION_NOTICE}\n${closing}`
         });
         const transporter = nodemailer.createTransport({
             service: "gmail",
@@ -3376,6 +3397,9 @@ exports.sendMonthlyInvoices = onSchedule({
             }
             const lineAgencyFee = reserveLineAgencyFee(transaction, facilityRef, currentFacility, historyRef);
             const pricing = calculateInvoicePricing(5000, serviceTypes, oneTimeAdjustment, lineAgencyFee);
+            const cardPaymentToken = cardPaymentEnabled()
+                ? ((historySnapshot.exists && historySnapshot.data().cardPaymentToken) || createCardPaymentToken())
+                : null;
             transaction.set(historyRef, {
                 test: false,
                 status: "sending",
@@ -3393,15 +3417,17 @@ exports.sendMonthlyInvoices = onSchedule({
                 subtotal: pricing.subtotal,
                 tax: pricing.tax,
                 total: pricing.total,
+                ...(cardPaymentToken ? { cardPaymentToken } : {}),
                 attemptStartedAt: FieldValue.serverTimestamp()
             }, { merge: true });
-            return { serviceTypes, pricing, oneTimeAdjustment };
+            return { serviceTypes, pricing, oneTimeAdjustment, cardPaymentToken };
         });
         if (!reservation) {
             skippedCount++;
             continue;
         }
-        const { serviceTypes, pricing, oneTimeAdjustment } = reservation;
+        const { serviceTypes, pricing, oneTimeAdjustment, cardPaymentToken } = reservation;
+        const cardPaymentUrl = cardPaymentToken ? buildCardPaymentUrl(facilityId, historyRef.id, cardPaymentToken) : "";
         const lineAgencyFee = pricing.lineAgencyFee || null;
 
         const invoiceNumber = `INV-${monthlyInvoiceKey(period.startDate, facility)}-${facilityId.toUpperCase()}`;
@@ -3436,11 +3462,12 @@ exports.sendMonthlyInvoices = onSchedule({
             ${invoiceRows}</tbody></table>
             <div style="margin-top:28px"><h2>発行元</h2><p>${ECOTAN_EMAIL_HTML}株式会社えこすまいる<br>〒719-1164 岡山県総社市西郡430-2<br>連絡先：${escapeHtml(gmailUser)}<br>適格請求書発行事業者登録番号：なし</p></div>
             <h2>お振込先</h2><p>PayPay銀行<br>店番号：005 ／ 支店名：ビジネス営業部<br>普通 2088889<br>口座名義：カ）エコスマイル</p>
+            ${cardPaymentUrl ? cardPaymentButtonHtml(cardPaymentUrl) : ""}
             <p style="margin-top:20px;padding:12px;background:#e7f5ff;border-radius:4px;border:1px solid #74c0fc"><strong>【A4印刷用PDF添付】</strong><br>A4サイズで印刷可能な請求書PDF（<code>請求書_${escapeHtml(invoiceNumber)}.pdf</code>）を本メールに添付しております。印刷して保管される際などにご活用ください。</p>
             <p style="margin-top:20px;padding:12px;background:#fff5f5;border:1px solid #ffa8a8;border-radius:4px;color:#c92a2a;font-weight:bold">${escapeHtml(PAYMENT_SUSPENSION_NOTICE)}</p>
             <p style="margin-top:28px">平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。</p>
         </body></html>`;
-        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(invoiceDueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル\n\n【ご注意】${PAYMENT_SUSPENSION_NOTICE}\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
+        const text = `${facilityName} 御中\n請求書番号：${invoiceNumber}\n請求対象期間：${formattedPeriod}\n発行日：${formatJapaneseDateKey(issueDate)}\nお支払期限：${formatJapaneseDateKey(invoiceDueDate)}\n${textItems}\n\n株式会社えこすまいる\n〒719-1164 岡山県総社市西郡430-2\nPayPay銀行 ビジネス営業部（005） 普通 2088889\n口座名義：カ）エコスマイル${cardPaymentUrl ? `\n\n${cardPaymentText(cardPaymentUrl)}` : ""}\n\n【ご注意】${PAYMENT_SUSPENSION_NOTICE}\n\n※ A4印刷用の請求書PDF（請求書_${invoiceNumber}.pdf）を本メールに添付しております。\n\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`;
 
         let emailResult = null;
         try {
@@ -3459,7 +3486,7 @@ exports.sendMonthlyInvoices = onSchedule({
                 tax: pricing.tax,
                 total: pricing.total,
                 issuerEmail: gmailUser,
-                note: `${PAYMENT_SUSPENSION_NOTICE}\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`
+                note: `${cardPaymentUrl ? "クレジットカードでのお支払いは、請求書メールの「クレジットカードで支払う」ボタンからできます。\n" : ""}${PAYMENT_SUSPENSION_NOTICE}\n平素よりシステムをご利用いただき、誠にありがとうございます。今後ともどうぞよろしくお願い申し上げます。`
             });
             emailResult = await transporter.sendMail({
                 from: { name: "株式会社えこすまいる", address: gmailUser },
@@ -3825,6 +3852,145 @@ exports.deleteExpiredVideos = onSchedule("every 60 minutes", withJobStatus("dele
         deleted: deletedCount
     });
 }));
+
+// 💳 クレジットカード払い（Stripe）
+function cardPaymentPage(title, message) {
+    return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head>
+<body style="font-family:sans-serif;color:#222;line-height:1.8;max-width:560px;margin:40px auto;padding:0 16px">
+<h1 style="font-size:22px;color:#2b8a3e">えこすまいる連絡帳</h1><h2 style="font-size:18px">${escapeHtml(title)}</h2><p>${escapeHtml(message)}</p>
+<p style="font-size:14px;color:#555">ご不明な点は、株式会社えこすまいる（070-5524-5688、平日10:00〜17:00／ecosmile39@gmail.com）までお問い合わせください。</p>
+</body></html>`;
+}
+
+// 請求書メールのボタンから開く：その請求書の Stripe 決済画面を作って移動する
+exports.startCardPayment = onRequest({ secrets: [STRIPE_SECRET_KEY], maxInstances: 10 }, async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    const facilityId = typeof req.query.f === "string" ? req.query.f : "";
+    const invoiceDocId = typeof req.query.i === "string" ? req.query.i : "";
+    const token = typeof req.query.t === "string" ? req.query.t : "";
+    const send = (status, title, message) => res.status(status).type("html").send(cardPaymentPage(title, message));
+    if (req.method !== "GET") return send(405, "このページは開けません", "請求書メールのボタンから開いてください。");
+    if (!cardPaymentEnabled()) return send(503, "現在クレジットカード払いは受け付けていません", "お手数ですが、銀行振込でお支払いください。");
+    if (!facilityId || !invoiceDocId || !token || facilityId.length > 128 || invoiceDocId.length > 128 || facilityId.includes("/") || invoiceDocId.includes("/")) {
+        return send(400, "リンクが正しくありません", "請求書メールのボタンから、もう一度お試しください。");
+    }
+    try {
+        const snapshot = await getFirestore().collection("facilities").doc(facilityId).collection("invoiceHistory").doc(invoiceDocId).get();
+        const invoice = snapshot.exists ? snapshot.data() : null;
+        if (!invoice || !tokensMatch(token, invoice.cardPaymentToken)) {
+            return send(404, "リンクが正しくありません", "請求書メールのボタンから、もう一度お試しください。");
+        }
+        const blocker = getCardPaymentBlocker(invoice);
+        if (blocker === "paid") return send(200, "お支払いは完了しています", "この請求書はお支払い済みです。ありがとうございました。");
+        if (blocker) return send(409, "この請求書はカードでお支払いいただけません", "お手数ですが、銀行振込でお支払いいただくか、販売元へお問い合わせください。");
+        const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${STRIPE_SECRET_KEY.value()}`,
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: buildCheckoutSessionForm({ facilityId, invoiceDocId, invoice }).toString()
+        });
+        const session = await response.json().catch(() => ({}));
+        if (!response.ok || typeof session.url !== "string") {
+            logger.error("Stripe checkout session could not be created", { facilityId, invoiceDocId, status: response.status, error: session.error && session.error.message });
+            return send(502, "決済画面を開けませんでした", "時間をおいて、もう一度お試しください。続く場合は銀行振込でお支払いいただくか、販売元へお問い合わせください。");
+        }
+        logger.info("Stripe checkout session created", { facilityId, invoiceDocId, sessionId: session.id });
+        return res.redirect(303, session.url);
+    } catch (error) {
+        logger.error("startCardPayment failed", { facilityId, invoiceDocId, error: String(error && error.message || error) });
+        return send(500, "決済画面を開けませんでした", "時間をおいて、もう一度お試しください。");
+    }
+});
+
+// Stripe からの「支払いが済んだ」連絡：請求書を入金ありにし、入金期限切れで止まっていたら再開する
+exports.stripeWebhook = onRequest({ secrets: [STRIPE_WEBHOOK_SECRET, INVOICE_GMAIL_USER, INVOICE_GMAIL_APP_PASSWORD], maxInstances: 10 }, async (req, res) => {
+    if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
+    if (!verifyStripeSignature(req.rawBody, req.get("stripe-signature"), STRIPE_WEBHOOK_SECRET.value())) {
+        logger.warn("Stripe webhook signature check failed");
+        res.status(400).send("invalid signature");
+        return;
+    }
+    let event;
+    try { event = JSON.parse(req.rawBody.toString("utf8")); } catch (error) { res.status(400).send("invalid body"); return; }
+    const paid = getPaidInvoiceFromEvent(event);
+    if (!paid) { res.status(200).send("ignored"); return; }
+
+    const db = getFirestore();
+    const facilityRef = db.collection("facilities").doc(paid.facilityId);
+    const invoiceRef = facilityRef.collection("invoiceHistory").doc(paid.invoiceDocId);
+    const todayKey = getTokyoDateKey();
+    let outcome;
+    try {
+        outcome = await db.runTransaction(async transaction => {
+            const [facilitySnapshot, invoiceSnapshot, invoicesSnapshot] = await Promise.all([
+                transaction.get(facilityRef), transaction.get(invoiceRef), transaction.get(facilityRef.collection("invoiceHistory"))
+            ]);
+            if (!invoiceSnapshot.exists) return { status: "missing" };
+            const invoice = invoiceSnapshot.data();
+            if (invoice.paymentStatus === "paid") return { status: "already_paid" };
+            const amountMatches = paid.currency === "jpy" && paid.amountTotal === invoice.total;
+            transaction.set(invoiceRef, {
+                paymentStatus: "paid",
+                paidDate: todayKey,
+                paymentMethod: "card",
+                paymentUpdatedAt: new Date().toISOString(),
+                stripeCheckoutSessionId: paid.sessionId,
+                stripePaymentIntentId: paid.paymentIntentId,
+                stripeAmountTotal: paid.amountTotal,
+                ...(amountMatches ? {} : { paymentAmountMismatch: true })
+            }, { merge: true });
+            let unlocked = false;
+            const facility = facilitySnapshot.exists ? facilitySnapshot.data() : null;
+            if (facility && facility.status === "locked" && facility.lockReason === "payment_overdue" && facility.usagePaused !== true) {
+                const stillOverdue = invoicesSnapshot.docs.some(document => {
+                    if (document.id === paid.invoiceDocId) return false;
+                    const other = document.data();
+                    return other.test !== true && other.status === "sent" && other.paymentStatus !== "paid" &&
+                        typeof other.dueDate === "string" && other.dueDate < todayKey;
+                });
+                if (!stillOverdue) {
+                    transaction.set(facilityRef, { status: "active", lockReason: FieldValue.delete() }, { merge: true });
+                    unlocked = true;
+                }
+            }
+            return {
+                status: "paid", unlocked, amountMatches,
+                facilityName: (facility && facility.facilityName) || paid.facilityId,
+                invoiceNumber: invoice.invoiceNumber || paid.invoiceDocId,
+                total: invoice.total, type: invoice.type || "monthly",
+                trial: Boolean(facility && facility.subscriptionStatus === "trial")
+            };
+        });
+    } catch (error) {
+        logger.error("Stripe webhook could not record payment", { ...paid, error: String(error && error.message || error) });
+        res.status(500).send("retry");
+        return;
+    }
+    logger.info("Stripe card payment recorded", { ...paid, outcome: outcome.status, unlocked: outcome.unlocked });
+    if (outcome.status === "paid") {
+        try {
+            const gmailUser = INVOICE_GMAIL_USER.value();
+            const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: gmailUser, pass: INVOICE_GMAIL_APP_PASSWORD.value() } });
+            const lines = [
+                "クレジットカードでのお支払いがありました。請求書は自動で「入金あり」にしました。",
+                "",
+                `施設：${outcome.facilityName}`,
+                `請求書番号：${outcome.invoiceNumber}`,
+                `お支払い金額：${Number(paid.amountTotal).toLocaleString("ja-JP")}円（請求額 ${Number(outcome.total).toLocaleString("ja-JP")}円）`,
+                `入金日：${todayKey}`,
+                outcome.amountMatches ? "" : "【確認してください】お支払い金額が請求額と一致しません。",
+                outcome.unlocked ? "入金期限切れで止まっていた施設の利用を、自動で再開しました。" : "",
+                outcome.trial ? "初回の請求書です。管理画面で「✅ 購入後の本利用へ切替」を押してください。" : ""
+            ].filter((line, index) => index < 2 || line);
+            await transporter.sendMail({ from: gmailUser, to: gmailUser, subject: `【カード入金】${outcome.facilityName}（${outcome.invoiceNumber}）`, text: lines.join("\n") });
+        } catch (error) {
+            logger.error("Card payment admin notice could not be sent", { ...paid, error: String(error && error.message || error) });
+        }
+    }
+    res.status(200).send("ok");
+});
 
 exports.exportDailyRecordsBackup = onSchedule({
     schedule: "every day 03:00",

@@ -109,7 +109,7 @@ function loadHandlers(entries, options = {}) {
             onCall: (...args) => args.at(-1), onRequest: (...args) => args.at(-1),
             HttpsError: class extends Error { constructor(code, message) { super(message); this.code = code; } }
         };
-        if (name === "firebase-functions/params") return { defineSecret: () => ({ value: () => "test-secret" }) };
+        if (name === "firebase-functions/params") return { defineSecret: () => ({ value: () => "test-secret" }), defineString: (_name, options = {}) => ({ value: () => options.default ?? "" }) };
         if (name === "firebase-functions/logger") return {
             warn() {}, error: (...args) => loggedErrors.push(args), info() {}
         };
