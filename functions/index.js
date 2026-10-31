@@ -1040,9 +1040,13 @@ exports.activateFacilitySubscription = onCall(async request => {
         if (facility.usagePaused === true || facility.subscriptionStatus !== "trial") {
             throw new HttpsError("failed-precondition", "本登録への切替対象ではありません。一時停止中の場合は利用再開を承認してください。");
         }
+        const activatedAt = new Date();
         transaction.set(ref, {
             subscriptionStatus: "active", status: "active",
-            subscriptionApplicationStatus: "activated", planActivatedAt: new Date().toISOString()
+            subscriptionApplicationStatus: "activated", planActivatedAt: activatedAt.toISOString(),
+            // 申し込み（初回請求書）を通らずに管理画面から本利用にした場合も、切り替えた日からの1か月を1か月目とし、
+            // 2か月目の請求書を期間開始の10日前に送る。切り替え直後に途中の期間を請求しないようにする。
+            ...(facility.billingAnchorAt ? {} : { billingAnchorAt: getNextBillingAnchorAt(activatedAt) })
         }, { merge: true });
     });
     return { status: "active" };
@@ -2263,6 +2267,13 @@ function getLatestMaturedBillingPeriod(createdAt, now, advanceDays = 10) {
     return latestPeriod;
 }
 
+// 1か月目を start（その日を含む）に始めたとき、2か月目が始まる日の 0:00（日本時間）。
+// 月次請求はこの日を起点に数え、期間が始まる10日前に請求書を送る（前払い）。
+function getNextBillingAnchorAt(start) {
+    const nextPeriodStartParts = addMonthsToAnchor(getTokyoDateParts(start), 1);
+    return new Date(`${dateKey(nextPeriodStartParts)}T00:00:00+09:00`).toISOString();
+}
+
 function formatJapaneseDateKey(value) {
     const [year, month, day] = value.split("-").map(Number);
     return `${year}年${month}月${day}日`;
@@ -2877,6 +2888,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
     let invoiceNumber;
     let baseSubtotal;
     let invoiceType;
+    let nextBillingAnchorAt = null;
 
     if (isInitialInvoice) {
         const requestedAt = facility.subscriptionRequestedAt
@@ -2896,6 +2908,7 @@ exports.issueFacilityInvoiceForAdmin = onCall({
         invoiceNumber = `INIT-${billingPeriodStart.replace(/-/g, "")}-${facilityId.toUpperCase()}`;
         baseSubtotal = 4000;
         invoiceType = "initial";
+        nextBillingAnchorAt = new Date(`${dateKey(nextPeriodStartParts)}T00:00:00+09:00`).toISOString();
     } else {
         const period = getLatestMaturedBillingPeriod(
             facility.billingAnchorAt || facility.planActivatedAt || facility.createdAt,
@@ -2982,7 +2995,8 @@ exports.issueFacilityInvoiceForAdmin = onCall({
             transaction.set(facilityRef, {
                 subscriptionApplicationStatus: "invoice_sending",
                 subscriptionRequestedAt: currentFacility.subscriptionRequestedAt || now.toISOString(),
-                billingAnchorAt: currentFacility.billingAnchorAt || `${billingPeriodStart}T00:00:00+09:00`
+                // 初回請求書が1か月目の分なので、月次請求は2か月目から（申し込みからの初回請求と同じ数え方）
+                billingAnchorAt: currentFacility.billingAnchorAt || nextBillingAnchorAt
             }, { merge: true });
         }
         return { serviceTypes, ...pricing };

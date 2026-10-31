@@ -1863,7 +1863,7 @@
                 alert("一時利用停止中です。先に利用再開を承認してください。");
                 return;
             }
-            if (!confirm(`${facilityName} を無料お試しから本利用へ切り替えますか？以後、月次請求の対象になります。`)) return;
+            if (!confirm(`${facilityName} を無料お試しから本利用へ切り替えますか？\n\n切り替えた日からの1か月を1か月目とします。1か月目の請求書がまだの場合は、先に「請求書を発行」で送ってください。\n2か月目からは、期間が始まる10日前に請求書が自動で届きます（支払期限は期間の始まる日）。`)) return;
 
             try {
                 await httpsCallable(functions, "activateFacilitySubscription")({ facilityId });
