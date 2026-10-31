@@ -76,6 +76,12 @@
         .today-active-alert { animation: todayActiveBlink 1.2s ease-in-out infinite; border-width: 2px !important; }
         .today-ack-button { display: block; width: 100%; margin: 4px 0 0; padding: 6px 8px; font-size: 13px; font-weight: bold; text-align: left; color: inherit; background: rgba(255, 255, 255, 0.85); border: 1px solid currentColor; border-radius: 6px; cursor: pointer; white-space: normal; }
         .today-ack-button.is-checked { color: #868e96; border-color: #ced4da; background: #fff; font-weight: normal; }
+        @keyframes cardPaymentBlink {
+            0%, 100% { background-color: #f3f0ff; border-color: #9775fa; box-shadow: 0 0 0 0 rgba(112, 72, 232, 0); }
+            50% { background-color: #d0bfff; border-color: #6741d9; box-shadow: 0 0 0 6px rgba(112, 72, 232, 0.3); }
+        }
+        .card-payment-alert { animation: cardPaymentBlink 1.2s ease-in-out infinite; border-width: 2px !important; }
+        @media (prefers-reduced-motion: reduce) { .card-payment-alert { animation: none; background-color: #d0bfff !important; border-color: #6741d9 !important; } }
         @keyframes inboxBlink {
             0%, 100% { background-color: #fff4e6; border-color: #fd7e14; }
             50% { background-color: #ffc078; border-color: #d9480f; }
@@ -144,6 +150,11 @@
                 <div style="font-size: 13px;">📅 本日の本登録</div>
                 <div style="font-size: 24px; margin-top: 4px;"><span id="summaryTodayActiveCount">0</span> 件</div>
                 <div id="summaryTodayActiveNames" style="font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere;">該当なし</div>
+            </div>
+            <div id="summaryCardPaymentCard" style="flex: 1; min-width: 160px; padding: 12px 16px; background: #f3f0ff; border: 1px solid #9775fa; border-radius: 8px; font-weight: bold; color: #5f3dc4;">
+                <div style="font-size: 13px;">💳 カード入金（未確認）</div>
+                <div style="font-size: 24px; margin-top: 4px;"><span id="summaryCardPaymentCount">0</span> 件</div>
+                <div id="summaryCardPaymentItems" style="font-size: 13px; margin-top: 6px;">該当なし</div>
             </div>
             <div style="flex: 1; min-width: 160px; padding: 12px 16px; background: #f3f0ff; border: 1px solid #b197fc; border-radius: 8px; font-weight: bold; color: #5f3dc4;">
                 <div style="font-size: 13px;">💬 ご家族からのLINE（施設が未確認）</div>
@@ -1018,6 +1029,7 @@
                 sentInvoicesByFacility = new Map(invoiceEntries.map(([facilityId, sentInvoices]) => [facilityId, sentInvoices]));
                 latestInvoiceByFacility = new Map(invoiceEntries.map(([facilityId, sentInvoices]) => [facilityId, sentInvoices[0] || null]));
                 renderUnpaidInvoiceCount();
+                renderCardPaymentSummary();
                 try {
                     const inquirySnapshot = await getDocs(query(collection(db, "adminInbox"), where("receivedAt", ">=", INBOX_START_AT), orderBy("receivedAt", "desc"), limit(100)));
                     lpInquiries = inquirySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
@@ -1117,6 +1129,65 @@
         function renderUnpaidInvoiceCount() {
             const countEl = document.getElementById("unpaidInvoiceCount");
             if (countEl) countEl.textContent = String(getUnpaidInvoices().length);
+        }
+
+        // 💳 カード入金：カードで払われた請求書のうち、管理者がまだ確認していないものを数えて点滅させる
+        function getRecentCardPayments() {
+            const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+            const rows = [];
+            for (const facility of facilities) {
+                for (const invoice of sentInvoicesByFacility.get(facility.id) || []) {
+                    if (invoice.paymentMethod !== "card" || invoice.paymentStatus !== "paid") continue;
+                    const checked = Boolean(invoice.cardPaymentCheckedAt);
+                    if (checked && String(invoice.paidDate || "") < since) continue;
+                    rows.push({ facility, invoice, checked });
+                }
+            }
+            rows.sort((a, b) => Number(a.checked) - Number(b.checked) || String(b.invoice.paidDate || "").localeCompare(String(a.invoice.paidDate || "")));
+            return rows;
+        }
+
+        function renderCardPaymentSummary() {
+            const card = document.getElementById("summaryCardPaymentCard");
+            const container = document.getElementById("summaryCardPaymentItems");
+            if (!card || !container) return;
+            const rows = getRecentCardPayments();
+            const unchecked = rows.filter(row => !row.checked).length;
+            document.getElementById("summaryCardPaymentCount").textContent = String(unchecked);
+            card.classList.toggle("card-payment-alert", unchecked > 0);
+            if (!rows.length) { container.textContent = "該当なし"; return; }
+            container.replaceChildren(...rows.slice(0, 8).map(({ facility, invoice, checked }) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = `today-ack-button${checked ? " is-checked" : ""}`;
+                const amount = (Number(invoice.total) || 0).toLocaleString("ja-JP");
+                const paid = String(invoice.paidDate || "").replace(/-/g, "/").slice(5);
+                button.textContent = `${checked ? "✓" : "🔔"} ${facility.facilityName || facility.id}　${amount}円　${paid}${checked ? "　確認済み" : ""}`;
+                button.title = `${invoice.invoiceNumber || invoice.id}｜${checked ? "押すと未確認に戻します" : "押すと確認済みにします"}`;
+                button.addEventListener("click", () => toggleCardPaymentChecked(facility.id, invoice, !checked, button));
+                return button;
+            }));
+            if (unchecked > 0) {
+                const hint = document.createElement("div");
+                hint.className = "today-ack-hint";
+                hint.textContent = "カードで支払われ、自動で入金ありになった請求書です。施設名を押すと確認済みになり、すべて確認すると点滅が止まります。初回の請求書なら「購入後の本利用へ切替」も行ってください";
+                container.appendChild(hint);
+            }
+        }
+
+        async function toggleCardPaymentChecked(facilityId, invoice, checked, button) {
+            button.disabled = true;
+            try {
+                await updateDoc(doc(db, "facilities", facilityId, "invoiceHistory", invoice.id), {
+                    cardPaymentCheckedAt: checked ? new Date().toISOString() : deleteField()
+                });
+                if (checked) invoice.cardPaymentCheckedAt = new Date().toISOString(); else delete invoice.cardPaymentCheckedAt;
+                logAdminAction(`カード入金を${checked ? "確認済み" : "未確認"}にした`, facilityId, invoice.invoiceNumber || invoice.id);
+                renderCardPaymentSummary();
+            } catch (error) {
+                button.disabled = false;
+                alert("確認の状態を保存できませんでした: " + (error.message || error));
+            }
         }
 
         function getTodayDateKeyInJapan() {
