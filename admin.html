@@ -41,6 +41,7 @@
         .facility-overview-table { width: 100%; table-layout: fixed; border-collapse: collapse; white-space: normal; font-size: 12px; }
         .facility-overview-table th, .facility-overview-table td { padding: 6px 5px; border: 1px solid #dee2e6; text-align: left; overflow-wrap: anywhere; }
         .facility-overview-table th { position: sticky; top: 0; background: #f1f3f5; }
+        .facility-overview-table .facility-overview-delete { margin: 0; padding: 4px 6px; font-size: 12px; white-space: nowrap; }
         .facility-overview-table tbody tr:nth-child(even) { background: #f8f9fa; }
         .facility-overview-status { display: inline-block; margin-left: 8px; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: bold; }
         .facility-overview-table .facility-overview-status { margin: 2px 0 0 3px; padding: 2px 4px; font-size: 10px; }
@@ -1086,15 +1087,17 @@
                         <td>${lineAgencyStatusLabel}</td>
                         <td>${escapeHtml(lineAgencyRequestedAt)}</td>
                         <td>${lineLinked ? "✅ 連携済み" : "— 未連携"}</td>
+                        <td style="text-align: center;"><button type="button" class="delete facility-overview-delete" title="${escapeHtml(facility.facilityName || facility.id)}を削除します（確認があります）" onclick="deleteFacility('${encodeURIComponent(facility.id)}', this)">🗑️ 削除</button></td>
                     </tr>`;
                 }).join("");
                 list.innerHTML = `<table class="facility-overview-table">
-                    <colgroup><col style="width:4%"><col style="width:13%"><col style="width:16%"><col style="width:10%"><col style="width:14%"><col style="width:12%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:7%"></colgroup>
-                    <thead><tr><th scope="col" style="text-align: right;">No.</th><th scope="col">施設名</th><th scope="col">メールアドレス</th><th scope="col">電話番号</th><th scope="col">担当者名</th><th scope="col">トライアル開始日</th><th scope="col">本登録日</th><th scope="col">LINE連携申込</th><th scope="col">申込日</th><th scope="col">LINE連携</th></tr></thead>
+                    <colgroup><col style="width:4%"><col style="width:12%"><col style="width:15%"><col style="width:10%"><col style="width:12%"><col style="width:11%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:7%"><col style="width:6%"></colgroup>
+                    <thead><tr><th scope="col" style="text-align: right;">No.</th><th scope="col">施設名</th><th scope="col">メールアドレス</th><th scope="col">電話番号</th><th scope="col">担当者名</th><th scope="col">トライアル開始日</th><th scope="col">本登録日</th><th scope="col">LINE連携申込</th><th scope="col">申込日</th><th scope="col">LINE連携</th><th scope="col" style="text-align: center;">削除</th></tr></thead>
                     <tbody>${rows}</tbody>
                 </table>`;
             }
-            document.getElementById("facilityOverviewDialog").showModal();
+            const overviewDialog = document.getElementById("facilityOverviewDialog");
+            if (!overviewDialog.open) overviewDialog.showModal();
         };
 
         function getUnpaidInvoices() {
@@ -2627,6 +2630,8 @@ ${invoiceRows}
 
                 facilities = facilities.filter(item => item.id !== facilityId);
                 renderFacilities();
+                // 施設一覧（ポップアップ）から削除したときは、その一覧も作り直す
+                if (document.getElementById("facilityOverviewDialog").open) openFacilityOverview();
                 document.getElementById("facilityError").textContent = "";
                 alert(`${facilityName} を削除しました。`);
             } catch (error) {
